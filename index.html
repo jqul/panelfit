@@ -224,8 +224,8 @@ async function doReg(){
   loading(true);
   var {data,error}=await sb.auth.signUp({email,password:pass});
   if(error){loading(false);document.getElementById('r-err').textContent=error.message;return;}
-  // Crear perfil entrenador
-  await sb.from('entrenadores').insert({id:data.user.id,nombre,email});
+  // Crear perfil entrenador (upsert por si ya existe)
+  await sb.from('entrenadores').upsert({id:data.user.id,nombre,email},{onConflict:'id'});
   loading(false);
   toast('Cuenta creada. Revisa tu email para confirmar.');
   showLogin();
@@ -238,23 +238,34 @@ async function doLogout(){
 // ── SESIÓN ────────────────────────────
 var _user=null;
 
+// Timeout de seguridad — si algo falla, quitar el spinner
+setTimeout(()=>loading(false), 6000);
+
+var _authHandled = false;
 sb.auth.onAuthStateChange(async(event,session)=>{
-  if(session){
-    _user=session.user;
-    var token=getClientToken();
-    if(token){
-      await loadClienteApp(token);
+  if(_authHandled && event==='INITIAL_SESSION') return;
+  _authHandled = true;
+  try{
+    var token = getClientToken();
+    if(session){
+      _user = session.user;
+      if(token){
+        await loadClienteApp(token);
+      } else {
+        await loadDash();
+      }
     } else {
-      await loadDash();
+      if(token){
+        await loadClienteApp(token);
+      } else {
+        loading(false);
+        showView('view-login');
+      }
     }
-  } else {
-    var token=getClientToken();
-    if(token){
-      await loadClienteApp(token);
-    } else {
-      loading(false);
-      showView('view-login');
-    }
+  } catch(e){
+    console.error('Auth error:',e);
+    loading(false);
+    showView('view-login');
   }
 });
 
@@ -266,10 +277,16 @@ function getClientToken(){
 // ── DASHBOARD ─────────────────────────
 async function loadDash(){
   loading(true);
-  // Asegurar que existe el perfil
-  var {data:perfil}=await sb.from('entrenadores').select('nombre').eq('id',_user.id).single();
-  if(perfil) document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
-  await renderClientes();
+  try{
+    // Asegurar que existe el perfil — crearlo si no
+    var {data:perfil}=await sb.from('entrenadores').select('nombre').eq('id',_user.id).single();
+    if(!perfil){
+      await sb.from('entrenadores').insert({id:_user.id, nombre:_user.email, email:_user.email});
+      perfil={nombre:_user.email};
+    }
+    document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
+    await renderClientes();
+  } catch(e){ console.error('loadDash error:',e); }
   loading(false);
   showView('view-dash');
 }
