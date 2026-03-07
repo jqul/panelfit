@@ -238,33 +238,35 @@ async function doLogout(){
 // ── SESIÓN ────────────────────────────
 var _user=null;
 
-// Timeout de seguridad — si algo falla, quitar el spinner
-setTimeout(()=>loading(false), 6000);
-
-var _authHandled = false;
-sb.auth.onAuthStateChange(async(event,session)=>{
-  if(_authHandled && event==='INITIAL_SESSION') return;
-  _authHandled = true;
+// Arranque — comprobar sesión una sola vez
+(async function init(){
+  setTimeout(()=>loading(false), 5000); // safety net
   try{
     var token = getClientToken();
+    var {data:{session}} = await sb.auth.getSession();
     if(session){
       _user = session.user;
-      if(token){
-        await loadClienteApp(token);
-      } else {
-        await loadDash();
-      }
+      if(token){ await loadClienteApp(token); }
+      else { await loadDash(); }
     } else {
-      if(token){
-        await loadClienteApp(token);
-      } else {
-        loading(false);
-        showView('view-login');
-      }
+      if(token){ await loadClienteApp(token); }
+      else { loading(false); showView('view-login'); }
     }
   } catch(e){
-    console.error('Auth error:',e);
+    console.error('Init error:',e);
     loading(false);
+    showView('view-login');
+  }
+})();
+
+// Escuchar cambios de sesión (login/logout)
+sb.auth.onAuthStateChange(async(event,session)=>{
+  if(event==='SIGNED_IN' && session){
+    _user=session.user;
+    var token=getClientToken();
+    if(!token) await loadDash();
+  }
+  if(event==='SIGNED_OUT'){
     showView('view-login');
   }
 });
@@ -455,8 +457,6 @@ async function syncNow(clienteId){
   document.getElementById('sync-status').textContent='Guardado '+new Date().toLocaleTimeString('es-ES');
 }
 
-// Init
-loading(true);
 </script>
 </body>
 </html>
