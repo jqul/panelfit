@@ -1893,25 +1893,34 @@ function mkToggle(on,fn){
 }
 function buildVis(){
   var tv=P.tabs_vis||{}; var hv=P.hdr_vis||{};
-  document.getElementById('vis-tabs').innerHTML=Object.keys(TV_LABELS).map(function(k){
+  // Buscar dentro del coach overlay para evitar conflictos de IDs
+  var overlay=document.getElementById('coach-overlay')||document;
+  var elTabs=overlay.querySelector('#vis-tabs');
+  var elHdr=overlay.querySelector('#vis-hdr');
+  var elHabits=overlay.querySelector('#habits-ed');
+  if(!elTabs||!elHdr){console.warn('buildVis: elementos no encontrados');return;}
+  elTabs.innerHTML=Object.keys(TV_LABELS).map(function(k){
     var on=tv[k]!==false;
     return '<label style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'+
       '<span style="font-size:13px">'+TV_LABELS[k]+'</span>'+
       mkToggle(on,'togTV(\''+k+'\',this)')+
     '</label>';
   }).join('');
-  document.getElementById('vis-hdr').innerHTML=Object.keys(HV_LABELS).map(function(k){
+  elHdr.innerHTML=Object.keys(HV_LABELS).map(function(k){
     var on=hv[k]!==false;
     return '<label style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'+
       '<span style="font-size:13px">'+HV_LABELS[k]+'</span>'+
       mkToggle(on,'togHV(\''+k+'\',this)')+
     '</label>';
   }).join('');
-  buildHabitsEd();
+  if(elHabits) buildHabitsEd();
 }
 function buildHabitsEd(){
   var h=P.habits||[];
-  document.getElementById('habits-ed').innerHTML=h.map(function(hb,i){
+  var overlay=document.getElementById('coach-overlay')||document;
+  var el=overlay.querySelector('#habits-ed');
+  if(!el) return;
+  el.innerHTML=h.map(function(hb,i){
     return '<div class="werow">'+
       '<input class="einp" style="flex:1" value="'+eH(hb.text)+'" placeholder="Hábito" onchange="P.habits['+i+'].text=this.value">'+
       '<input class="einp" style="width:160px" value="'+eH(hb.sub)+'" placeholder="Descripción" onchange="P.habits['+i+'].sub=this.value">'+
