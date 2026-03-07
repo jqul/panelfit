@@ -95,7 +95,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 </head>
 <body>
 
-<div id="loading"><div class="spinner"></div></div>
+<div id="loading"><div style="text-align:center">
+  <div class="spinner" style="margin:0 auto 16px"></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Cargando...</div>
+  <button onclick="resetApp()" style="font-size:10px;padding:5px 12px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-family:sans-serif">Reiniciar</button>
+</div></div>
 
 <!-- LOGIN / REGISTRO -->
 <div class="view" id="view-login">
@@ -210,10 +214,12 @@ async function doLogin(){
   var email=document.getElementById('l-email').value.trim();
   var pass=document.getElementById('l-pass').value;
   document.getElementById('l-err').textContent='';
+  if(!email||!pass){document.getElementById('l-err').textContent='Rellena email y contraseña.';return;}
   loading(true);
-  var {error}=await sb.auth.signInWithPassword({email,password:pass});
-  loading(false);
-  if(error) document.getElementById('l-err').textContent=error.message;
+  var {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){loading(false);document.getElementById('l-err').textContent=error.message;return;}
+  _user=data.user;
+  await loadDash();
 }
 async function doReg(){
   var nombre=document.getElementById('r-nombre').value.trim();
@@ -231,20 +237,37 @@ async function doReg(){
   showLogin();
 }
 async function doLogout(){
-  await sb.auth.signOut();
-  showView('view-login');
+  try{ await sb.auth.signOut(); }catch(e){}
+  resetApp();
 }
 
 // ── SESIÓN ────────────────────────────
 var _user=null;
 
-// Arranque — comprobar sesión una sola vez
+function resetApp(){
+  try{
+    // Limpiar todo Supabase del localStorage
+    Object.keys(localStorage).forEach(k=>{ if(k.startsWith('sb-')) localStorage.removeItem(k); });
+  }catch(e){}
+  window.location.href = window.location.pathname;
+}
+
+// Arranque
 (async function init(){
-  setTimeout(()=>loading(false), 5000); // safety net
+  // Safety net — nunca quedarse bloqueado
+  var safetyTimer = setTimeout(()=>{
+    loading(false);
+    showView('view-login');
+  }, 6000);
+
   try{
     var token = getClientToken();
-    var {data:{session}} = await sb.auth.getSession();
-    if(session){
+    var {data:{session}, error} = await sb.auth.getSession();
+    clearTimeout(safetyTimer);
+
+    if(error){ loading(false); showView('view-login'); return; }
+
+    if(session && session.user){
       _user = session.user;
       if(token){ await loadClienteApp(token); }
       else { await loadDash(); }
@@ -253,6 +276,7 @@ var _user=null;
       else { loading(false); showView('view-login'); }
     }
   } catch(e){
+    clearTimeout(safetyTimer);
     console.error('Init error:',e);
     loading(false);
     showView('view-login');
@@ -273,7 +297,8 @@ sb.auth.onAuthStateChange(async(event,session)=>{
 
 function getClientToken(){
   var p=new URLSearchParams(window.location.search);
-  return p.get('c')||null;
+  var t=p.get('c');
+  return (t && t!=='__coach__') ? t : null;
 }
 
 // ── DASHBOARD ─────────────────────────
@@ -358,43 +383,29 @@ function copyLink(){
 // ── EDITOR DE PLAN (abre el panel con modo entrenador) ────────────────────────
 async function editarCliente(clienteId){
   loading(true);
-  // Guardar clienteId en sessionStorage para que el panel lo use
-  sessionStorage.setItem('edit_cliente_id', clienteId);
-  // Redirigir al panel con modo coach
-  window.location.href = window.location.pathname + '?c=__coach__&id=' + clienteId;
+  try{
+    var {data:c}=await sb.from('clientes').select('*').eq('id',clienteId).single();
+    var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
+    var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
+    montarPanel(c, pl?.datos||{}, rg?.datos||{}, null, true, clienteId);
+  }catch(e){ console.error(e); }
+  loading(false);
 }
 
 // ── PANEL CLIENTE ─────────────────────
 async function loadClienteApp(token){
   loading(true);
-  showView('view-cliente');
-
-  var isCoach = token === '__coach__';
-  var params = new URLSearchParams(window.location.search);
-  var clienteId = params.get('id');
-
-  var clienteData=null, planData=null, registrosData=null;
-
-  if(isCoach && clienteId){
-    // Modo entrenador editando plan
-    var {data:c}=await sb.from('clientes').select('*').eq('id',clienteId).single();
-    var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
-    var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
-    clienteData=c; planData=pl?.datos||{}; registrosData=rg?.datos||{};
-  } else {
-    // Modo cliente normal con token
+  try{
+    // Solo modo cliente con token (el modo coach usa editarCliente directamente)
     var {data:c}=await sb.from('clientes').select('*').eq('token',token).single();
     if(!c){
       document.getElementById('cliente-app').innerHTML='<div style="padding:40px;text-align:center;font-size:14px;color:var(--muted)">Enlace no válido.</div>';
-      loading(false);return;
+      loading(false); showView('view-cliente'); return;
     }
     var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',c.id).single();
     var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',c.id).single();
-    clienteData=c; planData=pl?.datos||{}; registrosData=rg?.datos||{};
-  }
-
-  // Montar el panel pasándole los datos
-  montarPanel(clienteData, planData, registrosData, token, isCoach, clienteId);
+    montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, false, c.id);
+  }catch(e){ console.error('loadClienteApp:',e); }
   loading(false);
 }
 
@@ -421,7 +432,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
       <div style="background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <span style="font-family:var(--serif);font-size:16px">PanelFit ${isCoach?'· <span style=color:var(--accent)>Modo Entrenador</span>':''}</span>
         <div style="display:flex;gap:8px">
-          ${isCoach?`<button class="tbtn" style="border-color:var(--ok);color:var(--ok)" onclick="volverDash()">← Volver</button>`:''}
+          ${isCoach?'<button class="tbtn" style="border-color:var(--ok);color:var(--ok)" onclick="volverDash()">← Mis clientes</button>':''}
           <span id="sync-status" style="font-size:11px;color:var(--muted);align-self:center"></span>
           <button class="tbtn" onclick="syncNow('${cid}')">☁️ Guardar</button>
         </div>
@@ -446,7 +457,8 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
 
 function volverDash(){
   clearInterval(window._syncInterval);
-  window.location.href=window.location.pathname;
+  showView('view-dash');
+  renderClientes();
 }
 
 async function syncNow(clienteId){
