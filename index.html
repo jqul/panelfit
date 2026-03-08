@@ -158,6 +158,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   </div>
 </div>
 
+<!-- PIN CLIENTE -->
+<div class="view" id="view-pin-cliente">
+  <div class="login-wrap">
+    <div class="login-box" style="max-width:320px">
+      <div class="login-logo">Panel<span>Fit</span></div>
+      <div class="login-sub" id="pin-cli-nombre" style="margin-bottom:24px">Tu entrenador te ha enviado este acceso</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:24px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;text-align:center">Introduce tu PIN de acceso</div>
+        <input class="inp" type="password" id="pin-cli-input" maxlength="6" placeholder="••••" 
+          style="text-align:center;font-size:24px;letter-spacing:12px;margin-bottom:8px"
+          oninput="if(this.value.length>=4) chkPinCliente()">
+        <div id="pin-cli-err" style="font-size:12px;color:var(--warn);text-align:center;min-height:16px;margin-bottom:12px"></div>
+        <button class="btn" onclick="chkPinCliente()">Entrar →</button>
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">La próxima vez entrarás directo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- PANEL CLIENTE (carga cuando entras con token) -->
 <div class="view" id="view-cliente">
   <div id="cliente-app"></div>
@@ -397,6 +416,8 @@ async function editarCliente(clienteId){
 }
 
 // ── PANEL CLIENTE ─────────────────────
+var _cliData=null, _cliPlan=null, _cliReg=null, _cliToken=null;
+
 async function loadClienteApp(token){
   loading(true);
   try{
@@ -409,9 +430,51 @@ async function loadClienteApp(token){
     }
     var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',c.id).single();
     var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',c.id).single();
-    montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, false, c.id);
+    
+    // Guardar datos para usar después del PIN
+    _cliData=c; _cliPlan=pl; _cliReg=rg; _cliToken=token;
+    
+    // Comprobar si ya tiene el PIN guardado en localStorage
+    var pinKey='pf_pin_'+c.id;
+    var pinGuardado=localStorage.getItem(pinKey);
+    var pinCorrecto=pl?.datos?.P?.pin||'1234';
+    
+    if(pinGuardado===pinCorrecto){
+      // Ya verificado — entrar directo
+      montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, false, c.id);
+    } else {
+      // Mostrar pantalla de PIN
+      loading(false);
+      var nombre=(c.nombre||'')+(c.apellido?' '+c.apellido:'');
+      document.getElementById('pin-cli-nombre').textContent='Hola '+nombre+', bienvenido/a';
+      document.getElementById('pin-cli-input').value='';
+      document.getElementById('pin-cli-err').textContent='';
+      showView('view-pin-cliente');
+      setTimeout(function(){ document.getElementById('pin-cli-input').focus(); },200);
+      return;
+    }
   }catch(e){ console.error('loadClienteApp:',e); }
   loading(false);
+}
+
+function chkPinCliente(){
+  var input=document.getElementById('pin-cli-input');
+  var err=document.getElementById('pin-cli-err');
+  var pinIntroducido=input.value.trim();
+  var pinCorrecto=_cliPlan?.datos?.P?.pin||'1234';
+  
+  if(pinIntroducido===pinCorrecto){
+    // Guardar en localStorage para no volver a pedir
+    localStorage.setItem('pf_pin_'+_cliData.id, pinCorrecto);
+    err.textContent='';
+    loading(true);
+    montarPanel(_cliData, _cliPlan?.datos||{}, _cliReg?.datos||{}, _cliToken, false, _cliData.id);
+    loading(false);
+  } else {
+    err.textContent='PIN incorrecto. Pídele el PIN a tu entrenador.';
+    input.value='';
+    input.focus();
+  }
 }
 
 async function guardarPlan(clienteId, planObj){
@@ -2463,7 +2526,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   var ci = P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
   _edWeek = curWeek; // sincronizar editor con semana actual
   buildWeekPills(); buildTraining(curWeek);
-  buildDashboard(); applyVis();
+  applyUI(); buildDashboard(); applyVis();
   buildDietMacros(); buildDietPills(); renderDiet('lun');
   buildHabits(); tSet(P.restMain); loadTheme(); setTimeout(cargarGaleria,500);
   showTab('dashboard', document.querySelector('#panel-root .tab'));
@@ -2569,23 +2632,55 @@ async function subirFotos(){
 async function cargarGaleria(){
   var cid=window.__cid; if(!cid) return;
   var gal=document.getElementById('fotos-galeria'); if(!gal) return;
+  gal.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
   var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
   if(error||!data||data.length===0){
     gal.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Aún no hay fotos. Sube la primera entrada arriba.</div>';
     return;
   }
-  gal.innerHTML='';
+  gal.innerHTML='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
   data.forEach(function(row){
-    var card=document.createElement('div');
-    card.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px';
     var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
-    var imgs='';
-    if(row.url_frente) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Frente</div><img src="'+row.url_frente+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
-    if(row.url_espalda) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Espalda</div><img src="'+row.url_espalda+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
-    if(row.url_lateral) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Lateral</div><img src="'+row.url_lateral+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
-    card.innerHTML='<div style="font-size:13px;font-weight:500;margin-bottom:10px;color:var(--text)">📅 '+fecha+'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px">'+imgs+'</div>';
-    gal.appendChild(card);
+    var nFotos=[row.url_frente,row.url_espalda,row.url_lateral].filter(Boolean).length;
+    var carpeta=document.createElement('div');
+    carpeta.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
+    // Cabecera carpeta (clickable)
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none';
+    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:20px">📁</span>'
+      +'<div>'
+        +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+fecha+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+nFotos+' foto'+(nFotos===1?'':'s')+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<span class="fol-arr" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
+    // Contenido fotos (oculto por defecto)
+    var body=document.createElement('div');
+    body.style.cssText='display:none;padding:0 16px 16px';
+    var imgs='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+    var labels={url_frente:'Frente',url_espalda:'Espalda',url_lateral:'Lateral'};
+    Object.keys(labels).forEach(function(k){
+      if(row[k]) imgs+='<div>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">'+labels[k]+'</div>'
+        +'<a href="'+row[k]+'" target="_blank">'
+        +'<img src="'+row[k]+'" style="width:100%;border-radius:4px;object-fit:cover;aspect-ratio:3/4;cursor:zoom-in">'
+        +'</a>'
+      +'</div>';
+    });
+    imgs+='</div>';
+    body.innerHTML=imgs;
+    // Toggle abrir/cerrar
+    var open=false;
+    hdr.onclick=function(){
+      open=!open;
+      body.style.display=open?'block':'none';
+      hdr.querySelector('.fol-arr').style.transform=open?'rotate(180deg)':'';
+      hdr.style.borderBottom=open?'1px solid var(--border)':'none';
+    };
+    carpeta.appendChild(hdr);
+    carpeta.appendChild(body);
+    gal.appendChild(carpeta);
   });
 }
 
