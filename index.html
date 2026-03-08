@@ -217,7 +217,15 @@ async function doLogin(){
   if(!email||!pass){document.getElementById('l-err').textContent='Rellena email y contraseña.';return;}
   loading(true);
   var {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error){loading(false);document.getElementById('l-err').textContent=error.message;return;}
+  if(error){loading(false);document.getElementById('l-err').textContent='Email o contraseña incorrectos.';return;}
+  // Comprobar si el entrenador está activo
+  var {data:perfil}=await sb.from('entrenadores').select('activo,nombre').eq('id',data.user.id).single();
+  if(!perfil||perfil.activo===false){
+    await sb.auth.signOut();
+    loading(false);
+    document.getElementById('l-err').textContent='Tu cuenta está pendiente de activación. Contacta con el administrador.';
+    return;
+  }
   _user=data.user;
   await loadDash();
 }
@@ -231,9 +239,9 @@ async function doReg(){
   var {data,error}=await sb.auth.signUp({email,password:pass});
   if(error){loading(false);document.getElementById('r-err').textContent=error.message;return;}
   // Crear perfil entrenador (upsert por si ya existe)
-  await sb.from('entrenadores').upsert({id:data.user.id,nombre,email},{onConflict:'id'});
+  await sb.from('entrenadores').upsert({id:data.user.id,nombre,email,activo:false},{onConflict:'id'});
   loading(false);
-  toast('Cuenta creada. Revisa tu email para confirmar.');
+  toast('Cuenta creada. En breve recibirás confirmación de acceso.',4000);
   showLogin();
 }
 async function doLogout(){
@@ -254,27 +262,20 @@ function resetApp(){
 
 // Arranque
 (async function init(){
-  // Safety net — nunca quedarse bloqueado
-  var safetyTimer = setTimeout(()=>{
-    loading(false);
-    showView('view-login');
-  }, 6000);
-
+  var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
   try{
     var token = getClientToken();
+    // Si es cliente con token, no necesita sesión de entrenador
+    if(token){
+      clearTimeout(safetyTimer);
+      await loadClienteApp(token);
+      return;
+    }
     var {data:{session}, error} = await sb.auth.getSession();
     clearTimeout(safetyTimer);
-
-    if(error){ loading(false); showView('view-login'); return; }
-
-    if(session && session.user){
-      _user = session.user;
-      if(token){ await loadClienteApp(token); }
-      else { await loadDash(); }
-    } else {
-      if(token){ await loadClienteApp(token); }
-      else { loading(false); showView('view-login'); }
-    }
+    if(error || !session || !session.user){ loading(false); showView('view-login'); return; }
+    _user = session.user;
+    await loadDash();
   } catch(e){
     clearTimeout(safetyTimer);
     console.error('Init error:',e);
@@ -283,16 +284,10 @@ function resetApp(){
   }
 })();
 
-// Escuchar cambios de sesión (login/logout)
-sb.auth.onAuthStateChange(async(event,session)=>{
-  if(event==='SIGNED_IN' && session){
-    _user=session.user;
-    var token=getClientToken();
-    if(!token) await loadDash();
-  }
-  if(event==='SIGNED_OUT'){
-    showView('view-login');
-  }
+// Solo escuchar SIGNED_OUT para cerrar sesión
+sb.auth.onAuthStateChange(function(event, session){
+  if(event==='SIGNED_OUT'){ showView('view-login'); }
+  if(event==='TOKEN_REFRESHED' && session){ _user=session.user; }
 });
 
 function getClientToken(){
@@ -396,11 +391,12 @@ async function editarCliente(clienteId){
 async function loadClienteApp(token){
   loading(true);
   try{
-    // Solo modo cliente con token (el modo coach usa editarCliente directamente)
     var {data:c}=await sb.from('clientes').select('*').eq('token',token).single();
     if(!c){
-      document.getElementById('cliente-app').innerHTML='<div style="padding:40px;text-align:center;font-size:14px;color:var(--muted)">Enlace no válido.</div>';
-      loading(false); showView('view-cliente'); return;
+      loading(false);
+      showView('view-cliente');
+      document.getElementById('cliente-app').innerHTML='<div style="padding:60px;text-align:center;font-family:var(--serif);font-size:18px;color:var(--muted)">Enlace no válido.</div>';
+      return;
     }
     var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',c.id).single();
     var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',c.id).single();
@@ -869,9 +865,14 @@ var PANEL_HTML=`<!-- PIN -->
           </div>
         </div>
         <div class="ecard">
-          <div class="echd"><div class="ectitle">📅 Semanas del plan</div></div>
+          <div class="echd">
+            <div class="ectitle">📅 Bloque de entrenamiento</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0" onclick="addSem()">+ Semana</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Los ejercicios se toman del plan base. Solo configura la intensidad de cada semana.</div>
           <div id="weeks-ed"></div>
-          <button class="addbtn" onclick="addSem()">+ Añadir semana</button>
         </div>
         <div class="ecard">
           <div class="echd"><div class="ectitle">🔑 Cambiar PIN</div></div>
@@ -1190,7 +1191,14 @@ function buildWeekPills(){
 function selWeek(i){ curWeek=i; document.querySelectorAll('.wpill').forEach(function(el,j){ el.classList.toggle('active',j===i); }); buildTraining(i); }
 
 function buildTraining(wi){
-  var rpe = P.semanas[wi] ? P.semanas[wi].rpe : '';
+  var sem = P.semanas[wi]||{};
+  var modeLabels2={rpe:'RPE',esfuerzo:'Esf.',rm:'1RM','libre':''};
+  var rpe = '';
+  if(sem.modo && sem.modo!=='libre' && sem.valor){
+    rpe = (modeLabels2[sem.modo]||'') + ' ' + sem.valor + (sem.modo==='rm'||sem.modo==='esfuerzo'?'%':'');
+  } else if(sem.rpe) {
+    rpe = sem.rpe; // compatibilidad con datos viejos
+  }
   document.getElementById('training-content').innerHTML = P.dias.map(function(d,di){
     var pg = dayProg(d,di,wi);
     var pc = pg.done===pg.total&&pg.total>0 ? 'done' : pg.done>0 ? 'partial' : 'empty';
@@ -1793,20 +1801,50 @@ function delDia(di){ if(P.dias.length<=1){alert('Mínimo 1 día.');return;} if(c
 function addEx(di){ P.dias[di].ejercicios.push({nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}); buildDiasEd(); }
 function delEx(di,ri){ P.dias[di].ejercicios.splice(ri,1); buildDiasEd(); }
 function buildWeeksUI(){
+  var modes=['rpe','esfuerzo','rm','libre'];
+  var modeLabels={rpe:'RPE',esfuerzo:'% Esfuerzo',rm:'% 1RM',libre:'Kilos directos'};
+  var modeHints={rpe:'Ej: 8 (escala 1-10)','esfuerzo':'Ej: 85 (%)','rm':'Ej: 80 (% de 1RM)','libre':'El cliente ve los kilos del plan base'};
   document.getElementById('weeks-ed').innerHTML=P.semanas.map(function(w,i){
-    return '<div class="werow">'+
-      '<input class="einp" style="flex:1" value="'+eH(w.label)+'" onchange="P.semanas['+i+'].label=this.value" placeholder="Ej: 16 Feb">'+
-      '<input class="einp" style="width:60px" value="'+eH(w.rpe||'')+'" onchange="P.semanas['+i+'].rpe=this.value" placeholder="@6">'+
-      '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap">'+
-        '<input type="radio" name="semact"'+(w.current?' checked':'')+' onchange="setSemAct('+i+')"> Actual'+
-      '</label>'+
-      '<button class="delbtn" onclick="delSem('+i+')">✕</button>'+
+    var mode=w.modo||'rpe';
+    var modesHtml=modes.map(function(m){
+      return '<option value="'+m+'"'+(mode===m?' selected':'')+'>'+modeLabels[m]+'</option>';
+    }).join('');
+    var showVal=mode!=='libre';
+    return '<div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
+        '<div style="font-size:11px;color:var(--muted);white-space:nowrap">Sem '+(i+1)+'</div>'+
+        '<input class="einp" style="flex:1;min-width:100px;margin-bottom:0" value="'+eH(w.label)+'" onchange="P.semanas['+i+'].label=this.value" placeholder="Ej: Semana 1 · Acumulación">'+
+        '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap">'+
+          '<input type="radio" name="semact"'+(w.current?' checked':'')+' onchange="setSemAct('+i+')"> Actual'+
+        '</label>'+
+        '<button class="delbtn" onclick="delSem('+i+')">✕</button>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+        '<select class="einp" style="width:140px;margin-bottom:0" onchange="setSemMode('+i+',this.value)">'+modesHtml+'</select>'+
+        (showVal?
+          '<input class="einp" style="width:80px;margin-bottom:0;font-size:16px;font-weight:500;text-align:center" type="text" value="'+eH(w.valor||'')+'" onchange="P.semanas['+i+'].valor=this.value" placeholder="'+modeHints[mode]+'">'
+          :'<span style="font-size:11px;color:var(--muted)">'+modeHints[mode]+'</span>')+
+        '<button style="padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:10px;font-family:var(--sans);white-space:nowrap" onclick="dupSem('+i+')">⊕ Duplicar</button>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
+function setSemMode(i,mode){ P.semanas[i].modo=mode; buildWeeksUI(); }
 function setSemAct(i){ P.semanas.forEach(function(w,j){w.current=j===i;}); }
 function delSem(i){ if(P.semanas.length<=1)return; P.semanas.splice(i,1); buildWeeksUI(); }
-function addSem(){ P.semanas.push({label:'Nueva semana',rpe:'@6',current:false}); buildWeeksUI(); }
+function addSem(){
+  // Copiar estructura de la última semana
+  var last=P.semanas[P.semanas.length-1]||{};
+  P.semanas.push({label:'Semana '+(P.semanas.length+1),modo:last.modo||'rpe',valor:'',current:false});
+  buildWeeksUI();
+}
+function dupSem(i){
+  // Duplicar semana — misma config, nuevo label, sin marcar como actual
+  var w=P.semanas[i];
+  var copia={label:w.label+' (copia)',modo:w.modo||'rpe',valor:w.valor||'',rpe:w.rpe||'',current:false};
+  P.semanas.splice(i+1,0,copia);
+  buildWeeksUI();
+}
 
 // ── EDITOR DIETA ──────────────────────
 var DK2=['lun','mar','mie','jue','vie','sab','dom'];
