@@ -314,7 +314,7 @@ async function showAdmin(){
   openModal('modal-admin');
   var list=document.getElementById('admin-list');
   list.innerHTML='<div style="font-size:12px;color:var(--muted)">Cargando...</div>';
-  var {data:ents}=await sb.from('entrenadores').select('*').order('created_at');
+  var {data:ents}=await sb.rpc('get_all_entrenadores');
   if(!ents||!ents.length){ list.innerHTML='<div style="font-size:12px;color:var(--muted)">Sin entrenadores.</div>'; return; }
   list.innerHTML='';
   ents.forEach(function(e){
