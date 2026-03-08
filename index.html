@@ -350,9 +350,10 @@ async function loadDash(){
       perfil={nombre:_user.email};
     }
     document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
+    // Mostrar admin para el admin
     if(_user.email==='javi_ql@hotmail.com'){
       var btnAdmin=document.getElementById('btn-admin');
-      if(btnAdmin) btnAdmin.style.display='inline-block';
+      if(btnAdmin) btnAdmin.removeAttribute('style');
     }
     await renderClientes();
   } catch(e){ console.error('loadDash error:',e); }
@@ -1817,17 +1818,19 @@ function buildDiasEd(){
       }).join('');
       var iValHtml=iMode?'<input class="einp" style="width:50px;margin-bottom:0;text-align:center" type="text" value="'+eH(r.intenVal||'')+'" placeholder="val" onchange="P.dias['+di+'].ejercicios['+ri+'].intenVal=this.value">':'';
       return '<div class="exed">'+
-        '<div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:end;margin-bottom:7px">'+
-          '<div><label class="elbl">Ejercicio</label><input class="einp" value="'+eH(r.nombre)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].nombre=this.value"></div>'+
-          '<div><label class="elbl">Series</label><input class="einp" style="width:72px" value="'+eH(r.series)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].series=this.value"></div>'+
-          '<div><label class="elbl">Peso/Carga</label><input class="einp" style="width:90px" value="'+eH(String(r.peso))+'" onchange="P.dias['+di+'].ejercicios['+ri+'].peso=this.value"></div>'+
+        '<div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:7px;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:140px"><label class="elbl">Ejercicio</label><input class="einp" style="margin-bottom:0" value="'+eH(r.nombre)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].nombre=this.value"></div>'+
+          '<div><label class="elbl">Series</label><input class="einp" style="width:70px;margin-bottom:0" value="'+eH(r.series)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].series=this.value"></div>'+
+          '<div><label class="elbl">Peso/Carga</label><input class="einp" style="width:90px;margin-bottom:0" value="'+eH(String(r.peso))+'" onchange="P.dias['+di+'].ejercicios['+ri+'].peso=this.value"></div>'+
+          '<button class="delbtn" style="align-self:flex-end" onclick="delEx('+di+','+ri+')">✕</button>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:7px;flex-wrap:wrap">'+
           '<div><label class="elbl">Intensidad</label>'+
-            '<div style="display:flex;gap:4px">'+
-              '<select class="einp" style="width:75px;margin-bottom:0;font-size:11px" onchange="P.dias['+di+'].ejercicios['+ri+'].intenModo=this.value;buildDiasEd()">'+iOpts+'</select>'+
+            '<div style="display:flex;gap:4px;align-items:center">'+
+              '<select class="einp" style="width:110px;margin-bottom:0;font-size:12px" onchange="P.dias['+di+'].ejercicios['+ri+'].intenModo=this.value;buildDiasEd()">'+iOpts+'</select>'+
               iValHtml+
             '</div>'+
           '</div>'+
-          '<button class="delbtn" style="margin-top:18px" onclick="delEx('+di+','+ri+')">✕</button>'+
         '</div>'+
         '<div style="margin-bottom:6px"><label class="elbl">💬 Comentario para el alumno</label>'+
           '<input class="einp" value="'+eH(r.comentario||'')+'" placeholder="Indicaciones técnicas, correcciones..." onchange="P.dias['+di+'].ejercicios['+ri+'].comentario=this.value">'+
@@ -2001,10 +2004,11 @@ function saveDietaEd(){
 var TV_LABELS={dashboard:'📊 Hoy',semana:'📅 Mi Semana',entreno:'Entreno',records:'🏆 Récords',historial:'Historial',dieta:'Dieta',habitos:'Hábitos'};
 var HV_LABELS={peso:'Peso',grasa:'Grasa %',musculo:'Músculo',total:'Total levant.'};
 function mkToggle(on,fn){
-  var bg = on ? '#4a7c59' : '#888';
-  var left = on ? '21' : '3';
-  return '<span onclick="'+fn+'" style="width:42px;height:24px;border-radius:12px;background:'+bg+';position:relative;cursor:pointer;transition:background .2s;display:inline-block;flex-shrink:0;border:2px solid '+(on?'#3a6a49':'#666')+'">'+
-    '<span style="position:absolute;top:1px;left:'+left+'px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span>'+
+  var bg = on ? '#2d6a4f' : '#ccc';
+  var left = on ? '20' : '2';
+  var border = on ? '2px solid #1b4332' : '2px solid #aaa';
+  return '<span onclick="'+fn+'" style="width:44px;height:26px;border-radius:13px;background:'+bg+';position:relative;cursor:pointer;transition:all .2s;display:inline-flex;flex-shrink:0;align-items:center;border:'+border+'">'+
+    '<span style="position:absolute;left:'+left+'px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.4)"></span>'+
   '</span>';
 }
 function buildVis(){
@@ -2048,18 +2052,10 @@ function addHabit(){ if(!P.habits)P.habits=[]; P.habits.push({text:'Nuevo hábit
 function delHabit(i){ P.habits.splice(i,1); buildHabitsEd(); }
 function togTV(k,el){
   if(!P.tabs_vis)P.tabs_vis={}; var on=P.tabs_vis[k]!==false; P.tabs_vis[k]=!on;
-  var tog=el.tagName==='SPAN'?el:el.querySelector('span[style*="border-radius:12px"]')||el;
-  tog.style.background=(!on?'#4a7c59':'#888');
-  tog.style.borderColor=(!on?'#3a6a49':'#666');
-  var dot=tog.querySelector('span'); if(dot) dot.style.left=(!on?'21px':'3px');
   buildVis();
 }
 function togHV(k,el){
   if(!P.hdr_vis)P.hdr_vis={}; var on=P.hdr_vis[k]!==false; P.hdr_vis[k]=!on;
-  var tog=el.tagName==='SPAN'?el:el.querySelector('span[style*="border-radius:12px"]')||el;
-  tog.style.background=(!on?'#4a7c59':'#888');
-  tog.style.borderColor=(!on?'#3a6a49':'#666');
-  var dot=tog.querySelector('span'); if(dot) dot.style.left=(!on?'21px':'3px');
   buildVis();
 }
 
