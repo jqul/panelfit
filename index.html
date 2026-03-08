@@ -1888,7 +1888,14 @@ function subPIN(){
   if(document.getElementById('pin-input').value===P.pin){ cPIN(); oCoach(); }
   else document.getElementById('pin-err').textContent='PIN incorrecto.';
 }
-function oCoach(){ syncEd(); buildProg(); buildWeeksUI(); document.getElementById('coach-overlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function oCoach(){
+  try{ syncEd(); }catch(e){ console.warn('syncEd err',e); }
+  try{ buildProg(); }catch(e){ console.warn('buildProg err',e); }
+  try{ buildWeeksUI(); }catch(e){ console.warn('buildWeeksUI err',e); }
+  var ov=document.getElementById('coach-overlay');
+  if(ov){ ov.classList.add('open'); document.body.style.overflow='hidden'; }
+  else{ console.error('coach-overlay NOT FOUND'); }
+}
 function cCoach(){ document.getElementById('coach-overlay').classList.remove('open'); document.body.style.overflow=''; }
 function swC(name,el){
   document.querySelectorAll('.csec').forEach(function(s){s.classList.remove('active');});
@@ -2394,7 +2401,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
     var pinBtn=document.querySelector('.abtn.p');
     if(pinBtn) pinBtn.style.display='none';
     setTimeout(function(){
-      oCoach();
+      console.log('Abriendo coach overlay...'); oCoach();
       var orig = window.saveClose;
       window.saveClose = function(){
         orig && orig();
