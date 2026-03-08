@@ -1223,7 +1223,7 @@ function sRec(r){ window.__rec=r; schedSave(); }
 function chkPR(ek,val,f,wi,di,ri){
   if(f!=='v') return;
   var v=parseFloat(val); if(!v||v<=0) return;
-  var nm = P.dias[di]&&P.dias[di].ejercicios[ri] ? P.dias[di].ejercicios[ri].nombre : '';
+  var nm = getDias(curWeek)[di]&&getDias(curWeek)[di].ejercicios[ri] ? getDias(curWeek)[di].ejercicios[ri].nombre : '';
   if(!nm) return;
   var rec=lRec(); var prev=rec[nm]?rec[nm].val:0;
   if(v>prev){
@@ -1240,7 +1240,7 @@ function prToast(nm,v,prev){
   setTimeout(function(){ if(t.parentNode) t.remove(); }, 3500);
 }
 function isPR(ek,di,ri){
-  var nm = P.dias[di]&&P.dias[di].ejercicios[ri] ? P.dias[di].ejercicios[ri].nombre : '';
+  var nm = getDias(curWeek)[di]&&getDias(curWeek)[di].ejercicios[ri] ? getDias(curWeek)[di].ejercicios[ri].nombre : '';
   if(!nm) return false;
   var rec=lRec(); if(!rec[nm]) return false;
   var log=lLog(ek); if(!log||!log.sets) return false;
@@ -1250,6 +1250,28 @@ function isPR(ek,di,ri){
 
 // ── ENTRENO ───────────────────────────
 var curWeek=2;
+var _edWeek=0; // semana seleccionada en el editor
+
+// Migración automática de P.dias plano → P.semanas[i].dias
+function migrarPlanSiNecesario(){
+  var necesita=P.semanas.some(function(w){ return !w.dias; });
+  if(!necesita) return;
+  var diasBase=P.dias&&P.dias.length?JSON.parse(JSON.stringify(P.dias)):[];
+  P.semanas.forEach(function(w){
+    if(!w.dias) w.dias=JSON.parse(JSON.stringify(diasBase));
+    if(!w.fechaInicio) w.fechaInicio='';
+    if(!w.fechaFin) w.fechaFin='';
+  });
+  console.log('Plan migrado a estructura por semana');
+}
+
+// Días de la semana activa (editor o entreno)
+function getDias(wi){
+  var w=P.semanas[wi!=null?wi:curWeek];
+  if(!w) return P.dias||[];
+  if(!w.dias) w.dias=JSON.parse(JSON.stringify(P.dias||[]));
+  return w.dias;
+}
 
 function dayProg(d,di,wi){
   var a=lAll(); var done=0;
@@ -1269,7 +1291,8 @@ function selWeek(i){ curWeek=i; document.querySelectorAll('.wpill').forEach(func
 
 function buildTraining(wi){
   var rpe = P.semanas[wi] ? P.semanas[wi].rpe : '';
-  document.getElementById('training-content').innerHTML = P.dias.map(function(d,di){
+  var _dias=getDias(wi);
+  document.getElementById('training-content').innerHTML = _dias.map(function(d,di){
     var pg = dayProg(d,di,wi);
     var pc = pg.done===pg.total&&pg.total>0 ? 'done' : pg.done>0 ? 'partial' : 'empty';
     var pl = pg.done===pg.total&&pg.total>0 ? '✓ Completado' : pg.done>0 ? pg.done+'/'+pg.total+' hechos' : 'Sin empezar';
@@ -1358,7 +1381,7 @@ function togDone(k,btn,wi,di){
   a[k].done=!a[k].done; sAll(a);
   btn.classList.toggle('done',a[k].done);
   btn.textContent=a[k].done?'✓ Hecho':'Marcar hecho';
-  var d=P.dias[di]; if(!d) return;
+  var _dd=getDias(curWeek); var d=_dd[di]; if(!d) return;
   var pg=dayProg(d,di,wi);
   var pc=pg.done===pg.total&&pg.total>0?'done':pg.done>0?'partial':'empty';
   var pl=pg.done===pg.total&&pg.total>0?'✓ Completado':pg.done>0?pg.done+'/'+pg.total+' hechos':'Sin empezar';
@@ -1402,7 +1425,7 @@ function swVTab(t){
 function oVid(di,ri){
   _vdi=di; _vri=ri;
   document.getElementById('vid-modal').classList.add('open');
-  document.getElementById('vid-url-in').value=P.dias[di].ejercicios[ri].videoUrl||'';
+  document.getElementById('vid-url-in').value=getDias(_edWeek)[di]&&getDias(_edWeek)[di].ejercicios[ri]?getDias(_edWeek)[di].ejercicios[ri].videoUrl||'':'';
   document.getElementById('vid-err').textContent='';
   document.getElementById('vid-upload-prog').style.display='none';
   swVTab('url');
@@ -1414,8 +1437,8 @@ async function saveVid(){
   if(_curVTab==='url'){
     var url=document.getElementById('vid-url-in').value.trim();
     if(!url){ err.textContent='Pega un enlace.'; return; }
-    P.dias[_vdi].ejercicios[_vri].videoUrl=url;
-    P.dias[_vdi].ejercicios[_vri].videoB64='';
+    getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=url;
+    getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
     cVidModal(); buildTraining(curWeek);
   } else if(_curVTab==='subir'){
     var fi=document.getElementById('vid-file-in').files[0];
@@ -1429,13 +1452,13 @@ async function saveVid(){
     var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
     if(error){ prog.style.display='none'; err.textContent='Error al subir: '+error.message; return; }
     var {data:pu}=sb.storage.from('media').getPublicUrl(path);
-    P.dias[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
-    P.dias[_vdi].ejercicios[_vri].videoB64='';
+    getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+    getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
     prog.style.display='none';
     cVidModal(); buildTraining(curWeek);
   }
 }
-function rmVid(){ P.dias[_vdi].ejercicios[_vri].videoUrl=''; P.dias[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildTraining(curWeek); }
+function rmVid(){ getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=''; getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildTraining(curWeek); }
 
 // ── BIBLIOTECA DE VÍDEOS ──────────────────────────
 async function cargarBiblioteca(){
@@ -1456,8 +1479,8 @@ async function cargarBiblioteca(){
     item.innerHTML='<span style="font-size:12px;flex:1;color:var(--text)">🎬 '+nombre+'</span>'
       +'<button style="background:var(--ok);color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--sans);cursor:pointer">Usar</button>';
     item.querySelector('button').onclick=function(){
-      P.dias[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
-      P.dias[_vdi].ejercicios[_vri].videoB64='';
+      getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+      getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
       cVidModal(); buildTraining(curWeek);
     };
     lista.appendChild(item);
@@ -1513,7 +1536,7 @@ function buildSemana(){
   var lunes=new Date(now); lunes.setDate(now.getDate()+diff);
 
   // POOL — cards arrastrables
-  var poolHtml=P.dias.map(function(d,di){
+  var _diasSem=getDias(curWeek); var poolHtml=_diasSem.map(function(d,di){
     var placed=Object.values(asign).some(function(arr){return arr.indexOf(di)>=0;});
     var exNames=d.ejercicios.filter(function(r){return r.principal;}).map(function(r){return r.nombre;}).join(' · ')||d.ejercicios[0].nombre;
     return '<div class="plan-card'+(placed?' placed':'')+'" id="pc-'+di+'" draggable="true"'+
@@ -1532,7 +1555,7 @@ function buildSemana(){
     var dd=fecha.getDate(); var mm=fecha.getMonth()+1;
     var isHoy=fecha.toDateString()===now.toDateString();
     var slots=(asign[si]||[]).map(function(di){
-      var d=P.dias[di]; if(!d) return '';
+      var d=getDias(curWeek)[di]; if(!d) return '';
       return '<div class="plan-slot">'+
         '<button class="rm-btn" onclick="rmSlot('+si+','+di+')">✕</button>'+
         '<div style="font-size:11px;font-weight:700;padding-right:14px">'+eH(d.titulo.split('—')[1]||d.titulo).trim()+'</div>'+
@@ -1614,7 +1637,7 @@ function buildDashboard(){
   var all=lAll();
   var ci=P.semanas.findIndex(function(w){return w.current;}); var wi=ci>=0?ci:curWeek;
   var done=0, total=0, vol=0;
-  P.dias.forEach(function(d,di){ d.ejercicios.forEach(function(r,ri){
+  getDias(curWeek).forEach(function(d,di){ d.ejercicios.forEach(function(r,ri){
     var k='ex_w'+wi+'_d'+di+'_r'+ri; total++;
     var l=all[k]; if(!l) return;
     if(l.done) done++;
@@ -1631,7 +1654,7 @@ function buildDashboard(){
   // sesión de hoy
   var dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   var hoy=dias[now.getDay()]; var sesHoy=null;
-  P.dias.forEach(function(d,di){ if(d.titulo.toLowerCase().indexOf(hoy.toLowerCase())>=0) sesHoy={d:d,di:di}; });
+  getDias(curWeek).forEach(function(d,di){ if(d.titulo.toLowerCase().indexOf(hoy.toLowerCase())>=0) sesHoy={d:d,di:di}; });
   var sesHtml='';
   if(sesHoy){
     var pg=dayProg(sesHoy.d,sesHoy.di,wi);
@@ -1678,7 +1701,7 @@ function buildHistorial(){
   var all=lAll(); var filter=document.getElementById('hist-filter').value;
   var byEx={};
   P.semanas.forEach(function(wk,wi){
-    P.dias.forEach(function(d,di){ d.ejercicios.forEach(function(r,ri){
+    getDias(curWeek).forEach(function(d,di){ d.ejercicios.forEach(function(r,ri){
       var k='ex_w'+wi+'_d'+di+'_r'+ri; var log=all[k]; if(!log) return;
       var nm=r.nombre; if(filter&&nm!==filter) return;
       if(!byEx[nm]) byEx[nm]=[];
@@ -1719,7 +1742,7 @@ function buildHistorial(){
 function togHist(id,hd){ var b=document.getElementById(id); if(!b) return; b.classList.toggle('open'); hd.querySelector('.hchev').classList.toggle('open'); }
 function populateHistFilter(){
   var sel=document.getElementById('hist-filter'); if(sel.options.length>1) return;
-  P.dias.forEach(function(d){ d.ejercicios.forEach(function(r){
+  getDias(curWeek).forEach(function(d){ d.ejercicios.forEach(function(r){
     var op=document.createElement('option'); op.value=r.nombre; op.textContent=r.nombre; sel.appendChild(op);
   }); });
 }
@@ -1928,21 +1951,30 @@ function syncEd(){
   buildDiasEd();
 }
 function buildDiasEd(){
-  var html=P.dias.map(function(d,di){
+  // Selector de semana en el editor
+  var semSel='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'+
+    '<span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Editando semana:</span>'+
+    P.semanas.map(function(w,i){
+      return '<button onclick="selEdWeek('+i+')" style="padding:5px 12px;border-radius:20px;border:1px solid '+(i===_edWeek?'var(--accent)':'var(--border)')+';background:'+(i===_edWeek?'var(--accent)':'transparent')+';color:'+(i===_edWeek?'#fff':'var(--text2)')+';font-size:11px;cursor:pointer;font-family:var(--sans)">'+w.label+'</button>';
+    }).join('')+
+    '<button onclick="copiarSemana()" style="padding:5px 12px;border-radius:20px;border:1px solid var(--ok);background:transparent;color:var(--ok);font-size:11px;cursor:pointer;font-family:var(--sans)">⊕ Copiar semana</button>'+
+  '</div>';
+  var diasActuales=getDias(_edWeek);
+  var html=semSel+diasActuales.map(function(d,di){
     var exH=d.ejercicios.map(function(r,ri){
       return '<div class="exed">'+
         '<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;margin-bottom:7px">'+
-          '<div><label class="elbl">Ejercicio</label><input class="einp" value="'+eH(r.nombre)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].nombre=this.value"></div>'+
-          '<div><label class="elbl">Series</label><input class="einp" style="width:80px" value="'+eH(r.series)+'" onchange="P.dias['+di+'].ejercicios['+ri+'].series=this.value"></div>'+
-          '<div><label class="elbl">Peso</label><input class="einp" style="width:110px" value="'+eH(String(r.peso))+'" onchange="P.dias['+di+'].ejercicios['+ri+'].peso=this.value"></div>'+
+          '<div><label class="elbl">Ejercicio</label><input class="einp" value="'+eH(r.nombre)+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].nombre=this.value"></div>'+
+          '<div><label class="elbl">Series</label><input class="einp" style="width:80px" value="'+eH(r.series)+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].series=this.value"></div>'+
+          '<div><label class="elbl">Peso</label><input class="einp" style="width:110px" value="'+eH(String(r.peso))+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].peso=this.value"></div>'+
           '<button class="delbtn" style="margin-top:18px" onclick="delEx('+di+','+ri+')">✕</button>'+
         '</div>'+
         '<div style="margin-bottom:6px"><label class="elbl">💬 Comentario para el alumno</label>'+
-          '<input class="einp" value="'+eH(r.comentario||'')+'" placeholder="Indicaciones técnicas, correcciones..." onchange="P.dias['+di+'].ejercicios['+ri+'].comentario=this.value">'+
+          '<input class="einp" value="'+eH(r.comentario||'')+'" placeholder="Indicaciones técnicas, correcciones..." onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].comentario=this.value">'+
         '</div>'+
         '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
           '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text2)">'+
-            '<input type="checkbox"'+(r.principal?' checked':'')+' onchange="P.dias['+di+'].ejercicios['+ri+'].principal=this.checked"> Principal'+
+            '<input type="checkbox"'+(r.principal?' checked':'')+' onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].principal=this.checked"> Principal'+
           '</label>'+
           '<button style="background:var(--purple-bg);border:1px solid rgba(179,157,219,.3);color:var(--purple);padding:5px 11px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600;font-family:Inter,sans-serif" onclick="oVid('+di+','+ri+')">'+
             (r.videoUrl||r.videoB64?'✏️ Editar vídeo':'🎬 Añadir vídeo')+
@@ -1960,8 +1992,8 @@ function buildDiasEd(){
         '</div>'+
       '</div>'+
       '<div class="erow c2" style="margin-bottom:10px">'+
-        '<div><label class="elbl">Título</label><input class="einp" value="'+eH(d.titulo)+'" onchange="P.dias['+di+'].titulo=this.value"></div>'+
-        '<div><label class="elbl">Foco</label><input class="einp" value="'+eH(d.foco)+'" onchange="P.dias['+di+'].foco=this.value"></div>'+
+        '<div><label class="elbl">Título</label><input class="einp" value="'+eH(d.titulo)+'" onchange="getDias(_edWeek)['+di+'].titulo=this.value"></div>'+
+        '<div><label class="elbl">Foco</label><input class="einp" value="'+eH(d.foco)+'" onchange="getDias(_edWeek)['+di+'].foco=this.value"></div>'+
       '</div>'+
       '<div id="exlist-'+di+'">'+exH+'</div>'+
       '<button class="addbtn" onclick="addEx('+di+')">+ Añadir ejercicio</button>'+
@@ -1970,16 +2002,19 @@ function buildDiasEd(){
   html+='<button class="addbtn" style="border-style:solid;border-color:var(--purple);color:var(--purple)" onclick="addDia()">+ Añadir día de entreno</button>';
   document.getElementById('dias-editor').innerHTML=html;
 }
-function addDia(){ P.dias.push({titulo:'DÍA '+(P.dias.length+1)+' — Nuevo',foco:'Describe el foco',ejercicios:[{nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}]}); buildDiasEd(); }
-function dupDia(di){ var copia=JSON.parse(JSON.stringify(P.dias[di])); copia.titulo=copia.titulo+' (copia)'; P.dias.splice(di+1,0,copia); buildDiasEd(); }
-function delDia(di){ if(P.dias.length<=1){alert('Mínimo 1 día.');return;} if(confirm('¿Eliminar día?')){P.dias.splice(di,1);buildDiasEd();} }
-function addEx(di){ P.dias[di].ejercicios.push({nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}); buildDiasEd(); }
-function delEx(di,ri){ P.dias[di].ejercicios.splice(ri,1); buildDiasEd(); }
+function addDia(){ var d=getDias(_edWeek); d.push({titulo:'DÍA '+(d.length+1)+' — Nuevo',foco:'Describe el foco',ejercicios:[{nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}]}); buildDiasEd(); }
+function dupDia(di){ var d=getDias(_edWeek); var copia=JSON.parse(JSON.stringify(d[di])); copia.titulo=copia.titulo+' (copia)'; d.splice(di+1,0,copia); buildDiasEd(); }
+function delDia(di){ var d=getDias(_edWeek); if(d.length<=1){alert('Mínimo 1 día.');return;} if(confirm('¿Eliminar día?')){d.splice(di,1);buildDiasEd();} }
+function addEx(di){ getDias(_edWeek)[di].ejercicios.push({nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}); buildDiasEd(); }
+function delEx(di,ri){ getDias(_edWeek)[di].ejercicios.splice(ri,1); buildDiasEd(); }
 function buildWeeksUI(){
   document.getElementById('weeks-ed').innerHTML=P.semanas.map(function(w,i){
-    return '<div class="werow">'+
-      '<input class="einp" style="flex:1" value="'+eH(w.label)+'" onchange="P.semanas['+i+'].label=this.value" placeholder="Ej: 16 Feb">'+
-      '<input class="einp" style="width:60px" value="'+eH(w.rpe||'')+'" onchange="P.semanas['+i+'].rpe=this.value" placeholder="@6">'+
+    return '<div class="werow" style="flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'+
+      '<input class="einp" style="flex:1;min-width:80px" value="'+eH(w.label)+'" onchange="P.semanas['+i+'].label=this.value;buildDiasEd()" placeholder="Ej: Semana 1">'+
+      '<input class="einp" type="date" style="width:130px" value="'+(w.fechaInicio||'')+'" onchange="P.semanas['+i+'].fechaInicio=this.value" title="Inicio">'+
+      '<span style="font-size:11px;color:var(--muted)">→</span>'+
+      '<input class="einp" type="date" style="width:130px" value="'+(w.fechaFin||'')+'" onchange="P.semanas['+i+'].fechaFin=this.value" title="Fin">'+
+      '<input class="einp" style="width:55px" value="'+eH(w.rpe||'')+'" onchange="P.semanas['+i+'].rpe=this.value" placeholder="@6">'+
       '<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap">'+
         '<input type="radio" name="semact"'+(w.current?' checked':'')+' onchange="setSemAct('+i+')"> Actual'+
       '</label>'+
@@ -1989,7 +2024,36 @@ function buildWeeksUI(){
 }
 function setSemAct(i){ P.semanas.forEach(function(w,j){w.current=j===i;}); }
 function delSem(i){ if(P.semanas.length<=1)return; P.semanas.splice(i,1); buildWeeksUI(); }
-function addSem(){ P.semanas.push({label:'Nueva semana',rpe:'@6',current:false}); buildWeeksUI(); }
+function addSem(){ P.semanas.push({label:'Nueva semana',rpe:'@6',current:false,fechaInicio:'',fechaFin:'',dias:JSON.parse(JSON.stringify(getDias(_edWeek)))}); buildWeeksUI(); }
+function selEdWeek(i){ _edWeek=i; buildDiasEd(); }
+function copiarSemana(){
+  // Muestra modal para elegir semana destino
+  var opts=P.semanas.map(function(w,i){
+    return i===_edWeek?null:'<button onclick="doCopiarSemana('+i+')" style="display:block;width:100%;text-align:left;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer;font-family:var(--sans);font-size:13px;color:var(--text)">'+w.label+'</button>';
+  }).filter(Boolean).join('');
+  if(!opts){ alert('Solo hay una semana. Añade más semanas primero.'); return; }
+  var mod=document.createElement('div');
+  mod.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  mod.innerHTML='<div style="background:var(--card);border-radius:var(--r);padding:20px;max-width:320px;width:100%">'+
+    '<div style="font-size:14px;font-weight:500;margin-bottom:4px">⊕ Copiar semana</div>'+
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Copia los días de <strong>'+P.semanas[_edWeek].label+'</strong> a:</div>'+
+    opts+
+    '<button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:8px;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-family:var(--sans);color:var(--muted);margin-top:4px">Cancelar</button>'+
+  '</div>';
+  document.body.appendChild(mod);
+}
+function doCopiarSemana(destIdx){
+  var origen=JSON.parse(JSON.stringify(getDias(_edWeek)));
+  P.semanas[destIdx].dias=origen;
+  document.querySelector('div[style*="position:fixed"][style*="9999"]') && document.querySelector('div[style*="position:fixed"][style*="9999"]').remove();
+  _edWeek=destIdx;
+  buildDiasEd();
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ok);color:#fff;padding:10px 20px;border-radius:var(--r);font-size:13px;font-family:var(--sans);z-index:9999';
+  t.textContent='✓ Días copiados a '+P.semanas[destIdx].label;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); },2500);
+}
 
 // ── EDITOR DIETA ──────────────────────
 var DK2=['lun','mar','mie','jue','vie','sab','dom'];
@@ -2127,7 +2191,7 @@ function buildProg(){
   var hayDatos=false;
   P.semanas.forEach(function(wk,wi){
     var sec='';
-    P.dias.forEach(function(d,di){
+    getDias(curWeek).forEach(function(d,di){
       var dH='';
       d.ejercicios.forEach(function(r,ri){
         var k='ex_w'+wi+'_d'+di+'_r'+ri; var log=all[k]; if(!log) return;
@@ -2389,6 +2453,8 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   if(plan && plan.P) Object.assign(P, plan.P);
   if(plan && plan.DIET) Object.assign(DIET, plan.DIET);
   if(nombreCliente){ var pts=nombreCliente.split(' '); if(!plan?.P?.nombre){P.nombre=pts[0];P.apellido=pts.slice(1).join(' ');} }
+  // ── MIGRACIÓN: plan antiguo (P.dias plano) → cada semana tiene sus dias
+  migrarPlanSiNecesario();
 
   var ci = P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
   buildWeekPills(); buildTraining(curWeek);
