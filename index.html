@@ -917,7 +917,8 @@ var PANEL_HTML=`<!-- PIN -->
         <div class="ecard">
           <div class="echd"><div class="ectitle">📱 WhatsApp + Mensaje</div></div>
           <div class="erow c2">
-            <div><label class="elbl">Número (ej: 34612345678)</label><input class="einp" id="cfg-tel"></div>
+            <div><label class="elbl">Tu número WhatsApp</label><input class="einp" id="cfg-tel" placeholder="34612345678"></div>
+            <div><label class="elbl">Número del cliente</label><input class="einp" id="cfg-tel-cliente" placeholder="34612345678"></div>
             <div><label class="elbl">Mensaje para el cliente</label><input class="einp" id="cfg-msg"></div>
           </div>
         </div>
@@ -1909,21 +1910,17 @@ function swC(name,el){
 
 // ── EDITOR PLAN ───────────────────────
 function selTipo(t,el){ document.querySelectorAll('.tbtn2').forEach(function(b){b.classList.remove('active');}); el.classList.add('active'); P.tipo=t; }
+function _sv(id,v){ var el=document.getElementById(id); if(el) el.value=v; }
 function syncEd(){
-  document.getElementById('ed-nombre').value=P.nombre;
-  document.getElementById('ed-apellido').value=P.apellido;
-  document.getElementById('ed-peso').value=P.peso;
-  document.getElementById('ed-grasa').value=P.grasa;
-  document.getElementById('ed-musculo').value=P.musculo;
-  document.getElementById('ed-total').value=P.totalLevant;
-  document.getElementById('ed-desc').value=P.planDesc;
-  document.getElementById('cfg-rm').value=P.restMain;
-  document.getElementById('cfg-ra').value=P.restAcc;
-  document.getElementById('cfg-rw').value=P.restWarn;
-  document.getElementById('cfg-pin').value=''; document.getElementById('cfg-pin2').value='';
-  document.getElementById('cfg-msg').value=P.mensaje||'';
-  document.getElementById('cfg-tel').value=P.telefonoEntrenador||'';
-  document.getElementById('cfg-tel-cliente').value=P.telefonoCliente||'';
+  _sv('ed-nombre',P.nombre); _sv('ed-apellido',P.apellido);
+  _sv('ed-peso',P.peso); _sv('ed-grasa',P.grasa);
+  _sv('ed-musculo',P.musculo); _sv('ed-total',P.totalLevant);
+  _sv('ed-desc',P.planDesc);
+  _sv('cfg-rm',P.restMain); _sv('cfg-ra',P.restAcc); _sv('cfg-rw',P.restWarn);
+  _sv('cfg-pin',''); _sv('cfg-pin2','');
+  _sv('cfg-msg',P.mensaje||'');
+  _sv('cfg-tel',P.telefonoEntrenador||'');
+  _sv('cfg-tel-cliente',P.telefonoCliente||'');
   document.querySelectorAll('.tbtn2').forEach(function(b){b.classList.toggle('active',b.dataset.tipo===P.tipo);});
   buildDiasEd();
 }
