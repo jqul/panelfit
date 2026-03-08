@@ -1296,9 +1296,11 @@ var _vdi=-1, _vri=-1;
 function getYT(u){ var m=u.match(/(?:youtu\.be\/|v=|embed\/)([A-Za-z0-9_-]{11})/); return m?'https://www.youtube.com/embed/'+m[1]+'?rel=0':null; }
 function rCV(r,di,ri){
   var b64=r.videoB64||'', url=r.videoUrl||'';
-  if(b64) return '<video class="vfp" controls src="'+b64+'"></video>';
-  var yt=getYT(url); if(yt) return '<iframe class="vembed" src="'+yt+'" allowfullscreen></iframe>';
-  if(url) return '<video class="vfp" controls src="'+eH(url)+'"></video>';
+  var waSVG='<svg width="15" height="15" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.121.554 4.112 1.523 5.84L.057 23.272a.75.75 0 00.916.916l5.432-1.466A11.944 11.944 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.693-.504-5.234-1.383l-.376-.214-3.893 1.051 1.051-3.893-.214-.376A9.944 9.944 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>';
+  var waBtn=P.telefonoEntrenador?'<button onclick="sendWA(\''+eH(r.nombre)+'\')" style="margin-top:8px;width:100%;padding:9px;background:#25D366;border:none;border-radius:6px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;justify-content:center;gap:6px">'+waSVG+'Enviar vídeo al entrenador</button>':'';
+  if(b64) return '<div><video class="vfp" controls src="'+b64+'"></video>'+waBtn+'</div>';
+  var yt=getYT(url); if(yt) return '<div><iframe class="vembed" src="'+yt+'" allowfullscreen></iframe>'+waBtn+'</div>';
+  if(url) return '<div><video class="vfp" controls src="'+eH(url)+'"></video>'+waBtn+'</div>';
   return '<div class="vph" onclick="oVid('+di+','+ri+')"><span class="vi">🎬</span><p>Añadir vídeo de referencia</p></div>';
 }
 function rClV(ek,nm){
@@ -1328,7 +1330,14 @@ function upVid(ek){
     var rd=new FileReader(); rd.onload=function(e){ var a=lAll(); if(!a[ek])a[ek]={sets:{},done:false,note:''}; a[ek].vidB64=e.target.result; sAll(a); buildTraining(curWeek); }; rd.readAsDataURL(f);
   }; inp.click();
 }
-function sendWA(nm){ var t=P.telefonoEntrenador||''; var tx=encodeURIComponent('Hola, te mando mi vídeo del ejercicio: '+nm+' 💪'); window.open((t?'https://wa.me/'+t.replace(/\D/g,'')+'?text='+tx:'https://wa.me/?text='+tx),'_blank'); }
+function sendWA(nm){
+  var t=(P.telefonoEntrenador||'').replace(/\D/g,'');
+  var tx=encodeURIComponent(
+    '¡Hola! Te mando el vídeo de *'+nm+'* para que lo revises 🎥\n\n'+
+    '— '+P.nombre+' '+P.apellido
+  );
+  window.open(t?'https://wa.me/'+t+'?text='+tx:'https://wa.me/?text='+tx,'_blank');
+}
 
 // ── PLANIFICADOR SEMANAL ─────────────
 var SEMANA_KEY='semana_plan_v1';
@@ -1751,6 +1760,7 @@ function syncEd(){
   document.getElementById('cfg-pin').value=''; document.getElementById('cfg-pin2').value='';
   document.getElementById('cfg-msg').value=P.mensaje||'';
   document.getElementById('cfg-tel').value=P.telefonoEntrenador||'';
+  document.getElementById('cfg-tel-cliente').value=P.telefonoCliente||'';
   document.querySelectorAll('.tbtn2').forEach(function(b){b.classList.toggle('active',b.dataset.tipo===P.tipo);});
   buildDiasEd();
 }
@@ -1998,6 +2008,7 @@ function saveClose(){
   P.restWarn=parseInt(document.getElementById('cfg-rw').value)||30;
   P.mensaje=document.getElementById('cfg-msg').value;
   P.telefonoEntrenador=document.getElementById('cfg-tel').value.trim();
+  P.telefonoCliente=document.getElementById('cfg-tel-cliente').value.trim();
   var p1=document.getElementById('cfg-pin').value, p2=document.getElementById('cfg-pin2').value;
   if(p1&&p1===p2){ P.pin=p1; document.getElementById('pin-msg').textContent='✅ PIN actualizado'; }
   saveDietaEd();
@@ -2227,6 +2238,21 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
         guardarPlan(cid, {P:P, DIET:DIET}).then(function(){
           var el=document.getElementById('sync-status');
           if(el) el.textContent='Plan guardado '+new Date().toLocaleTimeString('es-ES');
+          // Ofrecer notificación WhatsApp al cliente
+          var telCliente=P.telefonoCliente||'';
+          var enlaceCliente=window.location.origin+window.location.pathname+'?c='+window.__cid_token;
+          var msg=encodeURIComponent(
+            '¡Hola '+P.nombre+'! 💪 He actualizado tu plan de entrenamiento.\n\n'+
+            '👉 Accede aquí: '+enlaceCliente+'\n\n'+
+            '¡A por ello!'
+          );
+          var waUrl=telCliente?'https://wa.me/'+telCliente.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
+          var btn=document.createElement('button');
+          btn.textContent='📱 Avisar al cliente por WhatsApp';
+          btn.style.cssText='position:fixed;bottom:24px;right:24px;background:#25D366;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:var(--sans);z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25)';
+          btn.onclick=function(){ window.open(waUrl,'_blank'); document.body.removeChild(btn); };
+          document.body.appendChild(btn);
+          setTimeout(function(){ if(btn.parentNode) document.body.removeChild(btn); },8000);
         });
       };
     }, 200);
