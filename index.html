@@ -139,6 +139,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
     <div class="topbar-logo">PanelFit</div>
     <div class="topbar-right">
       <span id="topbar-nombre" style="font-size:12px;color:var(--muted)"></span>
+      <button class="tbtn" id="btn-admin" style="display:none;border-color:var(--accent);color:var(--accent)" onclick="showAdmin()">⚙️ Admin</button>
       <button class="tbtn" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -154,6 +155,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <!-- PANEL CLIENTE (carga cuando entras con token) -->
 <div class="view" id="view-cliente">
   <div id="cliente-app"></div>
+</div>
+
+<!-- VISTA ADMIN -->
+<div class="modal-bg" id="modal-admin">
+  <div class="modal" style="max-width:600px;width:100%">
+    <div class="modal-title">⚙️ Panel Admin</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Gestiona el acceso de los entrenadores.</p>
+    <div id="admin-list" style="max-height:400px;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn sec" onclick="closeModal('modal-admin')">Cerrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL NUEVO CLIENTE -->
@@ -297,6 +310,36 @@ function getClientToken(){
 }
 
 // ── DASHBOARD ─────────────────────────
+async function showAdmin(){
+  openModal('modal-admin');
+  document.getElementById('admin-list').innerHTML='<div style="font-size:12px;color:var(--muted)">Cargando...</div>';
+  var {data:ents}=await sb.from('entrenadores').select('*').order('created_at');
+  if(!ents||!ents.length){
+    document.getElementById('admin-list').innerHTML='<div style="font-size:12px;color:var(--muted)">No hay entrenadores registrados.</div>';
+    return;
+  }
+  document.getElementById('admin-list').innerHTML=ents.map(function(e){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap">'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:500">'+eH(e.nombre||'Sin nombre')+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">'+eH(e.email||'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<span style="font-size:11px;padding:3px 8px;border:1px solid '+(e.activo?'var(--ok)':'var(--border2)')+';color:'+(e.activo?'var(--ok)':'var(--muted)')+'">'+
+          (e.activo?'Activo':'Inactivo')+
+        '</span>'+
+        '<button style="padding:5px 12px;border:1px solid '+(e.activo?'var(--warn)':'var(--ok)')+';background:transparent;color:'+(e.activo?'var(--warn)':'var(--ok)')+';cursor:pointer;font-size:11px;font-family:var(--sans)" onclick="toggleEnt(''+e.id+'','+e.activo+')">'+
+          (e.activo?'Desactivar':'Activar')+
+        '</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+async function toggleEnt(id, activo){
+  await sb.from('entrenadores').update({activo:!activo}).eq('id',id);
+  showAdmin();
+}
+
 async function loadDash(){
   loading(true);
   try{
@@ -307,6 +350,7 @@ async function loadDash(){
       perfil={nombre:_user.email};
     }
     document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
+    if(_user.email==='javi_ql@hotmail.com') document.getElementById('btn-admin').style.display='';
     await renderClientes();
   } catch(e){ console.error('loadDash error:',e); }
   loading(false);
@@ -1192,6 +1236,8 @@ function selWeek(i){ curWeek=i; document.querySelectorAll('.wpill').forEach(func
 
 function buildTraining(wi){
   var sem = P.semanas[wi]||{};
+  // Mostrar nota de la semana si existe
+  var notaSem = sem.nota ? '<div style="background:var(--card2);border-left:3px solid var(--accent);padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--text2)"><strong style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent)">Nota del entrenador</strong><div style="margin-top:4px">'+eH(sem.nota)+'</div></div>' : '';
   var modeLabels2={rpe:'RPE',esfuerzo:'Esf.',rm:'1RM','libre':''};
   var rpe = '';
   if(sem.modo && sem.modo!=='libre' && sem.valor){
@@ -1826,6 +1872,9 @@ function buildWeeksUI(){
           :'<span style="font-size:11px;color:var(--muted)">'+modeHints[mode]+'</span>')+
         '<button style="padding:5px 10px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:10px;font-family:var(--sans);white-space:nowrap" onclick="dupSem('+i+')">⊕ Duplicar</button>'+
       '</div>'+
+      '<div style="margin-top:8px">'+
+        '<textarea class="einp" rows="2" style="font-size:12px;margin-bottom:0;resize:none" placeholder="Nota para el cliente esta semana (opcional)..." onchange="P.semanas['+i+'].nota=this.value">'+eH(w.nota||'')+'</textarea>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
@@ -1925,8 +1974,10 @@ function saveDietaEd(){
 var TV_LABELS={dashboard:'📊 Hoy',semana:'📅 Mi Semana',entreno:'Entreno',records:'🏆 Récords',historial:'Historial',dieta:'Dieta',habitos:'Hábitos'};
 var HV_LABELS={peso:'Peso',grasa:'Grasa %',musculo:'Músculo',total:'Total levant.'};
 function mkToggle(on,fn){
-  return '<span onclick="'+fn+'" style="width:42px;height:24px;border-radius:12px;background:'+(on?'var(--green)':'var(--border2)')+';position:relative;cursor:pointer;transition:background .2s;display:inline-block;flex-shrink:0">'+
-    '<span style="position:absolute;top:3px;left:'+(on?'21':'3')+'px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s"></span>'+
+  var bg = on ? '#4a7c59' : '#888';
+  var left = on ? '21' : '3';
+  return '<span onclick="'+fn+'" style="width:42px;height:24px;border-radius:12px;background:'+bg+';position:relative;cursor:pointer;transition:background .2s;display:inline-block;flex-shrink:0;border:2px solid '+(on?'#3a6a49':'#666')+'">'+
+    '<span style="position:absolute;top:1px;left:'+left+'px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></span>'+
   '</span>';
 }
 function buildVis(){
@@ -1983,7 +2034,59 @@ function togHV(k,el){
 function buildProg(){
   var all=lAll();
   var done=Object.values(all).filter(function(v){return v.done;}).length;
-  var html='<div class="statrow">'+
+  // Construir gráfica de progreso por ejercicio
+  var ejercicios=[];
+  P.dias.forEach(function(d){ d.ejercicios.forEach(function(e){ if(ejercicios.indexOf(e.nombre)<0) ejercicios.push(e.nombre); }); });
+  var progHtml='';
+  if(ejercicios.length>0){
+    var selEj=window._progEj||ejercicios[0];
+    // Recoger datos históricos
+    var puntos=[];
+    Object.keys(all).sort().forEach(function(k){
+      var s=all[k]; if(!s||!s.sets) return;
+      Object.keys(s.sets).forEach(function(sk){
+        if(sk.indexOf(selEj.substring(0,8))>=0){
+          var sets=s.sets[sk];
+          var maxKg=0;
+          Object.values(sets).forEach(function(sv){ if(sv&&sv.kg&&parseFloat(sv.kg)>maxKg) maxKg=parseFloat(sv.kg); });
+          if(maxKg>0) puntos.push({fecha:k.split('_')[0]||k, kg:maxKg});
+        }
+      });
+    });
+    // Gráfica SVG simple
+    var w=320,h=100,pad=30;
+    var svgHtml='';
+    if(puntos.length>=2){
+      var kgs=puntos.map(function(p){return p.kg;});
+      var minK=Math.min.apply(null,kgs), maxK=Math.max.apply(null,kgs);
+      var rng=maxK-minK||1;
+      var pts=puntos.map(function(p,i){
+        var x=pad+(i/(puntos.length-1))*(w-pad*2);
+        var y=h-pad-((p.kg-minK)/rng)*(h-pad*2);
+        return x+','+y;
+      });
+      svgHtml='<svg width="100%" viewBox="0 0 '+w+' '+h+'" style="display:block;margin:8px 0">'+
+        '<polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--accent)" stroke-width="2"/>'+
+        puntos.map(function(p,i){
+          var x=pad+(i/(puntos.length-1))*(w-pad*2);
+          var y=h-pad-((p.kg-minK)/rng)*(h-pad*2);
+          return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="var(--accent)"/>'+
+            '<text x="'+x+'" y="'+(y-6)+'" text-anchor="middle" font-size="9" fill="var(--muted)">'+p.kg+'</text>';
+        }).join('')+
+        '<text x="'+pad+'" y="'+(h-4)+'" font-size="8" fill="var(--muted)">'+puntos[0].fecha+'</text>'+
+        '<text x="'+(w-pad)+'" y="'+(h-4)+'" text-anchor="end" font-size="8" fill="var(--muted)">'+puntos[puntos.length-1].fecha+'</text>'+
+      '</svg>';
+    } else {
+      svgHtml='<div style="font-size:11px;color:var(--muted);padding:16px 0">Aún no hay suficientes registros para mostrar progresión.</div>';
+    }
+    var ejSel=ejercicios.map(function(e){ return '<option value="'+eH(e)+'"'+(e===selEj?' selected':'')+'>'+eH(e)+'</option>'; }).join('');
+    progHtml='<div class="ecard" style="margin-bottom:16px">'+
+      '<div class="echd"><div class="ectitle">📈 Progresión por ejercicio</div></div>'+
+      '<select class="einp" style="margin-bottom:8px" onchange="window._progEj=this.value;buildProg()">'+ejSel+'</select>'+
+      svgHtml+
+    '</div>';
+  }
+  var html=progHtml+'<div class="statrow">'+
     '<div class="statc"><strong class="cg">'+done+'</strong><span>Completados</span></div>'+
     '<div class="statc"><strong class="cb">'+Object.keys(all).length+'</strong><span>Con registro</span></div>'+
     '<div class="statc"><strong class="cy">'+P.semanas.length+'</strong><span>Semanas</span></div>'+
