@@ -2035,19 +2035,21 @@ function copiarSemana(){
   }).filter(Boolean).join('');
   if(!opts){ alert('Solo hay una semana. Añade más semanas primero.'); return; }
   var mod=document.createElement('div');
+  mod.id='copy-sem-modal';
   mod.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   mod.innerHTML='<div style="background:var(--card);border-radius:var(--r);padding:20px;max-width:320px;width:100%">'+
-    '<div style="font-size:14px;font-weight:500;margin-bottom:4px">⊕ Copiar semana</div>'+
-    '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Copia los días de <strong>'+P.semanas[_edWeek].label+'</strong> a:</div>'+
+    '<div style="font-size:14px;font-weight:500;margin-bottom:4px">&#8853; Copiar semana</div>'+
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Copia los d&iacute;as de <strong>'+P.semanas[_edWeek].label+'</strong> a:</div>'+
     opts+
-    '<button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:8px;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-family:var(--sans);color:var(--muted);margin-top:4px">Cancelar</button>'+
+    '<button onclick="cerrarModalCopia()" style="width:100%;padding:8px;background:none;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-family:var(--sans);color:var(--muted);margin-top:4px">Cancelar</button>'+
   '</div>';
   document.body.appendChild(mod);
 }
+function cerrarModalCopia(){ var m=document.getElementById('copy-sem-modal'); if(m) m.remove(); }
 function doCopiarSemana(destIdx){
   var origen=JSON.parse(JSON.stringify(getDias(_edWeek)));
   P.semanas[destIdx].dias=origen;
-  document.querySelector('div[style*="position:fixed"][style*="9999"]') && document.querySelector('div[style*="position:fixed"][style*="9999"]').remove();
+  var m=document.getElementById('copy-sem-modal'); if(m) m.remove();
   _edWeek=destIdx;
   buildDiasEd();
   var t=document.createElement('div');
