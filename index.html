@@ -14,6 +14,7 @@
   --text:#1a1814;--text2:#5a5650;--muted:#9a9590;
   --ink:#1a1814;--accent:#7a6248;--accent2:#b89a7a;
   --ok:#4a7c59;--warn:#c0392b;--ok-bg:#f0f7f2;
+  --green:#2d6a4f;--purple:#7c5cbf;--purple-bg:rgba(124,92,191,.08);
   --serif:'DM Serif Display',Georgia,serif;
   --sans:'DM Sans',system-ui,Arial,sans-serif;
   --r:6px; --shadow:0 2px 12px rgba(0,0,0,.07);
@@ -428,6 +429,7 @@ async function guardarRegistros(clienteId, regObj){
   --border:#d8d3c8;--border2:#c4bfb3;--text:#1a1814;--text2:#5a5650;--muted:#9a9590;
   --ink:#1a1814;--accent:#7a6248;--accent2:#b89a7a;
   --ok:#4a7c59;--warn:#c0392b;--ok-bg:#f0f7f2;--warn-bg:#fdf0ef;
+  --green:#2d6a4f;--purple:#7c5cbf;--purple-bg:rgba(124,92,191,.08);
   --serif:'DM Serif Display',Georgia,serif;
   --sans:'DM Sans',Helvetica,Arial,sans-serif;
 }
@@ -436,6 +438,7 @@ html.dark{
   --border:#2a2a2a;--border2:#333;--text:#e8e4de;--text2:#888;--muted:#555;
   --ink:#e8e4de;--accent:#b89a7a;--accent2:#7a6248;
   --ok:#5a9e6f;--warn:#c0392b;--ok-bg:#0f1f14;--warn-bg:#1f0f0f;
+  --green:#3d8f6a;--purple:#9b7de0;--purple-bg:rgba(155,125,224,.12);
 }
 html.font-hel{
   --serif:Helvetica,Arial,sans-serif;
@@ -1951,7 +1954,10 @@ function buildDiasEd(){
     return '<div class="ecard">'+
       '<div class="echd">'+
         '<div class="ectitle">Día '+(di+1)+'</div>'+
-        '<button class="delbtn" onclick="delDia('+di+')">🗑 Eliminar día</button>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button class="delbtn" style="color:var(--accent);border-color:var(--accent)" onclick="dupDia('+di+')">⊕ Copiar</button>'+
+          '<button class="delbtn" onclick="delDia('+di+')">🗑 Eliminar</button>'+
+        '</div>'+
       '</div>'+
       '<div class="erow c2" style="margin-bottom:10px">'+
         '<div><label class="elbl">Título</label><input class="einp" value="'+eH(d.titulo)+'" onchange="P.dias['+di+'].titulo=this.value"></div>'+
@@ -1965,6 +1971,7 @@ function buildDiasEd(){
   document.getElementById('dias-editor').innerHTML=html;
 }
 function addDia(){ P.dias.push({titulo:'DÍA '+(P.dias.length+1)+' — Nuevo',foco:'Describe el foco',ejercicios:[{nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}]}); buildDiasEd(); }
+function dupDia(di){ var copia=JSON.parse(JSON.stringify(P.dias[di])); copia.titulo=copia.titulo+' (copia)'; P.dias.splice(di+1,0,copia); buildDiasEd(); }
 function delDia(di){ if(P.dias.length<=1){alert('Mínimo 1 día.');return;} if(confirm('¿Eliminar día?')){P.dias.splice(di,1);buildDiasEd();} }
 function addEx(di){ P.dias[di].ejercicios.push({nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}); buildDiasEd(); }
 function delEx(di,ri){ P.dias[di].ejercicios.splice(ri,1); buildDiasEd(); }
@@ -2060,7 +2067,7 @@ function saveDietaEd(){
 }
 
 // ── EDITOR VISIBILIDAD ────────────────
-var TV_LABELS={dashboard:'📊 Hoy',semana:'📅 Mi Semana',entreno:'Entreno',records:'🏆 Récords',historial:'Historial',dieta:'Dieta',habitos:'Hábitos'};
+var TV_LABELS={dashboard:'📊 Hoy',semana:'📅 Mi Semana',entreno:'Entreno',records:'🏆 Récords',historial:'Historial',dieta:'Dieta',habitos:'Hábitos',fotos:'📸 Fotos'};
 var HV_LABELS={peso:'Peso',grasa:'Grasa %',musculo:'Músculo',total:'Total levant.'};
 function mkToggle(on,fn){
   return '<span onclick="'+fn+'" style="width:42px;height:24px;border-radius:12px;background:'+(on?'var(--green)':'var(--border2)')+';position:relative;cursor:pointer;transition:background .2s;display:inline-block;flex-shrink:0">'+
