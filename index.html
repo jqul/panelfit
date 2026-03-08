@@ -1951,6 +1951,8 @@ function syncEd(){
   buildDiasEd();
 }
 function buildDiasEd(){
+  migrarPlanSiNecesario(); // asegurar migración antes de renderizar
+  if(_edWeek>=P.semanas.length) _edWeek=0;
   // Selector de semana en el editor
   var semSel='<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'+
     '<span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Editando semana:</span>'+
@@ -2000,7 +2002,7 @@ function buildDiasEd(){
     '</div>';
   }).join('');
   html+='<button class="addbtn" style="border-style:solid;border-color:var(--purple);color:var(--purple)" onclick="addDia()">+ Añadir día de entreno</button>';
-  document.getElementById('dias-editor').innerHTML=html;
+  var el=document.getElementById('dias-editor'); if(el) el.innerHTML=html;
 }
 function addDia(){ var d=getDias(_edWeek); d.push({titulo:'DÍA '+(d.length+1)+' — Nuevo',foco:'Describe el foco',ejercicios:[{nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}]}); buildDiasEd(); }
 function dupDia(di){ var d=getDias(_edWeek); var copia=JSON.parse(JSON.stringify(d[di])); copia.titulo=copia.titulo+' (copia)'; d.splice(di+1,0,copia); buildDiasEd(); }
@@ -2457,6 +2459,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   migrarPlanSiNecesario();
 
   var ci = P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
+  _edWeek = curWeek; // sincronizar editor con semana actual
   buildWeekPills(); buildTraining(curWeek);
   buildDashboard(); applyVis();
   buildDietMacros(); buildDietPills(); renderDiet('lun');
