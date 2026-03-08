@@ -767,17 +767,41 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- MODAL VÍDEO -->
 <div class="pmod" id="vid-modal">
-  <div class="pbox" style="min-width:300px;max-width:420px;text-align:left">
+  <div class="pbox" style="min-width:300px;max-width:480px;text-align:left">
     <div class="pbtitle" style="text-align:center">🎬 Vídeo de referencia</div>
-    <div class="pbsub" style="text-align:center;margin-bottom:14px">YouTube o archivo de vídeo</div>
-    <label class="elbl">Enlace YouTube / URL</label>
-    <input class="einp" id="vid-url-in" placeholder="https://youtube.com/watch?v=..." style="margin-bottom:10px">
-    <label class="elbl">O sube un archivo</label>
-    <input type="file" id="vid-file-in" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:10px;width:100%">
-    <div id="vid-err" style="font-size:11px;color:var(--red);min-height:14px;margin-bottom:8px"></div>
+    <!-- Tabs dentro del modal -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
+      <button id="vtab-url" onclick="swVTab('url')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer">🔗 YouTube / URL</button>
+      <button id="vtab-subir" onclick="swVTab('subir')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">⬆️ Subir vídeo</button>
+      <button id="vtab-bib" onclick="swVTab('bib')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">📁 Biblioteca</button>
+    </div>
+    <!-- Tab URL -->
+    <div id="vsec-url">
+      <label class="elbl">Enlace YouTube / URL</label>
+      <input class="einp" id="vid-url-in" placeholder="https://youtube.com/watch?v=..." style="margin-bottom:10px">
+    </div>
+    <!-- Tab Subir -->
+    <div id="vsec-subir" style="display:none">
+      <label class="elbl">Archivo de vídeo (MP4, MOV — máx 50MB)</label>
+      <input type="file" id="vid-file-in" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:10px;width:100%">
+      <div id="vid-upload-prog" style="display:none;font-size:11px;color:var(--accent);margin-bottom:8px">Subiendo...</div>
+    </div>
+    <!-- Tab Biblioteca -->
+    <div id="vsec-bib" style="display:none">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Vídeos de tu biblioteca. Haz clic para seleccionar.</div>
+      <div id="vid-bib-list" style="max-height:200px;overflow-y:auto;display:grid;gap:6px"></div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <label class="elbl">Subir nuevo a biblioteca</label>
+        <input type="file" id="vid-bib-file" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:6px;width:100%">
+        <input class="einp" id="vid-bib-nombre" placeholder="Nombre del vídeo (ej: Press banca)" style="margin-bottom:6px">
+        <button onclick="subirABiblioteca()" style="background:var(--ok);color:#fff;border:none;padding:7px 14px;border-radius:var(--r);font-size:12px;font-family:var(--sans);cursor:pointer">⬆️ Subir a biblioteca</button>
+        <div id="vid-bib-prog" style="font-size:11px;color:var(--accent);min-height:14px;margin-top:4px"></div>
+      </div>
+    </div>
+    <div id="vid-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px;margin-top:8px"></div>
     <div style="display:flex;gap:8px">
       <button class="pok" style="flex:1" onclick="saveVid()">💾 Guardar</button>
-      <button class="pok" style="flex:1;background:var(--red-bg);border-color:rgba(232,128,128,.4);color:var(--red)" onclick="rmVid()">🗑 Quitar</button>
+      <button class="pok" style="flex:1;background:var(--warn-bg);border-color:rgba(192,57,43,.3);color:var(--warn)" onclick="rmVid()">🗑 Quitar</button>
     </div>
     <span class="pcan" onclick="cVidModal()" style="text-align:center;display:block">Cancelar</span>
   </div>
@@ -958,6 +982,7 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="tab" onclick="showTab('historial',this)">Historial</div>
   <div class="tab" onclick="showTab('dieta',this)">Dieta</div>
   <div class="tab" onclick="showTab('habitos',this)">Hábitos</div>
+  <div class="tab" id="tab-fotos-btn" onclick="showTab('fotos',this)">📸 Fotos</div>
 </div>
 
 <!-- SEMANA -->
@@ -1051,6 +1076,46 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="psub">Se resetea automáticamente cada día</div>
   <div class="hg" id="habit-grid"></div>
   <div class="note ok"><strong>Los 3 clave:</strong> Proteína ≥ 160 g · Descanso ≥ 7 h · Agua ≥ 3 L</div>
+</div>
+<div class="panel" id="tab-fotos" style="display:none">
+  <div class="ptitle">📸 Fotos de Progreso</div>
+  <div class="psub">Sube fotos mensualmente para ver tu evolución</div>
+  <div id="fotos-upload-area" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px">
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.7px">Nueva entrada</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <input type="date" id="foto-fecha" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:var(--r);font-size:13px;font-family:var(--sans)">
+      <span style="font-size:11px;color:var(--muted)">Selecciona fecha y sube las fotos</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Frente</div>
+        <label id="lbl-frente" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:4px">
+          <span style="font-size:22px">📷</span>Subir
+          <input type="file" id="fi-frente" accept="image/*" style="display:none" onchange="prevFoto('frente',this)">
+        </label>
+        <div id="prev-frente" style="margin-top:4px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Espalda</div>
+        <label id="lbl-espalda" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:4px">
+          <span style="font-size:22px">📷</span>Subir
+          <input type="file" id="fi-espalda" accept="image/*" style="display:none" onchange="prevFoto('espalda',this)">
+        </label>
+        <div id="prev-espalda" style="margin-top:4px"></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Lateral</div>
+        <label id="lbl-lateral" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:90px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:4px">
+          <span style="font-size:22px">📷</span>Subir
+          <input type="file" id="fi-lateral" accept="image/*" style="display:none" onchange="prevFoto('lateral',this)">
+        </label>
+        <div id="prev-lateral" style="margin-top:4px"></div>
+      </div>
+    </div>
+    <div id="foto-upload-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px"></div>
+    <button onclick="subirFotos()" style="background:var(--ink);color:var(--card);border:none;padding:10px 20px;border-radius:var(--r);font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer">☁️ Guardar fotos</button>
+  </div>
+  <div id="fotos-galeria"></div>
 </div>`;
 
 function schedSave(){ clearTimeout(window.__saveTimer); window.__saveTimer=setTimeout(function(){ if(window.__onSave) window.__onSave(); },1500); }
@@ -1072,7 +1137,7 @@ var P = {
   ],
   pesosBase:[95,87.5,70,65,67.5,120,112.5],
   progresion:2.5,
-  tabs_vis:{dashboard:true,semana:true,entreno:true,records:true,historial:true,dieta:true,habitos:true},
+  tabs_vis:{dashboard:true,semana:true,entreno:true,records:true,historial:true,dieta:true,habitos:true,fotos:true},
   hdr_vis:{peso:true,grasa:true,musculo:true,total:true},
   dieta_kcal:2200, dieta_prot:160, dieta_carb:228, dieta_fat:65,
   dieta_nota:'Días de entreno: prioriza hidratos antes y después del workout. Sin almendra, aguacate, melón ni bacalao.',
@@ -1318,16 +1383,100 @@ function rClV(ek,nm){
     'Mandar al entrenador</button>';
   return html;
 }
-function oVid(di,ri){ _vdi=di; _vri=ri; document.getElementById('vid-modal').classList.add('open'); document.getElementById('vid-url-in').value=P.dias[di].ejercicios[ri].videoUrl||''; }
+// ── VÍDEO MODAL ──────────────────────────────────
+var _curVTab = 'url';
+function swVTab(t){
+  _curVTab=t;
+  ['url','subir','bib'].forEach(function(x){
+    document.getElementById('vsec-'+x).style.display = x===t?'block':'none';
+    var btn=document.getElementById('vtab-'+x);
+    btn.style.borderBottomColor = x===t?'var(--accent)':'transparent';
+    btn.style.color = x===t?'var(--text)':'var(--muted)';
+  });
+  if(t==='bib') cargarBiblioteca();
+}
+function oVid(di,ri){
+  _vdi=di; _vri=ri;
+  document.getElementById('vid-modal').classList.add('open');
+  document.getElementById('vid-url-in').value=P.dias[di].ejercicios[ri].videoUrl||'';
+  document.getElementById('vid-err').textContent='';
+  document.getElementById('vid-upload-prog').style.display='none';
+  swVTab('url');
+}
 function cVidModal(){ document.getElementById('vid-modal').classList.remove('open'); }
-function saveVid(){
-  var url=document.getElementById('vid-url-in').value.trim();
-  var fi=document.getElementById('vid-file-in').files[0];
-  if(fi){ var rd=new FileReader(); rd.onload=function(e){ P.dias[_vdi].ejercicios[_vri].videoB64=e.target.result; P.dias[_vdi].ejercicios[_vri].videoUrl=''; cVidModal(); buildTraining(curWeek); }; rd.readAsDataURL(fi); }
-  else if(url){ P.dias[_vdi].ejercicios[_vri].videoUrl=url; P.dias[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildTraining(curWeek); }
-  else document.getElementById('vid-err').textContent='Pega un enlace o selecciona un archivo.';
+async function saveVid(){
+  var err=document.getElementById('vid-err');
+  err.textContent='';
+  if(_curVTab==='url'){
+    var url=document.getElementById('vid-url-in').value.trim();
+    if(!url){ err.textContent='Pega un enlace.'; return; }
+    P.dias[_vdi].ejercicios[_vri].videoUrl=url;
+    P.dias[_vdi].ejercicios[_vri].videoB64='';
+    cVidModal(); buildTraining(curWeek);
+  } else if(_curVTab==='subir'){
+    var fi=document.getElementById('vid-file-in').files[0];
+    if(!fi){ err.textContent='Selecciona un archivo.'; return; }
+    if(fi.size>50*1024*1024){ err.textContent='Máximo 50 MB.'; return; }
+    var prog=document.getElementById('vid-upload-prog');
+    prog.style.display='block'; prog.textContent='Subiendo...';
+    var entId=window.__entrenadorId||'unknown';
+    var ext=fi.name.split('.').pop();
+    var path='videos/'+entId+'/'+Date.now()+'.'+ext;
+    var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
+    if(error){ prog.style.display='none'; err.textContent='Error al subir: '+error.message; return; }
+    var {data:pu}=sb.storage.from('media').getPublicUrl(path);
+    P.dias[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+    P.dias[_vdi].ejercicios[_vri].videoB64='';
+    prog.style.display='none';
+    cVidModal(); buildTraining(curWeek);
+  }
 }
 function rmVid(){ P.dias[_vdi].ejercicios[_vri].videoUrl=''; P.dias[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildTraining(curWeek); }
+
+// ── BIBLIOTECA DE VÍDEOS ──────────────────────────
+async function cargarBiblioteca(){
+  var lista=document.getElementById('vid-bib-list');
+  lista.innerHTML='<span style="font-size:11px;color:var(--muted)">Cargando...</span>';
+  var entId=window.__entrenadorId||'unknown';
+  var {data,error}=await sb.storage.from('media').list('videos/'+entId, {sortBy:{column:'created_at',order:'desc'}});
+  if(error||!data||data.length===0){
+    lista.innerHTML='<span style="font-size:11px;color:var(--muted)">No tienes vídeos en biblioteca. Sube el primero abajo.</span>';
+    return;
+  }
+  lista.innerHTML='';
+  data.forEach(function(f){
+    var {data:pu}=sb.storage.from('media').getPublicUrl('videos/'+entId+'/'+f.name);
+    var nombre=f.metadata?.nombre||f.name.replace(/^\d+\./,'').replace(/\.\w+$/,'');
+    var item=document.createElement('div');
+    item.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--r);cursor:pointer;gap:8px;border:1px solid transparent';
+    item.innerHTML='<span style="font-size:12px;flex:1;color:var(--text)">🎬 '+nombre+'</span>'
+      +'<button style="background:var(--ok);color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--sans);cursor:pointer">Usar</button>';
+    item.querySelector('button').onclick=function(){
+      P.dias[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+      P.dias[_vdi].ejercicios[_vri].videoB64='';
+      cVidModal(); buildTraining(curWeek);
+    };
+    lista.appendChild(item);
+  });
+}
+async function subirABiblioteca(){
+  var fi=document.getElementById('vid-bib-file').files[0];
+  var nombre=document.getElementById('vid-bib-nombre').value.trim();
+  var prog=document.getElementById('vid-bib-prog');
+  if(!fi){ prog.textContent='Selecciona un archivo.'; return; }
+  if(!nombre){ prog.textContent='Escribe un nombre.'; return; }
+  if(fi.size>50*1024*1024){ prog.textContent='Máximo 50 MB.'; return; }
+  prog.textContent='Subiendo...';
+  var entId=window.__entrenadorId||'unknown';
+  var ext=fi.name.split('.').pop();
+  var path='videos/'+entId+'/'+nombre.replace(/\s+/g,'_')+'.'+ext;
+  var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
+  if(error){ prog.textContent='Error: '+error.message; return; }
+  prog.textContent='✓ Subido correctamente';
+  document.getElementById('vid-bib-file').value='';
+  document.getElementById('vid-bib-nombre').value='';
+  setTimeout(function(){ prog.textContent=''; cargarBiblioteca(); },1500);
+}
 function upVid(ek){
   var inp=document.createElement('input'); inp.type='file'; inp.accept='video/*'; inp.capture='environment';
   inp.onchange=function(){
@@ -1686,6 +1835,7 @@ function togH(i){
 
 // ── TABS ──────────────────────────────
 function showTab(name,el){
+  if(name==='fotos'){ setTimeout(cargarGaleria,100); }
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('tab-'+name).classList.add('active'); el.classList.add('active');
@@ -2232,10 +2382,12 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   buildWeekPills(); buildTraining(curWeek);
   buildDashboard(); applyVis();
   buildDietMacros(); buildDietPills(); renderDiet('lun');
-  buildHabits(); tSet(P.restMain); loadTheme();
+  buildHabits(); tSet(P.restMain); loadTheme(); setTimeout(cargarGaleria,500);
   showTab('dashboard', document.querySelector('#panel-root .tab'));
 
   if(isCoach){
+    // Guardar ID entrenador para Storage
+    if(window._user) window.__entrenadorId=window._user.id;
     // Ocultar PIN inmediatamente — entrenador ya autenticado
     var pinMod=document.getElementById('pin-modal');
     if(pinMod) pinMod.style.display='none';
@@ -2280,6 +2432,82 @@ async function syncNow(){
   if(window.__onSave) await window.__onSave();
 }
 
+
+// ── FOTOS DE PROGRESO ──────────────────────────────
+function prevFoto(lado, inp){
+  var f=inp.files[0]; if(!f) return;
+  var div=document.getElementById('prev-'+lado);
+  var url=URL.createObjectURL(f);
+  div.innerHTML='<img src="'+url+'" style="width:100%;height:60px;object-fit:cover;border-radius:4px">';
+}
+
+async function subirFotos(){
+  var fecha=document.getElementById('foto-fecha').value;
+  var err=document.getElementById('foto-upload-err');
+  err.textContent='';
+  if(!fecha){ err.textContent='Selecciona una fecha.'; return; }
+  var cid=window.__cid;
+  if(!cid){ err.textContent='Error: cliente no identificado.'; return; }
+  var btn=document.querySelector('[onclick="subirFotos()"]');
+  btn.textContent='Subiendo...'; btn.disabled=true;
+
+  var urls={frente:null,espalda:null,lateral:null};
+  for(var lado of ['frente','espalda','lateral']){
+    var fi=document.getElementById('fi-'+lado).files[0];
+    if(!fi) continue;
+    var ext=fi.name.split('.').pop();
+    var path='fotos/'+cid+'/'+fecha+'_'+lado+'.'+ext;
+    var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
+    if(error){ err.textContent='Error subiendo '+lado+': '+error.message; btn.textContent='☁️ Guardar fotos'; btn.disabled=false; return; }
+    var {data:pu}=sb.storage.from('media').getPublicUrl(path);
+    urls[lado]=pu.publicUrl;
+  }
+  if(!urls.frente&&!urls.espalda&&!urls.lateral){ err.textContent='Selecciona al menos una foto.'; btn.textContent='☁️ Guardar fotos'; btn.disabled=false; return; }
+
+  var {error:dbErr}=await sb.from('fotos').upsert({
+    cliente_id:cid, fecha:fecha,
+    url_frente:urls.frente, url_espalda:urls.espalda, url_lateral:urls.lateral
+  },{onConflict:'cliente_id,fecha'});
+
+  btn.textContent='☁️ Guardar fotos'; btn.disabled=false;
+  if(dbErr){ err.textContent='Error guardando: '+dbErr.message; return; }
+
+  // Limpiar
+  ['frente','espalda','lateral'].forEach(function(l){
+    document.getElementById('fi-'+l).value='';
+    document.getElementById('prev-'+l).innerHTML='';
+  });
+  document.getElementById('foto-fecha').value='';
+  err.style.color='var(--ok)'; err.textContent='✓ Fotos guardadas';
+  setTimeout(function(){ err.textContent=''; err.style.color='var(--warn)'; },2000);
+  cargarGaleria();
+}
+
+async function cargarGaleria(){
+  var cid=window.__cid; if(!cid) return;
+  var gal=document.getElementById('fotos-galeria'); if(!gal) return;
+  var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
+  if(error||!data||data.length===0){
+    gal.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Aún no hay fotos. Sube la primera entrada arriba.</div>';
+    return;
+  }
+  gal.innerHTML='';
+  data.forEach(function(row){
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px';
+    var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    var imgs='';
+    if(row.url_frente) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Frente</div><img src="'+row.url_frente+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
+    if(row.url_espalda) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Espalda</div><img src="'+row.url_espalda+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
+    if(row.url_lateral) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Lateral</div><img src="'+row.url_lateral+'" style="width:100%;border-radius:4px;object-fit:cover;max-height:200px"></div>';
+    card.innerHTML='<div style="font-size:13px;font-weight:500;margin-bottom:10px;color:var(--text)">📅 '+fecha+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px">'+imgs+'</div>';
+    gal.appendChild(card);
+  });
+}
+
+// Cargar galería cuando se abre la pestaña fotos
+var _origShowTab=window.showTab;
 </script>
 </body>
 </html>
