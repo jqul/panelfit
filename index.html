@@ -663,7 +663,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .plan-drop-hint{font-size:10px;color:var(--border2);text-align:center;padding:14px 4px;letter-spacing:.3px;}
 
 /* PANEL COACH */
-.cov{display:none;position:fixed;inset:0;background:rgba(26,24,20,.85);z-index:200;overflow-y:auto;}
+.cov{display:none;position:fixed;inset:0;background:rgba(26,24,20,.85);z-index:500;overflow-y:auto;}
 .cov.open{display:block;}
 .cpan{background:var(--bg);max-width:960px;margin:18px auto;border:1px solid var(--border);}
 .chd{background:var(--card);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:10;}
@@ -2210,7 +2210,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   container.innerHTML = '';
 
   var top = document.createElement('div');
-  top.style.cssText = 'background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:200';
+  top.style.cssText = 'background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100';
   top.innerHTML = '<span style="font-family:var(--serif);font-size:16px">PanelFit</span>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + (isCoach ? '<button class="tbtn" style="border-color:var(--ok);color:var(--ok)" onclick="volverDash()">← Mis clientes</button>' : '')
@@ -2236,6 +2236,11 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   showTab('dashboard', document.querySelector('#panel-root .tab'));
 
   if(isCoach){
+    // Ocultar PIN inmediatamente — entrenador ya autenticado
+    var pinMod=document.getElementById('pin-modal');
+    if(pinMod) pinMod.style.display='none';
+    var pinBtn=document.querySelector('.abtn.p');
+    if(pinBtn) pinBtn.style.display='none';
     setTimeout(function(){
       oCoach();
       var orig = window.saveClose;
