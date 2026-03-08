@@ -2331,21 +2331,22 @@ setInterval(function(){ if(_gtoken) driveSave(); },60000);
 
 // ── INIT ──────────────────────────────
 (function(){
-  // Inicializar gapi
   window.addEventListener('load',function(){
     try{ gapi.load('client',function(){ gapi.client.init({}); }); }catch(e){}
   });
+  // Solo correr si el panel está montado en el DOM
+  if(!document.getElementById('hname')) return;
   if(window.__PLAN__){
     try{ Object.assign(P,window.__PLAN__.P); Object.assign(DIET,window.__PLAN__.DIET); }catch(e){}
   }
   var ci=P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
-  applyUI();
-  buildDietMacros(); buildDietPills(); renderDiet('lun');
-  buildHabits();
-  tSet(P.restMain);
-  buildDashboard();
-  applyVis();
-  loadTheme();
+  try{ applyUI(); }catch(e){}
+  try{ buildDietMacros(); buildDietPills(); renderDiet('lun'); }catch(e){}
+  try{ buildHabits(); }catch(e){}
+  try{ tSet(P.restMain); }catch(e){}
+  try{ buildDashboard(); }catch(e){}
+  try{ applyVis(); }catch(e){}
+  try{ loadTheme(); }catch(e){}
 })();
 
 
