@@ -776,7 +776,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .statc strong{font-family:var(--serif);font-size:22px;font-weight:400;display:block;}
 .statc span{font-size:10px;color:var(--muted);letter-spacing:.4px;}
 /* PIN */
-.pmod{display:none;position:fixed;inset:0;background:rgba(26,24,20,.9);z-index:300;align-items:center;justify-content:center;}
+.pmod{display:none;position:fixed;inset:0;background:rgba(26,24,20,.9);z-index:600;align-items:center;justify-content:center;}
 .pmod.open{display:flex;}
 .pbox{background:var(--card);border:1px solid var(--border);padding:28px;text-align:center;min-width:260px;}
 .pbtitle{font-family:var(--serif);font-size:18px;font-weight:400;margin-bottom:4px;}
@@ -1485,10 +1485,12 @@ function swVTab(t){
   });
   if(t==='bib') cargarBiblioteca();
 }
+var _vWi=0; // semana del vídeo que se está editando
 function oVid(di,ri){
-  _vdi=di; _vri=ri;
+  _vdi=di; _vri=ri; _vWi=_edWeek;
   document.getElementById('vid-modal').classList.add('open');
-  document.getElementById('vid-url-in').value=getDias(_edWeek)[di]&&getDias(_edWeek)[di].ejercicios[ri]?getDias(_edWeek)[di].ejercicios[ri].videoUrl||'':'';
+  var ej=getDias(_vWi)[di]&&getDias(_vWi)[di].ejercicios[ri]?getDias(_vWi)[di].ejercicios[ri]:null;
+  document.getElementById('vid-url-in').value=ej?ej.videoUrl||'':'';
   document.getElementById('vid-err').textContent='';
   document.getElementById('vid-upload-prog').style.display='none';
   swVTab('url');
@@ -1500,9 +1502,10 @@ async function saveVid(){
   if(_curVTab==='url'){
     var url=document.getElementById('vid-url-in').value.trim();
     if(!url){ err.textContent='Pega un enlace.'; return; }
-    getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=url;
-    getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
-    cVidModal(); buildTraining(curWeek);
+    getDias(_vWi)[_vdi].ejercicios[_vri].videoUrl=url;
+    getDias(_vWi)[_vdi].ejercicios[_vri].videoB64='';
+    cVidModal(); buildDiasEd(); buildTraining(curWeek);
+    if(window.__cid) guardarPlan(window.__cid,{P:P,DIET:DIET}).then(function(){ var el=document.getElementById('sync-status'); if(el) el.textContent='Vídeo guardado ✓'; });
   } else if(_curVTab==='subir'){
     var fi=document.getElementById('vid-file-in').files[0];
     if(!fi){ err.textContent='Selecciona un archivo.'; return; }
@@ -1515,13 +1518,14 @@ async function saveVid(){
     var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
     if(error){ prog.style.display='none'; err.textContent='Error al subir: '+error.message; return; }
     var {data:pu}=sb.storage.from('media').getPublicUrl(path);
-    getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
-    getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
+    getDias(_vWi)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+    getDias(_vWi)[_vdi].ejercicios[_vri].videoB64='';
     prog.style.display='none';
-    cVidModal(); buildTraining(curWeek);
+    cVidModal(); buildDiasEd(); buildTraining(curWeek);
+    if(window.__cid) guardarPlan(window.__cid,{P:P,DIET:DIET}).then(function(){ var el=document.getElementById('sync-status'); if(el) el.textContent='Vídeo guardado ✓'; });
   }
 }
-function rmVid(){ getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=''; getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildTraining(curWeek); }
+function rmVid(){ getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=''; getDias(_vWi)[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildDiasEd(); buildTraining(curWeek); }
 
 // ── BIBLIOTECA DE VÍDEOS ──────────────────────────
 async function cargarBiblioteca(){
@@ -1542,8 +1546,8 @@ async function cargarBiblioteca(){
     item.innerHTML='<span style="font-size:12px;flex:1;color:var(--text)">🎬 '+nombre+'</span>'
       +'<button style="background:var(--ok);color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--sans);cursor:pointer">Usar</button>';
     item.querySelector('button').onclick=function(){
-      getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
-      getDias(_edWeek)[_vdi].ejercicios[_vri].videoB64='';
+      getDias(_vWi)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
+      getDias(_vWi)[_vdi].ejercicios[_vri].videoB64='';
       cVidModal(); buildTraining(curWeek);
     };
     lista.appendChild(item);
