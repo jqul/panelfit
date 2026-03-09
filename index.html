@@ -2311,6 +2311,14 @@ function saveClose(){
   if(p1&&p1===p2){ P.pin=p1; document.getElementById('pin-msg').textContent='✅ PIN actualizado'; }
   saveDietaEd();
   applyUI(); applyVis(); cCoach();
+  // Guardar siempre en Supabase si hay cliente activo
+  if(window.__cid){
+    var el=document.getElementById('sync-status');
+    if(el) el.textContent='Guardando...';
+    guardarPlan(window.__cid,{P:P,DIET:DIET}).then(function(){
+      if(el) el.textContent='Guardado ✓ '+new Date().toLocaleTimeString('es-ES');
+    });
+  }
   document.getElementById('save-msg').textContent='✅ Guardado';
 }
 function applyUI(){
