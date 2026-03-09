@@ -832,47 +832,6 @@ var PANEL_HTML=`<!-- PIN -->
 </div>
 
 <!-- MODAL VÍDEO -->
-<div class="pmod" id="vid-modal">
-  <div class="pbox" style="min-width:300px;max-width:480px;text-align:left">
-    <div class="pbtitle" style="text-align:center">🎬 Vídeo de referencia</div>
-    <!-- Tabs dentro del modal -->
-    <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
-      <button id="vtab-url" onclick="swVTab('url')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer">🔗 YouTube / URL</button>
-      <button id="vtab-subir" onclick="swVTab('subir')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">⬆️ Subir vídeo</button>
-      <button id="vtab-bib" onclick="swVTab('bib')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">📁 Biblioteca</button>
-    </div>
-    <!-- Tab URL -->
-    <div id="vsec-url">
-      <label class="elbl">Enlace YouTube / URL</label>
-      <input class="einp" id="vid-url-in" placeholder="https://youtube.com/watch?v=..." style="margin-bottom:10px">
-    </div>
-    <!-- Tab Subir -->
-    <div id="vsec-subir" style="display:none">
-      <label class="elbl">Archivo de vídeo (MP4, MOV — máx 50MB)</label>
-      <input type="file" id="vid-file-in" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:10px;width:100%">
-      <div id="vid-upload-prog" style="display:none;font-size:11px;color:var(--accent);margin-bottom:8px">Subiendo...</div>
-    </div>
-    <!-- Tab Biblioteca -->
-    <div id="vsec-bib" style="display:none">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Vídeos de tu biblioteca. Haz clic para seleccionar.</div>
-      <div id="vid-bib-list" style="max-height:200px;overflow-y:auto;display:grid;gap:6px"></div>
-      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
-        <label class="elbl">Subir nuevo a biblioteca</label>
-        <input type="file" id="vid-bib-file" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:6px;width:100%">
-        <input class="einp" id="vid-bib-nombre" placeholder="Nombre del vídeo (ej: Press banca)" style="margin-bottom:6px">
-        <button onclick="subirABiblioteca()" style="background:var(--ok);color:#fff;border:none;padding:7px 14px;border-radius:var(--r);font-size:12px;font-family:var(--sans);cursor:pointer">⬆️ Subir a biblioteca</button>
-        <div id="vid-bib-prog" style="font-size:11px;color:var(--accent);min-height:14px;margin-top:4px"></div>
-      </div>
-    </div>
-    <div id="vid-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px;margin-top:8px"></div>
-    <div style="display:flex;gap:8px">
-      <button class="pok" style="flex:1" onclick="saveVid()">💾 Guardar</button>
-      <button class="pok" style="flex:1;background:var(--warn-bg);border-color:rgba(192,57,43,.3);color:var(--warn)" onclick="rmVid()">🗑 Quitar</button>
-    </div>
-    <span class="pcan" onclick="cVidModal()" style="text-align:center;display:block">Cancelar</span>
-  </div>
-</div>
-
 <!-- PANEL COACH -->
 <div class="cov" id="coach-overlay">
   <div class="cpan">
@@ -997,6 +956,43 @@ var PANEL_HTML=`<!-- PIN -->
         
         <button class="sbtn" onclick="saveClose()">💾 Guardar y cerrar</button>
       </div>
+    </div>
+  </div>
+  <!-- VID MODAL — dentro del coach para heredar z-index correcto -->
+  <div id="vid-modal" style="display:none;position:fixed;inset:0;background:rgba(26,24,20,.92);z-index:700;align-items:center;justify-content:center;padding:20px">
+    <div class="pbox" style="min-width:300px;max-width:480px;text-align:left">
+      <div class="pbtitle" style="text-align:center">🎬 Vídeo de referencia</div>
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
+        <button id="vtab-url" onclick="swVTab('url')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer">🔗 YouTube / URL</button>
+        <button id="vtab-subir" onclick="swVTab('subir')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">⬆️ Subir vídeo</button>
+        <button id="vtab-bib" onclick="swVTab('bib')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:12px;cursor:pointer">📁 Biblioteca</button>
+      </div>
+      <div id="vsec-url">
+        <label class="elbl">Enlace YouTube / URL</label>
+        <input class="einp" id="vid-url-in" placeholder="https://youtube.com/watch?v=..." style="margin-bottom:10px">
+      </div>
+      <div id="vsec-subir" style="display:none">
+        <label class="elbl">Archivo de vídeo (MP4, MOV — máx 50MB)</label>
+        <input type="file" id="vid-file-in" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:10px;width:100%">
+        <div id="vid-upload-prog" style="display:none;font-size:11px;color:var(--accent);margin-bottom:8px">Subiendo...</div>
+      </div>
+      <div id="vsec-bib" style="display:none">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Vídeos de tu biblioteca. Haz clic para seleccionar.</div>
+        <div id="vid-bib-list" style="max-height:200px;overflow-y:auto;display:grid;gap:6px"></div>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+          <label class="elbl">Subir nuevo a biblioteca</label>
+          <input type="file" id="vid-bib-file" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:6px;width:100%">
+          <input class="einp" id="vid-bib-nombre" placeholder="Nombre del vídeo (ej: Press banca)" style="margin-bottom:6px">
+          <button onclick="subirABiblioteca()" style="background:var(--ok);color:#fff;border:none;padding:7px 14px;border-radius:var(--r);font-size:12px;font-family:var(--sans);cursor:pointer">⬆️ Subir a biblioteca</button>
+          <div id="vid-bib-prog" style="font-size:11px;color:var(--accent);min-height:14px;margin-top:4px"></div>
+        </div>
+      </div>
+      <div id="vid-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px;margin-top:8px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="pok" style="flex:1" onclick="saveVid()">💾 Guardar</button>
+        <button class="pok" style="flex:1;background:var(--warn-bg);border-color:rgba(192,57,43,.3);color:var(--warn)" onclick="rmVid()">🗑 Quitar</button>
+      </div>
+      <span class="pcan" onclick="cVidModal()" style="text-align:center;display:block">Cancelar</span>
     </div>
   </div>
 </div>
@@ -1488,14 +1484,14 @@ function swVTab(t){
 var _vWi=0; // semana del vídeo que se está editando
 function oVid(di,ri){
   _vdi=di; _vri=ri; _vWi=_edWeek;
-  document.getElementById('vid-modal').classList.add('open');
+  var vm=document.getElementById('vid-modal'); vm.style.display='flex';
   var ej=getDias(_vWi)[di]&&getDias(_vWi)[di].ejercicios[ri]?getDias(_vWi)[di].ejercicios[ri]:null;
   document.getElementById('vid-url-in').value=ej?ej.videoUrl||'':'';
   document.getElementById('vid-err').textContent='';
   document.getElementById('vid-upload-prog').style.display='none';
   swVTab('url');
 }
-function cVidModal(){ document.getElementById('vid-modal').classList.remove('open'); }
+function cVidModal(){ document.getElementById('vid-modal').style.display='none'; }
 async function saveVid(){
   var err=document.getElementById('vid-err');
   err.textContent='';
