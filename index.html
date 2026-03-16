@@ -490,14 +490,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .abtn.p:hover{background:#f8f4ef;}
 
 /* TIMER */
-.tbar-inline{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:50;}
-.tnum{font-family:var(--serif);font-size:34px;font-weight:400;color:var(--ok);min-width:78px;text-align:center;transition:color .3s;}
-.tnum.warn{color:#d4822a;} .tnum.over{color:var(--warn);}
-.ttrack{flex:1;min-width:80px;height:3px;background:var(--border);overflow:hidden;}
-.tfill{height:100%;background:var(--ok);transition:width .9s linear,background .3s;}
-.tbtn{padding:6px 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;}
+/* TIMER FLOTANTE */
+.tbar-inline{display:none;} /* ocultar barra fija */
+.rest-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:12px 24px;border-radius:40px;display:none;align-items:center;gap:14px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.25);min-width:220px;transition:background .3s;}
+.rest-toast.visible{display:flex;}
+.rest-toast.warn{background:#c0392b;}
+.rest-toast.done{background:var(--ok);animation:tpulse .4s ease 3;}
+@keyframes tpulse{0%,100%{transform:translateX(-50%) scale(1);}50%{transform:translateX(-50%) scale(1.06);}}
+.tnum{font-family:var(--serif);font-size:28px;font-weight:400;line-height:1;min-width:60px;text-align:center;}
+.ttrack{width:80px;height:3px;background:rgba(255,255,255,.25);border-radius:2px;overflow:hidden;}
+.tfill{height:100%;background:#fff;transition:width .9s linear;}
+.tbtn{padding:6px 12px;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;cursor:pointer;font-size:11px;font-family:var(--sans);border-radius:20px;transition:all .15s;}
+.tbtn:hover{background:rgba(255,255,255,.15);}
 .tbtn.run{border-color:var(--ok);color:var(--ok);}
-.tbtn:hover{border-color:var(--ink);color:var(--ink);}
 .rqbs{display:flex;gap:5px;flex-wrap:wrap;}
 .rqb{padding:5px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-family:var(--sans);transition:all .15s;}
 .rqb:hover{border-color:var(--ink);color:var(--ink);}
@@ -1061,22 +1066,18 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- ENTRENO -->
 <div class="panel" id="tab-entreno" style="padding:0">
-  <!-- TIMER STICKY -->
-  <div class="tbar-inline" id="tbar-inline">
-    <div style="display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap">
-      <div style="text-align:center;min-width:64px">
-        <div class="tnum" id="t-num">3:00</div>
-        <div style="font-size:8px;color:var(--muted);letter-spacing:.8px">DESCANSO</div>
-      </div>
-      <div class="ttrack" style="flex:1;min-width:60px"><div class="tfill" id="t-fill" style="width:100%"></div></div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+  <!-- TIMER TOAST (flotante abajo) -->
+  <div class="rest-toast" id="rest-toast">
+    <div style="text-align:center">
+      <div style="font-size:9px;letter-spacing:1px;opacity:.7;margin-bottom:2px">DESCANSO</div>
+      <div class="tnum" id="t-num">3:00</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="ttrack"><div class="tfill" id="t-fill" style="width:100%"></div></div>
+      <div style="display:flex;gap:5px">
         <button class="tbtn" id="t-play" onclick="tToggle()">▶</button>
         <button class="tbtn" onclick="tReset()">↺</button>
-        <button class="rqb" onclick="tSet(60)">1m</button>
-        <button class="rqb" onclick="tSet(90)">1:30</button>
-        <button class="rqb" onclick="tSet(120)">2m</button>
-        <button class="rqb" onclick="tSet(180)">3m</button>
-        <button class="rqb plan" id="rqb-plan" onclick="tSet(P.restMain)">Plan</button>
+        <button class="tbtn" onclick="tHide()">✕</button>
       </div>
     </div>
   </div>
@@ -1354,10 +1355,10 @@ function buildTraining(wi){
           '<div class="lset-lbl">S'+(si+1)+'</div>'+
           '<div class="lset-fields">'+
             '<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5"'+
-              ' onchange="sSet(\''+ek+'\','+si+',\'v\',this.value);chkPR(\''+ek+'\',this.value,\'v\','+wi+','+di+','+ri+')">'+
+              ' onchange="onSerieInput(\''+ek+'\','+si+',\'v\',this.value,'+rs+');chkPR(\''+ek+'\',this.value,\'v\','+wi+','+di+','+ri+')">'+
             '<span class="lset-x">×</span>'+
             '<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" style="width:40px"'+
-              ' onchange="sSet(\''+ek+'\','+si+',\'r\',this.value)">'+
+              ' onchange="onSerieInput(\''+ek+'\','+si+',\'r\',this.value,'+rs+')">'+
           '</div>'+
         '</div>';
       }
@@ -1390,7 +1391,7 @@ function buildTraining(wi){
         com+
         '<div class="ex-log">'+
           '<div class="linps">'+sHtml+
-            '<button class="rbtn" onclick="tSet('+rs+');tStartTimer()">⏱ Descanso</button>'+
+            '<button class="rbtn" style="padding:8px 10px" onclick="tSet('+rs+');tStartTimer()" title="Iniciar descanso">⏱</button>'+
             '<button class="dbtn'+(done?' done':'')+'" id="dbtn-'+ek+'" onclick="togDone(\''+ek+'\',this,'+wi+','+di+')">'+
               (done?'✓ Hecho':'Marcar hecho')+
             '</button>'+
@@ -1944,27 +1945,45 @@ function applyVis(){
 
 // ── TIMER ─────────────────────────────
 var tT=180,tL=180,tRun=false,tIv=null;
-function tSet(s){tStop();tT=s;tL=s;tRender();}
+function tShow(){ var t=document.getElementById('rest-toast'); if(t){t.classList.add('visible');t.classList.remove('warn','done');} }
+function tHide(){ tStop(); var t=document.getElementById('rest-toast'); if(t) t.classList.remove('visible','warn','done'); }
+function tSet(s){ tStop(); tT=s; tL=s; tRender(); tShow(); }
 function tStartTimer(){
-  document.getElementById('t-play').textContent='⏸ Pausa'; document.getElementById('t-play').classList.add('run');
-  tIv=setInterval(function(){tL--;tRender();if(tL<=0){tStop();tBeep();}},1000);
+  tShow(); tRun=true;
+  var b=document.getElementById('t-play'); if(b){b.textContent='⏸';b.classList.add('run');}
+  tIv=setInterval(function(){tL--;tRender();if(tL<=0){tStop();tDone();}},1000);
 }
-function tStop(){ clearInterval(tIv);tRun=false; var b=document.getElementById('t-play'); b.textContent='▶ Iniciar'; b.classList.remove('run'); }
+function tStop(){ clearInterval(tIv);tRun=false; var b=document.getElementById('t-play'); if(b){b.textContent='▶';b.classList.remove('run');} }
 function tToggle(){ tRun?tStop():tStartTimer(); }
 function tReset(){ tStop();tL=tT;tRender(); }
 function tRender(){
-  var m=Math.floor(tL/60); var s=('0'+tL%60).slice(-2);
+  var m=Math.floor(Math.max(tL,0)/60); var s=('0'+Math.max(tL,0)%60).slice(-2);
   var el=document.getElementById('t-num'); var fi=document.getElementById('t-fill');
-  el.textContent=m+':'+s; var pct=tT>0?(tL/tT)*100:0; fi.style.width=pct+'%';
-  el.className='tnum'; fi.style.background='var(--green)';
-  if(tL<=P.restWarn&&tL>0){el.classList.add('warn');fi.style.background='var(--yellow)';}
-  if(tL<=0){el.classList.add('over');fi.style.background='var(--red)';fi.style.width='100%';}
+  var toast=document.getElementById('rest-toast');
+  if(!el||!fi) return;
+  el.textContent=m+':'+s;
+  var pct=tT>0?(Math.max(tL,0)/tT)*100:0; fi.style.width=pct+'%';
+  if(toast){toast.classList.remove('warn','done');}
+  if(tL<=P.restWarn&&tL>0&&toast){toast.classList.add('warn');}
+}
+function tDone(){
+  var toast=document.getElementById('rest-toast');
+  if(toast){toast.classList.remove('warn');toast.classList.add('done');}
+  try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  tBeep();
 }
 function tBeep(){
   try{
     var ctx=new(window.AudioContext||window.webkitAudioContext)();
-    [0,.15,.3].forEach(function(t){ var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.value=0.3;o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.12); });
+    [0,.2,.4].forEach(function(t){var o=ctx.createOscillator();var g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=660;g.gain.value=0.3;o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+.15);});
   }catch(e){}
+}
+function onSerieInput(ek,si,campo,val,restSeg){
+  sSet(ek,si,campo,val);
+  var sv=lLog(ek);
+  var kg=sv&&sv.sets&&sv.sets[si]?sv.sets[si].v:'';
+  var rp=sv&&sv.sets&&sv.sets[si]?sv.sets[si].r:'';
+  if(kg&&rp){ tSet(restSeg); tStartTimer(); }
 }
 
 // ── PIN & COACH ───────────────────────
