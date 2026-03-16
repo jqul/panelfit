@@ -552,13 +552,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 /* EJERCICIOS — NUEVO DISEÑO */
 .ex-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
 .ex-card.principal{border-left:4px solid var(--ink);}
-.ex-card.accesorio{border-left:4px solid var(--border2);opacity:.92;}
-.ex-main{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 12px;}
-.ex-num{font-size:11px;color:var(--muted);font-weight:600;min-width:20px;margin-top:2px;}
-.ex-info{flex:1;min-width:0;}
-.ex-nombre{font-size:16px;font-weight:700;color:var(--ink);line-height:1.2;font-family:var(--sans);margin-bottom:8px;}
-.ex-nombre.acc{font-size:14px;font-weight:600;color:var(--text);}
-.ex-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ex-card.accesorio{border-left:4px solid var(--border2);}
+.ex-main{display:flex;align-items:center;gap:12px;padding:14px 16px 12px;flex-wrap:wrap;}
+.ex-num{font-size:11px;color:var(--muted);font-weight:600;min-width:16px;flex-shrink:0;}
+.ex-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ex-nombre{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;font-family:var(--sans);flex:1;min-width:120px;}
+.ex-nombre.acc{font-size:13px;font-weight:600;color:var(--text);}
+.ex-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0;}
 .ex-pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 11px;border-radius:20px;letter-spacing:.2px;}
 .ex-pill.series{background:var(--bg2);border:1px solid var(--border2);color:var(--text2);}
 .ex-pill.peso{background:var(--ink);color:var(--card);}
@@ -591,7 +591,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .lnote:focus{border-color:var(--ink);}
 
 /* VÍDEO */
-.vrow{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 12px;background:var(--bg2);border-top:1px solid var(--border);}
+.vrow{display:none;flex-wrap:wrap;gap:8px;padding:10px 16px 12px;background:var(--bg2);border-top:1px solid var(--border);}
+.vrow.open{display:flex;}
+.vtoggle{width:100%;padding:8px 16px;background:var(--bg2);border:none;border-top:1px solid var(--border);color:var(--muted);font-size:11px;font-family:var(--sans);cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;transition:color .15s;}
+.vtoggle:hover{color:var(--text);}
+.vtoggle .varr{font-size:10px;transition:transform .2s;display:inline-block;}
 .vbox{flex:1;min-width:140px;max-width:340px;}
 .vlbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
 .vlbl span{padding:1px 6px;border:1px solid var(--border2);font-size:9px;color:var(--text2);}
@@ -1394,7 +1398,10 @@ function buildTraining(wi){
           '<textarea class="lnote" rows="1" placeholder="Nota del ejercicio..."'+
             ' onchange="sNote(\''+ek+'\',this.value)">'+note+'</textarea>'+
         '</div>'+
-        '<div class="vrow">'+
+        '<button class="vtoggle" onclick="togVrow(\'vrow-'+ek+'\',this)">'+
+          '<span class="varr">▼</span> Ver vídeos'+
+        '</button>'+
+        '<div class="vrow" id="vrow-'+ek+'" style="display:none">'+
           '<div class="vbox"><div class="vlbl">🎬 <span class="vtag-c">Vídeo entrenador</span></div>'+rCV(r,di,ri)+'</div>'+
           '<div class="vbox"><div class="vlbl">📱 <span class="vtag-cl">Tu ejecución</span></div>'+rClV(ek,r.nombre)+'</div>'+
         '</div>'+
@@ -1417,6 +1424,13 @@ function buildTraining(wi){
 function togDay(id,hd){
   var b=document.getElementById(id); b.classList.toggle('open');
   hd.querySelector('.day-chev').classList.toggle('open');
+}
+function togVrow(id,btn){
+  var el=document.getElementById(id); if(!el) return;
+  var open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  var arr=btn.querySelector('.varr');
+  if(arr) arr.style.transform=open?'':'rotate(180deg)';
 }
 function togDone(k,btn,wi,di){
   var a=lAll(); if(!a[k])a[k]={sets:{},done:false,note:''};
