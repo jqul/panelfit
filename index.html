@@ -550,22 +550,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .wpill.current{border-color:var(--accent);color:var(--accent);}
 
 /* EJERCICIOS — NUEVO DISEÑO */
-.ex-card{border-bottom:1px solid var(--border);background:var(--card);}
-.ex-card:last-child{border-bottom:none;}
-.ex-card.principal{border-left:3px solid var(--ink);}
-.ex-card.accesorio{border-left:3px solid var(--border2);}
-.ex-main{display:flex;align-items:center;gap:12px;padding:14px 16px 10px;}
-.ex-num{font-size:10px;color:var(--muted);font-weight:500;min-width:18px;}
+.ex-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
+.ex-card.principal{border-left:4px solid var(--ink);}
+.ex-card.accesorio{border-left:4px solid var(--border2);opacity:.92;}
+.ex-main{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 12px;}
+.ex-num{font-size:11px;color:var(--muted);font-weight:600;min-width:20px;margin-top:2px;}
 .ex-info{flex:1;min-width:0;}
-.ex-nombre{font-size:15px;font-weight:600;color:var(--ink);line-height:1.2;font-family:var(--sans);}
-.ex-nombre.acc{font-size:13px;font-weight:500;color:var(--text);}
-.ex-pills{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center;}
-.ex-pill{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;}
+.ex-nombre{font-size:16px;font-weight:700;color:var(--ink);line-height:1.2;font-family:var(--sans);margin-bottom:8px;}
+.ex-nombre.acc{font-size:14px;font-weight:600;color:var(--text);}
+.ex-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ex-pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 11px;border-radius:20px;letter-spacing:.2px;}
 .ex-pill.series{background:var(--bg2);border:1px solid var(--border2);color:var(--text2);}
 .ex-pill.peso{background:var(--ink);color:var(--card);}
-.ex-pill.peso.acc{background:transparent;border:1px solid var(--ink);color:var(--ink);}
-.ex-pill.rpe{background:transparent;border:1px solid var(--accent2);color:var(--accent);font-size:10px;}
-.ex-pr{display:inline-flex;align-items:center;gap:3px;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:2px 6px;border-radius:20px;letter-spacing:.3px;}
+.ex-pill.peso.acc{background:transparent;border:1.5px solid var(--ink);color:var(--ink);}
+.ex-pill.rpe{background:transparent;border:1px solid var(--accent2);color:var(--accent);font-size:11px;}
+.ex-pr{display:inline-flex;align-items:center;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:2px 7px;border-radius:20px;letter-spacing:.3px;margin-left:6px;vertical-align:middle;}
 .rpe-tag{font-size:9px;color:var(--muted);margin-left:6px;letter-spacing:.4px;}
 .pr-badge{display:inline-block;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:1px 6px;margin-left:6px;letter-spacing:.4px;}
 
@@ -575,7 +574,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .ccom-txt{font-size:12px;color:var(--text2);line-height:1.6;font-style:italic;}
 
 /* LOG — INPUTS */
-.ex-log{padding:10px 16px 14px;background:var(--bg2);border-top:1px solid var(--border);}
+.ex-log{padding:12px 16px 14px;background:var(--bg2);border-top:1px solid var(--border);}
 .linps{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
 .lset{background:var(--card);border:1px solid var(--border);padding:6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:var(--r);}
 .lset-lbl{font-size:9px;color:var(--muted);font-weight:500;letter-spacing:.8px;text-transform:uppercase;}
@@ -1353,7 +1352,7 @@ function buildTraining(wi){
             '<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5"'+
               ' onchange="sSet(\''+ek+'\','+si+',\'v\',this.value);chkPR(\''+ek+'\',this.value,\'v\','+wi+','+di+','+ri+')">'+
             '<span class="lset-x">×</span>'+
-            '<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" style="width:46px"'+
+            '<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" style="width:40px"'+
               ' onchange="sSet(\''+ek+'\','+si+',\'r\',this.value)">'+
           '</div>'+
         '</div>';
@@ -1361,27 +1360,31 @@ function buildTraining(wi){
       var done=sv&&sv.done; var note=(sv&&sv.note)?sv.note:'';
       var rs=r.principal?P.restMain:P.restAcc;
       var pr=isPR(ek,di,ri);
-      var com = r.comentario&&r.comentario.trim() ?
-        '<tr><td colspan="4" style="padding:0">'+
-          '<div class="ccom">'+
-            '<span style="font-size:15px;flex-shrink:0;margin-top:1px">💬</span>'+
-            '<div><div class="ccom-lbl">Entrenador</div>'+
-            '<div class="ccom-txt">'+eH(r.comentario)+'</div></div>'+
-          '</div>'+
-        '</td></tr>' : '';
+      var esPrincipal=r.principal;
 
-      return '<tr class="'+(r.principal?'mr':'')+'">'+
-          '<td style="font-weight:500">'+r.nombre+
-            '<span class="pr-badge" id="prb-'+ek+'" style="'+(pr?'':'display:none')+'">🏆 PR</span>'+
-          '</td>'+
-          '<td>'+r.series+'</td>'+
-          '<td><span class="wtag '+(r.principal?'m':'')+'">'+ps+'</span>'+
-            (rpe&&r.principal ? '<span class="rpe-tag">'+rpe+'</span>' : '')+
-          '</td>'+
-          '<td></td>'+
-        '</tr>'+
+      var com = r.comentario&&r.comentario.trim() ?
+        '<div class="ccom" style="margin:0 16px 10px;border-radius:var(--r)">'+
+          '<span style="font-size:14px;flex-shrink:0;margin-top:1px">💬</span>'+
+          '<div><div class="ccom-lbl">Entrenador</div>'+
+          '<div class="ccom-txt">'+eH(r.comentario)+'</div></div>'+
+        '</div>' : '';
+
+      return '<div class="ex-card '+(esPrincipal?'principal':'accesorio')+'">'+
+        '<div class="ex-main">'+
+          '<div class="ex-num">'+(ri+1)+'</div>'+
+          '<div class="ex-info">'+
+            '<div class="ex-nombre'+(esPrincipal?'':' acc')+'">'+r.nombre+
+              '<span class="ex-pr" id="prb-'+ek+'" style="'+(pr?'':'display:none')+'">🏆 PR</span>'+
+            '</div>'+
+            '<div class="ex-pills">'+
+              '<span class="ex-pill series">'+r.series+'</span>'+
+              '<span class="ex-pill peso'+(esPrincipal?'':' acc')+'">'+ps+'</span>'+
+              (rpe&&esPrincipal?'<span class="ex-pill rpe">'+rpe+'</span>':'')+
+            '</div>'+
+          '</div>'+
+        '</div>'+
         com+
-        '<tr class="lr"><td colspan="4">'+
+        '<div class="ex-log">'+
           '<div class="linps">'+sHtml+
             '<button class="rbtn" onclick="tSet('+rs+');tStartTimer()">⏱ Descanso</button>'+
             '<button class="dbtn'+(done?' done':'')+'" id="dbtn-'+ek+'" onclick="togDone(\''+ek+'\',this,'+wi+','+di+')">'+
@@ -1390,11 +1393,12 @@ function buildTraining(wi){
           '</div>'+
           '<textarea class="lnote" rows="1" placeholder="Nota del ejercicio..."'+
             ' onchange="sNote(\''+ek+'\',this.value)">'+note+'</textarea>'+
-        '</td></tr>'+
-        '<tr><td colspan="4" style="padding:0"><div class="vrow">'+
+        '</div>'+
+        '<div class="vrow">'+
           '<div class="vbox"><div class="vlbl">🎬 <span class="vtag-c">Vídeo entrenador</span></div>'+rCV(r,di,ri)+'</div>'+
           '<div class="vbox"><div class="vlbl">📱 <span class="vtag-cl">Tu ejecución</span></div>'+rClV(ek,r.nombre)+'</div>'+
-        '</div></td></tr>';
+        '</div>'+
+      '</div>';
     }).join('');
 
     return '<div class="day-block">'+
@@ -1405,11 +1409,7 @@ function buildTraining(wi){
         '</div>'+
         '<span class="day-prog '+pc+'">'+pl+'</span>'+
       '</div>'+
-      '<div class="day-body'+(open?' open':'')+'" id="db-'+di+'">'+
-        '<table class="ext"><thead><tr>'+
-          '<th>Ejercicio</th><th>Series</th><th>Peso plan</th><th>Tu registro</th>'+
-        '</tr></thead><tbody>'+rows+'</tbody></table>'+
-      '</div>'+
+      '<div class="day-body'+(open?' open':'')+'" id="db-'+di+'">'+rows+'</div>'+
     '</div>';
   }).join('');
 }
