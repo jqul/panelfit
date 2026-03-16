@@ -416,12 +416,11 @@ async function editarCliente(clienteId){
 }
 
 // ── PANEL CLIENTE ─────────────────────
-var _cliData=null, _cliPlan=null, _cliReg=null, _cliToken=null;
-
 async function loadClienteApp(token){
   loading(true);
   try{
-    var {data:c}=await sb.from('clientes').select('*').eq('token',token).single();
+    var {data:c, error:cerr}=await sb.from('clientes').select('*').eq('token',token).single();
+    if(cerr) console.error('clientes RLS error:',cerr.message);
     if(!c){
       loading(false);
       showView('view-cliente');
@@ -430,51 +429,9 @@ async function loadClienteApp(token){
     }
     var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',c.id).single();
     var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',c.id).single();
-    
-    // Guardar datos para usar después del PIN
-    _cliData=c; _cliPlan=pl; _cliReg=rg; _cliToken=token;
-    
-    // Comprobar si ya tiene el PIN guardado en localStorage
-    var pinKey='pf_pin_'+c.id;
-    var pinGuardado=localStorage.getItem(pinKey);
-    var pinCorrecto=pl?.datos?.P?.pin||'1234';
-    
-    if(pinGuardado===pinCorrecto){
-      // Ya verificado — entrar directo
-      montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, false, c.id);
-    } else {
-      // Mostrar pantalla de PIN
-      loading(false);
-      var nombre=(c.nombre||'')+(c.apellido?' '+c.apellido:'');
-      document.getElementById('pin-cli-nombre').textContent='Hola '+nombre+', bienvenido/a';
-      document.getElementById('pin-cli-input').value='';
-      document.getElementById('pin-cli-err').textContent='';
-      showView('view-pin-cliente');
-      setTimeout(function(){ document.getElementById('pin-cli-input').focus(); },200);
-      return;
-    }
+    montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, false, c.id);
   }catch(e){ console.error('loadClienteApp:',e); }
   loading(false);
-}
-
-function chkPinCliente(){
-  var input=document.getElementById('pin-cli-input');
-  var err=document.getElementById('pin-cli-err');
-  var pinIntroducido=input.value.trim();
-  var pinCorrecto=_cliPlan?.datos?.P?.pin||'1234';
-  
-  if(pinIntroducido===pinCorrecto){
-    // Guardar en localStorage para no volver a pedir
-    localStorage.setItem('pf_pin_'+_cliData.id, pinCorrecto);
-    err.textContent='';
-    loading(true);
-    montarPanel(_cliData, _cliPlan?.datos||{}, _cliReg?.datos||{}, _cliToken, false, _cliData.id);
-    loading(false);
-  } else {
-    err.textContent='PIN incorrecto. Pídele el PIN a tu entrenador.';
-    input.value='';
-    input.focus();
-  }
 }
 
 async function guardarPlan(clienteId, planObj){
@@ -842,6 +799,8 @@ var PANEL_HTML=`<!-- PIN -->
         <div class="ctab" onclick="swC('dieta',this)">🍽️ Dieta</div>
         <div class="ctab" onclick="swC('vista',this)">👁 Vista</div>
         <div class="ctab" onclick="swC('progreso',this)">📊 Progreso</div>
+        <div class="ctab" onclick="swC('fotos',this);cargarFotosCoach()">📸 Fotos</div>
+        <div class="ctab" onclick="swC('entrenos',this);cargarEntrenosCoach()">📋 Entrenos</div>
         <div class="ctab" onclick="swC('config',this)">⚙️ Config</div>
       </div>
       <button class="cclose" onclick="cCoach()">✕ Cerrar</button>
@@ -946,6 +905,22 @@ var PANEL_HTML=`<!-- PIN -->
             <div><label class="elbl">Número del cliente</label><input class="einp" id="cfg-tel-cliente" placeholder="34612345678"></div>
             <div><label class="elbl">Mensaje para el cliente</label><input class="einp" id="cfg-msg"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- FOTOS CLIENTE -->
+      <div class="csec" id="cs-fotos">
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">📸 Fotos de progreso</div></div>
+          <div id="coach-fotos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando fotos...</div></div>
+        </div>
+      </div>
+
+      <!-- ENTRENOS CLIENTE -->
+      <div class="csec" id="cs-entrenos">
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">📋 Historial de entrenos</div></div>
+          <div id="coach-entrenos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando entrenos...</div></div>
         </div>
       </div>
 
@@ -2689,6 +2664,126 @@ async function cargarGaleria(){
     carpeta.appendChild(hdr);
     carpeta.appendChild(body);
     gal.appendChild(carpeta);
+  });
+}
+
+
+// ── COACH: VER FOTOS DEL CLIENTE ──────────────────────
+async function cargarFotosCoach(){
+  var cid=window.__cid; if(!cid) return;
+  var body=document.getElementById('coach-fotos-body'); if(!body) return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
+  if(error){ body.innerHTML='<div style="color:var(--warn);font-size:12px;padding:10px">Error: '+error.message+'</div>'; return; }
+  if(!data||data.length===0){
+    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>';
+    return;
+  }
+  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
+  data.forEach(function(row){
+    var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    var nFotos=[row.url_frente,row.url_espalda,row.url_lateral].filter(Boolean).length;
+    var carpeta=document.createElement('div');
+    carpeta.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
+    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:18px">📁</span>'
+      +'<div>'
+        +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+fecha+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+nFotos+' foto'+(nFotos===1?'':'s')+'</div>'
+      +'</div></div>'
+    +'<span class="fol-arr" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
+    var bdy=document.createElement('div');
+    bdy.style.cssText='display:none;padding:0 14px 14px';
+    var imgs='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+    var labels={url_frente:'Frente',url_espalda:'Espalda',url_lateral:'Lateral'};
+    Object.keys(labels).forEach(function(k){
+      if(row[k]) imgs+='<div>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">'+labels[k]+'</div>'
+        +'<a href="'+row[k]+'" target="_blank">'
+        +'<img src="'+row[k]+'" style="width:100%;border-radius:4px;object-fit:cover;aspect-ratio:3/4;cursor:zoom-in" loading="lazy">'
+        +'</a></div>';
+    });
+    imgs+='</div>';
+    bdy.innerHTML=imgs;
+    var open=false;
+    hdr.onclick=function(){
+      open=!open;
+      bdy.style.display=open?'block':'none';
+      hdr.querySelector('.fol-arr').style.transform=open?'rotate(180deg)':'';
+      hdr.style.borderBottom=open?'1px solid var(--border)':'none';
+    };
+    carpeta.appendChild(hdr); carpeta.appendChild(bdy);
+    body.appendChild(carpeta);
+  });
+}
+
+// ── COACH: VER ENTRENOS DEL CLIENTE ───────────────────
+async function cargarEntrenosCoach(){
+  var cid=window.__cid; if(!cid) return;
+  var body=document.getElementById('coach-entrenos-body'); if(!body) return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  var {data,error}=await sb.from('registros').select('datos').eq('cliente_id',cid).single();
+  if(error||!data||!data.datos||!data.datos.logs){
+    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>';
+    return;
+  }
+  var logs=data.datos.logs;
+  var fechas=Object.keys(logs).sort(function(a,b){return b.localeCompare(a);});
+  if(fechas.length===0){
+    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>';
+    return;
+  }
+  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+fechas.length+' sesión'+(fechas.length===1?'':'es')+' registradas</div>';
+  fechas.forEach(function(fecha){
+    var sesion=logs[fecha];
+    var ejercicios=Object.keys(sesion||{});
+    if(ejercicios.length===0) return;
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
+    var fechaFmt=new Date(fecha+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:18px">🏋️</span>'
+      +'<div>'
+        +'<div style="font-size:13px;font-weight:500;color:var(--text);text-transform:capitalize">'+fechaFmt+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+ejercicios.length+' ejercicio'+(ejercicios.length===1?'':'s')+'</div>'
+      +'</div></div>'
+    +'<span class="fol-arr2" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
+    var bdy=document.createElement('div');
+    bdy.style.cssText='display:none;padding:0 14px 14px';
+    var rows='<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      +'<tr style="color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.5px">'
+      +'<th style="text-align:left;padding:4px 0;font-weight:500">Ejercicio</th>'
+      +'<th style="text-align:center;padding:4px 0;font-weight:500">Series</th>'
+      +'<th style="text-align:center;padding:4px 0;font-weight:500">Mejor serie</th>'
+      +'</tr>';
+    ejercicios.forEach(function(ej){
+      var series=sesion[ej]||[];
+      var mejor=series.reduce(function(mx,s){
+        var kg=parseFloat(s.kg)||0, rep=parseInt(s.rep)||0;
+        return (kg*rep > mx.kg*mx.rep)?{kg:kg,rep:rep}:mx;
+      },{kg:0,rep:0});
+      var seriesCompletadas=series.filter(function(s){return s.kg||s.rep;}).length;
+      rows+='<tr style="border-top:1px solid var(--border)">'
+        +'<td style="padding:6px 0;color:var(--text);font-weight:500">'+ej+'</td>'
+        +'<td style="text-align:center;padding:6px 0;color:var(--muted)">'+seriesCompletadas+'</td>'
+        +'<td style="text-align:center;padding:6px 0;color:var(--accent);font-weight:600">'+(mejor.kg?mejor.kg+'kg × '+mejor.rep+'rep':'—')+'</td>'
+      +'</tr>';
+    });
+    rows+='</table>';
+    bdy.innerHTML=rows;
+    var open=false;
+    hdr.onclick=function(){
+      open=!open;
+      bdy.style.display=open?'block':'none';
+      hdr.querySelector('.fol-arr2').style.transform=open?'rotate(180deg)':'';
+      hdr.style.borderBottom=open?'1px solid var(--border)':'none';
+    };
+    card.appendChild(hdr); card.appendChild(bdy);
+    body.appendChild(card);
   });
 }
 
