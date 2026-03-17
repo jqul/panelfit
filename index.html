@@ -291,7 +291,7 @@ function resetApp(){
   // Modo demo — carga panel de ejemplo sin Supabase
   if(new URLSearchParams(window.location.search).has('demo')){
     loading(false);
-    loadDemo();
+    setTimeout(loadDemo, 0);
     return;
   }
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
@@ -2922,8 +2922,6 @@ function loadDemo(){
 
   // Montar panel sin guardar nada
   var origOnSave = window.__onSave;
-  // Resetear P a valores vacíos antes de montar para evitar residuos
-  P.nombre=''; P.apellido=''; P.peso=0; P.grasa=0; P.musculo=0; P.totalLevant=0;
   montarPanel(demoCliente, demoPlan, demoReg, 'demo', false, 'demo');
 
   // Sobrescribir onSave y guardarRegistros para que no toquen Supabase
