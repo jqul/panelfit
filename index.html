@@ -288,10 +288,15 @@ function resetApp(){
 
 // Arranque
 (async function init(){
+  // Modo demo — carga panel de ejemplo sin Supabase
+  if(new URLSearchParams(window.location.search).has('demo')){
+    loading(false);
+    loadDemo();
+    return;
+  }
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
   try{
     var token = getClientToken();
-    // Si es cliente con token, no necesita sesión de entrenador
     if(token){
       clearTimeout(safetyTimer);
       await loadClienteApp(token);
@@ -2826,6 +2831,114 @@ async function cargarEntrenosCoach(){
     card.appendChild(hdr); card.appendChild(bdy);
     body.appendChild(card);
   });
+}
+
+
+// ── MODO DEMO ─────────────────────────
+function loadDemo(){
+  var demoCliente = { id:'demo', nombre:'Alex', apellido:'García', token:'demo' };
+  var demoPlan = { P:{
+    nombre:'Alex', apellido:'García',
+    peso:83.5, grasa:14.2, musculo:68.1, totalLevant:485,
+    tipo:'powerlifting',
+    planDesc:'Powerlifting · Pesos confirmados · Progresión +2.5 kg/semana',
+    pin:'1234', restMain:180, restAcc:90, restWarn:30,
+    mensaje:'¡Buena sesión hoy! Recuerda calentar bien antes de los levantamientos principales.',
+    telefonoEntrenador:'', telefonoCliente:'',
+    tabs_vis:{dashboard:true,semana:true,entreno:true,records:true,historial:true,dieta:true,habitos:true,fotos:true},
+    hdr_vis:{peso:true,grasa:true,musculo:true,total:true},
+    semanas:[
+      {label:'16 Feb',fechaInicio:'2025-02-16',fechaFin:'2025-02-22',rpe:'@7',current:false,dias:[
+        {titulo:'LUNES — Empuje',foco:'Sentadilla / Banca / Militar',ejercicios:[
+          {nombre:'Sentadilla',series:'4×5',peso:'100',principal:true,videoUrl:'https://www.youtube.com/watch?v=ultWZbUMPL8',comentario:'Mantén el pecho alto en el descenso. Si las rodillas colapsan hacia adentro, reduce peso.'},
+          {nombre:'Press banca',series:'4×5',peso:'80',principal:true,comentario:'Codos a 45°, no los abras. Retrae escápulas antes de bajar la barra.'},
+          {nombre:'Press militar mancuernas',series:'4×10',peso:'24 kg/mano',principal:false,comentario:''},
+          {nombre:'Extensión pierna',series:'3×15',peso:'65',principal:false,comentario:''},
+        ]},
+        {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
+          {nombre:'Peso muerto',series:'4×4',peso:'130',principal:true,comentario:'Barra pegada al cuerpo todo el recorrido. Empuja el suelo, no tires de la barra.'},
+          {nombre:'Dominadas lastre',series:'4×6',peso:'+10 kg',principal:true,comentario:''},
+          {nombre:'Remo barra',series:'4×8',peso:'70',principal:false,comentario:'Retrae las escápulas al final del recorrido.'},
+          {nombre:'Curl bíceps barra',series:'3×12',peso:'35',principal:false,comentario:''},
+        ]},
+        {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
+          {nombre:'Sentadilla técnica',series:'3×3',peso:'70',principal:true,comentario:'Sesión técnica. Vídeo cada serie.'},
+          {nombre:'Press banca técnica',series:'3×3',peso:'60',principal:true,comentario:''},
+          {nombre:'Hip thrust',series:'4×12',peso:'80',principal:false,comentario:''},
+          {nombre:'Face pull',series:'3×20',peso:'25',principal:false,comentario:''},
+        ]},
+      ]},
+      {label:'23 Feb',fechaInicio:'2025-02-23',fechaFin:'2025-03-01',rpe:'@7.5',current:false,dias:[
+        {titulo:'LUNES — Empuje',foco:'Sentadilla / Banca / Militar',ejercicios:[
+          {nombre:'Sentadilla',series:'4×5',peso:'102.5',principal:true,comentario:'Mantén el pecho alto en el descenso.'},
+          {nombre:'Press banca',series:'4×5',peso:'82.5',principal:true,comentario:''},
+          {nombre:'Press militar mancuernas',series:'4×10',peso:'24 kg/mano',principal:false,comentario:''},
+          {nombre:'Extensión pierna',series:'3×15',peso:'67.5',principal:false,comentario:''},
+        ]},
+        {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
+          {nombre:'Peso muerto',series:'4×4',peso:'132.5',principal:true,comentario:''},
+          {nombre:'Dominadas lastre',series:'4×6',peso:'+10 kg',principal:true,comentario:''},
+          {nombre:'Remo barra',series:'4×8',peso:'72.5',principal:false,comentario:''},
+          {nombre:'Curl bíceps barra',series:'3×12',peso:'37.5',principal:false,comentario:''},
+        ]},
+        {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
+          {nombre:'Sentadilla técnica',series:'3×3',peso:'72.5',principal:true,comentario:''},
+          {nombre:'Press banca técnica',series:'3×3',peso:'62.5',principal:true,comentario:''},
+          {nombre:'Hip thrust',series:'4×12',peso:'82.5',principal:false,comentario:''},
+          {nombre:'Face pull',series:'3×20',peso:'27.5',principal:false,comentario:''},
+        ]},
+      ]},
+      {label:'2 Mar',fechaInicio:'2025-03-02',fechaFin:'2025-03-08',rpe:'@8',current:true,dias:[
+        {titulo:'LUNES — Empuje',foco:'Sentadilla / Banca / Militar',ejercicios:[
+          {nombre:'Sentadilla',series:'4×5',peso:'105',principal:true,videoUrl:'https://www.youtube.com/watch?v=ultWZbUMPL8',comentario:'Mantén el pecho alto en el descenso. Esta semana apretamos un poco más.'},
+          {nombre:'Press banca',series:'4×5',peso:'85',principal:true,comentario:'Codos a 45°. Esta semana subimos 2.5 kg.'},
+          {nombre:'Press militar mancuernas',series:'4×10',peso:'26 kg/mano',principal:false,comentario:''},
+          {nombre:'Extensión pierna',series:'3×15',peso:'70',principal:false,comentario:''},
+        ]},
+        {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
+          {nombre:'Peso muerto',series:'4×4',peso:'135',principal:true,comentario:'Barra pegada al cuerpo. Esta semana al 85%.'},
+          {nombre:'Dominadas lastre',series:'4×6',peso:'+12.5 kg',principal:true,comentario:''},
+          {nombre:'Remo barra',series:'4×8',peso:'75',principal:false,comentario:''},
+          {nombre:'Curl bíceps barra',series:'3×12',peso:'40',principal:false,comentario:''},
+        ]},
+        {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
+          {nombre:'Sentadilla técnica',series:'3×3',peso:'75',principal:true,comentario:''},
+          {nombre:'Press banca técnica',series:'3×3',peso:'65',principal:true,comentario:''},
+          {nombre:'Hip thrust',series:'4×12',peso:'85',principal:false,comentario:''},
+          {nombre:'Face pull',series:'3×20',peso:'30',principal:false,comentario:''},
+        ]},
+      ]},
+    ],
+    habits:[
+      {nombre:'Dormir 8h',icono:'😴',objetivo:7,tipo:'check'},
+      {nombre:'Proteína diaria',icono:'🥩',objetivo:7,tipo:'check'},
+      {nombre:'10.000 pasos',icono:'🚶',objetivo:5,tipo:'check'},
+      {nombre:'Sin alcohol',icono:'🚫',objetivo:7,tipo:'check'},
+    ],
+    dieta_kcal:3200, dieta_prot:180, dieta_carb:380, dieta_fat:90,
+    dieta_nota:'Días de entreno +200 kcal extra en carbohidratos. Prioriza comida real.',
+  }};
+  var demoReg = { logs:{}, rec:{}, hab:{}, sem:{} };
+
+  // Montar panel sin guardar nada
+  var origOnSave = window.__onSave;
+  montarPanel(demoCliente, demoPlan, demoReg, 'demo', false, 'demo');
+
+  // Sobrescribir onSave para que no guarde en Supabase
+  window.__onSave = function(){
+    var el=document.getElementById('sync-status');
+    if(el) el.textContent='Modo demo — los cambios no se guardan';
+  };
+
+  // Banner demo
+  setTimeout(function(){
+    var container=document.getElementById('cliente-app');
+    if(!container) return;
+    var banner=document.createElement('div');
+    banner.style.cssText='background:#2c3e50;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-family:var(--sans);position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;';
+    banner.innerHTML='🎯 <strong>Modo demo</strong> — Estás viendo PanelFit como lo verán tus clientes &nbsp;·&nbsp; <a href="/" style="color:#f39c12;font-weight:600;text-decoration:none">Crear cuenta →</a>';
+    container.insertBefore(banner, container.firstChild);
+  }, 100);
 }
 
 // Cargar galería cuando se abre la pestaña fotos
