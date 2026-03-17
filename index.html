@@ -2344,7 +2344,7 @@ function saveClose(){
 }
 function applyUI(){
   if(!document.getElementById('hname')) return;
-  document.getElementById('hname').innerHTML=P.nombre.toUpperCase()+' <span>'+P.apellido.toUpperCase()+'</span>';
+  document.getElementById('hname').innerHTML=(P.nombre||'').toUpperCase()+' <span>'+(P.apellido||'').toUpperCase()+'</span>';
   document.getElementById('h-peso').textContent=P.peso+' kg';
   document.getElementById('h-grasa').textContent=P.grasa+'%';
   document.getElementById('h-musculo').textContent=P.musculo+' kg';
@@ -2352,7 +2352,7 @@ function applyUI(){
   document.getElementById('train-sub').textContent=P.planDesc;
   document.title=P.nombre+' — Panel de Rendimiento';
   var m=Math.floor(P.restMain/60); var s=('0'+P.restMain%60).slice(-2);
-  document.getElementById('rqb-plan').textContent='💜 Plan ('+m+':'+s+')';
+  var rqbEl=document.getElementById('rqb-plan'); if(rqbEl) rqbEl.textContent='💜 Plan ('+m+':'+s+')';
   var ci=P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
   buildWeekPills(); buildTraining(curWeek);
   buildDashboard();
@@ -2922,13 +2922,16 @@ function loadDemo(){
 
   // Montar panel sin guardar nada
   var origOnSave = window.__onSave;
+  // Resetear P a valores vacíos antes de montar para evitar residuos
+  P.nombre=''; P.apellido=''; P.peso=0; P.grasa=0; P.musculo=0; P.totalLevant=0;
   montarPanel(demoCliente, demoPlan, demoReg, 'demo', false, 'demo');
 
-  // Sobrescribir onSave para que no guarde en Supabase
+  // Sobrescribir onSave y guardarRegistros para que no toquen Supabase
   window.__onSave = function(){
     var el=document.getElementById('sync-status');
     if(el) el.textContent='Modo demo — los cambios no se guardan';
   };
+  window.__cid = null; // evitar que saveClose intente guardar en Supabase
 
   // Banner demo
   setTimeout(function(){
