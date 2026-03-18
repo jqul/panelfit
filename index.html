@@ -268,7 +268,7 @@ async function doLogin(){
     return;
   }
   _user=data.user;
-  if(window.__pendingAdmin){ window.__pendingAdmin=false; loadSuperAdmin(); return; }
+  if(data.user.email==='javi_ql@hotmail.com'){ loadSuperAdmin(); return; }
   await loadDash();
 }
 async function doReg(){
@@ -310,21 +310,7 @@ function resetApp(){
     setTimeout(loadDemo, 0);
     return;
   }
-  // Superadmin — ruta secreta
-  if(new URLSearchParams(window.location.search).get('x')==='Heineken23'){
-    // Necesita sesión activa — si no la tiene, login primero
-    var {data:{session:adminSession}}=await sb.auth.getSession();
-    if(adminSession){
-      loading(false);
-      setTimeout(loadSuperAdmin, 0);
-    } else {
-      // Mostrar login normal, tras login irá al admin
-      loading(false);
-      showView('view-login');
-      window.__pendingAdmin=true;
-    }
-    return;
-  }
+  // Superadmin — acceso por cuenta admin
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
   try{
     var token = getClientToken();
@@ -337,6 +323,7 @@ function resetApp(){
     clearTimeout(safetyTimer);
     if(error || !session || !session.user){ loading(false); showView('view-login'); return; }
     _user = session.user;
+    if(_user.email==='javi_ql@hotmail.com'){ loading(false); loadSuperAdmin(); return; }
     await loadDash();
   } catch(e){
     clearTimeout(safetyTimer);
