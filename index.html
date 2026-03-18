@@ -268,6 +268,7 @@ async function doLogin(){
     return;
   }
   _user=data.user;
+  if(window.__pendingAdmin){ window.__pendingAdmin=false; loadSuperAdmin(); return; }
   await loadDash();
 }
 async function doReg(){
@@ -311,8 +312,17 @@ function resetApp(){
   }
   // Superadmin — ruta secreta
   if(new URLSearchParams(window.location.search).get('x')==='Heineken23'){
-    loading(false);
-    setTimeout(loadSuperAdmin, 0);
+    // Necesita sesión activa — si no la tiene, login primero
+    var {data:{session:adminSession}}=await sb.auth.getSession();
+    if(adminSession){
+      loading(false);
+      setTimeout(loadSuperAdmin, 0);
+    } else {
+      // Mostrar login normal, tras login irá al admin
+      loading(false);
+      showView('view-login');
+      window.__pendingAdmin=true;
+    }
     return;
   }
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
@@ -2590,30 +2600,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
     var pinBtn=document.querySelector('.abtn.p');
     if(pinBtn) pinBtn.style.display='none';
     setTimeout(function(){
-      console.log('Abriendo coach overlay...'); oCoach();
-      var orig = window.saveClose;
-      window.saveClose = function(){
-        orig && orig();
-        guardarPlan(cid, {P:P, DIET:DIET}).then(function(){
-          var el=document.getElementById('sync-status');
-          if(el) el.textContent='Plan guardado '+new Date().toLocaleTimeString('es-ES');
-          // Ofrecer notificación WhatsApp al cliente
-          var telCliente=P.telefonoCliente||'';
-          var enlaceCliente=window.location.origin+window.location.pathname+'?c='+window.__cid_token;
-          var msg=encodeURIComponent(
-            '¡Hola '+P.nombre+'! 💪 He actualizado tu plan de entrenamiento.\n\n'+
-            '👉 Accede aquí: '+enlaceCliente+'\n\n'+
-            '¡A por ello!'
-          );
-          var waUrl=telCliente?'https://wa.me/'+telCliente.replace(/\D/g,'')+'?text='+msg:'https://wa.me/?text='+msg;
-          var btn=document.createElement('button');
-          btn.textContent='📱 Avisar al cliente por WhatsApp';
-          btn.style.cssText='position:fixed;bottom:24px;right:24px;background:#25D366;color:#fff;border:none;padding:12px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;font-family:var(--sans);z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.25)';
-          btn.onclick=function(){ window.open(waUrl,'_blank'); document.body.removeChild(btn); };
-          document.body.appendChild(btn);
-          setTimeout(function(){ if(btn.parentNode) document.body.removeChild(btn); },8000);
-        });
-      };
+      oCoach();
     }, 200);
   }
 }
