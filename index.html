@@ -158,6 +158,21 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   </div>
 </div>
 
+<!-- SUPERADMIN -->
+<div class="view" id="view-admin">
+  <div class="topbar">
+    <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
+    <div class="topbar-right">
+      <button class="tbtn" onclick="showView('view-login')">Salir →</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="page-title">Panel de administración</div>
+    <div class="page-sub">Todos los entrenadores registrados</div>
+    <div id="admin-grid" style="display:grid;gap:10px;margin-top:20px"></div>
+  </div>
+</div>
+
 <!-- PIN CLIENTE -->
 <div class="view" id="view-pin-cliente">
   <div class="login-wrap">
@@ -292,6 +307,12 @@ function resetApp(){
   if(new URLSearchParams(window.location.search).has('demo')){
     loading(false);
     setTimeout(loadDemo, 0);
+    return;
+  }
+  // Superadmin — ruta secreta
+  if(new URLSearchParams(window.location.search).get('x')==='Heineken23'){
+    loading(false);
+    setTimeout(loadSuperAdmin, 0);
     return;
   }
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
@@ -2940,6 +2961,68 @@ function loadDemo(){
     banner.innerHTML='🎯 <strong>Modo demo</strong> — Estás viendo PanelFit como lo verán tus clientes &nbsp;·&nbsp; <a href="/" style="color:#f39c12;font-weight:600;text-decoration:none">Crear cuenta →</a>';
     container.insertBefore(banner, container.firstChild);
   }, 100);
+}
+
+
+// ── SUPERADMIN ────────────────────────
+async function loadSuperAdmin(){
+  showView('view-admin');
+  var grid=document.getElementById('admin-grid');
+  grid.innerHTML='<div style="color:var(--muted);font-size:13px">Cargando...</div>';
+
+  // Cargar todos los entrenadores
+  var {data:entrenadores,error}=await sb.from('entrenadores').select('*').order('created_at',{ascending:false});
+  if(error||!entrenadores){ grid.innerHTML='<div style="color:var(--warn)">Error: '+(error?.message||'sin datos')+'</div>'; return; }
+
+  // Para cada entrenador cargar sus clientes
+  var html2='';
+  for(var i=0;i<entrenadores.length;i++){
+    var ent=entrenadores[i];
+    var {data:clientes}=await sb.from('clientes').select('*').eq('entrenador_id',ent.id);
+    var nc=(clientes||[]).length;
+    var clientesList=(clientes||[]).map(function(c){
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);margin-bottom:4px;border-radius:var(--r)">'
+        +'<span style="font-size:13px">'+c.nombre+' '+(c.apellido||'')+'</span>'
+        +'<button onclick="adminVerCliente(this)" data-cid="'+c.id+'" data-token="'+c.token+'" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);border-radius:var(--r)">Ver panel</button>'
+      +'</div>';
+    }).join('');
+
+    html2+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'
+      +'<div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'
+        +'<div>'
+          +'<div style="font-size:15px;font-weight:500">'+(ent.nombre||ent.email)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+ent.email+' · '+nc+' cliente'+(nc===1?'':'s')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<span style="font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;'+(ent.activo?'background:var(--ok-bg);color:var(--ok)':'background:var(--warn-bg);color:var(--warn)')+'">'+( ent.activo?'Activo':'Inactivo')+'</span>'
+          +(ent.activo
+            ?'<button onclick="adminToggleActivo(this)" data-eid="'+ent.id+'" data-val="false" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--warn);border-radius:var(--r)">Desactivar</button>'
+            :'<button onclick="adminToggleActivo(this)" data-eid="'+ent.id+'" data-val="true" style="font-size:11px;padding:4px 10px;border:1px solid var(--ok);background:var(--ok-bg);cursor:pointer;font-family:var(--sans);color:var(--ok);border-radius:var(--r)">Activar</button>'
+          )
+        +'</div>'
+      +'</div>'
+      +(clientesList?'<div style="padding:12px 16px">'+clientesList+'</div>':'<div style="padding:12px 16px;font-size:12px;color:var(--muted)">Sin clientes aún</div>')
+    +'</div>';
+  }
+  grid.innerHTML=html2||'<div style="color:var(--muted);font-size:13px">No hay entrenadores registrados.</div>';
+}
+
+async function adminToggleActivo(btn){
+  var id=btn.dataset.eid, activo=btn.dataset.val==='true';
+  btn.disabled=true; btn.textContent='...';
+  await sb.from('entrenadores').update({activo:activo}).eq('id',id);
+  loadSuperAdmin();
+}
+
+async function adminVerCliente(btn){
+  var clienteId=btn.dataset.cid, token=btn.dataset.token;
+  loading(true);
+  var {data:c}=await sb.from('clientes').select('*').eq('id',clienteId).single();
+  var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
+  var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
+  if(!c){ loading(false); alert('Cliente no encontrado'); return; }
+  montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, true, clienteId);
+  loading(false);
 }
 
 // Cargar galería cuando se abre la pestaña fotos
