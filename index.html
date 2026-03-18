@@ -2352,6 +2352,7 @@ function saveClose(){
   saveDietaEd();
   applyUI(); applyVis(); cCoach();
   // Guardar siempre en Supabase si hay cliente activo
+  console.log('saveClose — __cid:', window.__cid, 'P.musculo:', P.musculo, 'P.peso:', P.peso);
   if(window.__cid){
     var el=document.getElementById('sync-status');
     if(el) el.textContent='Guardando...';
