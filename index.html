@@ -323,6 +323,7 @@ function resetApp(){
     clearTimeout(safetyTimer);
     if(error || !session || !session.user){ loading(false); showView('view-login'); return; }
     _user = session.user;
+    console.log('usuario activo:', _user.email);
     if(_user.email==='javi_ql@hotmail.com'){ loading(false); loadSuperAdmin(); return; }
     await loadDash();
   } catch(e){
@@ -2940,12 +2941,14 @@ function loadDemo(){
 
 // ── SUPERADMIN ────────────────────────
 async function loadSuperAdmin(){
+  console.log('loadSuperAdmin iniciado');
   showView('view-admin');
   var grid=document.getElementById('admin-grid');
+  if(!grid){ console.error('admin-grid no encontrado'); return; }
   grid.innerHTML='<div style="color:var(--muted);font-size:13px">Cargando...</div>';
 
-  // Cargar todos los entrenadores
   var {data:entrenadores,error}=await sb.from('entrenadores').select('*').order('created_at',{ascending:false});
+  console.log('entrenadores:', entrenadores, 'error:', error);
   if(error||!entrenadores){ grid.innerHTML='<div style="color:var(--warn)">Error: '+(error?.message||'sin datos')+'</div>'; return; }
 
   // Para cada entrenador cargar sus clientes
