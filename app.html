@@ -1026,9 +1026,17 @@ var PANEL_HTML=`<!-- PIN -->
   </div>
 </div>
 
-<!-- DRIVE BAR -->
-
-
+<!-- TABS CLIENTE -->
+<div class="tabs" id="client-tabs">
+  <div class="tab active" id="tab-dashboard-btn" onclick="showTab('dashboard',this)">HOY</div>
+  <div class="tab" id="tab-semana-btn" onclick="showTab('semana',this)">MI SEMANA</div>
+  <div class="tab" id="tab-entreno-btn" onclick="showTab('entreno',this)">ENTRENO</div>
+  <div class="tab" id="tab-records-btn" onclick="showTab('records',this)">RÉCORDS</div>
+  <div class="tab" id="tab-historial-btn" onclick="showTab('historial',this)">HISTORIAL</div>
+  <div class="tab" id="tab-dieta-btn" onclick="showTab('dieta',this)">DIETA</div>
+  <div class="tab" id="tab-habitos-btn" onclick="showTab('habitos',this)">HÁBITOS</div>
+  <div class="tab" id="tab-fotos-btn" onclick="showTab('fotos',this)">📸 FOTOS</div>
+</div>
 
 <div class="panel active" id="tab-dashboard">
   <div class="ptitle" id="dash-fecha">Resumen</div>
