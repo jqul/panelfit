@@ -2586,7 +2586,9 @@ async function subirFotos(){
     console.log('Subiendo', lado, fi.name, fi.size);
     var ext=fi.name.split('.').pop();
     var path='fotos/'+cid+'/'+fecha+'_'+lado+'.'+ext;
-    var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:true});
+    // Intentar borrar primero por si existe, luego subir
+    await sb.storage.from('media').remove([path]);
+    var {data,error}=await sb.storage.from('media').upload(path,fi,{upsert:false});
     console.log('Storage result', lado, data, error);
     if(error){ err.textContent='Error subiendo '+lado+': '+error.message; btn.textContent='☁️ Guardar fotos'; btn.disabled=false; return; }
     var {data:pu}=sb.storage.from('media').getPublicUrl(path);
