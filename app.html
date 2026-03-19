@@ -802,17 +802,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 }
 
 /* DRIVE */
-.drive-bar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;}
-.drive-status{display:flex;align-items:center;gap:8px;}
-.drive-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s;}
-.drive-dot.ok{background:var(--ok);}
-.drive-dot.sync{background:#d4822a;animation:blink .8s infinite;}
-.drive-dot.err{background:var(--warn);}
+
+
+
+
+
+
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.drive-btn{font-size:11px;padding:5px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;}
-.drive-btn:hover{border-color:var(--ink);color:var(--ink);}
-.drive-btn.primary{border-color:var(--ok);color:var(--ok);}
-.drive-btn.primary:hover{background:var(--ok-bg);}
+
+
+
+
 `;document.head.appendChild(s);})();
 
 // ── HTML PANEL ─────────────────────────
@@ -1027,57 +1027,7 @@ var PANEL_HTML=`<!-- PIN -->
 </div>
 
 <!-- DRIVE BAR -->
-<div class="drive-bar" id="drive-bar">
-  <div class="drive-status">
-    <div class="drive-dot" id="d-dot"></div>
-    <span id="d-status" style="color:var(--muted)">No conectado a Drive</span>
-  </div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap">
-    <button class="drive-btn primary" id="d-login-btn" onclick="driveLogin()">☁️ Conectar con Google</button>
-    <button class="drive-btn" id="d-save-btn" onclick="driveSave()" style="display:none">💾 Guardar</button>
-    <button class="drive-btn" id="d-load-btn" onclick="driveLoad()" style="display:none">⬆️ Cargar</button>
-    <button class="drive-btn" id="d-logout-btn" onclick="driveLogout()" style="display:none;color:var(--muted)">Desconectar</button>
-  </div>
-</div>
 
-<!-- ACTION BAR -->
-<div class="abar">
-  <div class="mbadge">👤 Modo Cliente</div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-    <button class="tbadge" id="btn-dark" onclick="toggleDark()" title="Modo oscuro">◐</button>
-    <button class="tbadge" id="btn-hel" onclick="toggleHel()" title="Helvetica">Aa</button>
-    <button class="abtn g" onclick="driveSave()" id="btn-sync">☁️ Sincronizar</button>
-    <button class="abtn p" onclick="oPIN()">🏋️ Entrenador</button>
-  </div>
-</div>
-
-<!-- TABS -->
-<div class="tabs">
-  <div class="tab active" onclick="showTab('dashboard',this)">📊 Hoy</div>
-  <div class="tab" onclick="showTab('semana',this)">📅 Mi Semana</div>
-  <div class="tab" onclick="showTab('entreno',this)">Entreno</div>
-  <div class="tab" onclick="showTab('records',this)">🏆 Récords</div>
-  <div class="tab" onclick="showTab('historial',this)">Historial</div>
-  <div class="tab" onclick="showTab('dieta',this)">Dieta</div>
-  <div class="tab" onclick="showTab('habitos',this)">Hábitos</div>
-  <div class="tab" id="tab-fotos-btn" onclick="showTab('fotos',this)">📸 Fotos</div>
-</div>
-
-<!-- SEMANA -->
-<div class="panel" id="tab-semana">
-  <div class="ptitle">Mi Semana</div>
-  <div class="psub">Arrastra los entrenamientos al día que toca · se guarda automáticamente</div>
-  <div class="plan-layout">
-    <div>
-      <div class="plan-pool">
-        <div class="plan-pool-title">Días de entreno</div>
-        <div id="plan-pool"></div>
-      </div>
-      <div class="note" style="margin-top:10px;font-size:11px">Arrastra al día de la semana. Pulsa ✕ para quitar.</div>
-    </div>
-    <div class="plan-week" id="plan-week"></div>
-  </div>
-</div>
 
 
 <div class="panel active" id="tab-dashboard">
@@ -2398,116 +2348,7 @@ function loadTheme(){
 }
 
 // ── GOOGLE DRIVE ──────────────────────
-var GCI='564367698455-3ev03uh0drf2cv5sb3orak5ngjc5ihno.apps.googleusercontent.com';
-var GSCOPE='https://www.googleapis.com/auth/drive.appdata';
-var FNAME='panel-entreno-datos.json';
-var _gtoken=null, _gfid=null, _gauto=false;
-
-function driveLogin(){
-  google.accounts.oauth2.initTokenClient({
-    client_id:GCI, scope:GSCOPE,
-    callback:function(r){
-      if(r.error){ dStatus('err','Error: '+r.error); return; }
-      _gtoken=r.access_token;
-      gapi.client.setToken({access_token:_gtoken});
-      dStatus('ok','Conectado');
-      document.getElementById('d-login-btn').style.display='none';
-      document.getElementById('d-save-btn').style.display='';
-      document.getElementById('d-load-btn').style.display='';
-      document.getElementById('d-logout-btn').style.display='';
-      driveLoad();
-    }
-  }).requestAccessToken();
-}
-
-function driveLogout(){
-  google.accounts.oauth2.revoke(_gtoken,function(){});
-  _gtoken=null; _gfid=null;
-  dStatus('','No conectado a Drive');
-  document.getElementById('d-dot').className='drive-dot';
-  document.getElementById('d-login-btn').style.display='';
-  document.getElementById('d-save-btn').style.display='none';
-  document.getElementById('d-load-btn').style.display='none';
-  document.getElementById('d-logout-btn').style.display='none';
-}
-
-function dStatus(type,msg){
-  var dot=document.getElementById('d-dot');
-  var st=document.getElementById('d-status');
-  dot.className='drive-dot'+(type?' '+type:'');
-  st.textContent=msg;
-  st.style.color=type==='ok'?'var(--ok)':type==='err'?'var(--warn)':type==='sync'?'#d4822a':'var(--muted)';
-}
-
-function driveGetData(){
-  var logs={}; try{logs=JSON.parse(localStorage.getItem('trainlog_v3')||'{}')}catch(e){}
-  var rec={}; try{rec=JSON.parse(localStorage.getItem('rec_v1')||'{}')}catch(e){}
-  var hab={}; try{hab=JSON.parse(localStorage.getItem('h_'+new Date().toDateString())||'{}')}catch(e){}
-  var sem={}; try{sem=JSON.parse(localStorage.getItem('semana_plan_v1')||'{}')}catch(e){}
-  return JSON.stringify({logs:logs,rec:rec,hab:hab,sem:sem,plan:P,diet:DIET,ts:Date.now()});
-}
-
-function driveApplyData(raw){
-  try{
-    var d=JSON.parse(raw);
-    if(d.logs) localStorage.setItem('trainlog_v3',JSON.stringify(d.logs));
-    if(d.rec)  localStorage.setItem('rec_v1',JSON.stringify(d.rec));
-    if(d.hab)  localStorage.setItem('h_'+new Date().toDateString(),JSON.stringify(d.hab));
-    if(d.sem)  localStorage.setItem('semana_plan_v1',JSON.stringify(d.sem));
-    if(d.plan) Object.assign(P,d.plan);
-    if(d.diet) Object.assign(DIET,d.diet);
-    applyUI(); buildDietMacros(); buildDietPills(); renderDiet('lun');
-    buildHabits(); buildDashboard(); applyVis();
-    dStatus('ok','Cargado · '+new Date(d.ts).toLocaleTimeString('es-ES'));
-  }catch(e){ dStatus('err','Error al cargar: '+e.message); }
-}
-
-function driveFindFile(cb){
-  gapi.client.request({
-    path:'https://www.googleapis.com/drive/v3/files',
-    params:{spaces:'appDataFolder',fields:'files(id,name)',q:"name=\'"+FNAME+"\'"},
-    callback:function(r){ cb(r.result&&r.result.files&&r.result.files[0]?r.result.files[0].id:null); }
-  });
-}
-
-function driveSave(){
-  if(!_gtoken){ driveLogin(); return; }
-  dStatus('sync','Guardando...');
-  var data=driveGetData();
-  driveFindFile(function(fid){
-    var method=fid?'PATCH':'POST';
-    var url=fid?
-      'https://www.googleapis.com/upload/drive/v3/files/'+fid+'?uploadType=multipart':
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
-    var meta=JSON.stringify(fid?{}:{name:FNAME,parents:['appDataFolder']});
-    var boundary='---pe'+Date.now();
-    var body='--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+meta+
-      '\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'+data+'\r\n--'+boundary+'--';
-    fetch(url,{method:method,headers:{'Authorization':'Bearer '+_gtoken,'Content-Type':'multipart/related; boundary='+boundary},body:body})
-      .then(function(r){return r.json();})
-      .then(function(r){
-        if(r.id){ _gfid=r.id; dStatus('ok','Guardado · '+new Date().toLocaleTimeString('es-ES')); }
-        else dStatus('err','Error al guardar');
-      }).catch(function(e){dStatus('err','Error: '+e.message);});
-  });
-}
-
-function driveLoad(){
-  if(!_gtoken){ driveLogin(); return; }
-  dStatus('sync','Cargando...');
-  driveFindFile(function(fid){
-    if(!fid){ dStatus('ok','Sin datos en Drive aún — guarda para empezar'); return; }
-    _gfid=fid;
-    fetch('https://www.googleapis.com/drive/v3/files/'+fid+'?alt=media',
-      {headers:{'Authorization':'Bearer '+_gtoken}})
-      .then(function(r){return r.text();})
-      .then(function(raw){ driveApplyData(raw); })
-      .catch(function(e){dStatus('err','Error: '+e.message);});
-  });
-}
-
-// Autoguardar cada 60 segundos si conectado
-setInterval(function(){ if(_gtoken) driveSave(); },60000);
+// Google Drive eliminado
 
 // ── INIT ──────────────────────────────
 (function(){
@@ -2934,7 +2775,7 @@ function loadDemo(){
     if(!container) return;
     var banner=document.createElement('div');
     banner.style.cssText='background:#2c3e50;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-family:var(--sans);position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;';
-    banner.innerHTML='🎯 <strong>Modo demo</strong> — Estás viendo PanelFit como lo verán tus clientes &nbsp;·&nbsp; <a href="/" style="color:#f39c12;font-weight:600;text-decoration:none">Crear cuenta →</a>';
+    banner.innerHTML='🎯 <strong>Modo demo</strong> — Estás viendo PanelFit como lo verán tus clientes &nbsp;·&nbsp; <a href="/app" style="color:#f39c12;font-weight:600;text-decoration:none">Crear cuenta →</a>';
     container.insertBefore(banner, container.firstChild);
   }, 100);
 }
