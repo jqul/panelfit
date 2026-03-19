@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PanelFit</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* ── TOKENS ─────────────────────────── */
@@ -16,7 +16,7 @@
   --ok:#4a7c59;--warn:#c0392b;--ok-bg:#f0f7f2;
   --green:#2d6a4f;--purple:#7c5cbf;--purple-bg:rgba(124,92,191,.08);
   --serif:'DM Serif Display',Georgia,serif;
-  --sans:'DM Sans',system-ui,Arial,sans-serif;
+  --sans:'Outfit',system-ui,sans-serif;
   --r:6px; --shadow:0 2px 12px rgba(0,0,0,.07);
 }
 
@@ -500,7 +500,7 @@ async function guardarRegistros(clienteId, regObj){
   --ok:#4a7c59;--warn:#c0392b;--ok-bg:#f0f7f2;--warn-bg:#fdf0ef;
   --green:#2d6a4f;--purple:#7c5cbf;--purple-bg:rgba(124,92,191,.08);
   --serif:'DM Serif Display',Georgia,serif;
-  --sans:'DM Sans',Helvetica,Arial,sans-serif;
+  --sans:'Outfit',Helvetica,sans-serif;
 }
 html.dark{
   --bg:#0e0e0e;--bg2:#161616;--card:#1c1c1c;--card2:#222;
@@ -511,7 +511,7 @@ html.dark{
 }
 html.font-hel{
   --serif:Helvetica,Arial,sans-serif;
-  --sans:Helvetica,Arial,sans-serif;
+  --sans:'Outfit',Helvetica,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s;}
@@ -560,8 +560,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:2px;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{padding:14px 14px;cursor:pointer;font-size:10px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.6px;text-transform:uppercase;}
-.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
-.panel{display:none;padding:24px;max-width:900px;}
+.tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
+.panel{display:none;padding:20px 24px;max-width:680px;}
 .panel.active{display:block;animation:fadeUp .18s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ptitle{font-family:var(--serif);font-size:22px;font-weight:400;margin-bottom:4px;letter-spacing:-.2px;}
@@ -584,7 +584,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* DÍAS DESPLEGABLES */
 .day-block{border:1px solid var(--border);margin-bottom:8px;overflow:hidden;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);}
-.day-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;transition:background .12s;}
+.day-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;cursor:pointer;user-select:none;transition:background .12s;}
 .day-hd:hover{background:var(--bg2);}
 .day-left{display:flex;align-items:center;gap:12px;}
 .day-chev{font-size:11px;color:var(--muted);transition:transform .2s;}
@@ -1497,6 +1497,14 @@ function buildTraining(wi){
 function togDay(id,hd){
   var b=document.getElementById(id); b.classList.toggle('open');
   hd.querySelector('.day-chev').classList.toggle('open');
+}
+function togVrow(id,btn){
+  var el=document.getElementById(id); if(!el) return;
+  var open=el.style.display==='flex'||el.style.display==='block';
+  el.style.display=open?'none':'flex';
+  var arr=btn.querySelector('.varr');
+  if(arr) arr.style.transform=open?'':'rotate(180deg)';
+  btn.style.color=open?'var(--muted)':'var(--text)';
 }
 function markSetDone(ek, si){
   var sv=lLog(ek);
