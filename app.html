@@ -19,6 +19,24 @@
   --sans:'DM Sans',system-ui,Arial,sans-serif;
   --r:6px; --shadow:0 2px 12px rgba(0,0,0,.07);
 }
+
+async function adminToggleActivo(btn){
+  var id=btn.dataset.eid, activo=btn.dataset.val==='true';
+  btn.disabled=true; btn.textContent='...';
+  await sb.from('entrenadores').update({activo:activo}).eq('id',id);
+  loadSuperAdmin();
+}
+
+async function adminVerCliente(btn){
+  var clienteId=btn.dataset.cid, token=btn.dataset.token;
+  loading(true);
+  var {data:c}=await sb.from('clientes').select('*').eq('id',clienteId).single();
+  var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
+  var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
+  if(!c){ loading(false); alert('Cliente no encontrado'); return; }
+  montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, true, clienteId);
+  loading(false);
+}
 html.dark{
   --bg:#111110;--bg2:#181816;--card:#1e1d1b;--card2:#242320;
   --border:#2c2b28;--border2:#363430;
@@ -158,21 +176,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   </div>
 </div>
 
-<!-- SUPERADMIN -->
-<div class="view" id="view-admin">
-  <div class="topbar">
-    <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
-    <div class="topbar-right">
-      <button class="tbtn" onclick="showView('view-login')">Salir →</button>
-    </div>
-  </div>
-  <div class="content">
-    <div class="page-title">Panel de administración</div>
-    <div class="page-sub">Todos los entrenadores registrados</div>
-    <div id="admin-grid" style="display:grid;gap:10px;margin-top:20px"></div>
-  </div>
-</div>
-
 <!-- PIN CLIENTE -->
 <div class="view" id="view-pin-cliente">
   <div class="login-wrap">
@@ -189,6 +192,32 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
         <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">La próxima vez entrarás directo</div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- SUPERADMIN -->
+<div class="view" id="view-admin">
+  <div class="topbar">
+    <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
+    <div class="topbar-right"><button class="tbtn" onclick="showView('view-login')">Salir →</button></div>
+  </div>
+  <div class="content">
+    <div class="page-title">Panel de administración</div>
+    <div class="page-sub">Todos los entrenadores registrados</div>
+    <div id="admin-grid" style="display:grid;gap:10px;margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- SUPERADMIN -->
+<div class="view" id="view-admin">
+  <div class="topbar">
+    <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
+    <div class="topbar-right"><button class="tbtn" onclick="doLogout()">Salir →</button></div>
+  </div>
+  <div class="content">
+    <div class="page-title">Panel de administración</div>
+    <div class="page-sub">Todos los entrenadores registrados</div>
+    <div id="admin-grid" style="margin-top:20px"></div>
   </div>
 </div>
 
@@ -304,13 +333,9 @@ function resetApp(){
 
 // Arranque
 (async function init(){
-  // Modo demo — carga panel de ejemplo sin Supabase
   if(new URLSearchParams(window.location.search).has('demo')){
-    loading(false);
-    setTimeout(loadDemo, 0);
-    return;
+    loading(false); setTimeout(loadDemo,0); return;
   }
-  // Superadmin — acceso por cuenta admin
   var safetyTimer = setTimeout(()=>{ loading(false); showView('view-login'); }, 8000);
   try{
     var token = getClientToken();
@@ -514,8 +539,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .abtn.p:hover{background:#f8f4ef;}
 
 /* TIMER */
-/* TIMER FLOTANTE */
-.tbar-inline{display:none;} /* ocultar barra fija */
+.tbar-inline{display:none;}
 .rest-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:12px 24px;border-radius:40px;display:none;align-items:center;gap:14px;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,.25);min-width:220px;transition:background .3s;}
 .rest-toast.visible{display:flex;}
 .rest-toast.warn{background:#c0392b;}
@@ -578,53 +602,54 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .wpill.active{border-color:var(--ink);color:var(--ink);background:var(--bg2);}
 .wpill.current{border-color:var(--accent);color:var(--accent);}
 
-/* EJERCICIOS — NUEVO DISEÑO */
-.ex-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
+/* EJERCICIOS */
+.ex-card{background:var(--card);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;transition:box-shadow .2s;}
 .ex-card.principal{border-left:4px solid var(--ink);}
 .ex-card.accesorio{border-left:4px solid var(--border2);}
-.ex-main{display:flex;align-items:center;gap:12px;padding:14px 16px 12px;flex-wrap:wrap;}
-.ex-num{font-size:11px;color:var(--muted);font-weight:600;min-width:16px;flex-shrink:0;}
-.ex-info{flex:1;min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.ex-nombre{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;font-family:var(--sans);flex:1;min-width:120px;}
-.ex-nombre.acc{font-size:13px;font-weight:600;color:var(--text);}
-.ex-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0;}
-.ex-pill{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:4px 11px;border-radius:20px;letter-spacing:.2px;}
-.ex-pill.series{background:var(--bg2);border:1px solid var(--border2);color:var(--text2);}
-.ex-pill.peso{background:var(--ink);color:var(--card);}
-.ex-pill.peso.acc{background:transparent;border:1.5px solid var(--ink);color:var(--ink);}
-.ex-pill.rpe{background:transparent;border:1px solid var(--accent2);color:var(--accent);font-size:11px;}
-.ex-pr{display:inline-flex;align-items:center;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:2px 7px;border-radius:20px;letter-spacing:.3px;margin-left:6px;vertical-align:middle;}
+.ex-card.done-card{background:#f7fdf7;border-color:#b8ddb8;}
+.ex-main{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 10px;}
+.ex-left{flex:1;min-width:0;}
+.ex-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.ex-num{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;}
+.ex-nombre{font-size:17px;font-weight:700;color:var(--ink);line-height:1.2;font-family:var(--sans);}
+.ex-nombre.acc{font-size:14px;font-weight:600;color:var(--text);}
+.ex-peso-big{font-family:var(--serif);font-size:28px;font-weight:400;color:var(--ink);line-height:1;}
+.ex-peso-big.acc{font-size:20px;color:var(--text2);}
+.ex-series-lbl{font-size:10px;color:var(--muted);text-align:right;letter-spacing:.3px;}
+.ex-pr{display:inline-flex;align-items:center;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:2px 7px;border-radius:20px;letter-spacing:.3px;margin-left:8px;vertical-align:middle;}
+.ex-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.ex-pill.rpe{background:transparent;border:1px solid var(--accent2);color:var(--accent);}
 .rpe-tag{font-size:9px;color:var(--muted);margin-left:6px;letter-spacing:.4px;}
-.pr-badge{display:inline-block;font-size:9px;border:1px solid var(--accent2);color:var(--accent);padding:1px 6px;margin-left:6px;letter-spacing:.4px;}
+.pr-badge{display:none;}
+.day-bar{height:3px;background:var(--border);}
+.day-bar-fill{height:100%;background:var(--ok);transition:width .5s ease;}
 
 /* COMENTARIO ENTRENADOR */
 .ccom{display:flex;align-items:flex-start;gap:10px;padding:10px 16px 11px;background:var(--bg2);border-top:1px solid var(--border);}
 .ccom-lbl{font-size:9px;font-weight:500;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
 .ccom-txt{font-size:12px;color:var(--text2);line-height:1.6;font-style:italic;}
 
-/* LOG — INPUTS */
-.ex-log{padding:12px 16px 14px;background:var(--bg2);border-top:1px solid var(--border);}
-.linps{display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.lset{background:var(--card);border:1px solid var(--border);padding:6px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:var(--r);}
-.lset-lbl{font-size:9px;color:var(--muted);font-weight:500;letter-spacing:.8px;text-transform:uppercase;}
-.lset-fields{display:flex;align-items:center;gap:4px;}
-.lset input{width:46px;background:transparent;border:none;color:var(--text);font-size:17px;font-weight:300;outline:none;text-align:center;font-family:var(--serif);}
+/* LOG — INPUTS MÓVIL */
+.ex-log{padding:12px 14px 14px;background:var(--bg2);border-top:1px solid var(--border);}
+.linps{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.lset{background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;min-width:64px;flex:1;max-width:90px;overflow:hidden;}
+.lset-lbl{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:5px 0 3px;width:100%;text-align:center;border-bottom:1px solid var(--border);}
+.lset-lbl.done-lbl{background:var(--ok);color:#fff;border-color:var(--ok);}
+.lset.completada{border-color:var(--ok);background:#f7fdf7;}
+.lset-fields{display:flex;align-items:center;gap:2px;padding:4px;}
+.lset input{width:100%;background:transparent;border:none;color:var(--text);font-size:18px;font-weight:400;outline:none;text-align:center;font-family:var(--serif);padding:4px 2px;}
 .lset input::placeholder{color:var(--border2);}
-.lset-x{font-size:11px;color:var(--border2);}
-.dbtn{padding:8px 14px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-size:11px;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;border-radius:var(--r);}
-.dbtn:hover{border-color:var(--ok);color:var(--ok);}
-.dbtn.done{border-color:var(--ok);color:var(--ok);background:var(--ok-bg);}
-.rbtn{padding:8px 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;border-radius:var(--r);}
+.lset-x{font-size:10px;color:var(--border2);flex-shrink:0;}
+.dbtn{flex:1;padding:13px 14px;border:2px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-size:14px;font-family:var(--sans);font-weight:500;transition:all .15s;border-radius:10px;}
+.dbtn:active{transform:scale(.97);}
+.dbtn.done{border-color:var(--ok);color:#fff;background:var(--ok);font-weight:700;}
+.rbtn{padding:13px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-size:16px;border-radius:10px;transition:all .15s;}
 .rbtn:hover{border-color:var(--ink);color:var(--ink);}
-.lnote{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:12px;padding:7px 10px;font-family:var(--sans);resize:none;outline:none;border-radius:var(--r);}
-.lnote:focus{border-color:var(--ink);}
+.lnote{width:100%;background:transparent;border:none;border-top:1px solid var(--border);color:var(--text2);font-size:12px;padding:8px 14px;font-family:var(--sans);resize:none;outline:none;}
+.lnote:focus{background:var(--card);}
 
 /* VÍDEO */
-.vrow{display:none;flex-wrap:wrap;gap:8px;padding:10px 16px 12px;background:var(--bg2);border-top:1px solid var(--border);}
-.vrow.open{display:flex;}
-.vtoggle{width:100%;padding:8px 16px;background:var(--bg2);border:none;border-top:1px solid var(--border);color:var(--muted);font-size:11px;font-family:var(--sans);cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;transition:color .15s;}
-.vtoggle:hover{color:var(--text);}
-.vtoggle .varr{font-size:10px;transition:transform .2s;display:inline-block;}
+.vrow{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px 12px;background:var(--bg2);border-top:1px solid var(--border);}
 .vbox{flex:1;min-width:140px;max-width:340px;}
 .vlbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
 .vlbl span{padding:1px 6px;border:1px solid var(--border2);font-size:9px;color:var(--text2);}
@@ -802,17 +827,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 }
 
 /* DRIVE */
-
-
-
-
-
-
+.drive-bar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;}
+.drive-status{display:flex;align-items:center;gap:8px;}
+.drive-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s;}
+.drive-dot.ok{background:var(--ok);}
+.drive-dot.sync{background:#d4822a;animation:blink .8s infinite;}
+.drive-dot.err{background:var(--warn);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-
-
-
-
+.drive-btn{font-size:11px;padding:5px 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;}
+.drive-btn:hover{border-color:var(--ink);color:var(--ink);}
+.drive-btn.primary{border-color:var(--ok);color:var(--ok);}
+.drive-btn.primary:hover{background:var(--ok-bg);}
 `;document.head.appendChild(s);})();
 
 // ── HTML PANEL ─────────────────────────
@@ -955,12 +980,11 @@ var PANEL_HTML=`<!-- PIN -->
           <div id="coach-fotos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando fotos...</div></div>
         </div>
       </div>
-
       <!-- ENTRENOS CLIENTE -->
       <div class="csec" id="cs-entrenos">
         <div class="ecard">
           <div class="echd"><div class="ectitle">📋 Historial de entrenos</div></div>
-          <div id="coach-entrenos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando entrenos...</div></div>
+          <div id="coach-entrenos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando...</div></div>
         </div>
       </div>
 
@@ -1026,7 +1050,9 @@ var PANEL_HTML=`<!-- PIN -->
   </div>
 </div>
 
-<!-- TABS CLIENTE -->
+
+
+
 <div class="tabs" id="client-tabs">
   <div class="tab active" id="tab-dashboard-btn" onclick="showTab('dashboard',this)">HOY</div>
   <div class="tab" id="tab-semana-btn" onclick="showTab('semana',this)">MI SEMANA</div>
@@ -1048,7 +1074,7 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- ENTRENO -->
 <div class="panel" id="tab-entreno" style="padding:0">
-  <!-- TIMER TOAST (flotante abajo) -->
+  <!-- TIMER TOAST -->
   <div class="rest-toast" id="rest-toast">
     <div style="text-align:center">
       <div style="font-size:9px;letter-spacing:1px;opacity:.7;margin-bottom:2px">DESCANSO</div>
@@ -1329,78 +1355,81 @@ function buildTraining(wi){
     var rows = d.ejercicios.map(function(r,ri){
       var ek='ex_w'+wi+'_d'+di+'_r'+ri;
       var sv=lLog(ek); var ns=parseInt(r.series)||4; var ps=rP(r.peso,wi);
+      var rs=r.principal?P.restMain:P.restAcc;
+      var done=sv&&sv.done; var note=(sv&&sv.note)?sv.note:'';
+      var pr=isPR(ek,di,ri);
+      var esPrincipal=r.principal;
+
       var sHtml='';
       for(var si=0;si<ns;si++){
         var vv=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].v:'';
         var vr=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].r:'';
-        sHtml+='<div class="lset">'+
-          '<div class="lset-lbl">S'+(si+1)+'</div>'+
-          '<div class="lset-fields">'+
-            '<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5"'+
-              ' onchange="onSerieInput(\''+ek+'\','+si+',\'v\',this.value,'+rs+');chkPR(\''+ek+'\',this.value,\'v\','+wi+','+di+','+ri+')">'+
-            '<span class="lset-x">×</span>'+
-            '<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" style="width:40px"'+
-              ' onchange="onSerieInput(\''+ek+'\','+si+',\'r\',this.value,'+rs+')">'+
-          '</div>'+
-        '</div>';
+        var setDone=vv&&vr;
+        sHtml+='<div class="lset'+(setDone?' completada':'')+'" id="set-'+ek+'-'+si+'">'
+          +'<div class="lset-lbl'+(setDone?' done-lbl':'')+'">S'+(si+1)+'</div>'
+          +'<div class="lset-fields">'
+          +'<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5" inputmode="decimal"'
+          +' onchange="onSerieInput(\''+ek+'\','+si+',\'v\',this.value,'+rs+');chkPR(\''+ek+'\',this.value,\'v\','+wi+','+di+','+ri+');markSetDone(\''+ek+'\','+si+')">'
+          +'<span class="lset-x">×</span>'
+          +'<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" inputmode="numeric" style="width:44px"'
+          +' onchange="onSerieInput(\''+ek+'\','+si+',\'r\',this.value,'+rs+');markSetDone(\''+ek+'\','+si+')">'
+          +'</div>'
+          +'</div>';
       }
-      var done=sv&&sv.done; var note=(sv&&sv.note)?sv.note:'';
-      var rs=r.principal?P.restMain:P.restAcc;
-      var pr=isPR(ek,di,ri);
-      var esPrincipal=r.principal;
 
-      var com = r.comentario&&r.comentario.trim() ?
-        '<div class="ccom" style="margin:0 16px 10px;border-radius:var(--r)">'+
-          '<span style="font-size:14px;flex-shrink:0;margin-top:1px">💬</span>'+
-          '<div><div class="ccom-lbl">Entrenador</div>'+
-          '<div class="ccom-txt">'+eH(r.comentario)+'</div></div>'+
-        '</div>' : '';
+      var com = r.comentario&&r.comentario.trim()
+        ? '<div class="ccom"><span style="font-size:14px;flex-shrink:0">💬</span>'
+          +'<div><div class="ccom-lbl">Entrenador</div><div class="ccom-txt">'+eH(r.comentario)+'</div></div></div>'
+        : '';
 
-      return '<div class="ex-card '+(esPrincipal?'principal':'accesorio')+'">'+
-        '<div class="ex-main">'+
-          '<div class="ex-num">'+(ri+1)+'</div>'+
-          '<div class="ex-info">'+
-            '<div class="ex-nombre'+(esPrincipal?'':' acc')+'">'+r.nombre+
-              '<span class="ex-pr" id="prb-'+ek+'" style="'+(pr?'':'display:none')+'">🏆 PR</span>'+
-            '</div>'+
-            '<div class="ex-pills">'+
-              '<span class="ex-pill series">'+r.series+'</span>'+
-              '<span class="ex-pill peso'+(esPrincipal?'':' acc')+'">'+ps+'</span>'+
-              (rpe&&esPrincipal?'<span class="ex-pill rpe">'+rpe+'</span>':'')+
-            '</div>'+
-          '</div>'+
-        '</div>'+
-        com+
-        '<div class="ex-log">'+
-          '<div class="linps">'+sHtml+
-            '<button class="rbtn" style="padding:8px 10px" onclick="tSet('+rs+');tStartTimer()" title="Iniciar descanso">⏱</button>'+
-            '<button class="dbtn'+(done?' done':'')+'" id="dbtn-'+ek+'" onclick="togDone(\''+ek+'\',this,'+wi+','+di+')">'+
-              (done?'✓ Hecho':'Marcar hecho')+
-            '</button>'+
-          '</div>'+
-          '<textarea class="lnote" rows="1" placeholder="Nota del ejercicio..."'+
-            ' onchange="sNote(\''+ek+'\',this.value)">'+note+'</textarea>'+
-        '</div>'+
-        '<button class="vtoggle" onclick="togVrow(\'vrow-'+ek+'\',this)">'+
-          '<span class="varr">▼</span> Ver vídeos'+
-        '</button>'+
-        '<div class="vrow" id="vrow-'+ek+'" style="display:none">'+
-          '<div class="vbox"><div class="vlbl">🎬 <span class="vtag-c">Vídeo entrenador</span></div>'+rCV(r,di,ri)+'</div>'+
-          '<div class="vbox"><div class="vlbl">📱 <span class="vtag-cl">Tu ejecución</span></div>'+rClV(ek,r.nombre)+'</div>'+
-        '</div>'+
-      '</div>';
+      var vidHtml = (r.videoUrl||r.videoB64)
+        ? '<button class="vtoggle" onclick="togVrow(\'vrow-'+ek+'\',this)"><span class="varr">▼</span> Ver vídeo</button>'
+          +'<div class="vrow" id="vrow-'+ek+'" style="display:none">'
+          +'<div class="vbox"><div class="vlbl">🎬 <span class="vtag-c">Vídeo entrenador</span></div>'+rCV(r,di,ri)+'</div>'
+          +'<div class="vbox"><div class="vlbl">📱 <span class="vtag-cl">Tu ejecución</span></div>'+rClV(ek,r.nombre)+'</div>'
+          +'</div>'
+        : '';
+
+      return '<div class="ex-card '+(esPrincipal?'principal':'accesorio')+(done?' done-card':'')+'" id="excard-'+ek+'">'
+        +'<div class="ex-main">'
+          +'<div class="ex-left">'
+            +'<div class="ex-num">'+(ri+1)+' · '+(esPrincipal?'PRINCIPAL':'accesorio')+'</div>'
+            +'<div class="ex-nombre'+(esPrincipal?'':' acc')+'">'+r.nombre+(pr?'<span class="ex-pr">🏆 PR</span>':'')+'</div>'
+            +(rpe&&esPrincipal?'<div style="margin-top:5px"><span class="ex-pill rpe">'+rpe+'</span></div>':'')
+          +'</div>'
+          +'<div class="ex-right">'
+            +'<div class="ex-peso-big'+(esPrincipal?'':' acc')+'">'+ps+'</div>'
+            +'<div class="ex-series-lbl">'+r.series+'</div>'
+          +'</div>'
+        +'</div>'
+        +com
+        +'<div class="ex-log">'
+          +'<div class="linps">'+sHtml
+            +'<button class="rbtn" onclick="tSet('+rs+');tStartTimer()" title="Descanso">⏱</button>'
+          +'</div>'
+          +'<div style="display:flex;gap:8px;margin-bottom:8px">'
+            +'<button class="dbtn'+(done?' done':'')+'" id="dbtn-'+ek+'" onclick="togDone(\''+ek+'\',this,'+wi+','+di+')">'
+              +(done?'✓ Hecho':'Marcar hecho')
+            +'</button>'
+          +'</div>'
+          +'<textarea class="lnote" rows="1" placeholder="Nota..." onchange="sNote(\''+ek+'\',this.value)">'+note+'</textarea>'
+        +'</div>'
+        +vidHtml
+        +'</div>';
     }).join('');
 
-    return '<div class="day-block">'+
-      '<div class="day-hd" onclick="togDay(\'db-'+di+'\',this)">'+
-        '<div class="day-left">'+
-          '<span class="day-chev'+(open?' open':'')+'">▾</span>'+
-          '<div><div class="day-title">'+d.titulo+'</div><div class="day-foco">'+d.foco+'</div></div>'+
-        '</div>'+
-        '<span class="day-prog '+pc+'">'+pl+'</span>'+
-      '</div>'+
-      '<div class="day-body'+(open?' open':'')+'" id="db-'+di+'">'+rows+'</div>'+
-    '</div>';
+    var pct=pg.total>0?Math.round(pg.done/pg.total*100):0;
+    return '<div class="day-block">'
+      +'<div class="day-hd" onclick="togDay(\'db-'+di+'\',this)">'
+        +'<div class="day-left">'
+          +'<span class="day-chev'+(open?' open':'')+'">▾</span>'
+          +'<div><div class="day-title">'+d.titulo+'</div><div class="day-foco">'+d.foco+'</div></div>'
+        +'</div>'
+        +'<span class="day-prog '+pc+'">'+pl+'</span>'
+      +'</div>'
+      +'<div class="day-bar"><div class="day-bar-fill" style="width:'+pct+'%"></div></div>'
+      +'<div class="day-body'+(open?' open':'')+'" id="db-'+di+'" style="padding:12px">'+rows+'</div>'
+    +'</div>';
   }).join('');
 }
 
@@ -1408,12 +1437,16 @@ function togDay(id,hd){
   var b=document.getElementById(id); b.classList.toggle('open');
   hd.querySelector('.day-chev').classList.toggle('open');
 }
-function togVrow(id,btn){
-  var el=document.getElementById(id); if(!el) return;
-  var open=el.style.display==='block';
-  el.style.display=open?'none':'block';
-  var arr=btn.querySelector('.varr');
-  if(arr) arr.style.transform=open?'':'rotate(180deg)';
+function markSetDone(ek, si){
+  var sv=lLog(ek);
+  var vv=sv&&sv.sets&&sv.sets[si]?sv.sets[si].v:'';
+  var vr=sv&&sv.sets&&sv.sets[si]?sv.sets[si].r:'';
+  var setEl=document.getElementById('set-'+ek+'-'+si);
+  if(!setEl) return;
+  var done=!!(vv&&vr);
+  setEl.classList.toggle('completada',done);
+  var lbl=setEl.querySelector('.lset-lbl');
+  if(lbl) lbl.classList.toggle('done-lbl',done);
 }
 function togDone(k,btn,wi,di){
   var a=lAll(); if(!a[k])a[k]={sets:{},done:false,note:''};
@@ -1968,6 +2001,7 @@ function onSerieInput(ek,si,campo,val,restSeg){
   if(kg&&rp){ tSet(restSeg); tStartTimer(); }
 }
 
+
 // ── PIN & COACH ───────────────────────
 function oPIN(){ document.getElementById('pin-modal').classList.add('open'); document.getElementById('pin-input').value=''; document.getElementById('pin-err').textContent=''; setTimeout(function(){document.getElementById('pin-input').focus();},100); }
 function cPIN(){ document.getElementById('pin-modal').classList.remove('open'); }
@@ -2310,7 +2344,6 @@ function saveClose(){
   saveDietaEd();
   applyUI(); applyVis(); cCoach();
   // Guardar siempre en Supabase si hay cliente activo
-  console.log('saveClose — __cid:', window.__cid, 'P.musculo:', P.musculo, 'P.peso:', P.peso);
   if(window.__cid){
     var el=document.getElementById('sync-status');
     if(el) el.textContent='Guardando...';
@@ -2357,6 +2390,7 @@ function loadTheme(){
 
 // ── GOOGLE DRIVE ──────────────────────
 // Google Drive eliminado
+
 
 // ── INIT ──────────────────────────────
 (function(){
@@ -2437,9 +2471,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
     if(pinMod) pinMod.style.display='none';
     var pinBtn=document.querySelector('.abtn.p');
     if(pinBtn) pinBtn.style.display='none';
-    setTimeout(function(){
-      oCoach();
-    }, 200);
+    setTimeout(function(){ oCoach(); }, 200);
   }
 }
 
@@ -2559,138 +2591,19 @@ async function cargarGaleria(){
   });
 }
 
-
-// ── COACH: VER FOTOS DEL CLIENTE ──────────────────────
-async function cargarFotosCoach(){
-  var cid=window.__cid; if(!cid) return;
-  var body=document.getElementById('coach-fotos-body'); if(!body) return;
-  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
-  var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
-  if(error){ body.innerHTML='<div style="color:var(--warn);font-size:12px;padding:10px">Error: '+error.message+'</div>'; return; }
-  if(!data||data.length===0){
-    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>';
-    return;
-  }
-  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
-  data.forEach(function(row){
-    var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
-    var nFotos=[row.url_frente,row.url_espalda,row.url_lateral].filter(Boolean).length;
-    var carpeta=document.createElement('div');
-    carpeta.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
-    var hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
-    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
-      +'<span style="font-size:18px">📁</span>'
-      +'<div>'
-        +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+fecha+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+nFotos+' foto'+(nFotos===1?'':'s')+'</div>'
-      +'</div></div>'
-    +'<span class="fol-arr" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
-    var bdy=document.createElement('div');
-    bdy.style.cssText='display:none;padding:0 14px 14px';
-    var imgs='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
-    var labels={url_frente:'Frente',url_espalda:'Espalda',url_lateral:'Lateral'};
-    Object.keys(labels).forEach(function(k){
-      if(row[k]) imgs+='<div>'
-        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">'+labels[k]+'</div>'
-        +'<a href="'+row[k]+'" target="_blank">'
-        +'<img src="'+row[k]+'" style="width:100%;border-radius:4px;object-fit:cover;aspect-ratio:3/4;cursor:zoom-in" loading="lazy">'
-        +'</a></div>';
-    });
-    imgs+='</div>';
-    bdy.innerHTML=imgs;
-    var open=false;
-    hdr.onclick=function(){
-      open=!open;
-      bdy.style.display=open?'block':'none';
-      hdr.querySelector('.fol-arr').style.transform=open?'rotate(180deg)':'';
-      hdr.style.borderBottom=open?'1px solid var(--border)':'none';
-    };
-    carpeta.appendChild(hdr); carpeta.appendChild(bdy);
-    body.appendChild(carpeta);
-  });
-}
-
-// ── COACH: VER ENTRENOS DEL CLIENTE ───────────────────
-async function cargarEntrenosCoach(){
-  var cid=window.__cid; if(!cid) return;
-  var body=document.getElementById('coach-entrenos-body'); if(!body) return;
-  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
-  var {data,error}=await sb.from('registros').select('datos').eq('cliente_id',cid).single();
-  if(error||!data||!data.datos||!data.datos.logs){
-    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>';
-    return;
-  }
-  var logs=data.datos.logs;
-  var fechas=Object.keys(logs).sort(function(a,b){return b.localeCompare(a);});
-  if(fechas.length===0){
-    body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>';
-    return;
-  }
-  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+fechas.length+' sesión'+(fechas.length===1?'':'es')+' registradas</div>';
-  fechas.forEach(function(fecha){
-    var sesion=logs[fecha];
-    var ejercicios=Object.keys(sesion||{});
-    if(ejercicios.length===0) return;
-    var card=document.createElement('div');
-    card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
-    var hdr=document.createElement('div');
-    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
-    var fechaFmt=new Date(fecha+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
-    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
-      +'<span style="font-size:18px">🏋️</span>'
-      +'<div>'
-        +'<div style="font-size:13px;font-weight:500;color:var(--text);text-transform:capitalize">'+fechaFmt+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+ejercicios.length+' ejercicio'+(ejercicios.length===1?'':'s')+'</div>'
-      +'</div></div>'
-    +'<span class="fol-arr2" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
-    var bdy=document.createElement('div');
-    bdy.style.cssText='display:none;padding:0 14px 14px';
-    var rows='<table style="width:100%;border-collapse:collapse;font-size:12px">'
-      +'<tr style="color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.5px">'
-      +'<th style="text-align:left;padding:4px 0;font-weight:500">Ejercicio</th>'
-      +'<th style="text-align:center;padding:4px 0;font-weight:500">Series</th>'
-      +'<th style="text-align:center;padding:4px 0;font-weight:500">Mejor serie</th>'
-      +'</tr>';
-    ejercicios.forEach(function(ej){
-      var series=sesion[ej]||[];
-      var mejor=series.reduce(function(mx,s){
-        var kg=parseFloat(s.kg)||0, rep=parseInt(s.rep)||0;
-        return (kg*rep > mx.kg*mx.rep)?{kg:kg,rep:rep}:mx;
-      },{kg:0,rep:0});
-      var seriesCompletadas=series.filter(function(s){return s.kg||s.rep;}).length;
-      rows+='<tr style="border-top:1px solid var(--border)">'
-        +'<td style="padding:6px 0;color:var(--text);font-weight:500">'+ej+'</td>'
-        +'<td style="text-align:center;padding:6px 0;color:var(--muted)">'+seriesCompletadas+'</td>'
-        +'<td style="text-align:center;padding:6px 0;color:var(--accent);font-weight:600">'+(mejor.kg?mejor.kg+'kg × '+mejor.rep+'rep':'—')+'</td>'
-      +'</tr>';
-    });
-    rows+='</table>';
-    bdy.innerHTML=rows;
-    var open=false;
-    hdr.onclick=function(){
-      open=!open;
-      bdy.style.display=open?'block':'none';
-      hdr.querySelector('.fol-arr2').style.transform=open?'rotate(180deg)':'';
-      hdr.style.borderBottom=open?'1px solid var(--border)':'none';
-    };
-    card.appendChild(hdr); card.appendChild(bdy);
-    body.appendChild(card);
-  });
-}
-
+// Cargar galería cuando se abre la pestaña fotos
+var _origShowTab=window.showTab;
 
 // ── MODO DEMO ─────────────────────────
 function loadDemo(){
-  var demoCliente = { id:'demo', nombre:'Alex', apellido:'García', token:'demo' };
-  var demoPlan = { P:{
-    nombre:'Alex', apellido:'García',
-    peso:83.5, grasa:14.2, musculo:68.1, totalLevant:485,
-    tipo:'powerlifting',
-    planDesc:'Powerlifting · Pesos confirmados · Progresión +2.5 kg/semana',
-    pin:'1234', restMain:180, restAcc:90, restWarn:30,
+  var demoCliente={id:'demo',nombre:'Alex',apellido:'García',token:'demo'};
+  var demoPlan={P:{
+    nombre:'Alex',apellido:'García',
+    peso:83.5,grasa:14.2,musculo:68.1,totalLevant:485,
+    tipo:'powerlifting',planDesc:'Powerlifting · Pesos confirmados · Progresión +2.5 kg/semana',
+    pin:'1234',restMain:180,restAcc:90,restWarn:30,
     mensaje:'¡Buena sesión hoy! Recuerda calentar bien antes de los levantamientos principales.',
-    telefonoEntrenador:'', telefonoCliente:'',
+    telefonoEntrenador:'',telefonoCliente:'',
     tabs_vis:{dashboard:true,semana:true,entreno:true,records:true,historial:true,dieta:true,habitos:true,fotos:true},
     hdr_vis:{peso:true,grasa:true,musculo:true,total:true},
     semanas:[
@@ -2702,53 +2615,27 @@ function loadDemo(){
           {nombre:'Extensión pierna',series:'3×15',peso:'65',principal:false,comentario:''},
         ]},
         {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
-          {nombre:'Peso muerto',series:'4×4',peso:'130',principal:true,comentario:'Barra pegada al cuerpo todo el recorrido. Empuja el suelo, no tires de la barra.'},
+          {nombre:'Peso muerto',series:'4×4',peso:'130',principal:true,comentario:'Barra pegada al cuerpo todo el recorrido.'},
           {nombre:'Dominadas lastre',series:'4×6',peso:'+10 kg',principal:true,comentario:''},
-          {nombre:'Remo barra',series:'4×8',peso:'70',principal:false,comentario:'Retrae las escápulas al final del recorrido.'},
+          {nombre:'Remo barra',series:'4×8',peso:'70',principal:false,comentario:''},
           {nombre:'Curl bíceps barra',series:'3×12',peso:'35',principal:false,comentario:''},
-        ]},
-        {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
-          {nombre:'Sentadilla técnica',series:'3×3',peso:'70',principal:true,comentario:'Sesión técnica. Vídeo cada serie.'},
-          {nombre:'Press banca técnica',series:'3×3',peso:'60',principal:true,comentario:''},
-          {nombre:'Hip thrust',series:'4×12',peso:'80',principal:false,comentario:''},
-          {nombre:'Face pull',series:'3×20',peso:'25',principal:false,comentario:''},
-        ]},
-      ]},
-      {label:'23 Feb',fechaInicio:'2025-02-23',fechaFin:'2025-03-01',rpe:'@7.5',current:false,dias:[
-        {titulo:'LUNES — Empuje',foco:'Sentadilla / Banca / Militar',ejercicios:[
-          {nombre:'Sentadilla',series:'4×5',peso:'102.5',principal:true,comentario:'Mantén el pecho alto en el descenso.'},
-          {nombre:'Press banca',series:'4×5',peso:'82.5',principal:true,comentario:''},
-          {nombre:'Press militar mancuernas',series:'4×10',peso:'24 kg/mano',principal:false,comentario:''},
-          {nombre:'Extensión pierna',series:'3×15',peso:'67.5',principal:false,comentario:''},
-        ]},
-        {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
-          {nombre:'Peso muerto',series:'4×4',peso:'132.5',principal:true,comentario:''},
-          {nombre:'Dominadas lastre',series:'4×6',peso:'+10 kg',principal:true,comentario:''},
-          {nombre:'Remo barra',series:'4×8',peso:'72.5',principal:false,comentario:''},
-          {nombre:'Curl bíceps barra',series:'3×12',peso:'37.5',principal:false,comentario:''},
-        ]},
-        {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
-          {nombre:'Sentadilla técnica',series:'3×3',peso:'72.5',principal:true,comentario:''},
-          {nombre:'Press banca técnica',series:'3×3',peso:'62.5',principal:true,comentario:''},
-          {nombre:'Hip thrust',series:'4×12',peso:'82.5',principal:false,comentario:''},
-          {nombre:'Face pull',series:'3×20',peso:'27.5',principal:false,comentario:''},
         ]},
       ]},
       {label:'2 Mar',fechaInicio:'2025-03-02',fechaFin:'2025-03-08',rpe:'@8',current:true,dias:[
         {titulo:'LUNES — Empuje',foco:'Sentadilla / Banca / Militar',ejercicios:[
-          {nombre:'Sentadilla',series:'4×5',peso:'105',principal:true,videoUrl:'https://www.youtube.com/watch?v=ultWZbUMPL8',comentario:'Mantén el pecho alto en el descenso. Esta semana apretamos un poco más.'},
-          {nombre:'Press banca',series:'4×5',peso:'85',principal:true,comentario:'Codos a 45°. Esta semana subimos 2.5 kg.'},
+          {nombre:'Sentadilla',series:'4×5',peso:'105',principal:true,videoUrl:'https://www.youtube.com/watch?v=ultWZbUMPL8',comentario:'Esta semana apretamos. Mantén el pecho alto.'},
+          {nombre:'Press banca',series:'4×5',peso:'85',principal:true,comentario:'Subimos 2.5 kg. Codos a 45°.'},
           {nombre:'Press militar mancuernas',series:'4×10',peso:'26 kg/mano',principal:false,comentario:''},
           {nombre:'Extensión pierna',series:'3×15',peso:'70',principal:false,comentario:''},
         ]},
         {titulo:'MIÉRCOLES — Tirón',foco:'Peso muerto / Dominadas / Remo',ejercicios:[
-          {nombre:'Peso muerto',series:'4×4',peso:'135',principal:true,comentario:'Barra pegada al cuerpo. Esta semana al 85%.'},
+          {nombre:'Peso muerto',series:'4×4',peso:'135',principal:true,comentario:'Al 85% esta semana.'},
           {nombre:'Dominadas lastre',series:'4×6',peso:'+12.5 kg',principal:true,comentario:''},
           {nombre:'Remo barra',series:'4×8',peso:'75',principal:false,comentario:''},
           {nombre:'Curl bíceps barra',series:'3×12',peso:'40',principal:false,comentario:''},
         ]},
         {titulo:'VIERNES — Full body',foco:'Técnica + accesorios',ejercicios:[
-          {nombre:'Sentadilla técnica',series:'3×3',peso:'75',principal:true,comentario:''},
+          {nombre:'Sentadilla técnica',series:'3×3',peso:'75',principal:true,comentario:'Sesión técnica. Graba cada serie.'},
           {nombre:'Press banca técnica',series:'3×3',peso:'65',principal:true,comentario:''},
           {nombre:'Hip thrust',series:'4×12',peso:'85',principal:false,comentario:''},
           {nombre:'Face pull',series:'3×20',peso:'30',principal:false,comentario:''},
@@ -2759,49 +2646,33 @@ function loadDemo(){
       {nombre:'Dormir 8h',icono:'😴',objetivo:7,tipo:'check'},
       {nombre:'Proteína diaria',icono:'🥩',objetivo:7,tipo:'check'},
       {nombre:'10.000 pasos',icono:'🚶',objetivo:5,tipo:'check'},
-      {nombre:'Sin alcohol',icono:'🚫',objetivo:7,tipo:'check'},
     ],
-    dieta_kcal:3200, dieta_prot:180, dieta_carb:380, dieta_fat:90,
-    dieta_nota:'Días de entreno +200 kcal extra en carbohidratos. Prioriza comida real.',
+    dieta_kcal:3200,dieta_prot:180,dieta_carb:380,dieta_fat:90,
+    dieta_nota:'Días de entreno +200 kcal extra en carbohidratos.',
   }};
-  var demoReg = { logs:{}, rec:{}, hab:{}, sem:{} };
-
-  // Montar panel sin guardar nada
-  var origOnSave = window.__onSave;
-  montarPanel(demoCliente, demoPlan, demoReg, 'demo', false, 'demo');
-
-  // Sobrescribir onSave y guardarRegistros para que no toquen Supabase
-  window.__onSave = function(){
-    var el=document.getElementById('sync-status');
-    if(el) el.textContent='Modo demo — los cambios no se guardan';
-  };
-  window.__cid = null; // evitar que saveClose intente guardar en Supabase
-
-  // Banner demo
+  var demoReg={logs:{},rec:{},hab:{},sem:{}};
+  montarPanel(demoCliente,demoPlan,demoReg,'demo',false,'demo');
+  window.__onSave=function(){ var el=document.getElementById('sync-status'); if(el) el.textContent='Modo demo'; };
+  window.__cid=null;
   setTimeout(function(){
-    var container=document.getElementById('cliente-app');
-    if(!container) return;
+    var container=document.getElementById('cliente-app'); if(!container) return;
     var banner=document.createElement('div');
-    banner.style.cssText='background:#2c3e50;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-family:var(--sans);position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;';
-    banner.innerHTML='🎯 <strong>Modo demo</strong> — Estás viendo PanelFit como lo verán tus clientes &nbsp;·&nbsp; <a href="/" style="color:#f39c12;font-weight:600;text-decoration:none">Saber más →</a>';
-    container.insertBefore(banner, container.firstChild);
-  }, 100);
+    banner.style.cssText='background:#1a1814;color:#fff;text-align:center;padding:10px 20px;font-size:12px;font-family:var(--sans);position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;';
+    banner.innerHTML='🎯 <strong>Modo demo</strong> — Así verán tus clientes PanelFit &nbsp;·&nbsp; <a href="/" style="color:#c8a97e;font-weight:600;text-decoration:none">Saber más →</a>';
+    container.insertBefore(banner,container.firstChild);
+  },100);
 }
 
-
-// ── SUPERADMIN ────────────────────────
+// ── SUPERADMIN ─────────────────────────
 async function loadSuperAdmin(){
   console.log('loadSuperAdmin iniciado');
   showView('view-admin');
   var grid=document.getElementById('admin-grid');
   if(!grid){ console.error('admin-grid no encontrado'); return; }
   grid.innerHTML='<div style="color:var(--muted);font-size:13px">Cargando...</div>';
-
   var {data:entrenadores,error}=await sb.from('entrenadores').select('*').order('created_at',{ascending:false});
-  console.log('entrenadores:', entrenadores, 'error:', error);
+  console.log('entrenadores:',entrenadores,'error:',error);
   if(error||!entrenadores){ grid.innerHTML='<div style="color:var(--warn)">Error: '+(error?.message||'sin datos')+'</div>'; return; }
-
-  // Para cada entrenador cargar sus clientes
   var html2='';
   for(var i=0;i<entrenadores.length;i++){
     var ent=entrenadores[i];
@@ -2810,11 +2681,10 @@ async function loadSuperAdmin(){
     var clientesList=(clientes||[]).map(function(c){
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);margin-bottom:4px;border-radius:var(--r)">'
         +'<span style="font-size:13px">'+c.nombre+' '+(c.apellido||'')+'</span>'
-        +'<button onclick="adminVerCliente(this)" data-cid="'+c.id+'" data-token="'+c.token+'" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);border-radius:var(--r)">Ver panel</button>'
+        +'<button data-cid="'+c.id+'" data-token="'+c.token+'" onclick="adminVerCliente(this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);border-radius:var(--r)">Ver panel</button>'
       +'</div>';
     }).join('');
-
-    html2+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'
+    html2+='<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px">'
       +'<div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">'
         +'<div>'
           +'<div style="font-size:15px;font-weight:500">'+(ent.nombre||ent.email)+'</div>'
@@ -2823,24 +2693,22 @@ async function loadSuperAdmin(){
         +'<div style="display:flex;gap:8px;align-items:center">'
           +'<span style="font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;'+(ent.activo?'background:var(--ok-bg);color:var(--ok)':'background:var(--warn-bg);color:var(--warn)')+'">'+( ent.activo?'Activo':'Inactivo')+'</span>'
           +(ent.activo
-            ?'<button onclick="adminToggleActivo(this)" data-eid="'+ent.id+'" data-val="false" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--warn);border-radius:var(--r)">Desactivar</button>'
-            :'<button onclick="adminToggleActivo(this)" data-eid="'+ent.id+'" data-val="true" style="font-size:11px;padding:4px 10px;border:1px solid var(--ok);background:var(--ok-bg);cursor:pointer;font-family:var(--sans);color:var(--ok);border-radius:var(--r)">Activar</button>'
+            ?'<button data-eid="'+ent.id+'" data-val="false" onclick="adminToggleActivo(this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);color:var(--warn);border-radius:var(--r)">Desactivar</button>'
+            :'<button data-eid="'+ent.id+'" data-val="true" onclick="adminToggleActivo(this)" style="font-size:11px;padding:4px 10px;border:1px solid var(--ok);background:var(--ok-bg);cursor:pointer;font-family:var(--sans);color:var(--ok);border-radius:var(--r)">Activar</button>'
           )
         +'</div>'
       +'</div>'
       +(clientesList?'<div style="padding:12px 16px">'+clientesList+'</div>':'<div style="padding:12px 16px;font-size:12px;color:var(--muted)">Sin clientes aún</div>')
     +'</div>';
   }
-  grid.innerHTML=html2||'<div style="color:var(--muted);font-size:13px">No hay entrenadores registrados.</div>';
+  grid.innerHTML=html2||'<div style="color:var(--muted);font-size:13px">No hay entrenadores.</div>';
 }
-
 async function adminToggleActivo(btn){
   var id=btn.dataset.eid, activo=btn.dataset.val==='true';
   btn.disabled=true; btn.textContent='...';
   await sb.from('entrenadores').update({activo:activo}).eq('id',id);
   loadSuperAdmin();
 }
-
 async function adminVerCliente(btn){
   var clienteId=btn.dataset.cid, token=btn.dataset.token;
   loading(true);
@@ -2848,12 +2716,10 @@ async function adminVerCliente(btn){
   var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
   var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
   if(!c){ loading(false); alert('Cliente no encontrado'); return; }
-  montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, true, clienteId);
+  montarPanel(c,pl?.datos||{},rg?.datos||{},token,true,clienteId);
   loading(false);
 }
 
-// Cargar galería cuando se abre la pestaña fotos
-var _origShowTab=window.showTab;
 </script>
 </body>
 </html>
