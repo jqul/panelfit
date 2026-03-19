@@ -2668,6 +2668,83 @@ async function cargarGaleria(){
   });
 }
 
+// ── COACH: VER FOTOS DEL CLIENTE ──────
+async function cargarFotosCoach(){
+  var cid=window.__cid; if(!cid) return;
+  var body=document.getElementById('coach-fotos-body'); if(!body) return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
+  if(error){ body.innerHTML='<div style="color:var(--warn);font-size:12px;padding:10px">Error: '+error.message+'</div>'; return; }
+  if(!data||data.length===0){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>'; return; }
+  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
+  data.forEach(function(row){
+    var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    var nFotos=[row.url_frente,row.url_espalda,row.url_lateral].filter(Boolean).length;
+    var carpeta=document.createElement('div');
+    carpeta.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
+    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">📁</span><div><div style="font-size:13px;font-weight:500">'+fecha+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+nFotos+' foto'+(nFotos===1?'':'s')+'</div></div></div><span class="fol-arr" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
+    var bdy=document.createElement('div');
+    bdy.style.cssText='display:none;padding:0 14px 14px';
+    var imgs='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+    var labels={url_frente:'Frente',url_espalda:'Espalda',url_lateral:'Lateral'};
+    Object.keys(labels).forEach(function(k){
+      if(row[k]) imgs+='<div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">'+labels[k]+'</div><a href="'+row[k]+'" target="_blank"><img src="'+row[k]+'" style="width:100%;border-radius:4px;object-fit:cover;aspect-ratio:3/4;cursor:zoom-in" loading="lazy"></a></div>';
+    });
+    imgs+='</div>';
+    bdy.innerHTML=imgs;
+    var open=false;
+    hdr.onclick=function(){
+      open=!open; bdy.style.display=open?'block':'none';
+      hdr.querySelector('.fol-arr').style.transform=open?'rotate(180deg)':'';
+    };
+    carpeta.appendChild(hdr); carpeta.appendChild(bdy);
+    body.appendChild(carpeta);
+  });
+}
+
+// ── COACH: VER ENTRENOS DEL CLIENTE ───
+async function cargarEntrenosCoach(){
+  var cid=window.__cid; if(!cid) return;
+  var body=document.getElementById('coach-entrenos-body'); if(!body) return;
+  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  var {data,error}=await sb.from('registros').select('datos').eq('cliente_id',cid).single();
+  if(error||!data||!data.datos||!data.datos.logs){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>'; return; }
+  var logs=data.datos.logs;
+  var fechas=Object.keys(logs).sort(function(a,b){return b.localeCompare(a);});
+  if(!fechas.length){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Sin entrenos registrados.</div>'; return; }
+  body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+fechas.length+' sesión'+(fechas.length===1?'':'es')+'</div>';
+  fechas.forEach(function(fecha){
+    var sesion=logs[fecha]; var ejercicios=Object.keys(sesion||{});
+    if(!ejercicios.length) return;
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden';
+    var fechaFmt=new Date(fecha+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+    var hdr=document.createElement('div');
+    hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none';
+    hdr.innerHTML='<div style="display:flex;align-items:center;gap:10px"><span style="font-size:18px">🏋️</span><div><div style="font-size:13px;font-weight:500;text-transform:capitalize">'+fechaFmt+'</div><div style="font-size:11px;color:var(--muted);margin-top:1px">'+ejercicios.length+' ejercicio'+(ejercicios.length===1?'':'s')+'</div></div></div><span class="fol-arr2" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</span>';
+    var bdy=document.createElement('div');
+    bdy.style.cssText='display:none;padding:0 14px 14px';
+    var rows='<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="color:var(--muted);text-transform:uppercase;font-size:10px;letter-spacing:.5px"><th style="text-align:left;padding:4px 0;font-weight:500">Ejercicio</th><th style="text-align:center;padding:4px 0;font-weight:500">Series</th><th style="text-align:center;padding:4px 0;font-weight:500">Mejor</th></tr>';
+    ejercicios.forEach(function(ej){
+      var series=sesion[ej]||[];
+      var mejor=series.reduce(function(mx,s){ var kg=parseFloat(s.kg)||0,rep=parseInt(s.rep)||0; return(kg*rep>mx.kg*mx.rep)?{kg:kg,rep:rep}:mx; },{kg:0,rep:0});
+      var completadas=series.filter(function(s){return s.kg||s.rep;}).length;
+      rows+='<tr style="border-top:1px solid var(--border)"><td style="padding:6px 0;font-weight:500">'+ej+'</td><td style="text-align:center;color:var(--muted)">'+completadas+'</td><td style="text-align:center;color:var(--ok);font-weight:600">'+(mejor.kg?mejor.kg+'×'+mejor.rep:'—')+'</td></tr>';
+    });
+    rows+='</table>';
+    bdy.innerHTML=rows;
+    var open=false;
+    hdr.onclick=function(){
+      open=!open; bdy.style.display=open?'block':'none';
+      hdr.querySelector('.fol-arr2').style.transform=open?'rotate(180deg)':'';
+    };
+    card.appendChild(hdr); card.appendChild(bdy);
+    body.appendChild(card);
+  });
+}
+
 // Cargar galería cuando se abre la pestaña fotos
 var _origShowTab=window.showTab;
 
