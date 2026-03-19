@@ -2569,6 +2569,7 @@ function prevFoto(lado, inp){
 }
 
 async function subirFotos(){
+  alert('subirFotos ejecutado. cid='+window.__cid);
   var fecha=document.getElementById('foto-fecha').value;
   var err=document.getElementById('foto-upload-err');
   err.textContent=''; err.style.color='var(--warn)';
