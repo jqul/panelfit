@@ -891,6 +891,7 @@ var PANEL_HTML=`<!-- PIN -->
         <div class="ctab" onclick="swC('progreso',this)">📊 Progreso</div>
         <div class="ctab" onclick="swC('fotos',this);cargarFotosCoach()">📸 Fotos</div>
         <div class="ctab" onclick="swC('entrenos',this);cargarEntrenosCoach()">📋 Entrenos</div>
+        <div class="ctab" onclick="swC('encuesta',this);cargarEncuestaCoach()">📝 Encuesta</div>
         <div class="ctab" onclick="swC('config',this)">⚙️ Config</div>
       </div>
       <button class="cclose" onclick="cCoach()">✕ Cerrar</button>
@@ -1013,6 +1014,30 @@ var PANEL_HTML=`<!-- PIN -->
         </div>
       </div>
 
+      <!-- ENCUESTA -->
+      <div class="csec" id="cs-encuesta">
+        <div class="ecard">
+          <div class="echd">
+            <div class="ectitle">📝 Encuesta al cliente</div>
+            <div style="display:flex;gap:6px">
+              <button class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0" onclick="addPregunta()">+ Pregunta</button>
+              <button class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;border-color:var(--ok);color:var(--ok)" onclick="cargarPlantilla()">📋 Plantilla</button>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Crea preguntas para este cliente y envía el recordatorio cuando quieras.</div>
+          <div id="preguntas-editor"></div>
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <button onclick="guardarEncuesta()" style="background:var(--ink);color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer">💾 Guardar</button>
+            <button onclick="enviarEncuestaWA()" style="background:#25D366;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer">📱 Enviar por WhatsApp</button>
+          </div>
+          <div id="encuesta-status" style="font-size:11px;color:var(--muted);margin-top:8px;min-height:16px"></div>
+        </div>
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">📊 Respuestas recibidas</div></div>
+          <div id="encuesta-respuestas"><div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin respuestas aún.</div></div>
+        </div>
+      </div>
+
     </div>
     <div class="sbar">
       <span id="save-msg" style="font-size:11px;color:var(--muted)">Los cambios se aplican al guardar</span>
@@ -1041,8 +1066,10 @@ var PANEL_HTML=`<!-- PIN -->
         <div id="vid-upload-prog" style="display:none;font-size:11px;color:var(--accent);margin-bottom:8px">Subiendo...</div>
       </div>
       <div id="vsec-bib" style="display:none">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Vídeos de tu biblioteca. Haz clic para seleccionar.</div>
-        <div id="vid-bib-list" style="max-height:200px;overflow-y:auto;display:grid;gap:6px"></div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <input id="bib-search" class="einp" placeholder="Buscar ejercicio..." oninput="cargarBiblioteca(this.value)" style="flex:1;font-size:12px;padding:7px 10px;">
+        </div>
+        <div id="vid-bib-list" style="max-height:220px;overflow-y:auto;"></div>
         <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
           <label class="elbl">Subir nuevo a biblioteca</label>
           <input type="file" id="vid-bib-file" accept="video/*" style="color:var(--text2);font-size:12px;margin-bottom:6px;width:100%">
@@ -1086,6 +1113,7 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="tab" id="tab-historial-btn" onclick="showTab('historial',this)">HISTORIAL</div>
   <div class="tab" id="tab-dieta-btn" onclick="showTab('dieta',this)">DIETA</div>
   <div class="tab" id="tab-habitos-btn" onclick="showTab('habitos',this)">HÁBITOS</div>
+  <div class="tab" id="tab-encuesta-btn" onclick="showTab('encuesta',this);cargarEncuestaCliente()">📝 ENCUESTA</div>
   <div class="tab" id="tab-fotos-btn" onclick="showTab('fotos',this)">📸 FOTOS</div>
 </div>
 
@@ -1174,6 +1202,16 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="psub">Se resetea automáticamente cada día</div>
   <div class="hg" id="habit-grid"></div>
   <div class="note ok"><strong>Los 3 clave:</strong> Proteína ≥ 160 g · Descanso ≥ 7 h · Agua ≥ 3 L</div>
+</div>
+<div class="panel" id="tab-encuesta">
+  <div class="ptitle">📝 Encuesta</div>
+  <div class="psub" id="encuesta-cli-sub">Responde las preguntas de tu entrenador</div>
+  <div id="encuesta-cli-body" style="margin-top:16px"></div>
+  <div id="encuesta-cli-done" style="display:none;text-align:center;padding:40px 20px">
+    <div style="font-size:48px;margin-bottom:12px">✅</div>
+    <div style="font-family:var(--serif);font-size:22px;margin-bottom:8px">¡Respuestas enviadas!</div>
+    <div style="font-size:14px;color:var(--muted)">Tu entrenador las recibirá en breve.</div>
+  </div>
 </div>
 <div class="panel" id="tab-fotos">
   <div class="ptitle">📸 Fotos de Progreso</div>
@@ -1566,7 +1604,7 @@ function swVTab(t){
     btn.style.borderBottomColor = x===t?'var(--accent)':'transparent';
     btn.style.color = x===t?'var(--text)':'var(--muted)';
   });
-  if(t==='bib') cargarBiblioteca();
+  if(t==='bib') cargarBiblioteca(window._vNombre||'');
 }
 var _vWi=0; // semana del vídeo que se está editando
 function oVid(di,ri){
@@ -1576,7 +1614,10 @@ function oVid(di,ri){
   document.getElementById('vid-url-in').value=ej?ej.videoUrl||'':'';
   document.getElementById('vid-err').textContent='';
   document.getElementById('vid-upload-prog').style.display='none';
-  swVTab('url');
+  // Guardar nombre del ejercicio para filtrar biblioteca
+  window._vNombre=ej?ej.nombre||'':'';
+  // Abrir directamente en biblioteca si hay nombre
+  if(window._vNombre){ swVTab('bib'); } else { swVTab('url'); }
 }
 function cVidModal(){ document.getElementById('vid-modal').style.display='none'; }
 async function saveVid(){
@@ -1611,27 +1652,37 @@ async function saveVid(){
 function rmVid(){ getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=''; getDias(_vWi)[_vdi].ejercicios[_vri].videoB64=''; cVidModal(); buildDiasEd(); buildTraining(curWeek); }
 
 // ── BIBLIOTECA DE VÍDEOS ──────────────────────────
-async function cargarBiblioteca(){
+async function cargarBiblioteca(filtro){
   var lista=document.getElementById('vid-bib-list');
   lista.innerHTML='<span style="font-size:11px;color:var(--muted)">Cargando...</span>';
   var entId=window.__entrenadorId||'unknown';
-  var {data,error}=await sb.storage.from('media').list('videos/'+entId, {sortBy:{column:'created_at',order:'desc'}});
+  var {data,error}=await sb.storage.from('media').list('videos/'+entId, {sortBy:{column:'name',order:'asc'}});
   if(error||!data||data.length===0){
     lista.innerHTML='<span style="font-size:11px;color:var(--muted)">No tienes vídeos en biblioteca. Sube el primero abajo.</span>';
     return;
   }
+  var items=data.filter(function(f){
+    var nombre=f.name.replace(/_/g,' ').replace(/\.\w+$/, '').trim().toLowerCase();
+    return !filtro || nombre.includes(filtro.toLowerCase());
+  });
+  if(items.length===0){
+    lista.innerHTML='<span style="font-size:11px;color:var(--muted)">No hay vídeos de "'+filtro+'" aún.</span>';
+    return;
+  }
   lista.innerHTML='';
-  data.forEach(function(f){
+  items.forEach(function(f){
     var {data:pu}=sb.storage.from('media').getPublicUrl('videos/'+entId+'/'+f.name);
-    var nombre=f.metadata?.nombre||f.name.replace(/^\d+\./,'').replace(/\.\w+$/,'');
+    var nombre=f.name.replace(/_/g,' ').replace(/\.\w+$/,'').trim();
     var item=document.createElement('div');
-    item.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--r);cursor:pointer;gap:8px;border:1px solid transparent';
-    item.innerHTML='<span style="font-size:12px;flex:1;color:var(--text)">🎬 '+nombre+'</span>'
-      +'<button style="background:var(--ok);color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:11px;font-family:var(--sans);cursor:pointer">Usar</button>';
+    item.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);margin-bottom:4px;';
+    item.innerHTML='<span style="font-size:18px">🎬</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--text)">'+nombre+'</div></div>'
+      +'<button style="background:var(--ink);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;flex-shrink:0">Usar</button>';
     item.querySelector('button').onclick=function(){
       getDias(_vWi)[_vdi].ejercicios[_vri].videoUrl=pu.publicUrl;
       getDias(_vWi)[_vdi].ejercicios[_vri].videoB64='';
-      cVidModal(); buildTraining(curWeek);
+      cVidModal(); buildDiasEd(); buildTraining(curWeek);
+      if(window.__cid) guardarPlan(window.__cid,{P:P,DIET:DIET}).then(function(){ var el=document.getElementById('sync-status'); if(el) el.textContent='Vídeo guardado ✓'; });
     };
     lista.appendChild(item);
   });
@@ -2746,6 +2797,213 @@ async function cargarEntrenosCoach(){
     card.appendChild(hdr); card.appendChild(bdy);
     body.appendChild(card);
   });
+}
+
+// ── ENCUESTAS ─────────────────────────
+var _encuestaId = null;
+var _preguntas = [];
+
+// Plantilla por defecto
+var PLANTILLA_PREGUNTAS = [
+  {tipo:'escala', texto:'¿Cómo te has sentido esta semana del 1 al 10?'},
+  {tipo:'escala', texto:'¿Cómo valorarías tu nivel de energía? (1=muy bajo, 10=excelente)'},
+  {tipo:'escala', texto:'¿Cuánto dolor muscular tienes hoy? (1=ninguno, 10=mucho)'},
+  {tipo:'sino', texto:'¿Has dormido más de 7 horas la mayoría de noches?'},
+  {tipo:'sino', texto:'¿Has cumplido con la dieta esta semana?'},
+  {tipo:'texto', texto:'¿Qué mejorarías de tu plan actual?'},
+];
+
+// ── COACH: gestionar encuesta ──
+async function cargarEncuestaCoach(){
+  var cid=window.__cid; if(!cid) return;
+  var st=document.getElementById('encuesta-status');
+  if(st) st.textContent='';
+  _preguntas=[];
+  _encuestaId=null;
+  // Cargar encuesta existente
+  var {data}=await sb.from('encuestas').select('*').eq('cliente_id',cid).order('created_at',{ascending:false}).limit(1).single();
+  if(data){
+    _encuestaId=data.id;
+    _preguntas=data.preguntas||[];
+    renderRespuestas(data.respuestas);
+  }
+  renderPreguntasEditor();
+}
+
+function renderPreguntasEditor(){
+  var ed=document.getElementById('preguntas-editor'); if(!ed) return;
+  if(_preguntas.length===0){
+    ed.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin preguntas aún. Añade una o carga la plantilla.</div>';
+    return;
+  }
+  ed.innerHTML='';
+  _preguntas.forEach(function(p,i){
+    var div=document.createElement('div');
+    div.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;';
+    div.innerHTML=
+      '<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px">'
+        +'<div style="flex:1">'
+          +'<input class="einp" value="'+eH(p.texto)+'" style="margin-bottom:6px" oninput="_preguntas['+i+'].texto=this.value" placeholder="Texto de la pregunta">'
+          +'<select class="einp" style="font-size:12px" onchange="_preguntas['+i+'].tipo=this.value">'
+            +'<option value="escala"'+(p.tipo==='escala'?' selected':'')+'>📊 Escala 1-10</option>'
+            +'<option value="sino"'+(p.tipo==='sino'?' selected':'')+'>✅ Sí / No</option>'
+            +'<option value="texto"'+(p.tipo==='texto'?' selected':'')+'>✏️ Texto libre</option>'
+            +'<option value="opcion"'+(p.tipo==='opcion'?' selected':'')+'>☑️ Múltiple opción</option>'
+          +'</select>'
+          +(p.tipo==='opcion'?'<input class="einp" style="margin-top:6px;font-size:12px" placeholder="Opciones separadas por coma" value="'+(p.opciones||'')+'" oninput="_preguntas['+i+'].opciones=this.value">':'')
+        +'</div>'
+        +'<button onclick="_preguntas.splice('+i+',1);renderPreguntasEditor()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;flex-shrink:0">✕</button>'
+      +'</div>';
+    ed.appendChild(div);
+  });
+}
+
+function addPregunta(){
+  _preguntas.push({tipo:'escala',texto:''});
+  renderPreguntasEditor();
+}
+
+function cargarPlantilla(){
+  if(_preguntas.length>0 && !confirm('¿Reemplazar las preguntas actuales con la plantilla?')) return;
+  _preguntas=JSON.parse(JSON.stringify(PLANTILLA_PREGUNTAS));
+  renderPreguntasEditor();
+}
+
+async function guardarEncuesta(){
+  var cid=window.__cid; if(!cid) return;
+  var st=document.getElementById('encuesta-status');
+  if(st) st.textContent='Guardando...';
+  if(_encuestaId){
+    await sb.from('encuestas').update({preguntas:_preguntas}).eq('id',_encuestaId);
+  } else {
+    var {data}=await sb.from('encuestas').insert({cliente_id:cid,preguntas:_preguntas,fecha_envio:new Date().toISOString().split('T')[0]}).select().single();
+    if(data) _encuestaId=data.id;
+  }
+  if(st){ st.textContent='✓ Guardado'; setTimeout(function(){st.textContent='';},2000); }
+}
+
+function enviarEncuestaWA(){
+  var cid=window.__cid; if(!cid) return;
+  var tel=P.telefonoCliente||'';
+  var enlace=window.location.origin+window.location.pathname+'?c='+window.__cid_token;
+  var msg='¡Hola '+P.nombre+'! 💪\n\nTu entrenador te ha enviado una pequeña encuesta para conocer cómo estás.\n\nRellénala en tu panel (tarda 2 minutos):\n👉 '+enlace+'\n\nVe a la pestaña 📝 ENCUESTA. ¡Gracias!';
+  var url=tel?'https://wa.me/'+tel.replace(/\D/g,'')+'?text='+encodeURIComponent(msg):'https://wa.me/?text='+encodeURIComponent(msg);
+  window.open(url,'_blank');
+}
+
+function renderRespuestas(resp){
+  var el=document.getElementById('encuesta-respuestas'); if(!el) return;
+  if(!resp||Object.keys(resp).length===0){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">El cliente aún no ha respondido.</div>';
+    return;
+  }
+  var html='';
+  _preguntas.forEach(function(p,i){
+    var r=resp[i];
+    html+='<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">'+(i+1)+'. '+eH(p.texto)+'</div>'
+      +'<div style="font-size:15px;font-weight:600;color:var(--ink)">'+(r!==undefined&&r!==''?eH(String(r)):'Sin respuesta')+'</div>'
+      +(p.tipo==='escala'&&r?'<div style="margin-top:6px"><div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:200px"><div style="height:100%;background:var(--ok);width:'+(r*10)+'%;border-radius:3px"></div></div></div>':'')
+    +'</div>';
+  });
+  el.innerHTML=html;
+}
+
+// ── CLIENTE: responder encuesta ──
+async function cargarEncuestaCliente(){
+  var cid=window.__cid; if(!cid) return;
+  var body=document.getElementById('encuesta-cli-body');
+  var done=document.getElementById('encuesta-cli-done');
+  if(!body) return;
+  body.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Cargando...</div>';
+  var {data,error}=await sb.from('encuestas').select('*').eq('cliente_id',cid).order('created_at',{ascending:false}).limit(1).single();
+  if(error||!data||!data.preguntas||data.preguntas.length===0){
+    body.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">Tu entrenador no ha enviado ninguna encuesta todavía.</div>';
+    return;
+  }
+  // Si ya respondió
+  if(data.respuestas&&Object.keys(data.respuestas).length>0){
+    body.style.display='none';
+    if(done) done.style.display='block';
+    return;
+  }
+  window._encuestaCli=data;
+  var pregs=data.preguntas;
+  var html='<form onsubmit="enviarRespuestas(event)">';
+  pregs.forEach(function(p,i){
+    html+='<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px">'
+      +'<div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:14px">'+(i+1)+'. '+eH(p.texto)+'</div>';
+    if(p.tipo==='escala'){
+      html+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      for(var n=1;n<=10;n++){
+        html+='<label style="cursor:pointer"><input type="radio" name="q'+i+'" value="'+n+'" style="display:none" required>'
+          +'<span class="esc-btn" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:2px solid var(--border);border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:all .15s" onclick="markEsc(this,'+i+')">'+n+'</span>'
+        +'</label>';
+      }
+      html+='</div>';
+    } else if(p.tipo==='sino'){
+      html+='<div style="display:flex;gap:10px">'
+        +'<label style="cursor:pointer;flex:1"><input type="radio" name="q'+i+'" value="Sí" required style="display:none">'
+          +'<span class="sino-btn" style="display:block;text-align:center;padding:12px;border:2px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s" onclick="markSino(this,'+i+')">✅ Sí</span>'
+        +'</label>'
+        +'<label style="cursor:pointer;flex:1"><input type="radio" name="q'+i+'" value="No" required style="display:none">'
+          +'<span class="sino-btn" style="display:block;text-align:center;padding:12px;border:2px solid var(--border);border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s" onclick="markSino(this,'+i+')">❌ No</span>'
+        +'</label>'
+      +'</div>';
+    } else if(p.tipo==='opcion'){
+      var opts=(p.opciones||'').split(',').map(function(o){return o.trim();}).filter(Boolean);
+      html+='<div style="display:flex;flex-direction:column;gap:8px">';
+      opts.forEach(function(op){
+        html+='<label style="cursor:pointer"><input type="radio" name="q'+i+'" value="'+eH(op)+'" required style="display:none">'
+          +'<span class="op-btn" style="display:block;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;transition:all .15s" onclick="markOp(this,'+i+')">'+eH(op)+'</span>'
+        +'</label>';
+      });
+      html+='</div>';
+    } else {
+      html+='<textarea name="q'+i+'" style="width:100%;background:var(--bg2);border:1.5px solid var(--border);border-radius:10px;padding:12px;font-size:14px;font-family:var(--sans);resize:none;outline:none;min-height:80px" placeholder="Escribe aquí tu respuesta..." required></textarea>';
+    }
+    html+='</div>';
+  });
+  html+='<button type="submit" style="width:100%;background:var(--ink);color:#fff;border:none;padding:16px;border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:600;cursor:pointer;margin-top:4px">Enviar respuestas →</button></form>';
+  body.innerHTML=html;
+}
+
+function markEsc(el,i){
+  document.querySelectorAll('[name="q'+i+'"]').forEach(function(inp){
+    var span=inp.nextElementSibling;
+    span.style.background=''; span.style.borderColor='var(--border)'; span.style.color='var(--text)';
+  });
+  el.style.background=el.style.color=''; 
+  el.style.background='var(--ink)'; el.style.borderColor='var(--ink)'; el.style.color='#fff';
+}
+function markSino(el,i){
+  document.querySelectorAll('[name="q'+i+'"] + .sino-btn').forEach(function(s){s.style.background='';s.style.borderColor='var(--border)';});
+  el.style.background='var(--ok-bg)'; el.style.borderColor='var(--ok)';
+}
+function markOp(el,i){
+  document.querySelectorAll('[name="q'+i+'"] + .op-btn').forEach(function(s){s.style.background='';s.style.borderColor='var(--border)';});
+  el.style.background='var(--bg2)'; el.style.borderColor='var(--ink)';
+}
+
+async function enviarRespuestas(e){
+  e.preventDefault();
+  var form=e.target;
+  var resp={};
+  var pregs=window._encuestaCli.preguntas;
+  for(var i=0;i<pregs.length;i++){
+    var inputs=form.querySelectorAll('[name="q'+i+'"]');
+    if(pregs[i].tipo==='texto'){
+      resp[i]=inputs[0].value;
+    } else {
+      var checked=form.querySelector('[name="q'+i+'"]:checked');
+      resp[i]=checked?checked.value:'';
+    }
+  }
+  var btn=form.querySelector('button[type="submit"]');
+  btn.textContent='Enviando...'; btn.disabled=true;
+  await sb.from('encuestas').update({respuestas:resp,fecha_respuesta:new Date().toISOString()}).eq('id',window._encuestaCli.id);
+  document.getElementById('encuesta-cli-body').style.display='none';
+  document.getElementById('encuesta-cli-done').style.display='block';
 }
 
 // Cargar galería cuando se abre la pestaña fotos
