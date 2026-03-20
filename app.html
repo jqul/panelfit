@@ -562,6 +562,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tab{padding:14px 14px;cursor:pointer;font-size:10px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.6px;text-transform:uppercase;}
 .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
 .panel{display:none;padding:20px 24px;max-width:680px;}
+/* MODO ENTRENAMIENTO */
+.ea-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:12px;}
+.ea-nombre{font-size:24px;font-weight:700;color:var(--ink);font-family:var(--sans);line-height:1.2;margin-bottom:6px;}
+.ea-meta{font-size:15px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+.ea-ultimo{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.ea-sets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.ea-set{flex:1;min-width:70px;max-width:100px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;overflow:hidden;transition:all .2s;}
+.ea-set.activa{border-color:var(--ink);background:var(--card);}
+.ea-set.hecha{border-color:var(--ok);background:#edf7ed;}
+.ea-set-lbl{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 0 3px;width:100%;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);}
+.ea-set.activa .ea-set-lbl{background:var(--ink);color:#fff;border-color:var(--ink);}
+.ea-set.hecha .ea-set-lbl{background:var(--ok);color:#fff;border-color:var(--ok);}
+.ea-set-inputs{display:flex;align-items:center;gap:2px;padding:8px 6px;}
+.ea-set-inputs input{flex:1;min-width:0;background:transparent;border:none;color:var(--text);font-size:20px;font-weight:600;outline:none;text-align:center;font-family:var(--sans);padding:0;max-width:46px;}
+.ea-set-inputs input::placeholder{color:var(--border2);font-size:16px;}
+.ea-set-x{font-size:11px;color:var(--border2);}
+.ea-ccom{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2);line-height:1.6;font-style:italic;}
+.ea-ccom-lbl{font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
 .prog-btn{padding:7px 18px;border:1.5px solid var(--border);background:transparent;color:var(--muted);border-radius:20px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;transition:all .15s;}
 .prog-btn.active{border-color:var(--ink);background:var(--ink);color:#fff;}
 .panel.active{display:block;animation:fadeUp .18s ease;}
@@ -1143,29 +1161,67 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- ENTRENO -->
 <div class="panel" id="tab-entreno" style="padding:0">
-  <!-- TIMER TOAST -->
-  <div class="rest-toast" id="rest-toast">
-    <div style="text-align:center">
-      <div style="font-size:9px;letter-spacing:1px;opacity:.7;margin-bottom:2px">DESCANSO</div>
-      <div class="tnum" id="t-num">3:00</div>
+
+  <!-- VISTA PREVIA DEL DÍA -->
+  <div id="entreno-preview" style="padding:20px 20px 100px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="ptitle" id="train-day-title" style="margin:0">Selecciona un día</div>
+      <div class="psub" id="train-sub" style="margin:0"></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <div class="ttrack"><div class="tfill" id="t-fill" style="width:100%"></div></div>
-      <div style="display:flex;gap:5px">
-        <button class="tbtn" id="t-play" onclick="tToggle()">▶</button>
-        <button class="tbtn" onclick="tReset()">↺</button>
-        <button class="tbtn" onclick="tHide()">✕</button>
+    <div class="wpills" id="week-pills" style="margin-bottom:16px"></div>
+    <!-- Lista previa de ejercicios -->
+    <div id="preview-list"></div>
+    <!-- Botón empezar -->
+    <div id="entreno-start-wrap" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(to top,var(--bg) 60%,transparent);z-index:50">
+      <button onclick="empezarEntreno()" style="width:100%;max-width:680px;display:block;margin:0 auto;background:var(--ink);color:#fff;border:none;padding:18px;border-radius:16px;font-size:17px;font-family:var(--sans);font-weight:700;cursor:pointer;letter-spacing:-.2px">▶ Empezar entrenamiento</button>
+    </div>
+  </div>
+
+  <!-- MODO ACTIVO (oculto hasta empezar) -->
+  <div id="entreno-activo" style="display:none;min-height:100vh;display:none;flex-direction:column">
+    <!-- Header progreso -->
+    <div style="background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:10">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button onclick="salirEntreno()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--sans);padding:0">✕ Salir</button>
+        <div id="ea-titulo" style="font-size:13px;font-weight:600;color:var(--text2)"></div>
+        <div id="ea-contador" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
+      </div>
+      <!-- Barra progreso -->
+      <div style="background:var(--border);border-radius:4px;height:4px;overflow:hidden">
+        <div id="ea-barra" style="height:100%;background:var(--ok);transition:width .4s ease;border-radius:4px;width:0%"></div>
       </div>
     </div>
+
+    <!-- Ejercicio actual -->
+    <div style="flex:1;padding:24px 20px;overflow-y:auto" id="ea-contenido"></div>
+
+    <!-- Timer integrado (visible durante descanso) -->
+    <div id="ea-timer" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--ink);color:#fff;padding:20px;z-index:100">
+      <div style="max-width:480px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:12px">
+          <div style="font-size:11px;letter-spacing:1px;opacity:.6;margin-bottom:4px">DESCANSO</div>
+          <div class="tnum" id="t-num" style="color:#fff;font-size:48px">3:00</div>
+          <div class="ttrack" style="margin:10px auto;max-width:200px"><div class="tfill" id="t-fill" style="width:100%"></div></div>
+        </div>
+        <button id="ea-skip" onclick="saltarDescanso()" style="width:100%;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:14px;border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:600;cursor:pointer">Saltar descanso →</button>
+      </div>
+    </div>
+
+    <!-- Navegación inferior -->
+    <div id="ea-nav" style="background:var(--card);border-top:1px solid var(--border);padding:14px 20px;display:flex;gap:10px;position:sticky;bottom:0">
+      <button id="ea-prev" onclick="navEjercicio(-1)" style="flex:1;padding:14px;border:1.5px solid var(--border);background:transparent;color:var(--text2);border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:500;cursor:pointer">‹ Anterior</button>
+      <button id="ea-next" onclick="navEjercicio(1)" style="flex:2;padding:14px;border:none;background:var(--ink);color:#fff;border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:700;cursor:pointer">Siguiente ›</button>
+    </div>
   </div>
-  <!-- CONTENIDO -->
-  <div style="padding:20px 24px">
-    <div class="ptitle">Progresión de Pesos</div>
-    <div class="psub" id="train-sub">Powerlifting · Progresión +2.5 kg/semana</div>
-    <div class="wpills" id="week-pills"></div>
-    <div id="training-content"></div>
-    <div class="note orange"><strong>Accesorios:</strong> ajusta según sensación del día. Técnica siempre primero.</div>
+
+  <!-- RESUMEN FINAL -->
+  <div id="entreno-fin" style="display:none;padding:40px 24px;text-align:center">
+    <div style="font-size:64px;margin-bottom:16px">🏆</div>
+    <div style="font-family:var(--serif);font-size:28px;margin-bottom:8px">¡Entrenamiento completado!</div>
+    <div id="ef-stats" style="font-size:15px;color:var(--muted);margin-bottom:32px"></div>
+    <button onclick="volverPreview()" style="background:var(--ink);color:#fff;border:none;padding:16px 32px;border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:600;cursor:pointer">Ver resumen del día</button>
   </div>
+
 </div>
 
 <!-- RÉCORDS -->
@@ -1450,8 +1506,9 @@ function buildWeekPills(){
       w.label+(w.current?' ← actual':'')+
     '</div>';
   }).join('');
+  buildPreviewDia(curWeek);
 }
-function selWeek(i){ curWeek=i; document.querySelectorAll('.wpill').forEach(function(el,j){ el.classList.toggle('active',j===i); }); buildTraining(i); }
+function selWeek(i){ curWeek=i; document.querySelectorAll('.wpill').forEach(function(el,j){ el.classList.toggle('active',j===i); }); buildPreviewDia(i); }
 
 function buildTraining(wi){
   var rpe = P.semanas[wi] ? P.semanas[wi].rpe : '';
@@ -2103,6 +2160,7 @@ function showTab(name,el){
   if(name==='dashboard') buildDashboard();
   if(name==='records') buildRecords();
   if(name==='historial'){ populateHistFilter(); buildHistorial(); }
+  if(name==='entreno'){ buildPreviewDia(curWeek); }
 }
 function applyVis(){
   if(!document.querySelector('.tabs')) return;
@@ -2139,10 +2197,20 @@ function tRender(){
   if(tL<=P.restWarn&&tL>0&&toast){toast.classList.add('warn');}
 }
 function tDone(){
-  var toast=document.getElementById('rest-toast');
-  if(toast){toast.classList.remove('warn');toast.classList.add('done');}
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
   tBeep();
+  // En modo activo — ocultar timer, mostrar nav
+  var timer=document.getElementById('ea-timer');
+  var nav=document.getElementById('ea-nav');
+  if(timer&&timer.style.display==='block'){
+    setTimeout(function(){
+      if(timer) timer.style.display='none';
+      if(nav) nav.style.display='flex';
+    }, 800);
+  }
+  // Toast clásico
+  var toast=document.getElementById('rest-toast');
+  if(toast){toast.classList.remove('warn');toast.classList.add('done');}
 }
 function tBeep(){
   try{
@@ -2522,7 +2590,7 @@ function applyUI(){
   var m=Math.floor(P.restMain/60); var s=('0'+P.restMain%60).slice(-2);
   var rqbEl=document.getElementById('rqb-plan'); if(rqbEl) rqbEl.textContent='💜 Plan ('+m+':'+s+')';
   var ci=P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
-  buildWeekPills(); buildTraining(curWeek);
+  buildWeekPills();
   buildDashboard();
 }
 
@@ -2614,7 +2682,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
 
   var ci = P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
   _edWeek = curWeek; // sincronizar editor con semana actual
-  buildWeekPills(); buildTraining(curWeek);
+  buildWeekPills();
   applyUI(); buildDashboard(); applyVis();
   buildDietMacros(); buildDietPills(); renderDiet('lun');
   buildHabits(); tSet(P.restMain); loadTheme(); setTimeout(cargarGaleria,500);
@@ -3067,6 +3135,234 @@ function renderEncuestaSec(){
       +'<div style="font-size:14px;color:var(--muted)">Tu entrenador las recibirá en breve.</div>'
     +'</div>';
 }
+
+// ── MODO ENTRENAMIENTO ACTIVO ─────────
+var _eaDia = 0;      // día seleccionado
+var _eaExIdx = 0;    // índice ejercicio actual
+var _eaWi = 0;       // semana activa
+
+function buildPreviewDia(wi){
+  _eaWi = wi;
+  var dias = getDias(wi);
+  var list = document.getElementById('preview-list');
+  var wrap = document.getElementById('entreno-start-wrap');
+  var titulo = document.getElementById('train-day-title');
+  if(!list) return;
+
+  if(!dias||dias.length===0){
+    list.innerHTML='<div style="color:var(--muted);font-size:14px;text-align:center;padding:40px 0">Sin días en esta semana.</div>';
+    if(wrap) wrap.style.display='none';
+    return;
+  }
+
+  // Cards de días colapsables
+  list.innerHTML = dias.map(function(d,di){
+    var pg = dayProg(d,di,wi);
+    var pc = pg.done===pg.total&&pg.total>0 ? 'done' : pg.done>0 ? 'partial' : 'empty';
+    var pl = pg.done===pg.total&&pg.total>0 ? '✓ Completado' : pg.done>0 ? pg.done+'/'+pg.total : '';
+    var isOpen = di===0;
+    var exList = d.ejercicios.map(function(r,ri){
+      var ps = rP(r.peso,wi);
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:'+(r.principal?'600':'500')+';color:'+(r.principal?'var(--ink)':'var(--text2)')+'">'+r.nombre+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+r.series+'</div>'
+        +'</div>'
+        +'<div style="font-size:15px;font-weight:700;color:var(--ink)">'+ps+'</div>'
+      +'</div>';
+    }).join('');
+
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;cursor:pointer" onclick="togglePreviewDia(\'pvd-'+di+'\',this)">'
+        +'<div>'
+          +'<div style="font-size:16px;font-weight:700;color:var(--ink);font-family:var(--sans)">'+d.titulo+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+d.foco+' · '+d.ejercicios.length+' ejercicios'+(pl?' · <span style="color:var(--ok)">'+pl+'</span>':'')+'</div>'
+        +'</div>'
+        +'<button onclick="event.stopPropagation();iniciarDia('+di+')" style="background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-family:var(--sans);font-weight:700;cursor:pointer;flex-shrink:0">▶ Entrenar</button>'
+      +'</div>'
+      +'<div id="pvd-'+di+'" style="display:'+(isOpen?'block':'none')+';padding:0 18px 14px;border-top:1px solid var(--border)">'
+        +exList
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  if(wrap) wrap.style.display='none';
+}
+
+function togglePreviewDia(id,hd){
+  var el=document.getElementById(id); if(!el) return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function iniciarDia(di){
+  _eaDia = di;
+  _eaExIdx = 0;
+  document.getElementById('entreno-preview').style.display='none';
+  document.getElementById('entreno-activo').style.display='flex';
+  document.getElementById('entreno-fin').style.display='none';
+  renderEjercicioActivo();
+}
+
+function salirEntreno(){
+  if(!confirm('¿Salir del entrenamiento? El progreso se guarda.')) return;
+  volverPreview();
+}
+
+function volverPreview(){
+  document.getElementById('entreno-activo').style.display='none';
+  document.getElementById('entreno-fin').style.display='none';
+  document.getElementById('entreno-preview').style.display='block';
+  tHide();
+  buildPreviewDia(_eaWi);
+}
+
+function renderEjercicioActivo(){
+  var dias = getDias(_eaWi);
+  var d = dias[_eaDia]; if(!d) return;
+  var total = d.ejercicios.length;
+  var r = d.ejercicios[_eaExIdx]; if(!r) return;
+  var wi = _eaWi; var di = _eaDia; var ri = _eaExIdx;
+  var ek = 'ex_w'+wi+'_d'+di+'_r'+ri;
+  var sv = lLog(ek);
+  var ns = parseInt(r.series)||4;
+  var ps = rP(r.peso,wi);
+  var rs = r.principal?P.restMain:P.restAcc;
+
+  // Actualizar header
+  document.getElementById('ea-titulo').textContent = d.titulo;
+  document.getElementById('ea-contador').textContent = (_eaExIdx+1)+'/'+total;
+  document.getElementById('ea-barra').style.width = ((_eaExIdx/total)*100)+'%';
+
+  // Botón siguiente/fin
+  var btnNext = document.getElementById('ea-next');
+  if(_eaExIdx >= total-1){
+    btnNext.textContent = '¡Terminar! 🏆';
+    btnNext.onclick = function(){ finalizarEntreno(); };
+  } else {
+    btnNext.textContent = 'Siguiente ›';
+    btnNext.onclick = function(){ navEjercicio(1); };
+  }
+  document.getElementById('ea-prev').style.visibility = _eaExIdx===0?'hidden':'visible';
+
+  // Último entreno
+  var ultimoKg='', ultimoRep='';
+  P.semanas.forEach(function(sem,wIdx){
+    if(wIdx>=wi) return;
+    var exKey='ex_w'+wIdx+'_d'+di+'_r'+ri;
+    var exLog=lAll()[exKey];
+    if(exLog&&exLog.sets){
+      var sets=Object.values(exLog.sets).filter(function(s){return s.v&&s.r;});
+      if(sets.length){ ultimoKg=sets[0].v; ultimoRep=sets[0].r; }
+    }
+  });
+
+  // Series
+  var sHtml = '';
+  for(var si=0;si<ns;si++){
+    var vv=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].v:'';
+    var vr=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].r:'';
+    var setDone=!!(vv&&vr);
+    sHtml += '<div class="ea-set'+(setDone?' hecha':'')+'" id="eas-'+ek+'-'+si+'">'
+      +'<div class="ea-set-lbl">S'+(si+1)+'</div>'
+      +'<div class="ea-set-inputs">'
+        +'<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5" inputmode="decimal"'
+          +' onchange="eaSetInput(\''+ek+'\','+si+',\'v\',this.value,'+rs+')">'
+        +'<span class="ea-set-x">×</span>'
+        +'<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" inputmode="numeric"'
+          +' onchange="eaSetInput(\''+ek+'\','+si+',\'r\',this.value,'+rs+')">'
+      +'</div>'
+    +'</div>';
+  }
+
+  // Comentario
+  var comHtml = r.comentario&&r.comentario.trim()
+    ? '<div class="ea-ccom"><div class="ea-ccom-lbl">Entrenador</div>'+eH(r.comentario)+'</div>'
+    : '';
+
+  // Vídeo
+  var vidHtml = '';
+  if(r.videoUrl){
+    var yt = getYT(r.videoUrl);
+    if(yt) vidHtml = '<div style="margin-bottom:16px"><iframe style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px" src="'+yt+'" allowfullscreen></iframe></div>';
+    else vidHtml = '<div style="margin-bottom:16px"><video style="width:100%;border-radius:12px" controls src="'+r.videoUrl+'"></video></div>';
+  }
+
+  // Renderizar
+  var done = sv&&sv.done;
+  document.getElementById('ea-contenido').innerHTML =
+    '<div class="ea-card">'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">'+(r.principal?'PRINCIPAL':'accesorio')+'</div>'
+      +'<div class="ea-nombre">'+r.nombre+(isPR(ek,di,ri)?'<span class="ex-pr" style="margin-left:8px">🏆 PR</span>':'')+'</div>'
+      +'<div class="ea-meta">'+ps+' · '+r.series+(r.principal&&P.semanas[wi]&&P.semanas[wi].rpe?' · '+P.semanas[wi].rpe:'')+'</div>'
+      +(ultimoKg&&ultimoRep?'<div class="ea-ultimo">Último: '+ultimoKg+' × '+ultimoRep+'</div>':'<div class="ea-ultimo" style="height:18px"></div>')
+      +comHtml
+      +vidHtml
+      +'<div class="ea-sets">'+sHtml+'</div>'
+      +'<button onclick="togDone(\''+ek+'\',this,'+wi+','+di+')" id="dbtn-'+ek+'" style="width:100%;padding:16px;border:2px solid '+(done?'var(--ok)':'var(--border2)')+';background:'+(done?'var(--ok)':'transparent')+';color:'+(done?'#fff':'var(--muted)')+';border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:700;cursor:pointer;margin-top:4px;transition:all .2s">'
+        +(done?'✓ Completado':'Marcar completado')
+      +'</button>'
+    +'</div>';
+}
+
+function eaSetInput(ek,si,campo,val,restSeg){
+  sSet(ek,si,campo,val);
+  chkPR(ek,val,'v',_eaWi,_eaDia,_eaExIdx);
+  var sv=lLog(ek);
+  var kg=sv&&sv.sets&&sv.sets[si]?sv.sets[si].v:'';
+  var rp=sv&&sv.sets&&sv.sets[si]?sv.sets[si].r:'';
+  var setEl=document.getElementById('eas-'+ek+'-'+si);
+  if(kg&&rp){
+    if(setEl) setEl.classList.add('hecha');
+    tSet(restSeg);
+    mostrarTimer();
+  }
+}
+
+function mostrarTimer(){
+  var timer=document.getElementById('ea-timer');
+  var nav=document.getElementById('ea-nav');
+  if(timer) timer.style.display='block';
+  if(nav) nav.style.display='none';
+  tStartTimer();
+}
+
+function saltarDescanso(){
+  var timer=document.getElementById('ea-timer');
+  var nav=document.getElementById('ea-nav');
+  if(timer) timer.style.display='none';
+  if(nav) nav.style.display='flex';
+  tStop();
+}
+
+function navEjercicio(dir){
+  saltarDescanso();
+  var dias=getDias(_eaWi); var d=dias[_eaDia];
+  var newIdx=_eaExIdx+dir;
+  if(newIdx<0||newIdx>=d.ejercicios.length) return;
+  _eaExIdx=newIdx;
+  renderEjercicioActivo();
+  document.getElementById('ea-contenido').scrollTop=0;
+  window.scrollTo(0,0);
+}
+
+function finalizarEntreno(){
+  var dias=getDias(_eaWi); var d=dias[_eaDia];
+  var done=0;
+  d.ejercicios.forEach(function(r,ri){
+    var ek='ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri;
+    var sv=lLog(ek); if(sv&&sv.done) done++;
+  });
+  document.getElementById('entreno-activo').style.display='none';
+  document.getElementById('entreno-fin').style.display='block';
+  document.getElementById('ef-stats').textContent=done+' de '+d.ejercicios.length+' ejercicios completados';
+  tHide();
+}
+
+// Actualizar togDone para refrescar en modo activo
+var _origTogDone = window.togDone;
+
+// Override tDone para mostrar "Siguiente" cuando acaba el descanso
+var _origTDone = window.tDone;
 
 // Cargar galería cuando se abre la pestaña fotos
 var _origShowTab=window.showTab;
