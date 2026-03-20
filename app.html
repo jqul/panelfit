@@ -1206,70 +1206,84 @@ var PANEL_HTML=`<!-- PIN -->
 </div>
 
 <div class="panel" id="tab-progreso">
-  <!-- sub-nav -->
-  <div style="display:flex;gap:8px;margin-bottom:18px">
-    <button class="prog-btn active" id="pb-fotos" onclick="showProgSec('fotos')">📸 Fotos</button>
-    <button class="prog-btn" id="pb-encuesta" onclick="showProgSec('encuesta')">📝 Encuesta</button>
-  </div>
-  <!-- FOTOS -->
-  <div id="prog-sec-fotos">
-  <div class="ptitle">📸 Fotos de Progreso</div>
-  <div class="psub">Sube fotos mensualmente para ver tu evolución</div>
-  <div id="fotos-upload-area" style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:20px">
-    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.7px">Nueva entrada</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-      <input type="date" id="foto-fecha" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:var(--r);font-size:13px;font-family:var(--sans)">
-      <span style="font-size:11px;color:var(--muted)">Selecciona fecha y sube las fotos</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-      <div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Frente</div>
-        <label id="lbl-frente" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
-          <span style="color:var(--muted)"><svg width="36" height="56" viewBox="0 0 36 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="18" cy="8" r="7" fill="currentColor" opacity=".5"/>
-  <path d="M6 22c0-6.627 5.373-12 12-12s12 5.373 12 12v14H6V22z" fill="currentColor" opacity=".4"/>
-  <path d="M0 24h6v10H0zM30 24h6v10h-6z" fill="currentColor" opacity=".3"/>
-  <path d="M10 36h4v20h-4zM22 36h4v20h-4z" fill="currentColor" opacity=".4"/>
-</svg></span>Subir frente
-          <input type="file" id="fi-frente" accept="image/*" style="display:none" onchange="prevFoto('frente',this)">
-        </label>
-        <div id="prev-frente" style="margin-top:4px"></div>
+  <!-- Vista carpetas (por defecto) -->
+  <div id="prog-carpetas">
+    <div class="ptitle">Seguimiento</div>
+    <div class="psub">Tu progreso personal</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:20px">
+      <div onclick="showProgSec('fotos')" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--ink)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:52px;height:52px;background:var(--bg2);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="28" height="44" viewBox="0 0 36 56" fill="none"><circle cx="18" cy="8" r="7" fill="currentColor" opacity=".5"/><path d="M6 22c0-6.627 5.373-12 12-12s12 5.373 12 12v14H6V22z" fill="currentColor" opacity=".4"/><path d="M0 24h6v10H0zM30 24h6v10h-6z" fill="currentColor" opacity=".3"/><path d="M10 36h4v20h-4zM22 36h4v20h-4z" fill="currentColor" opacity=".4"/></svg>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:600;color:var(--ink);font-family:var(--sans)">Fotos de progreso</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Frente · Espalda · Lateral</div>
+        </div>
+        <div style="font-size:20px;color:var(--muted)">›</div>
       </div>
-      <div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Espalda</div>
-        <label id="lbl-espalda" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
-          <span style="color:var(--muted)"><svg width="36" height="56" viewBox="0 0 36 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="18" cy="8" r="7" fill="currentColor" opacity=".5"/>
-  <path d="M6 22c0-6.627 5.373-12 12-12s12 5.373 12 12v14H6V22z" fill="currentColor" opacity=".4"/>
-  <line x1="18" y1="18" x2="18" y2="36" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
-  <path d="M0 24h6v10H0zM30 24h6v10h-6z" fill="currentColor" opacity=".3"/>
-  <path d="M10 36h4v20h-4zM22 36h4v20h-4z" fill="currentColor" opacity=".4"/>
-</svg></span>Subir espalda
-          <input type="file" id="fi-espalda" accept="image/*" style="display:none" onchange="prevFoto('espalda',this)">
-        </label>
-        <div id="prev-espalda" style="margin-top:4px"></div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Lateral</div>
-        <label id="lbl-lateral" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
-          <span style="color:var(--muted)"><svg width="28" height="56" viewBox="0 0 28 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="16" cy="8" r="7" fill="currentColor" opacity=".5"/>
-  <path d="M8 20c0-5 3-10 8-10s10 4 10 10v16H8V20z" fill="currentColor" opacity=".4"/>
-  <path d="M2 24h6v10H2z" fill="currentColor" opacity=".3"/>
-  <path d="M10 36h4v20h-4zM18 36h3v16h-3z" fill="currentColor" opacity=".4"/>
-</svg></span>Subir lateral
-          <input type="file" id="fi-lateral" accept="image/*" style="display:none" onchange="prevFoto('lateral',this)">
-        </label>
-        <div id="prev-lateral" style="margin-top:4px"></div>
+      <div onclick="showProgSec('encuesta')" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--ink)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:52px;height:52px;background:var(--bg2);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:24px">📝</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:600;color:var(--ink);font-family:var(--sans)">Encuesta</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Preguntas de tu entrenador</div>
+        </div>
+        <div style="font-size:20px;color:var(--muted)">›</div>
       </div>
     </div>
-    <div id="foto-upload-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px"></div>
-    <button onclick="subirFotos()" style="background:var(--ink);color:var(--card);border:none;padding:10px 20px;border-radius:var(--r);font-size:13px;font-family:var(--sans);font-weight:500;cursor:pointer">☁️ Guardar fotos</button>
   </div>
-  <div id="fotos-galeria"></div>
-  </div><!-- /prog-sec-fotos -->
-  <!-- ENCUESTA -->
-  <div id="prog-sec-encuesta" style="display:none"></div>
+  <!-- FOTOS (oculto) -->
+  <div id="prog-sec-fotos" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <button onclick="showProgSec(null)" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">‹</button>
+      <div style="font-family:var(--serif);font-size:20px">Fotos de progreso</div>
+    </div>
+    <div id="fotos-upload-area" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.7px">Nueva entrada</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+        <input type="date" id="foto-fecha" style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:var(--r);font-size:13px;font-family:var(--sans)">
+        <span style="font-size:11px;color:var(--muted)">Selecciona fecha y sube las fotos</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Frente</div>
+          <label id="lbl-frente" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
+            <span style="color:var(--muted)"><svg width="28" height="44" viewBox="0 0 36 56" fill="none"><circle cx="18" cy="8" r="7" fill="currentColor" opacity=".5"/><path d="M6 22c0-6.627 5.373-12 12-12s12 5.373 12 12v14H6V22z" fill="currentColor" opacity=".4"/><path d="M0 24h6v10H0zM30 24h6v10h-6z" fill="currentColor" opacity=".3"/><path d="M10 36h4v20h-4zM22 36h4v20h-4z" fill="currentColor" opacity=".4"/></svg></span>
+            Frente
+            <input type="file" id="fi-frente" accept="image/*" style="display:none" onchange="prevFoto('frente',this)">
+          </label>
+          <div id="prev-frente" style="margin-top:4px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Espalda</div>
+          <label id="lbl-espalda" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
+            <span style="color:var(--muted)"><svg width="28" height="44" viewBox="0 0 36 56" fill="none"><circle cx="18" cy="8" r="7" fill="currentColor" opacity=".5"/><path d="M6 22c0-6.627 5.373-12 12-12s12 5.373 12 12v14H6V22z" fill="currentColor" opacity=".4"/><line x1="18" y1="18" x2="18" y2="36" stroke="currentColor" stroke-width="1.5" opacity=".3"/><path d="M0 24h6v10H0zM30 24h6v10h-6z" fill="currentColor" opacity=".3"/><path d="M10 36h4v20h-4zM22 36h4v20h-4z" fill="currentColor" opacity=".4"/></svg></span>
+            Espalda
+            <input type="file" id="fi-espalda" accept="image/*" style="display:none" onchange="prevFoto('espalda',this)">
+          </label>
+          <div id="prev-espalda" style="margin-top:4px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">Lateral</div>
+          <label id="lbl-lateral" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:110px;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--r);cursor:pointer;font-size:11px;color:var(--muted);gap:6px">
+            <span style="color:var(--muted)"><svg width="22" height="44" viewBox="0 0 28 56" fill="none"><circle cx="16" cy="8" r="7" fill="currentColor" opacity=".5"/><path d="M8 20c0-5 3-10 8-10s10 4 10 10v16H8V20z" fill="currentColor" opacity=".4"/><path d="M2 24h6v10H2z" fill="currentColor" opacity=".3"/><path d="M10 36h4v20h-4zM18 36h3v16h-3z" fill="currentColor" opacity=".4"/></svg></span>
+            Lateral
+            <input type="file" id="fi-lateral" accept="image/*" style="display:none" onchange="prevFoto('lateral',this)">
+          </label>
+          <div id="prev-lateral" style="margin-top:4px"></div>
+        </div>
+      </div>
+      <div id="foto-upload-err" style="font-size:11px;color:var(--warn);min-height:14px;margin-bottom:8px"></div>
+      <button onclick="subirFotos()" style="background:var(--ink);color:var(--card);border:none;padding:12px 24px;border-radius:10px;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer">☁️ Guardar fotos</button>
+    </div>
+    <div id="fotos-galeria"></div>
+  </div>
+  <!-- ENCUESTA (oculto) -->
+  <div id="prog-sec-encuesta" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <button onclick="showProgSec(null)" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">‹</button>
+      <div style="font-family:var(--serif);font-size:20px">Encuesta</div>
+    </div>
+  </div>
 </div>`;
 
 function schedSave(){ clearTimeout(window.__saveTimer); window.__saveTimer=setTimeout(function(){ if(window.__onSave) window.__onSave(); },1500); }
@@ -3025,14 +3039,21 @@ async function enviarRespuestas(e){
 }
 
 function showProgSec(sec){
-  ['fotos','encuesta'].forEach(function(s){
-    var el=document.getElementById('prog-sec-'+s);
-    if(el) el.style.display=s===sec?'block':'none';
-    var btn=document.getElementById('pb-'+s);
-    if(btn){ btn.classList.toggle('active',s===sec); }
-  });
-  if(sec==='encuesta') cargarEncuestaCliente();
-  if(sec==='fotos') cargarGaleria();
+  var carpetas=document.getElementById('prog-carpetas');
+  var fotos=document.getElementById('prog-sec-fotos');
+  var encuesta=document.getElementById('prog-sec-encuesta');
+  if(!sec){
+    // Volver a carpetas
+    if(carpetas) carpetas.style.display='block';
+    if(fotos) fotos.style.display='none';
+    if(encuesta) encuesta.style.display='none';
+    return;
+  }
+  if(carpetas) carpetas.style.display='none';
+  if(fotos) fotos.style.display=sec==='fotos'?'block':'none';
+  if(encuesta) encuesta.style.display=sec==='encuesta'?'block':'none';
+  if(sec==='encuesta') renderEncuestaSec();
+  if(sec==='fotos') setTimeout(cargarGaleria,100);
 }
 function renderEncuestaSec(){
   var sec=document.getElementById('prog-sec-encuesta');
