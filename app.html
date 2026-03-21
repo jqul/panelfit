@@ -521,13 +521,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tbadge.on{background:var(--bg2);}
 
 /* HEADER */
-.header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.hname{font-family:var(--serif);font-size:22px;font-weight:400;letter-spacing:-.3px;}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;height:58px;}
+.hname{font-family:var(--serif);font-size:20px;font-weight:400;letter-spacing:-.3px;}
 .hname span{color:var(--accent);}
-.hstats{display:flex;gap:20px;flex-wrap:wrap;}
+.hstats{display:flex;gap:24px;flex-wrap:wrap;}
 .hst{text-align:right;}
 .hst-v{font-family:var(--serif);font-size:17px;font-weight:400;}
 .hst-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+/* Logo entrenador en header */
+.hdr-logo{display:flex;align-items:center;gap:10px;}
+.hdr-logo-img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border2);}
+.hdr-logo-name{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.2px;}
 
 /* ACTION BAR */
 .abar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
@@ -558,11 +562,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .rqb.plan{border-color:var(--accent2);color:var(--accent);}
 
 /* TABS */
-.tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;padding:0 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:2px;}
+.tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;}
 .tabs::-webkit-scrollbar{display:none;}
-.tab{padding:14px 14px;cursor:pointer;font-size:10px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.6px;text-transform:uppercase;}
+.tab{padding:16px 18px;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.5px;text-transform:uppercase;position:relative;}
 .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
-.panel{display:none;padding:20px 24px;max-width:680px;}
+.tab:hover:not(.active){color:var(--text2);}
+.panel{display:none;padding:24px;max-width:760px;}
 /* MODO ENTRENAMIENTO */
 .ea-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:12px;}
 .ea-nombre{font-size:24px;font-weight:700;color:var(--ink);font-family:var(--sans);line-height:1.2;margin-bottom:6px;}
@@ -794,10 +799,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .plan-drop-hint{font-size:10px;color:var(--border2);text-align:center;padding:14px 4px;letter-spacing:.3px;}
 
 /* PANEL COACH */
-.cov{display:none;position:fixed;inset:0;background:rgba(10,10,8,.35);z-index:500;backdrop-filter:blur(2px);padding:16px;box-sizing:border-box;}
-.cov.open{display:flex;align-items:center;justify-content:center;}
-.cpan{background:#fafaf8;width:100%;max-width:1100px;border-radius:16px;border:1px solid rgba(0,0,0,.1);box-shadow:0 24px 64px rgba(0,0,0,.2);display:flex;flex-direction:column;overflow:hidden;height:calc(100vh - 32px);}
-.chd{background:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;flex-wrap:wrap;gap:8px;flex-shrink:0;}
+.cov{display:none;position:fixed;inset:0;background:rgba(10,10,8,.35);z-index:500;backdrop-filter:blur(2px);}
+.cov.open{display:block;}
+.cpan{background:#fafaf8;width:min(700px,96vw);border-left:1px solid rgba(0,0,0,.1);box-shadow:-8px 0 40px rgba(0,0,0,.15);display:flex;flex-direction:column;position:absolute;top:0;right:0;bottom:0;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.cov.open .cpan{transform:translateX(0);}
+.chd{background:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;gap:10px;flex-shrink:0;flex-wrap:nowrap;}
+.chd-logo{display:flex;align-items:center;gap:8px;min-width:0;}
+.chd-logo-img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border2);flex-shrink:0;}
+.chd-logo-name{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ctitle{font-family:var(--sans);font-size:14px;font-weight:700;color:var(--ink);letter-spacing:-.2px;}
 .ctabs{display:flex;gap:2px;flex-wrap:wrap;background:#f4f3f0;padding:3px;border-radius:8px;}
 .ctab{padding:6px 14px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:500;border-radius:6px;transition:all .15s;}
@@ -906,7 +915,10 @@ var PANEL_HTML=`<!-- PIN -->
 <div class="cov" id="coach-overlay">
   <div class="cpan">
     <div class="chd">
-      <div class="ctitle">🏋️ Panel Entrenador</div>
+      <div class="chd-logo">
+        <img class="chd-logo-img" id="coach-sidebar-logo" src="" alt="" style="display:none">
+        <div class="chd-logo-name" id="coach-sidebar-name">Panel Entrenador</div>
+      </div>
       <div class="ctabs">
         <div class="ctab active" onclick="swC('editor',this)">✏️ Plan</div>
         <div class="ctab" onclick="swC('dieta',this)">🍽️ Dieta</div>
@@ -917,7 +929,7 @@ var PANEL_HTML=`<!-- PIN -->
         <div class="ctab" onclick="swC('encuesta',this);cargarEncuestaCoach()">📝 Encuesta</div>
         <div class="ctab" onclick="swC('config',this)">⚙️ Config</div>
       </div>
-      <button class="cclose" onclick="cCoach()">✕ Cerrar</button>
+      <button class="cclose" onclick="cCoach()">✕</button>
     </div>
     <div class="cbody">
 
@@ -987,7 +999,20 @@ var PANEL_HTML=`<!-- PIN -->
       <!-- CONFIG -->
       <div class="csec" id="cs-config">
         <div class="ecard">
-          <div class="echd"><div class="ectitle">⏱️ Tiempos de descanso</div></div>
+          <div class="echd"><div class="ectitle">🎨 Tu marca</div></div>
+          <div class="erow c2" style="align-items:flex-start">
+            <div>
+              <label class="elbl">Nombre de tu marca / gym</label>
+              <input class="einp" id="cfg-brand-name" placeholder="Ej: CoachJavi Fitness">
+              <label class="elbl" style="margin-top:10px">URL de tu logo (imagen)</label>
+              <input class="einp" id="cfg-brand-logo" placeholder="https://... (imagen cuadrada)">
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:18px">
+              <div id="brand-logo-preview" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--border2);background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden">🏋️</div>
+              <button onclick="previewBrandLogo()" style="font-size:11px;padding:4px 10px;border:1px solid var(--border2);background:transparent;cursor:pointer;font-family:var(--sans);border-radius:6px;color:var(--text2)">Previsualizar</button>
+            </div>
+          </div>
+        </div>
           <div class="erow c3">
             <div><label class="elbl">Grandes levant. (seg)</label><input class="einp" id="cfg-rm" type="number"></div>
             <div><label class="elbl">Accesorios (seg)</label><input class="einp" id="cfg-ra" type="number"></div>
@@ -1114,9 +1139,13 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- HEADER -->
 <div class="header">
-  <div>
-    <div class="hname" id="hname"></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:2px" id="hsub">Plan de rendimiento</div>
+  <div class="hdr-logo">
+    <img class="hdr-logo-img" id="hdr-coach-logo" src="" alt="" style="display:none">
+    <div>
+      <div class="hdr-logo-name" id="hdr-coach-name" style="display:none"></div>
+      <div class="hname" id="hname"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:1px" id="hsub">Plan de rendimiento</div>
+    </div>
   </div>
   <div class="hstats">
     <div class="hst" id="hw-peso"><div class="hst-v cb" id="h-peso"></div><div class="hst-l">Peso</div></div>
@@ -2296,6 +2325,9 @@ function syncEd(){
   _sv('cfg-msg',P.mensaje||'');
   _sv('cfg-tel',P.telefonoEntrenador||'');
   _sv('cfg-tel-cliente',P.telefonoCliente||'');
+  _sv('cfg-brand-name',P.brandName||'');
+  _sv('cfg-brand-logo',P.brandLogo||'');
+  previewBrandLogo();
   document.querySelectorAll('.tbtn2').forEach(function(b){b.classList.toggle('active',b.dataset.tipo===P.tipo);});
   buildDiasEd();
 }
@@ -2593,6 +2625,9 @@ function saveClose(){
   P.mensaje=document.getElementById('cfg-msg').value;
   P.telefonoEntrenador=document.getElementById('cfg-tel').value.trim();
   P.telefonoCliente=document.getElementById('cfg-tel-cliente').value.trim();
+  P.brandName=document.getElementById('cfg-brand-name').value.trim();
+  P.brandLogo=document.getElementById('cfg-brand-logo').value.trim();
+  applyBrandLogo();
   var p1=document.getElementById('cfg-pin').value, p2=document.getElementById('cfg-pin2').value;
   if(p1&&p1===p2){ P.pin=p1; document.getElementById('pin-msg').textContent='✅ PIN actualizado'; }
   saveDietaEd();
@@ -2619,8 +2654,27 @@ function applyUI(){
   var m=Math.floor(P.restMain/60); var s=('0'+P.restMain%60).slice(-2);
   var rqbEl=document.getElementById('rqb-plan'); if(rqbEl) rqbEl.textContent='💜 Plan ('+m+':'+s+')';
   var ci=P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
-  buildWeekPills();
-  buildDashboard();
+  applyBrandLogo();
+}
+function applyBrandLogo(){
+  var name=P.brandName||''; var logo=P.brandLogo||'';
+  // Header del cliente
+  var hdrImg=document.getElementById('hdr-coach-logo');
+  var hdrName=document.getElementById('hdr-coach-name');
+  if(hdrImg){ if(logo){hdrImg.src=logo;hdrImg.style.display='block';}else{hdrImg.style.display='none';} }
+  if(hdrName){ if(name){hdrName.textContent=name;hdrName.style.display='block';}else{hdrName.style.display='none';} }
+  // Sidebar coach
+  var sideImg=document.getElementById('coach-sidebar-logo');
+  var sideName=document.getElementById('coach-sidebar-name');
+  if(sideImg){ if(logo){sideImg.src=logo;sideImg.style.display='block';}else{sideImg.style.display='none';} }
+  if(sideName){ sideName.textContent=name||'Panel Entrenador'; }
+}
+function previewBrandLogo(){
+  var url=(document.getElementById('cfg-brand-logo')||{}).value||'';
+  var prev=document.getElementById('brand-logo-preview');
+  if(!prev) return;
+  if(url){ prev.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover">'; }
+  else{ prev.innerHTML='🏋️'; }
 }
 
 
@@ -2690,11 +2744,13 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
 
   var top = document.createElement('div');
   top.style.cssText = 'background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100';
-  top.innerHTML = '<span style="font-family:var(--serif);font-size:16px">PanelFit</span>'
+  top.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
+    + '<span style="font-family:var(--serif);font-size:16px;letter-spacing:-.2px">PanelFit</span>'
+    + '</div>'
     + '<div style="display:flex;gap:8px;align-items:center">'
     + (isCoach ? '<button class="tbtn" style="border-color:var(--ok);color:var(--ok)" onclick="volverDash()">← Mis clientes</button>' : '')
     + '<span id="sync-status" style="font-size:11px;color:var(--muted)"></span>'
-    + '<button class="tbtn" onclick="window.__onSave()">☁ Guardar</button>'
+    + (isCoach ? '<button class="tbtn" onclick="window.__onSave()">☁ Guardar</button>' : '')
     + '</div>';
   container.appendChild(top);
 
