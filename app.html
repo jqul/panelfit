@@ -113,6 +113,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .toast.show{opacity:1;}
 
 #vista-cliente.active{display:block;}
+@media print {
+  .topbar,.tabs,.abar,.rest-toast,.modal-bg,.cov,
+  #entreno-start-wrap,#entreno-activo,#entreno-fin,
+  button[onclick="exportarPDF()"],button[onclick="abrirSoporte()"],
+  [style*="position:fixed"]{display:none!important;}
+  .panel{display:block!important;page-break-inside:avoid;}
+  .day-body{display:block!important;}
+  body{background:#fff!important;color:#000!important;}
+  .header{border:1px solid #ccc;}
+}
 </style>
 </head>
 <body>
@@ -1099,6 +1109,14 @@ var PANEL_HTML=`<!-- PIN -->
             <div><label class="elbl">Mensaje para el cliente</label><input class="einp" id="cfg-msg"></div>
           </div>
         </div>
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">🎙️ Nota de voz / Audio</div></div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pega un enlace de audio (WhatsApp, Google Drive, Dropbox...) y el cliente verá un botón para escucharlo.</div>
+          <label class="elbl">URL del audio</label>
+          <input class="einp" id="cfg-audio" placeholder="https://... (mp3, ogg, o enlace directo)">
+          <label class="elbl" style="margin-top:10px">Título de la nota</label>
+          <input class="einp" id="cfg-audio-titulo" placeholder="Ej: Indicaciones semana 3">
+        </div>
       </div>
 
       <!-- FOTOS CLIENTE -->
@@ -1221,6 +1239,12 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="tab" id="tab-dieta-btn" onclick="showTab('dieta',this)">DIETA</div>
   <div class="tab" id="tab-habitos-btn" onclick="showTab('habitos',this)">HÁBITOS</div>
   <div class="tab" id="tab-progreso-btn" onclick="showTab('progreso',this)">📊 PROGRESO</div>
+</div>
+
+<!-- BOTONES FLOTANTES -->
+<div style="position:fixed;bottom:24px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:400">
+  <button onclick="exportarPDF()" title="Descargar PDF" style="width:44px;height:44px;border-radius:50%;background:var(--ink);color:#fff;border:none;cursor:pointer;font-size:18px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center">📄</button>
+  <button onclick="abrirSoporte()" title="Soporte" style="width:44px;height:44px;border-radius:50%;background:var(--card);color:var(--muted);border:1px solid var(--border2);cursor:pointer;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center">❓</button>
 </div>
 
 <div class="panel" id="tab-semana">
@@ -2088,6 +2112,15 @@ function buildDashboard(){
   document.getElementById('dash-sesion').innerHTML=sesHtml;
   var msgHtml='';
   if(P.mensaje) msgHtml='<div class="note purple"><strong>💬 Tu entrenador dice:</strong> '+eH(P.mensaje)+'</div>';
+  if(P.audioUrl){
+    msgHtml+='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:10px;display:flex;align-items:center;gap:12px">'
+      +'<div style="width:40px;height:40px;border-radius:50%;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🎙️</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px">'+eH(P.audioTitulo||'Nota de tu entrenador')+'</div>'
+        +'<audio controls style="width:100%;height:36px" src="'+eH(P.audioUrl)+'"></audio>'
+      +'</div>'
+    +'</div>';
+  }
   document.getElementById('dash-msg').innerHTML=msgHtml;
   // Precargar peso actual en el input
   var pi=document.getElementById('peso-input');
@@ -2398,6 +2431,8 @@ function syncEd(){
   _sv('cfg-msg',P.mensaje||'');
   _sv('cfg-tel',P.telefonoEntrenador||'');
   _sv('cfg-tel-cliente',P.telefonoCliente||'');
+  _sv('cfg-audio',P.audioUrl||'');
+  _sv('cfg-audio-titulo',P.audioTitulo||'');
   _sv('cfg-brand-name',P.brandName||'');
   _sv('cfg-brand-logo',P.brandLogo||'');
   previewBrandLogo();
@@ -2698,6 +2733,8 @@ function saveClose(){
   P.mensaje=document.getElementById('cfg-msg').value;
   P.telefonoEntrenador=document.getElementById('cfg-tel').value.trim();
   P.telefonoCliente=document.getElementById('cfg-tel-cliente').value.trim();
+  P.audioUrl=document.getElementById('cfg-audio').value.trim();
+  P.audioTitulo=document.getElementById('cfg-audio-titulo').value.trim();
   P.brandName=document.getElementById('cfg-brand-name').value.trim();
   P.brandLogo=document.getElementById('cfg-brand-logo').value.trim();
   applyBrandLogo();
@@ -2764,8 +2801,24 @@ function toggleHel(){
 }
 function loadTheme(){
   try{
-    if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');document.getElementById('btn-dark').classList.add('on');}
-    if(localStorage.getItem('font')==='hel'){document.documentElement.classList.add('font-hel');document.getElementById('btn-hel').classList.add('on');}
+    var saved=localStorage.getItem('theme');
+    // Si no hay preferencia guardada, usar la del sistema
+    if(!saved){
+      var prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+      if(prefersDark){ document.documentElement.classList.add('dark'); try{document.getElementById('btn-dark').classList.add('on');}catch(e){} }
+    } else {
+      if(saved==='dark'){document.documentElement.classList.add('dark');try{document.getElementById('btn-dark').classList.add('on');}catch(e){}}
+    }
+    if(localStorage.getItem('font')==='hel'){document.documentElement.classList.add('font-hel');try{document.getElementById('btn-hel').classList.add('on');}catch(e){}}
+  }catch(e){}
+  // Escuchar cambios en tiempo real
+  try{
+    window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){
+      if(!localStorage.getItem('theme')){
+        document.documentElement.classList.toggle('dark',e.matches);
+        try{document.getElementById('btn-dark').classList.toggle('on',e.matches);}catch(ex){}
+      }
+    });
   }catch(e){}
 }
 
@@ -3805,6 +3858,28 @@ if('serviceWorker' in navigator){
       console.log('SW error:', err);
     });
   });
+}
+
+// ── PDF / IMPRIMIR ─────────────────────
+function exportarPDF(){
+  // Mostrar todos los paneles temporalmente para imprimir
+  var panels=document.querySelectorAll('.panel');
+  var hidden=[];
+  panels.forEach(function(p){ if(!p.classList.contains('active')){ p.style.display='block'; hidden.push(p); } });
+  // Expandir todos los day-body
+  document.querySelectorAll('.day-body').forEach(function(b){ b.classList.add('open'); });
+  window.print();
+  // Restaurar
+  setTimeout(function(){
+    hidden.forEach(function(p){ p.style.display=''; });
+    document.querySelectorAll('.day-body').forEach(function(b){ b.classList.remove('open'); });
+  }, 1000);
+}
+
+// ── SOPORTE ────────────────────────────
+function abrirSoporte(){
+  var msg=encodeURIComponent('Hola, necesito ayuda con PanelFit.\n\nUsuario: '+(P.nombre||'')+(P.apellido?' '+P.apellido:'')+'\nURL: '+window.location.href);
+  window.open('mailto:javi_ql@hotmail.com?subject=Soporte PanelFit&body='+msg,'_blank');
 }
 
 </script>
