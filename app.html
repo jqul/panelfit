@@ -910,6 +910,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* TABS */
 .tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;}
+/* En móvil ocultar tabs horizontales, mostrar tab bar */
+@media(max-width:767px){
+  .tabs{display:none!important;}
+  .panel{padding-bottom:80px!important;}
+  #floating-btns{display:none!important;}
+}
+@media(min-width:768px){
+  #mobile-tabbar{display:none!important;}
+  #mas-menu{display:none!important;}
+}
+/* Tab bar estilos */
+.mbar-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .15s;padding:6px 0;-webkit-tap-highlight-color:transparent;}
+.mbar-item:active{background:var(--bg2);}
+.mbar-icon{font-size:20px;line-height:1;}
+.mbar-lbl{font-size:10px;color:var(--muted);font-family:var(--sans);font-weight:500;letter-spacing:.2px;}
+.mbar-item.active .mbar-lbl{color:var(--ink);font-weight:700;}
+.mbar-item.active .mbar-icon{filter:saturate(2);}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{padding:16px 18px;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.5px;text-transform:uppercase;position:relative;}
 .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
@@ -1452,6 +1469,8 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
         <div class="ctab" onclick="swC('fotos',this);cargarFotosCoach()">📸 Fotos</div>
         <div class="ctab" onclick="swC('entrenos',this);cargarEntrenosCoach()">📋 Entrenos</div>
         <div class="ctab" onclick="swC('encuesta',this);cargarEncuestaCoach()">📝 Encuesta</div>
+        <div class="ctab" onclick="swC('notas',this);cargarNotasCoach()">🗒️ Notas</div>
+        <div class="ctab" onclick="swC('analitica',this);cargarAnalitica()">📈 Análisis</div>
         <div class="ctab" onclick="swC('config',this)">⚙️ Config</div>
       </div>
       <button class="cclose" onclick="cCoach()">✕</button>
@@ -1652,7 +1671,52 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
         </div>
       </div>
 
+      <!-- NOTAS PRIVADAS DEL ENTRENADOR -->
+      <div class="csec" id="cs-notas">
+        <div class="ecard">
+          <div class="echd">
+            <div class="ectitle">🗒️ Notas privadas</div>
+            <span style="font-size:11px;color:var(--muted)">Solo las ves tú. El cliente no las ve.</span>
+          </div>
+          <textarea id="coach-notas-txt" class="einp" rows="6" placeholder="Ej: Cuidado con la rodilla izquierda. Le cuesta la técnica en sentadilla. Prefiere entrenar por las mañanas..." style="resize:vertical;line-height:1.6"></textarea>
+          <button onclick="guardarNotas()" style="margin-top:10px;background:var(--ink);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer">💾 Guardar notas</button>
+          <div id="notas-ok" style="font-size:11px;color:var(--ok);margin-top:6px;display:none">✓ Guardado</div>
+        </div>
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">🏷️ Etiquetas rápidas</div></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" id="notas-tags">
+            <button onclick="addTag('⚠️ Lesión')" class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;font-size:12px">⚠️ Lesión</button>
+            <button onclick="addTag('🔥 Alta intensidad')" class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;font-size:12px">🔥 Alta intensidad</button>
+            <button onclick="addTag('🐢 Progreso lento')" class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;font-size:12px">🐢 Progreso lento</button>
+            <button onclick="addTag('⭐ Cliente VIP')" class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;font-size:12px">⭐ Cliente VIP</button>
+            <button onclick="addTag('📞 Llamar esta semana')" class="addbtn" style="width:auto;padding:5px 12px;border-style:solid;margin:0;font-size:12px">📞 Llamar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANÁLISIS: gráfica fuerza vs peso -->
+      <div class="csec" id="cs-analitica">
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">📈 Evolución de peso corporal</div></div>
+          <div id="analitica-peso-chart" style="min-height:120px"></div>
+        </div>
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">💪 Evolución de fuerza</div></div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+            <select id="analitica-ex-sel" class="einp" style="max-width:280px;font-size:13px" onchange="renderFuerzaChart()">
+              <option value="">Selecciona un ejercicio...</option>
+            </select>
+          </div>
+          <div id="analitica-fuerza-chart" style="min-height:120px"></div>
+        </div>
+        <div class="ecard">
+          <div class="echd"><div class="ectitle">📊 Resumen de adherencia</div></div>
+          <div id="analitica-adherencia" style="min-height:80px"></div>
+        </div>
+      </div>
+
     </div>
+
     <div class="sbar">
       <span id="save-msg" style="font-size:11px;color:var(--muted)">Los cambios se aplican al guardar</span>
       <div style="display:flex;gap:8px">
@@ -1736,8 +1800,37 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
   <div class="tab" id="tab-progreso-btn" onclick="showTab('progreso',this)">📊 PROGRESO</div>
 </div>
 
-<!-- BOTONES FLOTANTES -->
-<div style="position:fixed;bottom:24px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:90">
+<!-- TAB BAR INFERIOR MÓVIL -->
+<div id="mobile-tabbar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:200;padding:0 0 env(safe-area-inset-bottom,0)">
+  <div style="display:flex;align-items:stretch;height:58px">
+    <div class="mbar-item active" id="mbar-dashboard" onclick="showTabMobile('dashboard',this)">
+      <span class="mbar-icon">🏠</span><span class="mbar-lbl">Hoy</span>
+    </div>
+    <div class="mbar-item" id="mbar-entreno" onclick="showTabMobile('entreno',this)">
+      <span class="mbar-icon">🏋️</span><span class="mbar-lbl">Entreno</span>
+    </div>
+    <div class="mbar-item" id="mbar-dieta" onclick="showTabMobile('dieta',this)">
+      <span class="mbar-icon">🍽️</span><span class="mbar-lbl">Dieta</span>
+    </div>
+    <div class="mbar-item" id="mbar-progreso" onclick="showTabMobile('progreso',this)">
+      <span class="mbar-icon">📊</span><span class="mbar-lbl">Progreso</span>
+    </div>
+    <div class="mbar-item" id="mbar-mas" onclick="toggleMasMenu()">
+      <span class="mbar-icon">⋯</span><span class="mbar-lbl">Más</span>
+    </div>
+  </div>
+</div>
+
+<!-- MENÚ "MÁS" MÓVIL -->
+<div id="mas-menu" style="display:none;position:fixed;bottom:58px;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:199;padding:8px 0">
+  <div onclick="showTabMobile('semana',null);toggleMasMenu()" style="display:flex;align-items:center;gap:14px;padding:12px 20px;cursor:pointer;font-size:14px;color:var(--text)">📅 <span>Mi Semana</span></div>
+  <div onclick="showTabMobile('records',null);toggleMasMenu()" style="display:flex;align-items:center;gap:14px;padding:12px 20px;cursor:pointer;font-size:14px;color:var(--text)">🏆 <span>Récords</span></div>
+  <div onclick="showTabMobile('historial',null);toggleMasMenu()" style="display:flex;align-items:center;gap:14px;padding:12px 20px;cursor:pointer;font-size:14px;color:var(--text)">📈 <span>Historial</span></div>
+  <div onclick="showTabMobile('habitos',null);toggleMasMenu()" style="display:flex;align-items:center;gap:14px;padding:12px 20px;cursor:pointer;font-size:14px;color:var(--text)">✅ <span>Hábitos</span></div>
+</div>
+
+<!-- BOTONES FLOTANTES (solo PC) -->
+<div id="floating-btns" style="position:fixed;bottom:24px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:90">
   <button onclick="exportarPDF()" title="Descargar PDF" style="width:44px;height:44px;border-radius:50%;background:var(--ink);color:#fff;border:none;cursor:pointer;font-size:18px;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center">📄</button>
   <button onclick="abrirSoporte()" title="Soporte" style="width:44px;height:44px;border-radius:50%;background:var(--card);color:var(--muted);border:1px solid var(--border2);cursor:pointer;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center">❓</button>
 </div>
@@ -2901,6 +2994,37 @@ function showTab(name,el){
   document.querySelectorAll('.pc-nav-item').forEach(function(n){
     n.classList.toggle('active', n.dataset.tab===name);
   });
+  // Sincronizar tab bar móvil
+  syncMobileTabBar(name);
+}
+
+// Tab bar móvil
+var _mbarMap={dashboard:'mbar-dashboard',entreno:'mbar-entreno',dieta:'mbar-dieta',progreso:'mbar-progreso'};
+function showTabMobile(name, el){
+  showTab(name, document.getElementById('tab-'+name+'-btn'));
+}
+function syncMobileTabBar(name){
+  document.querySelectorAll('.mbar-item').forEach(function(i){i.classList.remove('active');});
+  var id=_mbarMap[name];
+  if(id){ var el=document.getElementById(id); if(el) el.classList.add('active'); }
+  else{ var mas=document.getElementById('mbar-mas'); if(mas) mas.classList.add('active'); }
+  // Cerrar menú más si estaba abierto
+  var mm=document.getElementById('mas-menu'); if(mm&&mm.style.display!=='none') mm.style.display='none';
+}
+function toggleMasMenu(){
+  var mm=document.getElementById('mas-menu'); if(!mm) return;
+  mm.style.display=mm.style.display==='none'||!mm.style.display?'block':'none';
+}
+function initMobileTabBar(){
+  var tb=document.getElementById('mobile-tabbar');
+  if(!tb) return;
+  // Mostrar solo en móvil
+  if(window.innerWidth<768) tb.style.display='block';
+  // Cerrar menú más al hacer clic fuera
+  document.addEventListener('click',function(e){
+    var mm=document.getElementById('mas-menu'); if(!mm) return;
+    if(!mm.contains(e.target)&&!e.target.closest('[onclick*="toggleMasMenu"]')) mm.style.display='none';
+  },{passive:true});
 }
 
 function buildPCSidebar(){
@@ -3058,6 +3182,141 @@ function rellenarSidebar360(){
   }
 }
 function cCoach(){ document.getElementById('coach-overlay').classList.remove('open'); }
+
+// ── NOTAS PRIVADAS ─────────────────────
+function cargarNotasCoach(){
+  var txt=document.getElementById('coach-notas-txt'); if(!txt) return;
+  txt.value=P.coachNotas||'';
+}
+function guardarNotas(){
+  var txt=document.getElementById('coach-notas-txt'); if(!txt) return;
+  P.coachNotas=txt.value;
+  schedSave();
+  var ok=document.getElementById('notas-ok'); if(ok){ ok.style.display='block'; setTimeout(function(){ ok.style.display='none'; },2000); }
+}
+function addTag(tag){
+  var txt=document.getElementById('coach-notas-txt'); if(!txt) return;
+  var sep=txt.value&&!txt.value.endsWith('\n')?'\n':'';
+  txt.value+=sep+'['+tag+'] ';
+  txt.focus();
+}
+
+// ── ANÁLISIS ───────────────────────────
+function cargarAnalitica(){
+  renderPesoChartCoach();
+  poblarExSelector();
+  renderAdherencia();
+}
+
+function renderPesoChartCoach(){
+  var el=document.getElementById('analitica-peso-chart'); if(!el) return;
+  var datos=(P.pesoHistorial||[]).filter(function(d){return d.v&&d.fecha;});
+  if(datos.length<2){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Sin suficientes registros de peso. El cliente debe registrar su peso en el tab HOY.</div>'; return; }
+  var d=datos.slice(-16);
+  var vals=d.map(function(x){return x.v;});
+  var minV=Math.min.apply(null,vals)-1.5, maxV=Math.max.apply(null,vals)+1.5;
+  var W=el.offsetWidth||500, H=130;
+  var pad={l:38,r:10,t:10,b:28};
+  var iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+  function px(i){ return pad.l+(i/(d.length-1))*iW; }
+  function py(v){ return pad.t+iH-((v-minV)/(maxV-minV))*iH; }
+  var pts=d.map(function(x,i){return px(i)+','+py(x.v);}).join(' ');
+  var area='M '+px(0)+','+py(d[0].v)+d.slice(1).map(function(x,i){return ' L '+px(i+1)+','+py(x.v);}).join('')+' L '+px(d.length-1)+','+(pad.t+iH)+' L '+px(0)+','+(pad.t+iH)+' Z';
+  var xLabels=[0,Math.floor((d.length-1)/2),d.length-1].map(function(i){
+    return '<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" fill="var(--muted)" text-anchor="middle">'+d[i].fecha.slice(5).replace('-','/')+'</text>';
+  }).join('');
+  // Tendencia lineal
+  var n=d.length, sumX=0,sumY=0,sumXY=0,sumX2=0;
+  d.forEach(function(p,i){ sumX+=i;sumY+=p.v;sumXY+=i*p.v;sumX2+=i*i; });
+  var slope=(n*sumXY-sumX*sumY)/(n*sumX2-sumX*sumX);
+  var intercept=(sumY-slope*sumX)/n;
+  var tx1=px(0),ty1=py(intercept),tx2=px(d.length-1),ty2=py(slope*(d.length-1)+intercept);
+  el.innerHTML='<svg width="'+W+'" height="'+H+'" style="overflow:visible">'
+    +'<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--ok)" stop-opacity=".2"/><stop offset="100%" stop-color="var(--ok)" stop-opacity="0"/></linearGradient></defs>'
+    +'<path d="'+area+'" fill="url(#ag)"/>'
+    +'<polyline points="'+pts+'" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<line x1="'+tx1+'" y1="'+ty1+'" x2="'+tx2+'" y2="'+ty2+'" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4,3" opacity=".6"/>'
+    +d.map(function(x,i){ var isLast=i===d.length-1; return '<circle cx="'+px(i)+'" cy="'+py(x.v)+'" r="'+(isLast?4:2)+'" fill="var(--ok)" opacity="'+(isLast?1:.6)+'"/>'+(isLast?'<text x="'+px(i)+'" y="'+(py(x.v)-10)+'" font-size="10" fill="var(--ok)" text-anchor="middle" font-weight="bold">'+x.v+' kg</text>':''); }).join('')
+    +xLabels
+    +'</svg>';
+}
+
+function poblarExSelector(){
+  var sel=document.getElementById('analitica-ex-sel'); if(!sel) return;
+  sel.innerHTML='<option value="">Selecciona un ejercicio...</option>';
+  var nombres={};
+  getDias(0).forEach(function(d){ d.ejercicios.forEach(function(r){ nombres[r.nombre]=true; }); });
+  Object.keys(nombres).forEach(function(nm){ var op=document.createElement('option'); op.value=nm; op.textContent=nm; sel.appendChild(op); });
+}
+
+function renderFuerzaChart(){
+  var sel=document.getElementById('analitica-ex-sel'); if(!sel||!sel.value) return;
+  var nm=sel.value;
+  var el=document.getElementById('analitica-fuerza-chart'); if(!el) return;
+  // Extraer historial de ese ejercicio de los registros
+  var all=lAll();
+  var puntos=[];
+  Object.keys(all).forEach(function(ek){
+    var log=all[ek]; if(!log||!log.fechaDone) return;
+    // Obtener nombre del ejercicio desde el plan
+    var m=ek.match(/ex_w(\d+)_d(\d+)_r(\d+)/); if(!m) return;
+    var wi=parseInt(m[1]),di=parseInt(m[2]),ri=parseInt(m[3]);
+    var dias=getDias(wi); if(!dias[di]||!dias[di].ejercicios[ri]) return;
+    if(dias[di].ejercicios[ri].nombre!==nm) return;
+    var sets=log.sets||{};
+    var mejor=0; Object.values(sets).forEach(function(s){ var kg=parseFloat(s.v)||0; if(kg>mejor) mejor=kg; });
+    if(mejor>0) puntos.push({fecha:log.fechaDone,v:mejor});
+  });
+  puntos.sort(function(a,b){return a.fecha.localeCompare(b.fecha);});
+  // Deduplicar por fecha (quedarse con el mejor)
+  var byFecha={};
+  puntos.forEach(function(p){ if(!byFecha[p.fecha]||p.v>byFecha[p.fecha]) byFecha[p.fecha]=p.v; });
+  var d=Object.keys(byFecha).sort().map(function(f){return {fecha:f,v:byFecha[f]};});
+  if(d.length<2){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No hay suficientes registros para este ejercicio.</div>'; return; }
+  // Misma lógica de gráfica que el peso
+  var vals=d.map(function(x){return x.v;});
+  var minV=Math.max(0,Math.min.apply(null,vals)-5), maxV=Math.max.apply(null,vals)+5;
+  var W=el.offsetWidth||500, H=130;
+  var pad={l:42,r:10,t:10,b:28};
+  var iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+  function px(i){ return pad.l+(d.length>1?i/(d.length-1):0.5)*iW; }
+  function py(v){ return maxV===minV?pad.t+iH/2:pad.t+iH-((v-minV)/(maxV-minV))*iH; }
+  var pts=d.map(function(x,i){return px(i)+','+py(x.v);}).join(' ');
+  var area='M '+px(0)+','+py(d[0].v)+d.slice(1).map(function(x,i){return ' L '+px(i+1)+','+py(x.v);}).join('')+' L '+px(d.length-1)+','+(pad.t+iH)+' L '+px(0)+','+(pad.t+iH)+' Z';
+  var xLabels=[0,Math.floor((d.length-1)/2),d.length-1].filter(function(v,i,a){return a.indexOf(v)===i;}).map(function(i){
+    return '<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" fill="var(--muted)" text-anchor="middle">'+d[i].fecha.slice(5).replace('-','/')+'</text>';
+  }).join('');
+  el.innerHTML='<svg width="'+W+'" height="'+H+'" style="overflow:visible">'
+    +'<defs><linearGradient id="fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity=".2"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>'
+    +'<path d="'+area+'" fill="url(#fg)"/>'
+    +'<polyline points="'+pts+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +d.map(function(x,i){ var isLast=i===d.length-1; return '<circle cx="'+px(i)+'" cy="'+py(x.v)+'" r="'+(isLast?4:2)+'" fill="var(--accent)" opacity="'+(isLast?1:.7)+'"/>'+(isLast?'<text x="'+px(i)+'" y="'+(py(x.v)-10)+'" font-size="10" fill="var(--accent)" text-anchor="middle" font-weight="bold">'+x.v+' kg</text>':''); }).join('')
+    +xLabels
+    +'</svg>';
+}
+
+function renderAdherencia(){
+  var el=document.getElementById('analitica-adherencia'); if(!el) return;
+  var all=lAll();
+  var fechas={};
+  Object.values(all).forEach(function(l){ if(l.fechaDone) fechas[l.fechaDone]=(fechas[l.fechaDone]||0)+1; });
+  var dias=Object.keys(fechas).sort().slice(-30);
+  if(!dias.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px">Sin registros de adherencia aún.</div>'; return; }
+  var hoy=new Date(); var semanas=4;
+  var html='<div style="display:flex;gap:4px;flex-wrap:wrap">';
+  for(var s=semanas-1;s>=0;s--){
+    for(var dw=6;dw>=0;dw--){
+      var d=new Date(hoy); d.setDate(hoy.getDate()-(s*7+dw));
+      var f=d.toISOString().split('T')[0];
+      var cnt=fechas[f]||0;
+      var color=cnt>5?'var(--ok)':cnt>2?'#8ecfa0':cnt>0?'#c8e6c9':'var(--border)';
+      html+='<div title="'+f+': '+cnt+' ejercicios" style="width:18px;height:18px;border-radius:3px;background:'+color+';flex-shrink:0"></div>';
+    }
+  }
+  html+='</div><div style="font-size:11px;color:var(--muted);margin-top:8px">Últimas 4 semanas · '+dias.length+' días con actividad</div>';
+  el.innerHTML=html;
+}
+
 function swC(name,el){
   document.querySelectorAll('.csec').forEach(function(s){s.classList.remove('active');});
   document.querySelectorAll('.ctab').forEach(function(t){t.classList.remove('active');});
@@ -3085,6 +3344,9 @@ function syncEd(){
   _sv('cfg-audio-titulo',P.audioTitulo||'');
   _sv('cfg-brand-name',P.brandName||'');
   _sv('cfg-brand-logo',P.brandLogo||'');
+  // Notas privadas
+  var notasTxt=document.getElementById('coach-notas-txt');
+  if(notasTxt) notasTxt.value=P.coachNotas||'';
   previewBrandLogo();
   document.querySelectorAll('.tbtn2').forEach(function(b){b.classList.toggle('active',b.dataset.tipo===P.tipo);});
   buildDiasEd();
@@ -3146,8 +3408,41 @@ function buildDiasEd(){
 function addDia(){ var d=getDias(_edWeek); d.push({titulo:'DÍA '+(d.length+1)+' — Nuevo',foco:'Describe el foco',ejercicios:[{nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}]}); buildDiasEd(); }
 function dupDia(di){ var d=getDias(_edWeek); var copia=JSON.parse(JSON.stringify(d[di])); copia.titulo=copia.titulo+' (copia)'; d.splice(di+1,0,copia); buildDiasEd(); }
 function delDia(di){ var d=getDias(_edWeek); if(d.length<=1){alert('Mínimo 1 día.');return;} if(confirm('¿Eliminar día?')){d.splice(di,1);buildDiasEd();} }
-function addEx(di){ getDias(_edWeek)[di].ejercicios.push({nombre:'Nuevo ejercicio',series:'3×10',peso:'',principal:false,comentario:''}); buildDiasEd(); }
 function delEx(di,ri){ getDias(_edWeek)[di].ejercicios.splice(ri,1); buildDiasEd(); }
+
+var _EJERCICIOS_BASE=['Sentadilla con barra','Sentadilla goblet','Sentadilla búlgara','Prensa de piernas','Peso muerto','Peso muerto rumano','Peso muerto sumo','Press banca','Press banca inclinado','Press banca declinado','Aperturas en banco','Press militar','Press Arnold','Elevaciones laterales','Pájaro','Dominadas','Jalón al pecho','Remo con barra','Remo con mancuerna','Remo en polea','Curl de bíceps','Curl martillo','Curl concentrado','Curl en polea','Press francés','Extensión tríceps polea','Fondos en paralelas','Patada de tríceps','Zancadas','Zancadas búlgaras','Leg curl','Leg extension','Hip thrust','Glute bridge','Plancha','Crunch','Rueda abdominal','Elevación de piernas','Russian twist','Face pull','Encogimientos de hombros','Pull-over','Press en máquina','Máquina peck deck','Cardio HIIT','Caminata en cinta','Bicicleta estática'];
+
+function addEx(di){
+  var mod=document.createElement('div');
+  mod.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  mod.innerHTML='<div style="background:var(--card);border-radius:14px;padding:20px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:12px">➕ Añadir ejercicio</div>'
+    +'<input id="ex-buscar-inp" class="einp" placeholder="🔍 Buscar o escribir nombre..." autocomplete="off" style="margin-bottom:8px">'
+    +'<div id="ex-sugerencias" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:12px"></div>'
+    +'<div style="display:flex;gap:8px">'
+      +'<button id="ex-add-btn" style="flex:2;background:var(--ink);color:#fff;border:none;padding:11px;border-radius:8px;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer">+ Añadir</button>'
+      +'<button onclick="this.closest(\'[style*=inset]\').remove()" style="flex:1;background:transparent;border:1px solid var(--border);padding:11px;border-radius:8px;font-size:13px;font-family:var(--sans);cursor:pointer">Cancelar</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(mod);
+  var inp=mod.querySelector('#ex-buscar-inp');
+  var sug=mod.querySelector('#ex-sugerencias');
+  var renderSug=function(q){
+    var lista=q?_EJERCICIOS_BASE.filter(function(e){return e.toLowerCase().includes(q.toLowerCase());}):_EJERCICIOS_BASE.slice(0,10);
+    sug.innerHTML=lista.map(function(e){
+      return '<div onclick="document.getElementById(\'ex-buscar-inp\').value=\''+e+'\';document.querySelectorAll(\'#ex-sugerencias div\').forEach(function(d){d.style.background=\'\'});this.style.background=\'var(--bg2)\'" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s">'+e+'</div>';
+    }).join('')||'<div style="padding:10px;color:var(--muted);font-size:12px">Escribe el nombre libre abajo</div>';
+  };
+  renderSug('');
+  inp.addEventListener('input',function(){ renderSug(this.value); });
+  inp.focus();
+  mod.querySelector('#ex-add-btn').onclick=function(){
+    var nombre=inp.value.trim()||'Nuevo ejercicio';
+    getDias(_edWeek)[di].ejercicios.push({nombre:nombre,series:'3×10',peso:'',principal:true,comentario:''});
+    mod.remove(); buildDiasEd(); toast('✓ Ejercicio añadido');
+  };
+  mod.addEventListener('click',function(e){ if(e.target===mod) mod.remove(); });
+}
 function buildWeeksUI(){
   document.getElementById('weeks-ed').innerHTML=P.semanas.map(function(w,i){
     return '<div class="werow" style="flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'+
@@ -3387,6 +3682,8 @@ function saveClose(){
   P.audioTitulo=document.getElementById('cfg-audio-titulo').value.trim();
   P.brandName=document.getElementById('cfg-brand-name').value.trim();
   P.brandLogo=document.getElementById('cfg-brand-logo').value.trim();
+  var notasTxt=document.getElementById('coach-notas-txt');
+  if(notasTxt) P.coachNotas=notasTxt.value;
   applyBrandLogo();
   var p1=document.getElementById('cfg-pin').value, p2=document.getElementById('cfg-pin2').value;
   if(p1&&p1===p2){ P.pin=p1; document.getElementById('pin-msg').textContent='✅ PIN actualizado'; }
@@ -3542,6 +3839,7 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   applyUI(); buildDashboard(); applyVis();
   buildDietMacros(); buildDietPills(); renderDiet('lun');
   buildHabits(); tSet(P.restMain); loadTheme(); setTimeout(cargarGaleria,500);
+  setTimeout(initMobileTabBar,100);
   showTab('dashboard', document.querySelector('#panel-root .tab'));
 
   if(isCoach){
