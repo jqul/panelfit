@@ -799,9 +799,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .plan-drop-hint{font-size:10px;color:var(--border2);text-align:center;padding:14px 4px;letter-spacing:.3px;}
 
 /* PANEL COACH */
-.cov{display:none;position:fixed;inset:0;z-index:500;}
+.cov{display:none;position:fixed;inset:0;z-index:9000;}
 .cov.open{display:block;}
-.cpan{background:#fafaf8;width:100%;display:flex;flex-direction:column;position:absolute;top:0;right:0;bottom:0;left:0;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden;}
+.cpan{background:#fafaf8;width:100%;height:100%;display:flex;flex-direction:column;position:absolute;top:0;right:0;bottom:0;left:0;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:9001;}
 .cov.open .cpan{transform:translateX(0);}
 .chd{background:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;gap:10px;flex-shrink:0;height:52px;}
 .ctabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;flex:1;}
