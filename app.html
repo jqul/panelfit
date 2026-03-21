@@ -892,6 +892,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .drive-btn:hover{border-color:var(--ink);color:var(--ink);}
 .drive-btn.primary{border-color:var(--ok);color:var(--ok);}
 .drive-btn.primary:hover{background:var(--ok-bg);}
+/* COACH SIDEBAR */
+.cov{display:none !important;position:fixed !important;inset:0 !important;z-index:99999 !important;}
+.cov.open{display:block !important;}
+.cpan{background:#fafaf8 !important;width:100% !important;height:100% !important;display:flex !important;flex-direction:column !important;position:fixed !important;top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;transform:translateX(100%) !important;transition:transform .3s cubic-bezier(.4,0,.2,1) !important;overflow:hidden !important;z-index:99999 !important;}
+.cov.open .cpan{transform:translateX(0) !important;}
 `;document.head.appendChild(s);})();
 
 // ── HTML PANEL ─────────────────────────
