@@ -77,6 +77,52 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tbtn{padding:6px 14px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;border-radius:var(--r);}
 .tbtn:hover{border-color:var(--ink);color:var(--ink);}
 
+/* ── ADMIN LAYOUT ──────────────────── */
+.admin-layout{display:flex;flex-direction:column;min-height:calc(100vh - 52px);}
+.admin-sidebar-panel{display:none;}
+.admin-main{flex:1;}
+@media(min-width:1024px){
+  .topbar{display:none;}
+  .admin-layout{flex-direction:row;height:100vh;}
+  .admin-sidebar-panel{display:flex;flex-direction:column;width:240px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);height:100vh;position:sticky;top:0;overflow-y:auto;}
+  .admin-main{overflow-y:auto;height:100vh;flex:1;}
+}
+.adm-logo{padding:20px 20px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.adm-logo-mark{font-family:var(--serif);font-size:21px;letter-spacing:-.3px;flex:1;}
+.adm-logo-mark span{color:var(--accent);font-style:italic;}
+.adm-user{padding:12px 20px 14px;border-bottom:1px solid var(--border);}
+.adm-user-name{font-size:13px;font-weight:600;color:var(--ink);}
+.adm-user-email{font-size:11px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-nav{padding:10px 10px;flex:1;}
+.adm-nav-section{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:10px 10px 4px;font-weight:600;}
+.adm-nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);font-family:var(--sans);font-weight:500;transition:all .12s;margin-bottom:1px;}
+.adm-nav-item:hover{background:var(--bg2);color:var(--ink);}
+.adm-nav-item.active{background:var(--ink);color:#fff;}
+.adm-nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.adm-nav-badge{margin-left:auto;background:var(--ok);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;}
+.adm-footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:6px;}
+.adm-footer-btn{flex:1;padding:7px;border:1px solid var(--border);background:transparent;color:var(--text2);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--sans);transition:all .12s;}
+.adm-footer-btn:hover{border-color:var(--ink);color:var(--ink);}
+.adm-content{display:none;padding:28px 32px;max-width:1100px;}
+.adm-content.active{display:block;}
+.adm-page-title{font-family:var(--serif);font-size:28px;font-weight:400;margin-bottom:4px;letter-spacing:-.3px;}
+.adm-page-sub{font-size:12px;color:var(--muted);margin-bottom:24px;}
+.adm-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:24px;}
+@media(min-width:640px){.adm-stats{grid-template-columns:repeat(4,1fr);}}
+.adm-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;}
+.adm-stat-num{font-family:var(--serif);font-size:30px;line-height:1;margin-bottom:4px;}
+.adm-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.adm-stat-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+.adm-clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;}
+.adm-client-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s;position:relative;}
+.adm-client-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px);}
+.adm-online-dot{position:absolute;top:14px;right:14px;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 2px var(--card),0 0 6px var(--ok);}
+.adm-search{background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:9px 14px;border-radius:10px;width:100%;max-width:360px;outline:none;font-family:var(--sans);margin-bottom:16px;display:block;transition:border-color .15s;}
+.adm-search:focus{border-color:var(--ink);}
+.adm-filters{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+.adm-filter{padding:5px 14px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:var(--sans);border-radius:20px;cursor:pointer;transition:all .12s;}
+.adm-filter.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
 /* ── DASHBOARD ─────────────────────── */
 .content{padding:28px 24px;max-width:960px;margin:0 auto;}
 .page-title{font-family:var(--serif);font-size:30px;font-weight:400;margin-bottom:4px;letter-spacing:-.3px;}
@@ -174,6 +220,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 <!-- DASHBOARD ENTRENADOR -->
 <div class="view" id="view-dash">
+  <!-- Topbar móvil -->
   <div class="topbar">
     <div class="topbar-logo">Panel<span>Fit</span></div>
     <div class="topbar-right">
@@ -181,13 +228,77 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
       <button class="tbtn" onclick="doLogout()">Salir →</button>
     </div>
   </div>
-  <div class="content">
-    <div class="page-title">Mis clientes</div>
-    <div class="page-sub" id="dash-sub">Gestiona los planes de tus clientes</div>
-    <input id="cli-search" type="text" placeholder="🔍 Buscar cliente..." oninput="filtrarClientes(this.value)"
-      style="background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:10px 14px;border-radius:10px;width:100%;max-width:340px;outline:none;font-family:var(--sans);margin-bottom:16px;display:block;">
-    <div class="clientes-grid" id="clientes-grid">
-      <div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>
+
+  <div class="admin-layout">
+    <!-- Sidebar PC -->
+    <div class="admin-sidebar-panel">
+      <div class="adm-logo">
+        <div class="adm-logo-mark">Panel<span>Fit</span></div>
+      </div>
+      <div class="adm-user">
+        <div class="adm-user-name" id="adm-user-name">—</div>
+        <div class="adm-user-email" id="adm-user-email">—</div>
+      </div>
+      <nav class="adm-nav">
+        <div class="adm-nav-section">Principal</div>
+        <div class="adm-nav-item active" onclick="admNav('overview',this)"><span class="adm-nav-icon">🏠</span>Resumen</div>
+        <div class="adm-nav-item" onclick="admNav('clientes',this)"><span class="adm-nav-icon">👥</span>Clientes <span class="adm-nav-badge" id="adm-badge-total">0</span></div>
+        <div class="adm-nav-section">Herramientas</div>
+        <div class="adm-nav-item" onclick="admNav('plantillas',this)"><span class="adm-nav-icon">📋</span>Plantillas</div>
+        <div class="adm-nav-item" onclick="admNav('actividad',this)"><span class="adm-nav-icon">📊</span>Actividad</div>
+      </nav>
+      <div class="adm-footer">
+        <button class="adm-footer-btn" onclick="doLogout()">↩ Salir</button>
+        <button class="adm-footer-btn" onclick="openNewCliente()" style="border-color:var(--ok);color:var(--ok)">+ Cliente</button>
+      </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="admin-main" id="adm-main">
+
+      <!-- VISTA: Resumen -->
+      <div class="adm-content active" id="adm-overview">
+        <div class="adm-page-title" id="adm-greeting">Buenos días</div>
+        <div class="adm-page-sub">Aquí tienes el resumen de hoy</div>
+        <div class="adm-stats" id="adm-stats-grid">
+          <div class="adm-stat"><div class="adm-stat-num" id="adm-s-total">—</div><div class="adm-stat-lbl">Clientes</div><div class="adm-stat-sub">activos</div></div>
+          <div class="adm-stat"><div class="adm-stat-num cg" id="adm-s-hoy">—</div><div class="adm-stat-lbl">Entrenaron</div><div class="adm-stat-sub">hoy</div></div>
+          <div class="adm-stat"><div class="adm-stat-num cy" id="adm-s-semana">—</div><div class="adm-stat-lbl">Esta semana</div><div class="adm-stat-sub">sesiones</div></div>
+          <div class="adm-stat"><div class="adm-stat-num cb" id="adm-s-sin">—</div><div class="adm-stat-lbl">Sin entrenar</div><div class="adm-stat-sub">+7 días</div></div>
+        </div>
+        <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:12px">Clientes recientes</div>
+        <div class="adm-clients-grid" id="adm-recent-grid"></div>
+      </div>
+
+      <!-- VISTA: Todos los clientes -->
+      <div class="adm-content" id="adm-clientes">
+        <div class="adm-page-title">Clientes</div>
+        <div class="adm-page-sub">Gestiona los planes de todos tus clientes</div>
+        <input class="adm-search" id="cli-search" type="text" placeholder="🔍 Buscar cliente..." oninput="filtrarClientes(this.value)">
+        <div class="adm-filters">
+          <div class="adm-filter active" onclick="filtrarPorEstado('todos',this)">Todos</div>
+          <div class="adm-filter" onclick="filtrarPorEstado('hoy',this)">✓ Entrenaron hoy</div>
+          <div class="adm-filter" onclick="filtrarPorEstado('inactivos',this)">⚠ Sin entrenar</div>
+        </div>
+        <div class="adm-clients-grid" id="clientes-grid">
+          <div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>
+        </div>
+      </div>
+
+      <!-- VISTA: Plantillas -->
+      <div class="adm-content" id="adm-plantillas">
+        <div class="adm-page-title">Plantillas de rutina</div>
+        <div class="adm-page-sub">Crea rutinas base para importar a nuevos clientes rápidamente</div>
+        <div id="adm-plantillas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px"></div>
+      </div>
+
+      <!-- VISTA: Actividad -->
+      <div class="adm-content" id="adm-actividad">
+        <div class="adm-page-title">Actividad</div>
+        <div class="adm-page-sub">Historial de entrenos de todos tus clientes</div>
+        <div id="adm-actividad-list"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -402,18 +513,27 @@ function getClientToken(){
 async function loadDash(){
   loading(true);
   try{
-    // Verificar activo en cada carga del dash (por si se desactiva mientras está logado)
-    var {data:perfil, error:perfilErr}=await sb.from('entrenadores').select('nombre,activo').eq('id',_user.id).single();
+    var {data:perfil, error:perfilErr}=await sb.from('entrenadores').select('nombre,activo,email').eq('id',_user.id).single();
     if(perfil && perfil.activo===false){
       await sb.auth.signOut(); loading(false);
       toast('Tu cuenta ha sido desactivada.',5000); showView('view-login'); return;
     }
     if(!perfil){
       await sb.from('entrenadores').insert({id:_user.id, nombre:_user.email, email:_user.email});
-      perfil={nombre:_user.email};
+      perfil={nombre:_user.email, email:_user.email};
     }
-    document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
+    // Actualizar UI
+    var nombre=perfil.nombre||_user.email;
+    var el; 
+    el=document.getElementById('topbar-nombre'); if(el) el.textContent=nombre;
+    el=document.getElementById('adm-user-name'); if(el) el.textContent=nombre;
+    el=document.getElementById('adm-user-email'); if(el) el.textContent=perfil.email||_user.email;
+    // Saludo según hora
+    var h=new Date().getHours();
+    var sal=h<12?'Buenos días':'h<18?\'Buenas tardes\':\'Buenas noches\'';
+    el=document.getElementById('adm-greeting'); if(el) el.textContent=(h<12?'Buenos días':h<18?'Buenas tardes':'Buenas noches')+', '+nombre.split(' ')[0];
     await renderClientes();
+    await cargarAdmStats();
   } catch(e){
     console.error('loadDash error:',e);
     toast('Error de conexión. Comprueba tu internet.',4000);
@@ -422,16 +542,155 @@ async function loadDash(){
   showView('view-dash');
 }
 
+// Navegación del panel admin
+function admNav(section, el){
+  document.querySelectorAll('.adm-nav-item').forEach(function(n){ n.classList.remove('active'); });
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.adm-content').forEach(function(c){ c.classList.remove('active'); });
+  var target=document.getElementById('adm-'+section);
+  if(target) target.classList.add('active');
+  if(section==='clientes') renderClientes();
+  if(section==='actividad') cargarAdmActividad();
+  if(section==='plantillas') cargarAdmPlantillas();
+}
+
+// Stats del overview
+async function cargarAdmStats(){
+  try{
+    var {data:clientes}=await sb.from('clientes').select('id,nombre,apellido,created_at,token').eq('entrenador_id',_user.id).order('created_at',{ascending:false});
+    var total=(clientes||[]).length;
+    var hoy=new Date().toISOString().split('T')[0];
+    var semanaMs=7*24*60*60*1000;
+    // Cargar registros para stats
+    var ids=(clientes||[]).map(function(c){return c.id;});
+    var hoyCount=0, semanaCount=0, sinEntreno=0;
+    if(ids.length){
+      var {data:regs}=await sb.from('registros').select('cliente_id,datos,updated_at').in('cliente_id',ids);
+      (regs||[]).forEach(function(r){
+        var logs=r.datos&&r.datos.logs||{};
+        var entrenoHoy=Object.values(logs).some(function(l){ return l.done&&l.fechaDone===hoy; });
+        if(entrenoHoy) hoyCount++;
+        var updAt=r.updated_at?new Date(r.updated_at):null;
+        if(updAt&&(Date.now()-updAt.getTime())<semanaMs) semanaCount++;
+        if(!updAt||(Date.now()-updAt.getTime())>semanaMs*1) sinEntreno++;
+      });
+    }
+    var el;
+    el=document.getElementById('adm-s-total'); if(el) el.textContent=total;
+    el=document.getElementById('adm-s-hoy'); if(el) el.textContent=hoyCount;
+    el=document.getElementById('adm-s-semana'); if(el) el.textContent=semanaCount;
+    el=document.getElementById('adm-s-sin'); if(el) el.textContent=sinEntreno;
+    el=document.getElementById('adm-badge-total'); if(el) el.textContent=total;
+    // Mostrar últimos 6 clientes en overview
+    var grid=document.getElementById('adm-recent-grid'); if(!grid) return;
+    var recientes=(clientes||[]).slice(0,6);
+    if(!recientes.length){ grid.innerHTML='<div style="color:var(--muted);font-size:13px">Aún no tienes clientes. <a onclick="openNewCliente()" style="color:var(--accent);cursor:pointer">Crea el primero →</a></div>'; return; }
+    grid.innerHTML=recientes.map(function(c){
+      return '<div class="adm-client-card" onclick="editarCliente(\''+c.id+'\')">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+          +'<div style="width:36px;height:36px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:15px;color:var(--accent);flex-shrink:0">'+(c.nombre||'?').charAt(0).toUpperCase()+'</div>'
+          +'<div><div style="font-family:var(--serif);font-size:15px">'+c.nombre+' '+(c.apellido||'')+'</div><div style="font-size:11px;color:var(--muted)">Creado '+new Date(c.created_at).toLocaleDateString('es-ES')+'</div></div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px">'
+          +'<button class="cc-btn" onclick="event.stopPropagation();editarCliente(\''+c.id+'\')">✏️ Plan</button>'
+          +'<button class="cc-btn link" onclick="event.stopPropagation();verLink(\''+c.id+'\',\''+c.nombre+' '+(c.apellido||'')+'\',\''+c.token+'\')">🔗 Enlace</button>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }catch(e){ console.error('cargarAdmStats:',e); }
+}
+
+async function cargarAdmActividad(){
+  var body=document.getElementById('adm-actividad-list'); if(!body) return;
+  body.innerHTML=skelHtml('list',4);
+  try{
+    var {data:clientes}=await sb.from('clientes').select('id,nombre,apellido').eq('entrenador_id',_user.id);
+    var ids=(clientes||[]).map(function(c){return c.id;});
+    if(!ids.length){ body.innerHTML='<div style="color:var(--muted);font-size:13px">Sin clientes aún.</div>'; return; }
+    var {data:regs}=await sb.from('registros').select('cliente_id,datos,updated_at').in('cliente_id',ids);
+    var eventos=[];
+    (regs||[]).forEach(function(r){
+      var c=(clientes||[]).find(function(x){return x.id===r.cliente_id;});
+      var logs=r.datos&&r.datos.logs||{};
+      Object.entries(logs).forEach(function(entry){
+        var ek=entry[0]; var log=entry[1];
+        if(log.fechaDone) eventos.push({fecha:log.fechaDone,nombre:(c?c.nombre+' '+(c.apellido||''):'—'),ejercicio:ek,clienteId:r.cliente_id});
+      });
+    });
+    eventos.sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+    var byFecha={};
+    eventos.slice(0,60).forEach(function(e){
+      if(!byFecha[e.fecha]) byFecha[e.fecha]=[];
+      if(!byFecha[e.fecha].find(function(x){return x.nombre===e.nombre;})) byFecha[e.fecha].push(e);
+    });
+    body.innerHTML=Object.keys(byFecha).sort(function(a,b){return b.localeCompare(a);}).map(function(fecha){
+      var items=byFecha[fecha];
+      var fmtFecha=new Date(fecha+'T00:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+      return '<div style="margin-bottom:18px">'
+        +'<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">'+fmtFecha+'</div>'
+        +items.map(function(e){
+          return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="editarCliente(\''+e.clienteId+'\')">'
+            +'<div style="width:32px;height:32px;border-radius:50%;background:var(--ok-bg);border:1.5px solid var(--ok);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">✓</div>'
+            +'<div><div style="font-size:13px;font-weight:600">'+e.nombre+'</div><div style="font-size:11px;color:var(--muted)">Sesión completada</div></div>'
+            +'<div style="margin-left:auto;font-size:11px;color:var(--muted)">Ver →</div>'
+          +'</div>';
+        }).join('')
+      +'</div>';
+    }).join('') || '<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px">Sin actividad registrada.</div>';
+  }catch(e){ body.innerHTML='<div style="color:var(--warn);font-size:12px">Error al cargar actividad.</div>'; }
+}
+
+async function cargarAdmPlantillas(){
+  var grid=document.getElementById('adm-plantillas-grid'); if(!grid) return;
+  grid.innerHTML=skelHtml('list',3);
+  try{
+    var {data:clientes}=await sb.from('clientes').select('id,nombre,apellido').eq('entrenador_id',_user.id);
+    var ids=(clientes||[]).map(function(c){return c.id;});
+    if(!ids.length){ grid.innerHTML='<div style="color:var(--muted);font-size:13px">Crea clientes primero para tener plantillas.</div>'; return; }
+    var {data:planes}=await sb.from('planes').select('cliente_id,datos').in('cliente_id',ids);
+    var conPlan=(planes||[]).filter(function(p){ return p.datos&&p.datos.P&&p.datos.P.semanas&&p.datos.P.semanas.length; });
+    if(!conPlan.length){ grid.innerHTML='<div style="color:var(--muted);font-size:13px">Aún no tienes clientes con planes para usar como plantilla.</div>'; return; }
+    grid.innerHTML=conPlan.map(function(p){
+      var c=(clientes||[]).find(function(x){return x.id===p.cliente_id;});
+      var plan=p.datos.P;
+      return '<div style="background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+        +'<div style="font-family:var(--serif);font-size:16px;margin-bottom:4px">'+(c?c.nombre+' '+(c.apellido||''):'—')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+(plan.tipo||'Sin tipo')+' · '+(plan.semanas.length)+' semanas</div>'
+        +'<button onclick="importarDesdeCliente(\''+p.cliente_id+'\')" style="width:100%;padding:8px;background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:12px;font-family:var(--sans);font-weight:600;cursor:pointer">📥 Usar como plantilla</button>'
+      +'</div>';
+    }).join('');
+  }catch(e){ grid.innerHTML='<div style="color:var(--warn);font-size:12px">Error al cargar plantillas.</div>'; }
+}
+
+async function importarDesdeCliente(fromId){
+  if(!confirm('¿Importar este plan? Selecciona el cliente destino en el siguiente paso.')) return;
+  // Abrir lista de clientes para elegir destino
+  admNav('clientes', document.querySelector('[onclick*="admNav(\'clientes\'"]'));
+  toast('Abre el cliente al que quieres importar el plan y usa "📥 Importar plan" dentro del editor.',5000);
+}
+
+function filtrarPorEstado(estado, el){
+  document.querySelectorAll('.adm-filter').forEach(function(f){ f.classList.remove('active'); });
+  if(el) el.classList.add('active');
+  var cards=document.querySelectorAll('.adm-client-card, .cliente-card');
+  cards.forEach(function(c){
+    if(estado==='todos'){ c.style.display=''; return; }
+    var dot=c.querySelector('.adm-online-dot');
+    if(estado==='hoy') c.style.display=dot?'':'none';
+    if(estado==='inactivos') c.style.display=(!dot)?'':'none';
+  });
+}
+
+
 async function renderClientes(){
-  var grid=document.getElementById('clientes-grid');
+  var grid=document.getElementById('clientes-grid'); if(!grid) return;
   grid.innerHTML='<div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>'
     +'<div class="add-card" onclick="openNewCliente()" style="opacity:.3;pointer-events:none">+ Nuevo cliente</div>';
   try{
     var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
     if(error) throw error;
-    // Cargar registros de todos los clientes para ver quién entrenó hoy
     var hoy=new Date().toISOString().split('T')[0];
-    var ids=(clientes||[]).map(c=>c.id);
+    var ids=(clientes||[]).map(function(c){return c.id;});
     var activos={};
     if(ids.length){
       var {data:regs}=await sb.from('registros').select('cliente_id,datos').in('cliente_id',ids);
@@ -441,22 +700,27 @@ async function renderClientes(){
         if(entrenoHoy) activos[r.cliente_id]=true;
       });
     }
-    var cards=(clientes||[]).map(c=>{
+    var cards=(clientes||[]).map(function(c){
       var entrenoHoy=activos[c.id];
-      return `<div class="cliente-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="cc-name" style="margin:0">${c.nombre} ${c.apellido||''}</div>
-          ${entrenoHoy?'<span title="Entrenó hoy" style="width:10px;height:10px;border-radius:50%;background:var(--ok);flex-shrink:0;box-shadow:0 0 6px var(--ok)"></span>':''}
-        </div>
-        <div class="cc-sub">${entrenoHoy?'<span style="color:var(--ok);font-weight:600">✓ Entrenó hoy</span>':'Creado '+new Date(c.created_at).toLocaleDateString('es-ES')}</div>
-        <div class="cc-actions">
-          <button class="cc-btn" onclick="editarCliente('${c.id}')">✏️ Plan</button>
-          <button class="cc-btn link" onclick="verLink('${c.id}','${c.nombre} ${c.apellido||''}','${c.token}')">🔗 Enlace</button>
-          <button class="cc-btn" onclick="borrarCliente('${c.id}','${c.nombre}')">🗑</button>
-        </div>
-      </div>`;
+      var inicial=(c.nombre||'?').charAt(0).toUpperCase();
+      return '<div class="adm-client-card" onclick="editarCliente(\''+c.id+'\')">'
+        +(entrenoHoy?'<div class="adm-online-dot" title="Entrenó hoy"></div>':'')
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+          +'<div style="width:40px;height:40px;border-radius:50%;background:var(--bg2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:17px;color:var(--accent);flex-shrink:0">'+inicial+'</div>'
+          +'<div style="min-width:0">'
+            +'<div style="font-family:var(--serif);font-size:16px;letter-spacing:-.1px">'+c.nombre+' '+(c.apellido||'')+'</div>'
+            +'<div style="font-size:11px;color:'+(entrenoHoy?'var(--ok)':'var(--muted)')+';margin-top:1px;font-weight:'+(entrenoHoy?'600':'400')+'">'+
+              (entrenoHoy?'✓ Entrenó hoy':'Creado '+new Date(c.created_at).toLocaleDateString('es-ES'))+'</div>'
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px">'
+          +'<button class="cc-btn" onclick="event.stopPropagation();editarCliente(\''+c.id+'\')">✏️ Plan</button>'
+          +'<button class="cc-btn link" onclick="event.stopPropagation();verLink(\''+c.id+'\',\''+c.nombre+' '+(c.apellido||'')+'\',\''+c.token+'\')">🔗 Enlace</button>'
+          +'<button class="cc-btn" onclick="event.stopPropagation();borrarCliente(\''+c.id+'\',\''+c.nombre+'\')">🗑</button>'
+        +'</div>'
+      +'</div>';
     }).join('');
-    grid.innerHTML=cards+`<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>`;
+    grid.innerHTML=cards+'<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>';
   } catch(e){
     console.error('renderClientes error:',e);
     toast('Error al cargar clientes. Comprueba tu conexión.',4000);
@@ -548,10 +812,11 @@ async function loadClienteApp(token){
 }
 
 function filtrarClientes(q){
-  var cards=document.querySelectorAll('.cliente-card');
+  var cards=document.querySelectorAll('.adm-client-card, .cliente-card');
   cards.forEach(function(c){
-    var nombre=c.querySelector('.cc-name').textContent.toLowerCase();
-    c.style.display=nombre.includes(q.toLowerCase())?'':'none';
+    var nameEl=c.querySelector('[style*="font-family:var(--serif)"]')||c.querySelector('.cc-name');
+    if(!nameEl){ c.style.display=''; return; }
+    c.style.display=nameEl.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
   });
 }
 
