@@ -59,7 +59,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin-bottom:5px;display:block;}
 .inp{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:11px 14px;outline:none;font-family:var(--sans);margin-bottom:10px;border-radius:var(--r);transition:border-color .15s;}
 .inp:focus{border-color:var(--accent);}
-.btn{width:100%;padding:12px;border:none;background:var(--ink);color:var(--card);cursor:pointer;font-size:13px;font-family:var(--sans);letter-spacing:.4px;transition:opacity .15s;margin-bottom:8px;border-radius:var(--r);font-weight:500;}
+.btn{width:100%;padding:12px;border:none;background:var(--ink);color:var(--card);cursor:pointer;font-size:13px;font-family:var(--sans);letter-spacing:.4px;transition:opacity .15s;margin-bottom:8px;border-radius:var(--r);font-weight:500;pointer-events:auto;}
 .btn:hover{opacity:.85;}
 .btn.sec{background:transparent;border:1px solid var(--border2);color:var(--text2);}
 .btn.sec:hover{border-color:var(--ink);color:var(--ink);opacity:1;}
@@ -931,7 +931,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tab{padding:16px 18px;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.5px;text-transform:uppercase;position:relative;}
 .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
 .tab:hover:not(.active){color:var(--text2);}
-.panel{display:none;padding:24px;max-width:760px;width:100%;box-sizing:border-box;}
+.panel{display:none;padding:24px;max-width:760px;width:100%;box-sizing:border-box;pointer-events:none;}
+.panel.active{pointer-events:auto;}
 /* MODO ENTRENAMIENTO */
 /* TARJETAS MODO ENTRENAMIENTO */
 .ea-ex-card{background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
@@ -3366,10 +3367,11 @@ function buildDiasEd(){
   var html=semSel+diasActuales.map(function(d,di){
     var exH=d.ejercicios.map(function(r,ri){
       return '<div class="exed">'+
-        '<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:end;margin-bottom:7px">'+
+        '<div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:end;margin-bottom:7px">'+
           '<div><label class="elbl">Ejercicio</label><input class="einp" value="'+eH(r.nombre)+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].nombre=this.value"></div>'+
           '<div><label class="elbl">Series</label><input class="einp" style="width:80px" value="'+eH(r.series)+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].series=this.value"></div>'+
           '<div><label class="elbl">Peso</label><input class="einp" style="width:110px" value="'+eH(String(r.peso))+'" onchange="getDias(_edWeek)['+di+'].ejercicios['+ri+'].peso=this.value"></div>'+
+          '<button class="delbtn" style="margin-top:18px;color:var(--accent);border-color:var(--accent2)" title="Duplicar" onclick="dupEx('+di+','+ri+')">⊕</button>'+
           '<button class="delbtn" style="margin-top:18px" onclick="delEx('+di+','+ri+')">✕</button>'+
         '</div>'+
         '<div style="margin-bottom:6px"><label class="elbl">💬 Comentario para el alumno</label>'+
@@ -3409,6 +3411,13 @@ function addDia(){ var d=getDias(_edWeek); d.push({titulo:'DÍA '+(d.length+1)+'
 function dupDia(di){ var d=getDias(_edWeek); var copia=JSON.parse(JSON.stringify(d[di])); copia.titulo=copia.titulo+' (copia)'; d.splice(di+1,0,copia); buildDiasEd(); }
 function delDia(di){ var d=getDias(_edWeek); if(d.length<=1){alert('Mínimo 1 día.');return;} if(confirm('¿Eliminar día?')){d.splice(di,1);buildDiasEd();} }
 function delEx(di,ri){ getDias(_edWeek)[di].ejercicios.splice(ri,1); buildDiasEd(); }
+function dupEx(di,ri){
+  var ejs=getDias(_edWeek)[di].ejercicios;
+  var copia=JSON.parse(JSON.stringify(ejs[ri]));
+  ejs.splice(ri+1,0,copia);
+  buildDiasEd();
+  toast('Ejercicio duplicado ✓');
+}
 
 var _EJERCICIOS_BASE=['Sentadilla con barra','Sentadilla goblet','Sentadilla búlgara','Prensa de piernas','Peso muerto','Peso muerto rumano','Peso muerto sumo','Press banca','Press banca inclinado','Press banca declinado','Aperturas en banco','Press militar','Press Arnold','Elevaciones laterales','Pájaro','Dominadas','Jalón al pecho','Remo con barra','Remo con mancuerna','Remo en polea','Curl de bíceps','Curl martillo','Curl concentrado','Curl en polea','Press francés','Extensión tríceps polea','Fondos en paralelas','Patada de tríceps','Zancadas','Zancadas búlgaras','Leg curl','Leg extension','Hip thrust','Glute bridge','Plancha','Crunch','Rueda abdominal','Elevación de piernas','Russian twist','Face pull','Encogimientos de hombros','Pull-over','Press en máquina','Máquina peck deck','Cardio HIIT','Caminata en cinta','Bicicleta estática'];
 
