@@ -422,16 +422,33 @@ async function renderClientes(){
   try{
     var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
     if(error) throw error;
-    var cards=(clientes||[]).map(c=>`
-      <div class="cliente-card">
-        <div class="cc-name">${c.nombre} ${c.apellido||''}</div>
-        <div class="cc-sub">Creado ${new Date(c.created_at).toLocaleDateString('es-ES')}</div>
+    // Cargar registros de todos los clientes para ver quién entrenó hoy
+    var hoy=new Date().toISOString().split('T')[0];
+    var ids=(clientes||[]).map(c=>c.id);
+    var activos={};
+    if(ids.length){
+      var {data:regs}=await sb.from('registros').select('cliente_id,datos').in('cliente_id',ids);
+      (regs||[]).forEach(function(r){
+        var logs=r.datos&&r.datos.logs||{};
+        var entrenoHoy=Object.values(logs).some(function(l){ return l.done&&l.fechaDone===hoy; });
+        if(entrenoHoy) activos[r.cliente_id]=true;
+      });
+    }
+    var cards=(clientes||[]).map(c=>{
+      var entrenoHoy=activos[c.id];
+      return `<div class="cliente-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div class="cc-name" style="margin:0">${c.nombre} ${c.apellido||''}</div>
+          ${entrenoHoy?'<span title="Entrenó hoy" style="width:10px;height:10px;border-radius:50%;background:var(--ok);flex-shrink:0;box-shadow:0 0 6px var(--ok)"></span>':''}
+        </div>
+        <div class="cc-sub">${entrenoHoy?'<span style="color:var(--ok);font-weight:600">✓ Entrenó hoy</span>':'Creado '+new Date(c.created_at).toLocaleDateString('es-ES')}</div>
         <div class="cc-actions">
           <button class="cc-btn" onclick="editarCliente('${c.id}')">✏️ Plan</button>
           <button class="cc-btn link" onclick="verLink('${c.id}','${c.nombre} ${c.apellido||''}','${c.token}')">🔗 Enlace</button>
           <button class="cc-btn" onclick="borrarCliente('${c.id}','${c.nombre}')">🗑</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     grid.innerHTML=cards+`<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>`;
   } catch(e){
     console.error('renderClientes error:',e);
@@ -2098,7 +2115,7 @@ function buildDashboard(){
     '<div class="dc"><div class="dc-num cg">'+done+'<span style="font-size:15px;color:var(--muted)">/'+total+'</span></div><div class="dc-lbl">Ejercicios</div><div class="dc-sub">completados hoy</div></div>'+
     '<div class="dc"><div class="dc-num cy">'+nrec+'</div><div class="dc-lbl">Récords</div><div class="dc-sub">marcas personales</div></div>'+
     '<div class="dc"><div class="dc-num cb">'+Math.round(vol)+'</div><div class="dc-lbl">Volumen kg</div><div class="dc-sub">esta semana</div></div>'+
-    '<div class="dc"><div class="dc-num cp">'+P.semanas.length+'</div><div class="dc-lbl">Semanas</div><div class="dc-sub">en el plan</div></div>';
+    '<div class="dc"><div class="dc-num" style="color:var(--warn)">'+calcRacha()+'🔥</div><div class="dc-lbl">Racha</div><div class="dc-sub">días seguidos</div></div>';
   // sesión de hoy
   var dias=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   var hoy=dias[now.getDay()]; var sesHoy=null;
@@ -3459,9 +3476,55 @@ function togglePreviewDia(id,hd){
 function toggleExDone(ek, wi){
   var a=lAll(); if(!a[ek]) a[ek]={sets:{},done:false,note:''};
   a[ek].done = !a[ek].done;
+  // Guardar fecha del marcaje para racha
+  if(a[ek].done) a[ek].fechaDone = new Date().toISOString().split('T')[0];
+  else delete a[ek].fechaDone;
   sAll(a);
   schedSave();
+  // Comprobar si completó todo el día → mensaje motivador
+  var dias=getDias(wi); var di=parseInt(ek.split('_d')[1]); var d=dias[di];
+  if(d){
+    var todos=d.ejercicios.every(function(r,ri){
+      var k='ex_w'+wi+'_d'+di+'_r'+ri; return lAll()[k]&&lAll()[k].done;
+    });
+    if(todos) mostrarMotivaRacha();
+  }
   buildPreviewDia(wi);
+}
+
+function calcRacha(){
+  var a=lAll();
+  var fechas={};
+  Object.values(a).forEach(function(log){
+    if(log.done&&log.fechaDone) fechas[log.fechaDone]=true;
+  });
+  var dias=Object.keys(fechas).sort();
+  if(!dias.length) return 0;
+  var racha=1; var hoy=new Date().toISOString().split('T')[0];
+  // Contar días consecutivos hasta hoy
+  for(var i=dias.length-1;i>0;i--){
+    var d1=new Date(dias[i]); var d2=new Date(dias[i-1]);
+    var diff=(d1-d2)/(1000*60*60*24);
+    if(diff===1) racha++; else break;
+  }
+  // Si el último día no es hoy ni ayer, la racha es 0
+  var ultimo=dias[dias.length-1];
+  var diffHoy=(new Date(hoy)-new Date(ultimo))/(1000*60*60*24);
+  if(diffHoy>1) return 0;
+  return racha;
+}
+
+function mostrarMotivaRacha(){
+  var racha=calcRacha();
+  var msgs={
+    1:'¡Buen trabajo hoy! 💪 Primer día completado.',
+    2:'¡2 días seguidos! Estás cogiendo ritmo 🔥',
+    3:'¡3 días seguidos cumpliendo! Vas por buen camino 🚀',
+    5:'¡5 días seguidos! Eres una máquina 💥',
+    7:'¡UNA SEMANA SEGUIDA! Nivel élite 🏆',
+  };
+  var msg=msgs[racha]||( racha>=7?'¡'+racha+' días seguidos! Imparable 🏆':racha>=3?'¡'+racha+' días seguidos! Sigue así 🔥':'¡Día completado! 💪');
+  toast(msg, 3500);
 }
 
 function iniciarDia(di){
