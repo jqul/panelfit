@@ -91,6 +91,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .skel-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;height:96px;position:relative;overflow:hidden;}
 .skel-card::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.4) 50%,transparent 100%);animation:skelShimmer 1.2s infinite;}
 @keyframes skelShimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+/* Skeleton genérico reutilizable */
+.skel{background:var(--border);border-radius:4px;position:relative;overflow:hidden;}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.5) 50%,transparent 100%);animation:skelShimmer 1.2s infinite;}
+.skel-line{height:12px;border-radius:4px;margin-bottom:8px;}
+.skel-line.w100{width:100%}.skel-line.w80{width:80%}.skel-line.w60{width:60%}.skel-line.w40{width:40%}
+.skel-block{border-radius:var(--r);background:var(--card);border:1px solid var(--border);padding:16px;margin-bottom:8px;overflow:hidden;position:relative;}
+.skel-block::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.35) 50%,transparent 100%);animation:skelShimmer 1.4s infinite;}
 .cc-sub{font-size:11px;color:var(--muted);letter-spacing:.3px;}
 .cc-actions{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;}
 .cc-btn{font-size:10px;padding:5px 11px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;border-radius:4px;}
@@ -1400,7 +1407,10 @@ var PANEL_HTML=`<!-- PIN -->
 
 <!-- HISTORIAL -->
 <div class="panel" id="tab-historial">
-  <div class="ptitle">Historial</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+    <div class="ptitle" style="margin:0">Historial</div>
+    <button onclick="exportarCSV()" style="font-size:11px;padding:6px 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);border-radius:8px;transition:all .15s" onmouseover="this.style.borderColor='var(--ink)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">📊 Exportar CSV</button>
+  </div>
   <div class="psub">Todas tus sesiones · despliega por ejercicio</div>
   <select id="hist-filter" style="background:var(--card2);border:1px solid var(--border2);color:var(--text);font-size:13px;padding:7px 11px;border-radius:6px;margin-bottom:14px;max-width:340px;width:100%;outline:none;font-family:var(--sans)" onchange="buildHistorial()">
     <option value="">Todos los ejercicios</option>
@@ -1507,6 +1517,61 @@ var PANEL_HTML=`<!-- PIN -->
     </div>
   </div>
 </div>`;
+
+// ── ATAJOS DE TECLADO ─────────────────
+document.addEventListener('keydown', function(e){
+  if((e.ctrlKey||e.metaKey) && e.key==='s'){
+    e.preventDefault();
+    var ov=document.getElementById('coach-overlay');
+    if(ov && ov.classList.contains('open')){
+      // Guardar plan desde el editor
+      var st=document.getElementById('sync-status');
+      if(st){ st.textContent='Guardando...'; st.style.color='var(--accent)'; }
+      if(window.__onSave) window.__onSave().then(function(){
+        if(st){ st.textContent='✓ Guardado (Ctrl+S)'; st.style.color='var(--ok)'; setTimeout(function(){st.textContent='';},2000); }
+      });
+    }
+  }
+});
+function skelHtml(type, n){
+  n=n||3;
+  if(type==='ex'){
+    // Skeleton ejercicio
+    return Array(n).fill(0).map(function(){
+      return '<div class="skel-block" style="height:80px">'
+        +'<div style="display:flex;gap:10px;align-items:center">'
+          +'<div class="skel" style="width:20px;height:20px;border-radius:50%;flex-shrink:0"></div>'
+          +'<div style="flex:1"><div class="skel skel-line w80"></div><div class="skel skel-line w40" style="height:9px;margin:0"></div></div>'
+          +'<div class="skel" style="width:44px;height:20px;border-radius:4px"></div>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:12px">'
+          +Array(4).fill('<div class="skel" style="flex:1;height:44px;border-radius:10px"></div>').join('')
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }
+  if(type==='list'){
+    return Array(n).fill(0).map(function(x,i){
+      return '<div class="skel-block" style="height:54px">'
+        +'<div style="display:flex;gap:10px;align-items:center">'
+          +'<div class="skel" style="width:32px;height:32px;border-radius:50%;flex-shrink:0"></div>'
+          +'<div style="flex:1"><div class="skel skel-line '+(i%2===0?'w80':'w60')+'"></div><div class="skel skel-line w40" style="height:9px;margin:0"></div></div>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }
+  if(type==='foto'){
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 0">'
+      +Array(6).fill('<div class="skel" style="aspect-ratio:3/4;border-radius:8px"></div>').join('')
+    +'</div>';
+  }
+  // default: líneas simples
+  return '<div style="padding:12px">'
+    +Array(n).fill(0).map(function(x,i){
+      return '<div class="skel skel-line '+(i%3===0?'w100':i%3===1?'w80':'w60')+'" style="margin-bottom:12px"></div>';
+    }).join('')
+  +'</div>';
+}
 
 function schedSave(){
   clearTimeout(window.__saveTimer);
@@ -1923,7 +1988,7 @@ function rmVid(){ getDias(_edWeek)[_vdi].ejercicios[_vri].videoUrl=''; getDias(_
 // ── BIBLIOTECA DE VÍDEOS ──────────────────────────
 async function cargarBiblioteca(filtro){
   var lista=document.getElementById('vid-bib-list');
-  lista.innerHTML='<span style="font-size:11px;color:var(--muted)">Cargando...</span>';
+  lista.innerHTML=skelHtml('list',3);
   var entId=window.__entrenadorId||'unknown';
   var {data,error}=await sb.storage.from('media').list('videos/'+entId, {sortBy:{column:'name',order:'asc'}});
   if(error||!data||data.length===0){
@@ -2953,7 +3018,7 @@ async function abrirImportar(){
   if(!_user) return;
   var lista=document.getElementById('importar-lista');
   var err=document.getElementById('importar-err');
-  lista.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando clientes...</div>';
+  lista.innerHTML=skelHtml('list',4);
   err.textContent='';
   openModal('modal-importar');
   try{
@@ -3051,7 +3116,7 @@ async function subirFotos(){
 async function cargarGaleria(){
   var cid=window.__cid; if(!cid) return;
   var gal=document.getElementById('fotos-galeria'); if(!gal) return;
-  gal.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  gal.innerHTML=skelHtml('list',3);
   var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
   if(error||!data||data.length===0){
     gal.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Aún no hay fotos. Sube la primera entrada arriba.</div>';
@@ -3107,7 +3172,7 @@ async function cargarGaleria(){
 async function cargarFotosCoach(){
   var cid=window.__cid; if(!cid) return;
   var body=document.getElementById('coach-fotos-body'); if(!body) return;
-  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  body.innerHTML=skelHtml('list',3);
   var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
   if(error){ body.innerHTML='<div style="color:var(--warn);font-size:12px;padding:10px">Error: '+error.message+'</div>'; return; }
   if(!data||data.length===0){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>'; return; }
@@ -3143,7 +3208,7 @@ async function cargarFotosCoach(){
 async function cargarEntrenosCoach(){
   var cid=window.__cid; if(!cid) return;
   var body=document.getElementById('coach-entrenos-body'); if(!body) return;
-  body.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando...</div>';
+  body.innerHTML=skelHtml('list',3);
   var {data,error}=await sb.from('registros').select('datos').eq('cliente_id',cid).single();
   if(error||!data||!data.datos||!data.datos.logs){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha registrado entrenos.</div>'; return; }
   var logs=data.datos.logs;
@@ -3296,7 +3361,7 @@ async function cargarEncuestaCliente(){
   var sec=document.getElementById('prog-sec-encuesta'); if(sec) sec.innerHTML=''; var body=document.getElementById('encuesta-cli-body');
   var done=document.getElementById('encuesta-cli-done');
   if(!body) return;
-  body.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Cargando...</div>';
+  body.innerHTML=skelHtml('list',3);
   var {data,error}=await sb.from('encuestas').select('*').eq('cliente_id',cid).order('created_at',{ascending:false}).limit(1).single();
   if(error||!data||!data.preguntas||data.preguntas.length===0){
     body.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:30px">Tu entrenador no ha enviado ninguna encuesta todavía.</div>';
@@ -3880,7 +3945,7 @@ async function loadSuperAdmin(){
   showView('view-admin');
   var grid=document.getElementById('admin-grid');
   if(!grid){ console.error('admin-grid no encontrado'); return; }
-  grid.innerHTML='<div style="color:var(--muted);font-size:13px">Cargando...</div>';
+  grid.innerHTML=skelHtml('list',3);
   var {data:entrenadores,error}=await sb.from('entrenadores').select('*').order('created_at',{ascending:false});
   console.log('entrenadores:',entrenadores,'error:',error);
   if(error||!entrenadores){ grid.innerHTML='<div style="color:var(--warn)">Error: '+(error?.message||'sin datos')+'</div>'; return; }
@@ -3943,6 +4008,56 @@ if('serviceWorker' in navigator){
 }
 
 // ── PDF / IMPRIMIR ─────────────────────
+function exportarCSV(){
+  var all=lAll(); var rec=lRec();
+  var rows=[['Ejercicio','Semana','Serie','Kg','Reps','Completado','Fecha','Nota']];
+  // Recorrer todos los logs
+  Object.keys(all).forEach(function(ek){
+    var log=all[ek]; if(!log) return;
+    // Extraer semana/día/ej del key ex_wX_dY_rZ
+    var m=ek.match(/ex_w(\d+)_d(\d+)_r(\d+)/); if(!m) return;
+    var wi=parseInt(m[1]),di=parseInt(m[2]),ri=parseInt(m[3]);
+    var dias=getDias(wi); if(!dias||!dias[di]) return;
+    var ej=dias[di].ejercicios[ri]; if(!ej) return;
+    var semLabel=P.semanas[wi]?P.semanas[wi].label:'';
+    var sets=log.sets||{};
+    if(Object.keys(sets).length){
+      Object.keys(sets).forEach(function(si){
+        var s=sets[si];
+        rows.push([
+          '"'+(ej.nombre||'').replace(/"/g,"''")+'"',
+          '"'+semLabel+'"',
+          parseInt(si)+1,
+          s.v||'',
+          s.r||'',
+          log.done?'Sí':'No',
+          log.fechaDone||'',
+          '"'+(log.note||'').replace(/"/g,"''")+'"'
+        ]);
+      });
+    } else {
+      rows.push(['"'+(ej.nombre||'')+'"','"'+semLabel+'"','','','',log.done?'Sí':'No',log.fechaDone||'','"'+(log.note||'')+'"']);
+    }
+  });
+  // Añadir récords al final
+  rows.push([]);
+  rows.push(['--- RÉCORDS ---','','','','','','','']);
+  rows.push(['Ejercicio','1RM','Kg','Reps','Fecha']);
+  Object.keys(rec).forEach(function(nm){
+    var r=rec[nm];
+    rows.push(['"'+nm.replace(/"/g,"''")+'"', r.val||'', r.kg||'', r.rep||'', r.fecha||'']);
+  });
+
+  var csv=rows.map(function(r){return r.join(',');}).join('\n');
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=(P.nombre||'cliente')+'_registros.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('CSV descargado ✓');
+}
+
 function exportarPDF(){
   // Mostrar todos los paneles temporalmente para imprimir
   var panels=document.querySelectorAll('.panel');
