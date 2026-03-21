@@ -36,7 +36,7 @@ html.dark{
   --ink:#e8e4de;--accent:#b89a7a;--ok:#5a9e6f;--ok-bg:#0d1f12;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
 
 /* LOADING */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .4s;}
@@ -168,7 +168,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 #vista-cliente.active{display:block;}
 @media print {
   .topbar,.tabs,.abar,.rest-toast,.modal-bg,.cov,
-  #entreno-start-wrap,#entreno-activo,#entreno-fin,
+  #btn-empezar-entreno,#entreno-activo,#entreno-fin,
   button[onclick="exportarPDF()"],button[onclick="abrirSoporte()"],
   [style*="position:fixed"]{display:none!important;}
   .panel{display:block!important;page-break-inside:avoid;}
@@ -862,7 +862,7 @@ html.font-hel{
   --sans:'Outfit',Helvetica,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s;overflow-x:hidden;}
 .tbadge{font-size:10px;padding:4px 10px;border:1px solid var(--border2);color:var(--muted);cursor:pointer;letter-spacing:.5px;transition:all .15s;background:transparent;font-family:var(--sans);}
 .tbadge:hover,.tbadge.on{border-color:var(--ink);color:var(--ink);}
 .tbadge.on{background:var(--bg2);}
@@ -914,7 +914,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tab{padding:16px 18px;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:all .18s;letter-spacing:.5px;text-transform:uppercase;position:relative;}
 .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:700;}
 .tab:hover:not(.active){color:var(--text2);}
-.panel{display:none;padding:24px;max-width:760px;}
+.panel{display:none;padding:24px;max-width:760px;width:100%;box-sizing:border-box;}
 /* MODO ENTRENAMIENTO */
 /* TARJETAS MODO ENTRENAMIENTO */
 .ea-ex-card{background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
@@ -1171,15 +1171,38 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .cov.open{display:block;}
 .cpan{background:#fafaf8;width:100%;height:100%;display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;left:0;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:99999;}
 .cov.open .cpan{transform:translateX(0);}
-.chd{background:#fff;padding:0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #eee;gap:16px;flex-shrink:0;height:60px;}
+.chd{background:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee;gap:12px;flex-shrink:0;height:54px;}
+.chd-logo{display:flex;align-items:center;gap:8px;min-width:0;}
+.chd-logo-img{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border2);flex-shrink:0;}
+.chd-logo-name{font-size:13px;font-weight:700;color:var(--ink);}
 .ctabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none;flex:1;}
 .ctabs::-webkit-scrollbar{display:none;}
-.ctab{padding:0 20px;height:60px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--sans);font-weight:500;transition:all .15s;white-space:nowrap;border-bottom:3px solid transparent;letter-spacing:.2px;}
+.ctab{padding:0 16px;height:54px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--sans);font-weight:500;transition:all .15s;white-space:nowrap;border-bottom:2px solid transparent;}
 .ctab.active{color:var(--ink);font-weight:700;border-bottom-color:var(--ink);}
 .ctab:hover:not(.active){color:var(--text2);}
-.cclose{padding:0 20px;height:60px;border:none;border-left:1px solid #eee;background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-family:var(--sans);font-weight:500;flex-shrink:0;transition:all .15s;}
+.cclose{padding:0 16px;height:54px;border:none;border-left:1px solid #eee;background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-family:var(--sans);font-weight:500;flex-shrink:0;transition:all .15s;}
 .cclose:hover{background:var(--bg2);color:var(--ink);}
-.cbody{padding:24px;flex:1;overflow-y:auto;max-width:1200px;margin:0 auto;width:100%;}
+/* Layout 360 */
+.cpan-body{display:flex;flex:1;overflow:hidden;min-height:0;}
+.cpan-sidebar{display:none;width:220px;flex-shrink:0;background:#fff;border-right:1px solid #eee;overflow-y:auto;flex-direction:column;}
+@media(min-width:900px){.cpan-sidebar{display:flex;}}
+.cpan-avatar{width:60px;height:60px;border-radius:50%;background:var(--bg2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:24px;color:var(--accent);margin:20px auto 10px;}
+.cpan-cname{font-family:var(--serif);font-size:17px;text-align:center;padding:0 14px;margin-bottom:3px;}
+.cpan-cplan{font-size:11px;color:var(--muted);text-align:center;padding:0 14px;margin-bottom:16px;letter-spacing:.2px;}
+.cpan-stats{padding:0 14px 14px;border-bottom:1px solid #eee;}
+.cpan-stat{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
+.cpan-stat:last-child{border-bottom:none;}
+.cpan-stat-lbl{font-size:11px;color:var(--muted);}
+.cpan-stat-val{font-size:13px;font-weight:600;color:var(--ink);}
+.cpan-online{display:flex;align-items:center;gap:6px;padding:10px 14px;font-size:11px;color:var(--muted);}
+.cpan-online-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);}
+.cpan-online-dot.active{background:var(--ok);box-shadow:0 0 5px var(--ok);}
+.cpan-sidebar-actions{padding:12px 14px;margin-top:auto;display:flex;flex-direction:column;gap:6px;border-top:1px solid #eee;}
+.cpan-sidebar-btn{padding:8px 12px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:var(--sans);border-radius:8px;transition:all .12s;text-align:left;width:100%;}
+.cpan-sidebar-btn:hover{border-color:var(--ink);color:var(--ink);}
+.cpan-sidebar-btn.ok{border-color:var(--ok);color:var(--ok);}
+.cpan-sidebar-btn.ok:hover{background:var(--ok-bg);}
+.cbody{padding:24px;flex:1;overflow-y:auto;}
 .csec{display:none !important;}.csec.active{display:block !important;}
 .elbl{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:5px;display:block;}
 .einp{background:#fff;border:1.5px solid #e0ddd8;color:var(--text);font-size:14px;padding:9px 12px;width:100%;outline:none;font-family:var(--sans);border-radius:8px;transition:border-color .15s;}
@@ -1288,6 +1311,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   .recg{grid-template-columns:repeat(4,1fr);}
   /* Progreso: upload + galería lado a lado */
   #fotos-upload-area{max-width:380px;}
+  /* Vista consulta entreno centrada */
+  #tab-entreno #entreno-preview{max-width:100%;overflow-x:hidden;}
+  #tab-entreno #entreno-preview > div:last-child{max-width:800px;margin:0 auto;}
+  /* Tab entreno ocupa todo el ancho */
+  #tab-entreno{max-width:none!important;padding:0!important;}
 }
 
 /* Sidebar PC */
@@ -1360,10 +1388,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .comp-img-wrap img{width:100%;border-radius:8px;display:block;}
 .comp-img-lbl{position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;}
 /* COACH SIDEBAR */
-.cov{display:none !important;position:fixed !important;inset:0 !important;z-index:99999 !important;}
-.cov.open{display:block !important;}
-.cpan{background:#fafaf8 !important;width:100% !important;height:100% !important;display:flex !important;flex-direction:column !important;position:fixed !important;top:0 !important;right:0 !important;bottom:0 !important;left:0 !important;transform:translateX(100%) !important;transition:transform .3s cubic-bezier(.4,0,.2,1) !important;overflow:hidden !important;z-index:99999 !important;}
-.cov.open .cpan{transform:translateX(0) !important;}
 `;document.head.appendChild(s);})();
 
 // ── HTML PANEL ─────────────────────────
@@ -1431,7 +1455,32 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
       </div>
       <button class="cclose" onclick="cCoach()">✕</button>
     </div>
-    <div class="cbody">
+    <!-- LAYOUT PERFIL 360 -->
+    <div class="cpan-body">
+      <!-- Sidebar info del cliente (solo PC) -->
+      <div class="cpan-sidebar" id="cpan-sidebar">
+        <div class="cpan-avatar" id="cpan-avatar">?</div>
+        <div class="cpan-cname" id="cpan-cname">—</div>
+        <div class="cpan-cplan" id="cpan-cplan">—</div>
+        <div class="cpan-stats" id="cpan-stats">
+          <div class="cpan-stat"><span class="cpan-stat-lbl">Peso</span><span class="cpan-stat-val" id="cpan-s-peso">—</span></div>
+          <div class="cpan-stat"><span class="cpan-stat-lbl">Grasa</span><span class="cpan-stat-val" id="cpan-s-grasa">—</span></div>
+          <div class="cpan-stat"><span class="cpan-stat-lbl">Músculo</span><span class="cpan-stat-val" id="cpan-s-musculo">—</span></div>
+          <div class="cpan-stat"><span class="cpan-stat-lbl">Racha</span><span class="cpan-stat-val" id="cpan-s-racha">—</span></div>
+        </div>
+        <div class="cpan-online">
+          <div class="cpan-online-dot" id="cpan-online-dot"></div>
+          <span id="cpan-online-txt">Sin datos recientes</span>
+        </div>
+        <div class="cpan-sidebar-actions">
+          <button class="cpan-sidebar-btn ok" onclick="verLink(window.__cid,document.getElementById('cpan-cname').textContent,window.__cid_token)">🔗 Enlace del cliente</button>
+          <button class="cpan-sidebar-btn" onclick="swC('fotos',document.querySelector(\'.ctab[onclick*=fotos]\'));cargarFotosCoach()">📸 Ver fotos</button>
+          <button class="cpan-sidebar-btn" onclick="swC('entrenos',document.querySelector(\'.ctab[onclick*=entrenos]\'));cargarEntrenosCoach()">📋 Ver entrenos</button>
+          <button class="cpan-sidebar-btn" onclick="abrirComparador()">⚖️ Comparar fotos</button>
+        </div>
+      </div>
+      <!-- Contenido principal con tabs -->
+      <div style="display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden">
 
       <!-- EDITOR PLAN -->
       <div class="csec active" id="cs-editor">
@@ -1606,11 +1655,12 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
     <div class="sbar">
       <span id="save-msg" style="font-size:11px;color:var(--muted)">Los cambios se aplican al guardar</span>
       <div style="display:flex;gap:8px">
-        
         <button class="sbtn" onclick="saveClose()">💾 Guardar y cerrar</button>
       </div>
     </div>
-  </div>
+      </div><!-- fin columna derecha -->
+    </div><!-- fin cpan-body -->
+  </div><!-- fin cpan -->
   <!-- VID MODAL — dentro del coach para heredar z-index correcto -->
   <div id="vid-modal" style="display:none;position:fixed;inset:0;background:rgba(26,24,20,.6);z-index:700;align-items:flex-end;justify-content:center">
     <div class="pbox" style="width:100%;max-width:560px;text-align:left;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto">
@@ -1734,18 +1784,26 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
 </div>
 
 <!-- ENTRENO -->
-<div class="panel" id="tab-entreno" style="padding:0">
+<div class="panel" id="tab-entreno" style="padding:0;max-width:100%;width:100%">
 
-  <!-- SELECTOR DE DÍA -->
-  <div id="entreno-preview" style="padding:20px 20px 100px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div class="ptitle" id="train-day-title" style="margin:0">Selecciona un día</div>
-      <div class="psub" id="train-sub" style="margin:0"></div>
+  <!-- SELECTOR DE DÍA / VISTA CONSULTA -->
+  <div id="entreno-preview">
+    <!-- Header consulta -->
+    <div style="background:var(--card);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:10">
+      <div style="max-width:760px;margin:0 auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div class="ptitle" id="train-day-title" style="margin:0;font-size:18px">Mi rutina</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px" id="train-sub">Selecciona un día para ver los ejercicios</div>
+          </div>
+          <button id="btn-empezar-entreno" onclick="empezarEntrenoDesdeVista()" style="display:none;background:var(--ok);color:#fff;border:none;padding:11px 22px;border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:700;cursor:pointer;white-space:nowrap">▶ Empezar sesión</button>
+        </div>
+        <div class="wpills" id="week-pills" style="margin-top:12px;margin-bottom:0"></div>
+      </div>
     </div>
-    <div class="wpills" id="week-pills" style="margin-bottom:16px"></div>
-    <div id="preview-list"></div>
-    <div id="entreno-start-wrap" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(to top,var(--bg) 60%,transparent);z-index:50">
-      <button onclick="empezarEntreno()" style="width:100%;max-width:680px;display:block;margin:0 auto;background:var(--ink);color:#fff;border:none;padding:18px;border-radius:16px;font-size:17px;font-family:var(--sans);font-weight:700;cursor:pointer">▶ Empezar entrenamiento</button>
+    <!-- Lista de días -->
+    <div style="padding:16px 20px 80px;max-width:760px;margin:0 auto">
+      <div id="preview-list"></div>
     </div>
   </div>
 
@@ -2951,7 +3009,9 @@ function oCoach(){
   if(ov){
     if(ov.parentElement !== document.body) document.body.appendChild(ov);
     ov.classList.add('open');
-    // Debounce automático en todos los inputs del editor
+    // Rellenar sidebar 360
+    try{ rellenarSidebar360(); }catch(e){ console.warn('sidebar360 err',e); }
+    // Debounce en inputs
     var cbody=ov.querySelector('.cbody');
     if(cbody && !cbody.__debounceAttached){
       cbody.__debounceAttached=true;
@@ -2962,6 +3022,39 @@ function oCoach(){
     }
   }
   else{ console.error('coach-overlay NOT FOUND'); }
+}
+
+function rellenarSidebar360(){
+  // Avatar con inicial
+  var av=document.getElementById('cpan-avatar');
+  var nm=document.getElementById('cpan-cname');
+  var pl=document.getElementById('cpan-cplan');
+  if(av) av.textContent=(P.nombre||'?').charAt(0).toUpperCase();
+  if(nm) nm.textContent=(P.nombre||'')+(P.apellido?' '+P.apellido:'');
+  if(pl) pl.textContent=(P.planDesc||P.tipo||'Sin descripción');
+  // Stats
+  var set=function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  set('cpan-s-peso', P.peso?P.peso+' kg':'—');
+  set('cpan-s-grasa', P.grasa?P.grasa+'%':'—');
+  set('cpan-s-musculo', P.musculo?P.musculo+' kg':'—');
+  // Racha
+  try{
+    var r=calcRacha();
+    set('cpan-s-racha', r?r+' días 🔥':'—');
+  }catch(e){}
+  // Última actividad
+  var dot=document.getElementById('cpan-online-dot');
+  var txt=document.getElementById('cpan-online-txt');
+  var all=lAll();
+  var fechas=Object.values(all).filter(function(l){return l.fechaDone;}).map(function(l){return l.fechaDone;}).sort();
+  var ultima=fechas[fechas.length-1];
+  if(ultima&&dot&&txt){
+    var hoy=new Date().toISOString().split('T')[0];
+    var ayer=new Date(Date.now()-86400000).toISOString().split('T')[0];
+    if(ultima===hoy){ dot.classList.add('active'); txt.textContent='Entrenó hoy'; }
+    else if(ultima===ayer){ txt.textContent='Entrenó ayer'; }
+    else{ txt.textContent='Último: '+new Date(ultima+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'}); }
+  }
 }
 function cCoach(){ document.getElementById('coach-overlay').classList.remove('open'); }
 function swC(name,el){
@@ -4039,11 +4132,11 @@ function buildPreviewDia(wi){
   _eaWi = wi;
   var dias = getDias(wi);
   var list = document.getElementById('preview-list');
-  var wrap = document.getElementById('entreno-start-wrap');
+  var btnEmpezar = document.getElementById('btn-empezar-entreno');
   if(!list) return;
   if(!dias||dias.length===0){
     list.innerHTML='<div style="color:var(--muted);font-size:14px;text-align:center;padding:40px 0">Sin días en esta semana.</div>';
-    if(wrap) wrap.style.display='none';
+    if(btnEmpezar) btnEmpezar.style.display='none';
     return;
   }
   list.innerHTML = dias.map(function(d,di){
@@ -4079,7 +4172,22 @@ function buildPreviewDia(wi){
       +'</div>'
     +'</div>';
   }).join('');
-  if(wrap) wrap.style.display='none';
+  // Mostrar botón empezar
+  var btnEmpezar=document.getElementById('btn-empezar-entreno');
+  if(btnEmpezar) btnEmpezar.style.display='block';
+}
+
+// Empezar desde el botón de consulta — abre el primer día no completado
+function empezarEntrenoDesdeVista(){
+  var dias=getDias(_eaWi); if(!dias||!dias.length) return;
+  // Buscar primer día no completado del todo
+  var firstDi=0;
+  for(var di=0;di<dias.length;di++){
+    var d=dias[di];
+    var todosDone=d.ejercicios.every(function(r,ri){ var l=lLog('ex_w'+_eaWi+'_d'+di+'_r'+ri); return l&&l.done; });
+    if(!todosDone){ firstDi=di; break; }
+  }
+  iniciarDia(firstDi);
 }
 
 function togglePreviewDia(id,hd){
