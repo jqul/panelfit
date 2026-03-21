@@ -870,7 +870,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .cclose{padding:0 20px;height:60px;border:none;border-left:1px solid #eee;background:transparent;color:var(--text2);cursor:pointer;font-size:14px;font-family:var(--sans);font-weight:500;flex-shrink:0;transition:all .15s;}
 .cclose:hover{background:var(--bg2);color:var(--ink);}
 .cbody{padding:24px;flex:1;overflow-y:auto;max-width:1200px;margin:0 auto;width:100%;}
-.csec{display:none;}.csec.active{display:block;}
+.csec{display:none !important;}.csec.active{display:block !important;}
 .elbl{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:5px;display:block;}
 .einp{background:#fff;border:1.5px solid #e0ddd8;color:var(--text);font-size:14px;padding:9px 12px;width:100%;outline:none;font-family:var(--sans);border-radius:8px;transition:border-color .15s;}
 .einp:focus{border-color:var(--ink);}
@@ -2804,23 +2804,8 @@ function toggleHel(){
 function loadTheme(){
   try{
     var saved=localStorage.getItem('theme');
-    // Si no hay preferencia guardada, usar la del sistema
-    if(!saved){
-      var prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
-      if(prefersDark){ document.documentElement.classList.add('dark'); try{document.getElementById('btn-dark').classList.add('on');}catch(e){} }
-    } else {
-      if(saved==='dark'){document.documentElement.classList.add('dark');try{document.getElementById('btn-dark').classList.add('on');}catch(e){}}
-    }
+    if(saved==='dark'){document.documentElement.classList.add('dark');try{document.getElementById('btn-dark').classList.add('on');}catch(e){}}
     if(localStorage.getItem('font')==='hel'){document.documentElement.classList.add('font-hel');try{document.getElementById('btn-hel').classList.add('on');}catch(e){}}
-  }catch(e){}
-  // Escuchar cambios en tiempo real
-  try{
-    window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){
-      if(!localStorage.getItem('theme')){
-        document.documentElement.classList.toggle('dark',e.matches);
-        try{document.getElementById('btn-dark').classList.toggle('on',e.matches);}catch(ex){}
-      }
-    });
   }catch(e){}
 }
 
