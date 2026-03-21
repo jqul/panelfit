@@ -1491,7 +1491,16 @@ var PANEL_HTML=`<!-- PIN -->
   </div>
 </div>`;
 
-function schedSave(){ clearTimeout(window.__saveTimer); window.__saveTimer=setTimeout(function(){ if(window.__onSave) window.__onSave(); },1500); }
+function schedSave(){
+  clearTimeout(window.__saveTimer);
+  // Indicador "Escribiendo..."
+  var st=document.getElementById('sync-status');
+  if(st){ st.textContent='Escribiendo...'; st.style.color='var(--muted)'; }
+  window.__saveTimer=setTimeout(function(){
+    if(st){ st.textContent='Guardando...'; st.style.color='var(--accent)'; }
+    if(window.__onSave) window.__onSave();
+  },1000);
+}
 
 // ── PLAN ──────────────────────────────
 var P = {
@@ -2403,9 +2412,17 @@ function oCoach(){
   try{ buildWeeksUI(); }catch(e){ console.warn('buildWeeksUI err',e); }
   var ov=document.getElementById('coach-overlay');
   if(ov){
-    // Mover al body si no está ya ahí (para que position:fixed funcione correctamente)
     if(ov.parentElement !== document.body) document.body.appendChild(ov);
     ov.classList.add('open');
+    // Debounce automático en todos los inputs del editor
+    var cbody=ov.querySelector('.cbody');
+    if(cbody && !cbody.__debounceAttached){
+      cbody.__debounceAttached=true;
+      cbody.addEventListener('input', function(e){
+        var tag=e.target.tagName;
+        if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') schedSave();
+      });
+    }
   }
   else{ console.error('coach-overlay NOT FOUND'); }
 }
@@ -2845,10 +2862,16 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   window.__cid = cid;
 
   window.__onSave = async function(){
-    var datos = {logs:window.__reg||{}, rec:window.__rec||{}, hab:window.__hab||{}, sem:window.__sem||{}};
-    await guardarRegistros(cid, datos);
-    var el=document.getElementById('sync-status');
-    if(el) el.textContent='Guardado '+new Date().toLocaleTimeString('es-ES');
+    var st=document.getElementById('sync-status');
+    try{
+      var datos = {logs:window.__reg||{}, rec:window.__rec||{}, hab:window.__hab||{}, sem:window.__sem||{}};
+      await guardarRegistros(cid, datos);
+      if(isCoach) await guardarPlan(cid, {P:P, DIET:DIET});
+      if(st){ st.textContent='✓ Guardado'; st.style.color='var(--ok)'; setTimeout(function(){ if(st) st.textContent=''; },2500); }
+    }catch(e){
+      if(st){ st.textContent='❌ Error al guardar'; st.style.color='var(--warn)'; }
+      console.error('__onSave error:',e);
+    }
   };
 
   showView('view-cliente');
