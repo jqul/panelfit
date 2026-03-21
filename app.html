@@ -2265,7 +2265,11 @@ function oCoach(){
   try{ buildProg(); }catch(e){ console.warn('buildProg err',e); }
   try{ buildWeeksUI(); }catch(e){ console.warn('buildWeeksUI err',e); }
   var ov=document.getElementById('coach-overlay');
-  if(ov){ ov.classList.add('open'); }
+  if(ov){
+    // Mover al body si no está ya ahí (para que position:fixed funcione correctamente)
+    if(ov.parentElement !== document.body) document.body.appendChild(ov);
+    ov.classList.add('open');
+  }
   else{ console.error('coach-overlay NOT FOUND'); }
 }
 function cCoach(){ document.getElementById('coach-overlay').classList.remove('open'); }
