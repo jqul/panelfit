@@ -651,9 +651,30 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .tab:hover:not(.active){color:var(--text2);}
 .panel{display:none;padding:24px;max-width:760px;}
 /* MODO ENTRENAMIENTO */
-.ea-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;margin-bottom:12px;}
-.ea-nombre{font-size:24px;font-weight:700;color:var(--ink);font-family:var(--sans);line-height:1.2;margin-bottom:6px;}
-.ea-meta{font-size:15px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+/* TARJETAS MODO ENTRENAMIENTO */
+.ea-ex-card{background:var(--card);border:1.5px solid var(--border);border-radius:18px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;}
+.ea-ex-card:active{transform:scale(.98);}
+.ea-ex-card.state-done{background:#f4faf5;border-color:#8ecfa0;}
+.ea-ex-card.state-progress{border-color:var(--accent);box-shadow:0 0 0 3px rgba(122,98,72,.1);}
+.ea-ex-card.state-rec{border-color:#d4a84b;box-shadow:0 0 0 3px rgba(212,168,75,.12);}
+.ea-ex-status{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;transition:all .2s;}
+.ea-ex-status.empty{background:var(--bg2);color:var(--muted);border:1.5px solid var(--border);}
+.ea-ex-status.rec{background:#fff8e1;color:#a07830;border:2px solid #d4a84b;}
+.ea-ex-status.progress{background:var(--accent);color:#fff;border:2px solid var(--accent);}
+.ea-ex-status.done{background:var(--ok);color:#fff;border:2px solid var(--ok);}
+.ea-ex-label-rec{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#a07830;margin-bottom:2px;}
+.ea-ex-name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.2;}
+.ea-ex-name.done{color:var(--muted);text-decoration:line-through;}
+.ea-ex-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.ea-dots{display:flex;gap:4px;flex-shrink:0;}
+.ea-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .2s;}
+.ea-dot.filled{background:var(--ok);}
+.ea-dot.partial{background:var(--accent);}
+/* Botón inteligente */
+.smart-btn{width:100%;padding:20px;border:none;border-radius:16px;font-size:18px;font-family:var(--sans);font-weight:700;cursor:pointer;transition:all .3s;letter-spacing:-.2px;}
+.smart-btn.idle{background:var(--ok);color:#fff;}
+.smart-btn.timing{background:var(--ink);color:#fff;font-size:22px;}
+.smart-btn.done-state{background:var(--bg2);color:var(--muted);border:2px solid var(--border);}
 .ea-ultimo{font-size:13px;color:var(--muted);margin-bottom:20px;}
 .ea-sets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
 .ea-set{flex:1;min-width:90px;max-width:130px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;overflow:hidden;transition:all .2s;}
@@ -962,6 +983,46 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 @media(max-width:480px){
   .plan-week{grid-template-columns:repeat(2,1fr)}
 }
+@media(min-width:768px){
+  /* Panel cliente centrado con max-width */
+  .panel{max-width:900px;margin-left:auto;margin-right:auto;padding:28px 32px;}
+  /* Header stats en fila completa */
+  .hstats{gap:32px;}
+  /* Dashboard grid 4 columnas completas */
+  .dg4{grid-template-columns:repeat(4,1fr);}
+  /* Lista de ejercicios en grid 2 columnas en modo entreno */
+  #ea-lista-content{display:block;}
+  /* Modo ejercicio activo más ancho */
+  #ea-ejercicio-view{max-width:680px;margin:0 auto;}
+  /* Historial 2 columnas */
+  #historial-content .hcard{break-inside:avoid;}
+  /* Récords grid más columnas */
+  .recg{grid-template-columns:repeat(3,1fr);}
+  /* Gráfica peso más alta */
+  #peso-chart-svg svg{height:160px!important;}
+  /* Fotos galería 4 columnas */
+  .fotos-grid-pc{grid-template-columns:repeat(4,1fr)!important;}
+  /* Header más compacto */
+  .header{padding:12px 32px;height:64px;}
+  .tabs{padding:0 32px;}
+  .tab{padding:18px 22px;font-size:12px;}
+  /* Comparador de fotos lado a lado */
+  .foto-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+}
+
+/* COMPARADOR DE FOTOS */
+.compare-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;overflow-y:auto;padding:20px;}
+.compare-overlay.open{display:block;}
+.compare-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;color:#fff;}
+.compare-title{font-family:var(--serif);font-size:22px;}
+.compare-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.compare-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.compare-col-title{color:rgba(255,255,255,.6);font-size:11px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;text-align:center;}
+.compare-img-group{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
+.compare-img-group img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:3/4;}
+.compare-img-label{font-size:9px;color:rgba(255,255,255,.4);text-align:center;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+.foto-sel-btn{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-family:var(--sans);cursor:pointer;transition:all .15s;}
+.foto-sel-btn.selected{border-color:var(--ok);color:var(--ok);background:var(--ok-bg);}
 
 /* DRIVE */
 .drive-bar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;}
@@ -975,6 +1036,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .drive-btn:hover{border-color:var(--ink);color:var(--ink);}
 .drive-btn.primary{border-color:var(--ok);color:var(--ok);}
 .drive-btn.primary:hover{background:var(--ok-bg);}
+/* COMPARADOR FOTOS */
+.comp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;flex-direction:column;}
+.comp-overlay.open{display:flex;}
+.comp-header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.1);}
+.comp-title{color:#fff;font-family:var(--serif);font-size:18px;}
+.comp-close{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--sans);}
+.comp-sel{display:flex;gap:12px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.1);flex-shrink:0;flex-wrap:wrap;align-items:center;}
+.comp-sel-btn{padding:7px 14px;border:1px solid rgba(255,255,255,.25);color:#fff;background:transparent;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--sans);transition:all .15s;}
+.comp-sel-btn.active{background:var(--accent);border-color:var(--accent);}
+.comp-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.comp-col{display:flex;flex-direction:column;gap:8px;}
+.comp-col-label{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;letter-spacing:.8px;text-align:center;}
+.comp-date{color:#fff;font-size:13px;font-weight:600;text-align:center;margin-bottom:6px;}
+.comp-img-wrap{position:relative;}
+.comp-img-wrap img{width:100%;border-radius:8px;display:block;}
+.comp-img-lbl{position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px;}
 /* COACH SIDEBAR */
 .cov{display:none !important;position:fixed !important;inset:0 !important;z-index:99999 !important;}
 .cov.open{display:block !important;}
@@ -983,7 +1061,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 `;document.head.appendChild(s);})();
 
 // ── HTML PANEL ─────────────────────────
-var PANEL_HTML=`<!-- PIN -->
+var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
+<div class="comp-overlay" id="comp-overlay">
+  <div class="comp-header">
+    <div class="comp-title">⚖️ Comparar progreso</div>
+    <button class="comp-close" onclick="cerrarComparador()">✕ Cerrar</button>
+  </div>
+  <div class="comp-sel">
+    <span style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.7px;flex-shrink:0">Antes:</span>
+    <div id="comp-sel-a" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    <span style="font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.7px;flex-shrink:0;margin-left:8px">Después:</span>
+    <div id="comp-sel-b" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+  </div>
+  <div class="comp-body">
+    <div id="comp-result"></div>
+  </div>
+</div>
+
+<!-- PIN -->
 <div class="pmod" id="pin-modal">
   <div class="pbox">
     <div class="pbtitle">🏋️ Acceso Entrenador</div>
@@ -1148,7 +1243,10 @@ var PANEL_HTML=`<!-- PIN -->
       <!-- FOTOS CLIENTE -->
       <div class="csec" id="cs-fotos">
         <div class="ecard">
-          <div class="echd"><div class="ectitle">📸 Fotos de progreso</div></div>
+          <div class="echd">
+            <div class="ectitle">📸 Fotos de progreso</div>
+            <button id="btn-comparar-coach" onclick="abrirComparador()" style="display:none;font-size:12px;padding:6px 14px;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-weight:600">⚖️ Comparar</button>
+          </div>
           <div id="coach-fotos-body"><div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Cargando fotos...</div></div>
         </div>
       </div>
@@ -1318,54 +1416,54 @@ var PANEL_HTML=`<!-- PIN -->
 <!-- ENTRENO -->
 <div class="panel" id="tab-entreno" style="padding:0">
 
-  <!-- VISTA PREVIA DEL DÍA -->
+  <!-- SELECTOR DE DÍA -->
   <div id="entreno-preview" style="padding:20px 20px 100px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div class="ptitle" id="train-day-title" style="margin:0">Selecciona un día</div>
       <div class="psub" id="train-sub" style="margin:0"></div>
     </div>
     <div class="wpills" id="week-pills" style="margin-bottom:16px"></div>
-    <!-- Lista previa de ejercicios -->
     <div id="preview-list"></div>
-    <!-- Botón empezar -->
     <div id="entreno-start-wrap" style="display:none;position:fixed;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(to top,var(--bg) 60%,transparent);z-index:50">
-      <button onclick="empezarEntreno()" style="width:100%;max-width:680px;display:block;margin:0 auto;background:var(--ink);color:#fff;border:none;padding:18px;border-radius:16px;font-size:17px;font-family:var(--sans);font-weight:700;cursor:pointer;letter-spacing:-.2px">▶ Empezar entrenamiento</button>
+      <button onclick="empezarEntreno()" style="width:100%;max-width:680px;display:block;margin:0 auto;background:var(--ink);color:#fff;border:none;padding:18px;border-radius:16px;font-size:17px;font-family:var(--sans);font-weight:700;cursor:pointer">▶ Empezar entrenamiento</button>
     </div>
   </div>
 
-  <!-- MODO ACTIVO (oculto hasta empezar) -->
-  <div id="entreno-activo" style="display:none;min-height:100vh;display:none;flex-direction:column">
-    <!-- Header progreso -->
-    <div style="background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:10">
+  <!-- MODO ACTIVO: LISTA DE EJERCICIOS -->
+  <div id="entreno-activo" style="display:none;flex-direction:column;min-height:100vh">
+    <!-- Header -->
+    <div id="ea-header" style="background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:20">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <button onclick="salirEntreno()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--sans);padding:0">✕ Salir</button>
-        <div id="ea-titulo" style="font-size:13px;font-weight:600;color:var(--text2)"></div>
-        <div id="ea-contador" style="font-size:13px;font-weight:600;color:var(--muted)"></div>
+        <button onclick="salirEntreno()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--sans);padding:4px 0">✕ Salir</button>
+        <div id="ea-titulo" style="font-size:13px;font-weight:700;color:var(--ink)"></div>
+        <div id="ea-contador" style="font-size:12px;font-weight:600;color:var(--muted)"></div>
       </div>
-      <!-- Barra progreso -->
       <div style="background:var(--border);border-radius:4px;height:4px;overflow:hidden">
-        <div id="ea-barra" style="height:100%;background:var(--ok);transition:width .4s ease;border-radius:4px;width:0%"></div>
+        <div id="ea-barra" style="height:100%;background:var(--ok);transition:width .5s ease;border-radius:4px;width:0%"></div>
       </div>
     </div>
 
-    <!-- Ejercicio actual -->
-    <div style="flex:1;padding:24px 20px;overflow-y:auto" id="ea-contenido"></div>
+    <!-- VISTA: lista de ejercicios -->
+    <div id="ea-lista-view" style="flex:1;overflow-y:auto;padding:16px 16px 120px">
+      <div id="ea-lista-content"></div>
+    </div>
 
-    <!-- Timer integrado (visible durante descanso) -->
+    <!-- VISTA: ejercicio activo -->
+    <div id="ea-ejercicio-view" style="display:none;flex:1;overflow-y:auto;padding:20px 20px 120px" id="ea-contenido"></div>
+
+    <!-- Timer de descanso -->
     <div id="ea-timer" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--ink);color:#fff;padding:20px;z-index:100">
-      <div style="max-width:480px;margin:0 auto">
-        <div style="text-align:center;margin-bottom:12px">
-          <div style="font-size:11px;letter-spacing:1px;opacity:.6;margin-bottom:4px">DESCANSO</div>
-          <div class="tnum" id="t-num" style="color:#fff;font-size:48px">3:00</div>
-          <div class="ttrack" style="margin:10px auto;max-width:200px"><div class="tfill" id="t-fill" style="width:100%"></div></div>
-        </div>
+      <div style="max-width:480px;margin:0 auto;text-align:center">
+        <div style="font-size:11px;letter-spacing:1px;opacity:.6;margin-bottom:6px">DESCANSO</div>
+        <div class="tnum" id="t-num" style="color:#fff;font-size:52px;font-family:var(--serif)">3:00</div>
+        <div class="ttrack" style="margin:10px auto 14px;max-width:200px"><div class="tfill" id="t-fill" style="width:100%"></div></div>
         <button id="ea-skip" onclick="saltarDescanso()" style="width:100%;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:14px;border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:600;cursor:pointer">Saltar descanso →</button>
       </div>
     </div>
 
-    <!-- Navegación inferior -->
-    <div id="ea-nav" style="background:var(--card);border-top:1px solid var(--border);padding:14px 20px;display:flex;gap:10px;position:sticky;bottom:0">
-      <button id="ea-prev" onclick="navEjercicio(-1)" style="flex:1;padding:14px;border:1.5px solid var(--border);background:transparent;color:var(--text2);border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:500;cursor:pointer">‹ Anterior</button>
+    <!-- Nav inferior (cuando está en ejercicio activo) -->
+    <div id="ea-nav" style="display:none;background:var(--card);border-top:1px solid var(--border);padding:14px 20px;position:sticky;bottom:0;gap:10px;flex-direction:row">
+      <button onclick="volverListaEjercicios()" style="flex:1;padding:14px;border:1.5px solid var(--border);background:transparent;color:var(--text2);border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:500;cursor:pointer">☰ Lista</button>
       <button id="ea-next" onclick="navEjercicio(1)" style="flex:2;padding:14px;border:none;background:var(--ink);color:#fff;border-radius:12px;font-size:14px;font-family:var(--sans);font-weight:700;cursor:pointer">Siguiente ›</button>
     </div>
   </div>
@@ -1467,7 +1565,8 @@ var PANEL_HTML=`<!-- PIN -->
   <div id="prog-sec-fotos" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
       <button onclick="showProgSec(null)" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">‹</button>
-      <div style="font-family:var(--serif);font-size:20px">Fotos de progreso</div>
+      <div style="font-family:var(--serif);font-size:20px;flex:1">Fotos de progreso</div>
+      <button onclick="abrirComparador()" id="btn-comparar" style="display:none;font-size:12px;padding:7px 14px;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-weight:600">⚖️ Comparar</button>
     </div>
     <div id="fotos-upload-area" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px">
       <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.7px">Nueva entrada</div>
@@ -1509,7 +1608,6 @@ var PANEL_HTML=`<!-- PIN -->
     </div>
     <div id="fotos-galeria"></div>
   </div>
-  <!-- ENCUESTA (oculto) -->
   <div id="prog-sec-encuesta" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
       <button onclick="showProgSec(null)" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">‹</button>
@@ -3120,8 +3218,10 @@ async function cargarGaleria(){
   var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
   if(error||!data||data.length===0){
     gal.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Aún no hay fotos. Sube la primera entrada arriba.</div>';
+    mostrarBtnComparar(0);
     return;
   }
+  _compData=data; mostrarBtnComparar(data.length);
   gal.innerHTML='<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
   data.forEach(function(row){
     var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
@@ -3175,7 +3275,8 @@ async function cargarFotosCoach(){
   body.innerHTML=skelHtml('list',3);
   var {data,error}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:false});
   if(error){ body.innerHTML='<div style="color:var(--warn);font-size:12px;padding:10px">Error: '+error.message+'</div>'; return; }
-  if(!data||data.length===0){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>'; return; }
+  if(!data||data.length===0){ body.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">El cliente aún no ha subido fotos.</div>'; mostrarBtnComparar(0); return; }
+  _compData=data; mostrarBtnComparar(data.length);
   body.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">'+data.length+' entr'+(data.length===1?'ada':'adas')+'</div>';
   data.forEach(function(row){
     var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
@@ -3202,6 +3303,96 @@ async function cargarFotosCoach(){
     carpeta.appendChild(hdr); carpeta.appendChild(bdy);
     body.appendChild(carpeta);
   });
+}
+
+// ── COMPARADOR DE FOTOS ───────────────
+var _compData = []; // caché de fotos cargadas
+var _compSelA = null; // fecha seleccionada "antes"
+var _compSelB = null; // fecha seleccionada "después"
+
+async function abrirComparador(){
+  var ov=document.getElementById('comp-overlay'); if(!ov) return;
+  // Mover al body para z-index correcto
+  if(ov.parentElement!==document.body) document.body.appendChild(ov);
+  ov.classList.add('open');
+  // Cargar datos si no los tenemos
+  if(!_compData.length){
+    var cid=window.__cid; if(!cid) return;
+    var {data}=await sb.from('fotos').select('*').eq('cliente_id',cid).order('fecha',{ascending:true});
+    _compData=data||[];
+  }
+  if(_compData.length<2){
+    document.getElementById('comp-result').innerHTML='<div style="color:rgba(255,255,255,.5);text-align:center;padding:40px">Necesitas al menos 2 fechas con fotos para comparar.</div>';
+    document.getElementById('comp-sel-a').innerHTML='';
+    document.getElementById('comp-sel-b').innerHTML='';
+    return;
+  }
+  // Pre-seleccionar primera y última
+  _compSelA=_compSelA||_compData[0].fecha;
+  _compSelB=_compSelB||_compData[_compData.length-1].fecha;
+  renderCompSel();
+  renderCompResult();
+}
+
+function cerrarComparador(){
+  var ov=document.getElementById('comp-overlay'); if(ov) ov.classList.remove('open');
+}
+
+function renderCompSel(){
+  var selA=document.getElementById('comp-sel-a');
+  var selB=document.getElementById('comp-sel-b');
+  if(!selA||!selB) return;
+  var makeBtn=function(row,lado){
+    var fecha=new Date(row.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'2-digit'});
+    var activo=(lado==='a'&&row.fecha===_compSelA)||(lado==='b'&&row.fecha===_compSelB);
+    return '<button class="comp-sel-btn'+(activo?' active':'')+'" onclick="selComp(\''+row.fecha+'\',\''+lado+'\')" style="white-space:nowrap">'+fecha+'</button>';
+  };
+  selA.innerHTML=_compData.map(function(r){ return makeBtn(r,'a'); }).join('');
+  selB.innerHTML=_compData.map(function(r){ return makeBtn(r,'b'); }).join('');
+}
+
+function selComp(fecha,lado){
+  if(lado==='a') _compSelA=fecha; else _compSelB=fecha;
+  renderCompSel();
+  renderCompResult();
+}
+
+function renderCompResult(){
+  var res=document.getElementById('comp-result'); if(!res) return;
+  var rowA=_compData.find(function(r){return r.fecha===_compSelA;});
+  var rowB=_compData.find(function(r){return r.fecha===_compSelB;});
+  if(!rowA||!rowB){ res.innerHTML=''; return; }
+  var fmtA=new Date(rowA.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  var fmtB=new Date(rowB.fecha+'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  var lados=[{key:'url_frente',lbl:'Frente'},{key:'url_espalda',lbl:'Espalda'},{key:'url_lateral',lbl:'Lateral'}];
+  var html='';
+  lados.forEach(function(l){
+    var imgA=rowA[l.key]; var imgB=rowB[l.key];
+    if(!imgA&&!imgB) return;
+    html+='<div style="margin-bottom:20px">'
+      +'<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">'+l.lbl+'</div>'
+      +'<div class="comp-grid">'
+        +'<div class="comp-col">'
+          +'<div class="comp-date">'+fmtA+'</div>'
+          +(imgA?'<div class="comp-img-wrap"><img src="'+imgA+'" loading="lazy"><div class="comp-img-lbl">Antes</div></div>':'<div style="aspect-ratio:3/4;background:rgba(255,255,255,.05);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:12px">Sin foto</div>')
+        +'</div>'
+        +'<div class="comp-col">'
+          +'<div class="comp-date">'+fmtB+'</div>'
+          +(imgB?'<div class="comp-img-wrap"><img src="'+imgB+'" loading="lazy"><div class="comp-img-lbl">Después</div></div>':'<div style="aspect-ratio:3/4;background:rgba(255,255,255,.05);border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:12px">Sin foto</div>')
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  });
+  res.innerHTML=html||'<div style="color:rgba(255,255,255,.4);text-align:center;padding:30px">No hay fotos en estas fechas.</div>';
+}
+
+// Mostrar botón comparar cuando hay datos
+function mostrarBtnComparar(n){
+  var btn1=document.getElementById('btn-comparar');
+  var btn2=document.getElementById('btn-comparar-coach');
+  var show=n>=2;
+  if(btn1) btn1.style.display=show?'block':'none';
+  if(btn2) btn2.style.display=show?'block':'none';
 }
 
 // ── COACH: VER ENTRENOS DEL CLIENTE ───
@@ -3483,62 +3674,54 @@ function renderEncuestaSec(){
 }
 
 // ── MODO ENTRENAMIENTO ACTIVO ─────────
-var _eaDia = 0;      // día seleccionado
-var _eaExIdx = 0;    // índice ejercicio actual
-var _eaWi = 0;       // semana activa
+var _eaDia = 0;
+var _eaExIdx = 0;
+var _eaWi = 0;
 
 function buildPreviewDia(wi){
   _eaWi = wi;
   var dias = getDias(wi);
   var list = document.getElementById('preview-list');
   var wrap = document.getElementById('entreno-start-wrap');
-  var titulo = document.getElementById('train-day-title');
   if(!list) return;
-
   if(!dias||dias.length===0){
     list.innerHTML='<div style="color:var(--muted);font-size:14px;text-align:center;padding:40px 0">Sin días en esta semana.</div>';
     if(wrap) wrap.style.display='none';
     return;
   }
-
-  // Cards de días colapsables
   list.innerHTML = dias.map(function(d,di){
     var pg = dayProg(d,di,wi);
-    var pc = pg.done===pg.total&&pg.total>0 ? 'done' : pg.done>0 ? 'partial' : 'empty';
-    var pl = pg.done===pg.total&&pg.total>0 ? '✓ Completado' : pg.done>0 ? pg.done+'/'+pg.total : '';
+    var pl = pg.done===pg.total&&pg.total>0 ? '✓ Completado' : pg.done>0 ? pg.done+'/'+pg.total+' hechos' : '';
     var isOpen = di===0;
     var exList = d.ejercicios.map(function(r,ri){
-      var ps = rP(r.peso,wi);
-      var ek = 'ex_w'+wi+'_d'+di+'_r'+ri;
-      var log = lLog(ek);
-      var isDone = log && log.done;
+      var ek='ex_w'+wi+'_d'+di+'_r'+ri;
+      var log=lLog(ek); var isDone=log&&log.done;
+      var thumb=r.videoUrl?getYTThumb(r.videoUrl):null;
+      var ps=rP(r.peso,wi);
+      var checkStyle='width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--ok)':'var(--border2)')+';background:'+(isDone?'var(--ok)':'transparent')+';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s';
       return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
-        +'<button onclick="toggleExDone(\''+ek+'\','+wi+')" style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--ok)':'var(--border2)')+';background:'+(isDone?'var(--ok)':'transparent')+';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:13px">'+(isDone?'✓':'')+'</button>'
+        +'<button data-ek="'+ek+'" data-wi="'+wi+'" onclick="toggleExDone(this.dataset.ek,parseInt(this.dataset.wi))" style="'+checkStyle+'">'+(isDone?'✓':'')+'</button>'
         +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:14px;font-weight:'+(r.principal?'600':'500')+';color:'+(isDone?'var(--muted)':'var(--ink)')+';text-decoration:'+(isDone?'line-through':'none')+'">'
-          +(r.videoUrl && getYTId(r.videoUrl)
-            ? '<span onclick="event.stopPropagation();oVid(\''+ek+'\',\''+di+'\',\''+ri+'\',\''+wi+'\',\''+r.nombre+'\')" style="cursor:pointer;display:inline-block;width:48px;height:27px;border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:8px;flex-shrink:0;position:relative"><img src="'+getYTThumb(r.videoUrl)+'" style="width:100%;height:100%;object-fit:cover"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);color:#fff;font-size:10px">▶</span></span>'
-            : r.videoUrl ? '<span onclick="event.stopPropagation();oVid(\''+ek+'\',\''+di+'\',\''+ri+'\',\''+wi+'\',\''+r.nombre+'\')" style="cursor:pointer;margin-right:6px;font-size:14px">🎬</span>' : '')
+          +(thumb?'<img src="'+thumb+'" style="width:40px;height:22px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:6px">':'')
           +r.nombre+'</div>'
-          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+r.series+(ps?' · '+ps:'')+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:1px">'+r.series+(ps?' · '+ps:'')+'</div>'
         +'</div>'
       +'</div>';
     }).join('');
-
     return '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;cursor:pointer" onclick="togglePreviewDia(\'pvd-'+di+'\',this)">'
         +'<div>'
-          +'<div style="font-size:16px;font-weight:700;color:var(--ink);font-family:var(--sans)">'+d.titulo+'</div>'
+          +'<div style="font-size:16px;font-weight:700;color:var(--ink)">'+d.titulo+'</div>'
           +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+d.foco+' · '+d.ejercicios.length+' ejercicios'+(pl?' · <span style="color:var(--ok)">'+pl+'</span>':'')+'</div>'
         +'</div>'
-        +'<button onclick="event.stopPropagation();iniciarDia('+di+')" style="background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-family:var(--sans);font-weight:700;cursor:pointer;flex-shrink:0">▶ Entrenar</button>'
+        +'<button data-di="'+di+'" onclick="event.stopPropagation();iniciarDia(parseInt(this.dataset.di))" style="background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-family:var(--sans);font-weight:700;cursor:pointer;flex-shrink:0">▶ Entrenar</button>'
       +'</div>'
       +'<div id="pvd-'+di+'" style="display:'+(isOpen?'block':'none')+';padding:0 18px 14px;border-top:1px solid var(--border)">'
         +exList
       +'</div>'
     +'</div>';
   }).join('');
-
   if(wrap) wrap.style.display='none';
 }
 
@@ -3550,226 +3733,267 @@ function togglePreviewDia(id,hd){
 function toggleExDone(ek, wi){
   var a=lAll(); if(!a[ek]) a[ek]={sets:{},done:false,note:''};
   a[ek].done = !a[ek].done;
-  // Guardar fecha del marcaje para racha
   if(a[ek].done) a[ek].fechaDone = new Date().toISOString().split('T')[0];
   else delete a[ek].fechaDone;
-  sAll(a);
-  schedSave();
-  // Comprobar si completó todo el día → mensaje motivador
-  var dias=getDias(wi); var di=parseInt(ek.split('_d')[1]); var d=dias[di];
+  sAll(a); schedSave();
+  var wi2=parseInt(wi)||_eaWi;
+  var diMatch=ek.match(/_d(\d+)_/); var di=diMatch?parseInt(diMatch[1]):0;
+  var d=getDias(wi2)[di];
   if(d){
-    var todos=d.ejercicios.every(function(r,ri){
-      var k='ex_w'+wi+'_d'+di+'_r'+ri; return lAll()[k]&&lAll()[k].done;
-    });
+    var todos=d.ejercicios.every(function(r,ri){ var k='ex_w'+wi2+'_d'+di+'_r'+ri; return lAll()[k]&&lAll()[k].done; });
     if(todos) mostrarMotivaRacha();
   }
-  buildPreviewDia(wi);
+  if(document.getElementById('entreno-activo').style.display!=='none'){
+    renderListaEjercicios(); actualizarHeaderEA();
+  } else { buildPreviewDia(wi2); }
 }
 
 function calcRacha(){
-  var a=lAll();
-  var fechas={};
-  Object.values(a).forEach(function(log){
-    if(log.done&&log.fechaDone) fechas[log.fechaDone]=true;
-  });
-  var dias=Object.keys(fechas).sort();
-  if(!dias.length) return 0;
+  var a=lAll(); var fechas={};
+  Object.values(a).forEach(function(log){ if(log.done&&log.fechaDone) fechas[log.fechaDone]=true; });
+  var dias=Object.keys(fechas).sort(); if(!dias.length) return 0;
   var racha=1; var hoy=new Date().toISOString().split('T')[0];
-  // Contar días consecutivos hasta hoy
   for(var i=dias.length-1;i>0;i--){
-    var d1=new Date(dias[i]); var d2=new Date(dias[i-1]);
-    var diff=(d1-d2)/(1000*60*60*24);
-    if(diff===1) racha++; else break;
+    if((new Date(dias[i])-new Date(dias[i-1]))/86400000===1) racha++; else break;
   }
-  // Si el último día no es hoy ni ayer, la racha es 0
-  var ultimo=dias[dias.length-1];
-  var diffHoy=(new Date(hoy)-new Date(ultimo))/(1000*60*60*24);
-  if(diffHoy>1) return 0;
+  if((new Date(hoy)-new Date(dias[dias.length-1]))/86400000>1) return 0;
   return racha;
 }
 
 function mostrarMotivaRacha(){
   var racha=calcRacha();
-  var msgs={
-    1:'¡Buen trabajo hoy! 💪 Primer día completado.',
-    2:'¡2 días seguidos! Estás cogiendo ritmo 🔥',
-    3:'¡3 días seguidos cumpliendo! Vas por buen camino 🚀',
-    5:'¡5 días seguidos! Eres una máquina 💥',
-    7:'¡UNA SEMANA SEGUIDA! Nivel élite 🏆',
-  };
-  var msg=msgs[racha]||( racha>=7?'¡'+racha+' días seguidos! Imparable 🏆':racha>=3?'¡'+racha+' días seguidos! Sigue así 🔥':'¡Día completado! 💪');
-  toast(msg, 3500);
+  var msgs={1:'¡Buen trabajo hoy! 💪',2:'¡2 días seguidos! 🔥',3:'¡3 días seguidos! Vas por buen camino 🚀',5:'¡5 días seguidos! Eres una máquina 💥',7:'¡UNA SEMANA SEGUIDA! Nivel élite 🏆'};
+  toast(msgs[racha]||(racha>=7?'¡'+racha+' días seguidos! Imparable 🏆':racha>=3?'¡'+racha+' días seguidos! Sigue así 🔥':'¡Día completado! 💪'), 3500);
 }
 
 function iniciarDia(di){
-  _eaDia = di;
-  _eaExIdx = 0;
+  _eaDia=di; _eaWi=_eaWi||curWeek;
   document.getElementById('entreno-preview').style.display='none';
+  document.getElementById('entreno-fin').style.display='none';
   document.getElementById('entreno-activo').style.display='flex';
-  document.getElementById('entreno-fin').style.display='none';
-  renderEjercicioActivo();
-}
-
-function salirEntreno(){
-  if(!confirm('¿Salir del entrenamiento? El progreso se guarda.')) return;
-  volverPreview();
-}
-
-function volverPreview(){
-  document.getElementById('entreno-activo').style.display='none';
-  document.getElementById('entreno-fin').style.display='none';
-  document.getElementById('entreno-preview').style.display='block';
   tHide();
-  buildPreviewDia(_eaWi);
+  var d=getDias(_eaWi)[_eaDia];
+  if(d){
+    var first=d.ejercicios.findIndex(function(r,ri){ var l=lLog('ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri); return !l||!l.done; });
+    _eaExIdx=first>=0?first:0;
+  }
+  actualizarHeaderEA(); renderListaEjercicios();
+}
+
+function actualizarHeaderEA(){
+  var d=getDias(_eaWi)[_eaDia]; if(!d) return;
+  var total=d.ejercicios.length;
+  var done=d.ejercicios.filter(function(r,ri){ var l=lLog('ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri); return l&&l.done; }).length;
+  var el;
+  el=document.getElementById('ea-titulo'); if(el) el.textContent=d.titulo;
+  el=document.getElementById('ea-contador'); if(el) el.textContent=done+'/'+total+' completados';
+  el=document.getElementById('ea-barra'); if(el) el.style.width=(total?Math.round(done/total*100):0)+'%';
+}
+
+function renderListaEjercicios(){
+  var d=getDias(_eaWi)[_eaDia]; if(!d) return;
+  var lista=document.getElementById('ea-lista-content'); if(!lista) return;
+  var nav=document.getElementById('ea-nav'); if(nav) nav.style.display='none';
+  document.getElementById('ea-lista-view').style.display='block';
+  document.getElementById('ea-ejercicio-view').style.display='none';
+  tHide();
+  var all=lAll();
+  lista.innerHTML=d.ejercicios.map(function(r,ri){
+    var ek='ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri;
+    var log=all[ek]||{}; var isDone=log.done;
+    var isRec=ri===_eaExIdx;
+    var sets=log.sets||{};
+    var setsHechos=Object.values(sets).filter(function(s){return s.v&&s.r;}).length;
+    var totalSets=parseInt(r.series)||4;
+    var inProgress=!isDone&&setsHechos>0;
+    var ps=rP(r.peso,_eaWi);
+    var thumb=r.videoUrl?getYTThumb(r.videoUrl):null;
+    // Estado
+    var statusClass,statusIcon,cardClass;
+    if(isDone){ statusClass='done'; statusIcon='✔'; cardClass='state-done'; }
+    else if(inProgress){ statusClass='progress'; statusIcon='▶'; cardClass='state-progress'; }
+    else if(isRec){ statusClass='rec'; statusIcon='⭐'; cardClass='state-rec'; }
+    else{ statusClass='empty'; statusIcon=(ri+1)+''; cardClass=''; }
+    // Dots de series
+    var dots=Array.from({length:totalSets},function(_,i){
+      var cls=i<setsHechos?(isDone?'filled':'partial'):'';
+      return '<span class="ea-dot '+cls+'"></span>';
+    }).join('');
+    return '<div class="ea-ex-card '+cardClass+'" data-ri="'+ri+'" onclick="abrirEjercicioActivo(parseInt(this.dataset.ri))">'
+      +'<div class="ea-ex-status '+statusClass+'">'+statusIcon+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +(isRec&&!isDone?'<div class="ea-ex-label-rec">⭐ Recomendado</div>':'')
+        +'<div class="ea-ex-name'+(isDone?' done':'')+'">'
+          +(thumb?'<img src="'+thumb+'" style="width:36px;height:20px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:6px">':'')
+          +r.nombre
+        +'</div>'
+        +'<div class="ea-ex-sub">'+r.series+(ps?' · '+ps:'')+(inProgress?' · <b style="color:var(--accent)">'+setsHechos+'/'+totalSets+' series</b>':'')+'</div>'
+      +'</div>'
+      +'<div class="ea-dots">'+dots+'</div>'
+      +'<div style="font-size:18px;color:var(--border2)">›</div>'
+    +'</div>';
+  }).join('');
+  // Scroll al recomendado
+  setTimeout(function(){
+    var cards=lista.querySelectorAll('.ea-ex-card');
+    if(cards[_eaExIdx]) cards[_eaExIdx].scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+  // Botón terminar
+  var todosHechos=d.ejercicios.every(function(r,ri){ var l=lLog('ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri); return l&&l.done; });
+  lista.innerHTML+='<div style="margin-top:20px">'
+    +(todosHechos
+      ?'<button onclick="finalizarEntreno()" class="smart-btn idle">¡Terminar entrenamiento! 🏆</button>'
+      :'<button onclick="salirEntreno()" style="width:100%;padding:14px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-family:var(--sans);cursor:pointer">Guardar y salir</button>')
+  +'</div>';
+}
+
+function abrirEjercicioActivo(ri){
+  _eaExIdx=ri;
+  document.getElementById('ea-lista-view').style.display='none';
+  document.getElementById('ea-ejercicio-view').style.display='block';
+  var nav=document.getElementById('ea-nav'); if(nav) nav.style.display='flex';
+  window.__smartTimerActive=false;
+  renderEjercicioActivo();
 }
 
 function renderEjercicioActivo(){
-  var dias = getDias(_eaWi);
-  var d = dias[_eaDia]; if(!d) return;
-  var total = d.ejercicios.length;
-  var r = d.ejercicios[_eaExIdx]; if(!r) return;
-  var wi = _eaWi; var di = _eaDia; var ri = _eaExIdx;
-  var ek = 'ex_w'+wi+'_d'+di+'_r'+ri;
-  var sv = lLog(ek);
-  var ns = parseInt(r.series)||4;
-  var ps = rP(r.peso,wi);
-  var rs = r.principal?P.restMain:P.restAcc;
-
-  // Actualizar header
-  document.getElementById('ea-titulo').textContent = d.titulo;
-  document.getElementById('ea-contador').textContent = (_eaExIdx+1)+'/'+total;
-  document.getElementById('ea-barra').style.width = ((_eaExIdx/total)*100)+'%';
-
-  // Botón siguiente/fin
-  var btnNext = document.getElementById('ea-next');
-  if(_eaExIdx >= total-1){
-    btnNext.textContent = '¡Terminar! 🏆';
-    btnNext.onclick = function(){ finalizarEntreno(); };
-  } else {
-    btnNext.textContent = 'Siguiente ›';
-    btnNext.onclick = function(){ navEjercicio(1); };
-  }
-  document.getElementById('ea-prev').style.visibility = _eaExIdx===0?'hidden':'visible';
-
-  // Último entreno
-  var ultimoKg='', ultimoRep='';
-  P.semanas.forEach(function(sem,wIdx){
-    if(wIdx>=wi) return;
-    var exKey='ex_w'+wIdx+'_d'+di+'_r'+ri;
-    var exLog=lAll()[exKey];
-    if(exLog&&exLog.sets){
-      var sets=Object.values(exLog.sets).filter(function(s){return s.v&&s.r;});
-      if(sets.length){ ultimoKg=sets[0].v; ultimoRep=sets[0].r; }
-    }
-  });
-
+  var d=getDias(_eaWi)[_eaDia]; if(!d) return;
+  var r=d.ejercicios[_eaExIdx]; if(!r) return;
+  var wi=_eaWi,di=_eaDia,ri=_eaExIdx;
+  var ek='ex_w'+wi+'_d'+di+'_r'+ri;
+  var sv=lLog(ek); var ns=parseInt(r.series)||4;
+  var ps=rP(r.peso,wi); var rs=r.principal?P.restMain:P.restAcc;
+  var isDone=sv&&sv.done;
+  var sets=sv&&sv.sets||{};
+  var setsHechos=Object.values(sets).filter(function(s){return s.v&&s.r;}).length;
+  actualizarHeaderEA();
+  var total=d.ejercicios.length; var isLast=_eaExIdx>=total-1;
+  var nextBtn=document.getElementById('ea-next');
+  if(nextBtn){ nextBtn.textContent=isLast?'☰ Lista':'Siguiente ›'; nextBtn.onclick=isLast?volverListaEjercicios:function(){navEjercicio(1);}; }
+  var ytThumb=r.videoUrl?getYTThumb(r.videoUrl):null;
   // Series
-  var sHtml = '';
-  for(var si=0;si<ns;si++){
-    var vv=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].v:'';
-    var vr=(sv&&sv.sets&&sv.sets[si])?sv.sets[si].r:'';
-    var setDone=!!(vv&&vr);
-    sHtml += '<div class="ea-set'+(setDone?' hecha':'')+'" id="eas-'+ek+'-'+si+'">'
-      +'<div class="ea-set-lbl">S'+(si+1)+'</div>'
-      +'<div class="ea-set-inputs">'
-        +'<input type="number" placeholder="kg" value="'+vv+'" min="0" step="0.5" inputmode="decimal"'
-          +' onchange="eaSetInput(\''+ek+'\','+si+',\'v\',this.value,'+rs+')">'
-        +'<span class="ea-set-x">×</span>'
-        +'<input type="number" placeholder="rep" value="'+vr+'" min="0" step="1" inputmode="numeric"'
-          +' onchange="eaSetInput(\''+ek+'\','+si+',\'r\',this.value,'+rs+')">'
+  var setsHtml=Array.from({length:ns},function(_,si){
+    var s=sets[si]||{}; var done=s.v&&s.r;
+    return '<div style="background:'+(done?'var(--ok-bg)':'var(--bg2)')+';border:2px solid '+(done?'var(--ok)':'var(--border)')+';border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:all .25s">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:'+(done?'var(--ok)':'var(--muted)')+'">Set '+(si+1)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:4px;width:100%">'
+        +'<input type="number" inputmode="decimal" placeholder="kg" value="'+(s.v||'')+'" '+(isDone?'disabled':'')
+          +' data-ek="'+ek+'" data-si="'+si+'" data-rs="'+rs+'"'
+          +' onchange="eaSetInput(this.dataset.ek,parseInt(this.dataset.si),\'v\',this.value,parseInt(this.dataset.rs))"'
+          +' style="flex:1;min-width:0;background:transparent;border:none;font-size:22px;font-weight:700;text-align:center;outline:none;color:var(--ink);font-family:var(--sans);padding:0">'
+        +'<span style="font-size:13px;color:var(--border2)">×</span>'
+        +'<input type="number" inputmode="numeric" placeholder="rep" value="'+(s.r||'')+'" '+(isDone?'disabled':'')
+          +' data-ek="'+ek+'" data-si="'+si+'" data-rs="'+rs+'"'
+          +' onchange="eaSetInput(this.dataset.ek,parseInt(this.dataset.si),\'r\',this.value,parseInt(this.dataset.rs))"'
+          +' style="flex:1;min-width:0;background:transparent;border:none;font-size:22px;font-weight:700;text-align:center;outline:none;color:var(--ink);font-family:var(--sans);padding:0">'
       +'</div>'
+      +(done?'<div style="font-size:16px;color:var(--ok)">✔</div>':'')
     +'</div>';
-  }
+  }).join('');
+  // Siguiente serie a completar
+  var nextSerie=setsHechos;
+  var smartLabel=isDone?'✔ Completado':nextSerie>=ns?'✔ Marcar como completado':'Marcar Serie '+(nextSerie+1)+' / '+ns;
+  var smartClass=isDone?'done-state':'idle';
+  document.getElementById('ea-ejercicio-view').innerHTML=
+    // Header ejercicio
+    '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:20px">'
+      +(ytThumb?'<img src="'+ytThumb+'" onclick="togVrow(\'vrow-ea\',document.getElementById(\'vrow-ea-btn\'))" style="width:80px;height:52px;object-fit:cover;border-radius:10px;flex-shrink:0;cursor:pointer">':'')
+      +'<div style="flex:1">'
+        +'<div style="font-family:var(--serif);font-size:26px;line-height:1.1;color:var(--ink);margin-bottom:6px">'+r.nombre+'</div>'
+        +'<div style="font-family:var(--serif);font-size:20px;color:var(--accent);font-weight:400">'+(ps||'—')+' · '+r.series+'</div>'
+      +'</div>'
+    +'</div>'
+    // Comentario
+    +(r.comentario?'<div style="background:var(--purple-bg);border-left:3px solid var(--purple);padding:10px 14px;border-radius:0 10px 10px 0;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:18px;font-style:italic">'+eH(r.comentario)+'</div>':'')
+    // Sets grid
+    +'<div style="display:grid;grid-template-columns:repeat('+Math.min(ns,4)+',1fr);gap:10px;margin-bottom:24px">'+setsHtml+'</div>'
+    // Vídeo desplegable
+    +(r.videoUrl?'<div style="margin-bottom:20px"><button id="vrow-ea-btn" class="vtoggle" onclick="togVrow(\'vrow-ea\',this)" style="display:flex;align-items:center;gap:8px">'+(ytThumb?'<img src="'+ytThumb+'" style="width:44px;height:26px;object-fit:cover;border-radius:4px"><span>▼ Ver técnica (YouTube)</span>':'<span>▼ Ver vídeo</span>')+'</button><div class="vrow" id="vrow-ea" style="display:none;margin-top:8px">'+rCV(r,di,ri)+'</div></div>':'')
+    // Botón inteligente
+    +'<button id="smart-action-btn" class="smart-btn '+smartClass+'" data-ek="'+ek+'" data-rs="'+rs+'" data-ns="'+ns+'" onclick="smartAction(this)">'+smartLabel+'</button>'
+    // Desmarcar si done
+    +(isDone?'<button data-ek="'+ek+'" data-wi="'+wi+'" onclick="toggleExDone(this.dataset.ek,parseInt(this.dataset.wi))" style="width:100%;margin-top:10px;padding:12px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-family:var(--sans);cursor:pointer">↩ Desmarcar</button>':'');
+}
 
-  // Comentario
-  var comHtml = r.comentario&&r.comentario.trim()
-    ? '<div class="ea-ccom"><div class="ea-ccom-lbl">Entrenador</div>'+eH(r.comentario)+'</div>'
-    : '';
-
-  // Vídeo
-  var vidHtml = '';
-  if(r.videoUrl){
-    var yt = getYT(r.videoUrl);
-    if(yt) vidHtml = '<div style="margin-bottom:16px"><iframe style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px" src="'+yt+'" allowfullscreen></iframe></div>';
-    else vidHtml = '<div style="margin-bottom:16px"><video style="width:100%;border-radius:12px" controls src="'+r.videoUrl+'"></video></div>';
-  }
-
-  // Renderizar
-  var done = sv&&sv.done;
-  document.getElementById('ea-contenido').innerHTML =
-    '<div class="ea-card">'
-      +'<div style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px">'+(r.principal?'PRINCIPAL':'accesorio')+'</div>'
-      +'<div class="ea-nombre">'+r.nombre+(isPR(ek,di,ri)?'<span class="ex-pr" style="margin-left:8px">🏆 PR</span>':'')+'</div>'
-      +'<div class="ea-meta">'+ps+' · '+r.series+(r.principal&&P.semanas[wi]&&P.semanas[wi].rpe?' · '+P.semanas[wi].rpe:'')+'</div>'
-      +(ultimoKg&&ultimoRep?'<div class="ea-ultimo">Último: '+ultimoKg+' × '+ultimoRep+'</div>':'<div class="ea-ultimo" style="height:18px"></div>')
-      +comHtml
-      +vidHtml
-      +'<div class="ea-sets">'+sHtml+'</div>'
-      +'<button onclick="togDone(\''+ek+'\',this,'+wi+','+di+')" id="dbtn-'+ek+'" style="width:100%;padding:16px;border:2px solid '+(done?'var(--ok)':'var(--border2)')+';background:'+(done?'var(--ok)':'transparent')+';color:'+(done?'#fff':'var(--muted)')+';border-radius:12px;font-size:15px;font-family:var(--sans);font-weight:700;cursor:pointer;margin-top:4px;transition:all .2s">'
-        +(done?'✓ Completado':'Marcar completado')
-      +'</button>'
-    +'</div>';
+// Botón inteligente: marcar serie → timer → siguiente serie
+function smartAction(btn){
+  if(window.__smartTimerActive) return; // timer corriendo, ignorar
+  var ek=btn.dataset.ek; var rs=parseInt(btn.dataset.rs); var ns=parseInt(btn.dataset.ns);
+  var a=lAll(); if(!a[ek]) a[ek]={sets:{},done:false,note:''};
+  if(!a[ek].sets) a[ek].sets={};
+  // Leer kg/rep del set actual
+  var sv=Object.values(a[ek].sets||{}).filter(function(s){return s.v&&s.r;}).length;
+  if(a[ek].done){ return; } // ya completado
+  // Buscar inputs del set actual en pantalla
+  var allInputs=document.querySelectorAll('#ea-ejercicio-view input[data-si="'+sv+'"]');
+  var kgVal='',repVal='';
+  allInputs.forEach(function(inp){ if(inp.dataset.rs&&inp.placeholder==='kg') kgVal=inp.value; if(inp.placeholder==='rep') repVal=inp.value; });
+  if(!kgVal||!repVal){ toast('Introduce kg y reps antes de marcar',2000); return; }
+  // Guardar serie
+  if(!a[ek].sets[sv]) a[ek].sets[sv]={};
+  a[ek].sets[sv].v=kgVal; a[ek].sets[sv].r=repVal;
+  a[ek].sets[sv].ts=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  var newSetsHechos=sv+1;
+  // Si completó todas las series → marcar done
+  if(newSetsHechos>=ns){ a[ek].done=true; a[ek].fechaDone=new Date().toISOString().split('T')[0]; }
+  sAll(a); checkPR(ek,kgVal,repVal);
+  schedSave();
+  if(a[ek].done){ renderEjercicioActivo(); actualizarHeaderEA(); mostrarMotivaRacha(); return; }
+  // Iniciar timer en el botón
+  window.__smartTimerActive=true;
+  tSet(rs); tStart();
+  var remaining=rs;
+  btn.className='smart-btn timing';
+  var interval=setInterval(function(){
+    remaining--;
+    var m=Math.floor(remaining/60); var s=('0'+remaining%60).slice(-2);
+    btn.textContent=m+':'+s;
+    if(remaining<=0){
+      clearInterval(interval);
+      window.__smartTimerActive=false;
+      tHide();
+      // Refrescar pantalla con siguiente serie
+      renderEjercicioActivo();
+      var newBtn=document.getElementById('smart-action-btn');
+      if(newBtn){ newBtn.className='smart-btn idle'; }
+    }
+  },1000);
 }
 
 function eaSetInput(ek,si,campo,val,restSeg){
-  sSet(ek,si,campo,val);
-  chkPR(ek,val,'v',_eaWi,_eaDia,_eaExIdx);
-  var sv=lLog(ek);
-  var kg=sv&&sv.sets&&sv.sets[si]?sv.sets[si].v:'';
-  var rp=sv&&sv.sets&&sv.sets[si]?sv.sets[si].r:'';
-  var setEl=document.getElementById('eas-'+ek+'-'+si);
-  if(kg&&rp){
-    if(setEl) setEl.classList.add('hecha');
-    tSet(restSeg);
-    mostrarTimer();
-  }
+  var a=lAll(); if(!a[ek]) a[ek]={sets:{},done:false,note:''};
+  if(!a[ek].sets) a[ek].sets={}; if(!a[ek].sets[si]) a[ek].sets[si]={};
+  a[ek].sets[si][campo]=val;
+  sAll(a); actualizarHeaderEA();
 }
 
 function mostrarTimer(){
-  var timer=document.getElementById('ea-timer');
-  var nav=document.getElementById('ea-nav');
-  if(timer) timer.style.display='block';
-  if(nav) nav.style.display='none';
-  tStartTimer();
+  var t=document.getElementById('ea-timer'); if(t) t.style.display='block';
+  var n=document.getElementById('ea-nav'); if(n) n.style.display='none';
 }
-
 function saltarDescanso(){
-  var timer=document.getElementById('ea-timer');
-  var nav=document.getElementById('ea-nav');
-  if(timer) timer.style.display='none';
-  if(nav) nav.style.display='flex';
-  tStop();
-}
-
-function navEjercicio(dir){
-  saltarDescanso();
-  var dias=getDias(_eaWi); var d=dias[_eaDia];
-  var newIdx=_eaExIdx+dir;
-  if(newIdx<0||newIdx>=d.ejercicios.length) return;
-  _eaExIdx=newIdx;
+  clearInterval(window.__smartInterval);
+  window.__smartTimerActive=false;
+  tHide();
+  var n=document.getElementById('ea-nav'); if(n) n.style.display='flex';
   renderEjercicioActivo();
-  document.getElementById('ea-contenido').scrollTop=0;
-  window.scrollTo(0,0);
 }
-
+function navEjercicio(dir){
+  var d=getDias(_eaWi)[_eaDia]; if(!d) return;
+  var ni=_eaExIdx+dir;
+  if(ni<0||ni>=d.ejercicios.length){ volverListaEjercicios(); return; }
+  _eaExIdx=ni; window.__smartTimerActive=false; renderEjercicioActivo();
+}
 function finalizarEntreno(){
-  var dias=getDias(_eaWi); var d=dias[_eaDia];
-  var done=0;
-  d.ejercicios.forEach(function(r,ri){
-    var ek='ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri;
-    var sv=lLog(ek); if(sv&&sv.done) done++;
-  });
+  var d=getDias(_eaWi)[_eaDia];
+  var done=d.ejercicios.filter(function(r,ri){ var l=lLog('ex_w'+_eaWi+'_d'+_eaDia+'_r'+ri); return l&&l.done; }).length;
   document.getElementById('entreno-activo').style.display='none';
   document.getElementById('entreno-fin').style.display='block';
   document.getElementById('ef-stats').textContent=done+' de '+d.ejercicios.length+' ejercicios completados';
-  tHide();
+  tHide(); mostrarMotivaRacha();
 }
+function empezarEntreno(){ var dias=getDias(_eaWi); if(!dias||!dias.length) return; iniciarDia(0); }
 
-// Actualizar togDone para refrescar en modo activo
-var _origTogDone = window.togDone;
-
-// Override tDone para mostrar "Siguiente" cuando acaba el descanso
-var _origTDone = window.tDone;
 
 // ── GRÁFICA DE PESO ───────────────────
 function registrarPeso(){
