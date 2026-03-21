@@ -3330,12 +3330,15 @@ function buildPreviewDia(wi){
     var isOpen = di===0;
     var exList = d.ejercicios.map(function(r,ri){
       var ps = rP(r.peso,wi);
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">'
-        +'<div>'
-          +'<div style="font-size:14px;font-weight:'+(r.principal?'600':'500')+';color:'+(r.principal?'var(--ink)':'var(--text2)')+'">'+r.nombre+'</div>'
-          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+r.series+'</div>'
+      var ek = 'ex_w'+wi+'_d'+di+'_r'+ri;
+      var log = lLog(ek);
+      var isDone = log && log.done;
+      return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<button onclick="toggleExDone(\''+ek+'\','+wi+')" style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isDone?'var(--ok)':'var(--border2)')+';background:'+(isDone?'var(--ok)':'transparent')+';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;font-size:13px">'+(isDone?'✓':'')+'</button>'
+        +'<div style="flex:1">'
+          +'<div style="font-size:14px;font-weight:'+(r.principal?'600':'500')+';color:'+(isDone?'var(--muted)':'var(--ink)')+';text-decoration:'+(isDone?'line-through':'none')+'">'+(r.videoUrl?'<span onclick="event.stopPropagation();oVid(\''+ek+'\',\''+di+'\',\''+ri+'\',\''+wi+'\',\''+r.nombre+'\')" style="cursor:pointer;margin-right:6px;font-size:14px">🎬</span>':'')+r.nombre+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+r.series+(ps?' · '+ps:'')+'</div>'
         +'</div>'
-        +'<div style="font-size:15px;font-weight:700;color:var(--ink)">'+ps+'</div>'
       +'</div>';
     }).join('');
 
@@ -3359,6 +3362,14 @@ function buildPreviewDia(wi){
 function togglePreviewDia(id,hd){
   var el=document.getElementById(id); if(!el) return;
   el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function toggleExDone(ek, wi){
+  var a=lAll(); if(!a[ek]) a[ek]={sets:{},done:false,note:''};
+  a[ek].done = !a[ek].done;
+  sAll(a);
+  schedSave();
+  buildPreviewDia(wi);
 }
 
 function iniciarDia(di){
