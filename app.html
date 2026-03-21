@@ -222,16 +222,30 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="modal-bg" id="modal-link">
   <div class="modal">
     <div class="modal-title" id="ml-title">Enlace del cliente</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Manda este enlace al cliente por WhatsApp. Solo él puede acceder.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Manda este enlace al cliente para que acceda a su panel.</p>
     <div style="background:var(--bg2);border:1px solid var(--border);padding:10px 12px;font-size:12px;word-break:break-all;margin-bottom:12px;color:var(--text2)" id="ml-url"></div>
     <div class="modal-footer">
-      <button class="btn ok" onclick="copyLink()">Copiar enlace</button>
+      <button class="btn ok" onclick="copyLink()">📋 Copiar enlace</button>
+      <button class="btn" style="background:#25D366;color:#fff;border:none" onclick="sendWhatsApp()">📱 WhatsApp</button>
       <button class="btn sec" onclick="closeModal('modal-link')">Cerrar</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- MODAL IMPORTAR PLAN -->
+<div class="modal-bg" id="modal-importar">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">📥 Importar plan de otro cliente</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Selecciona un cliente para copiar su rutina de entrenamiento al cliente actual. Sus datos personales no se copiarán.</p>
+    <div id="importar-lista" style="max-height:280px;overflow-y:auto;display:grid;gap:6px;margin-bottom:12px"></div>
+    <div id="importar-err" style="font-size:12px;color:var(--warn);min-height:16px"></div>
+    <div class="modal-footer">
+      <button class="btn sec" onclick="closeModal('modal-importar')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── SUPABASE ──────────────────────────
@@ -450,6 +464,12 @@ function verLink(id,nombre,token){
 function copyLink(){
   var url=document.getElementById('ml-url').textContent;
   navigator.clipboard.writeText(url).then(()=>toast('Enlace copiado ✓'));
+}
+function sendWhatsApp(){
+  var url=document.getElementById('ml-url').textContent;
+  var nombre=document.getElementById('ml-title').textContent.replace('Enlace de ','');
+  var txt=encodeURIComponent('Hola '+nombre+' 👋\nAquí tienes tu panel de entrenamiento personalizado:\n'+url+'\n\nEntra cuando quieras para ver tu plan, registrar tus entrenos y seguir tu progreso 💪');
+  window.open('https://api.whatsapp.com/send?text='+txt,'_blank');
 }
 
 // ── EDITOR DE PLAN (abre el panel con modo entrenador) ────────────────────────
@@ -956,6 +976,9 @@ var PANEL_HTML=`<!-- PIN -->
 
       <!-- EDITOR PLAN -->
       <div class="csec active" id="cs-editor">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button onclick="abrirImportar()" style="font-size:12px;padding:7px 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);border-radius:8px;transition:all .15s" onmouseover="this.style.borderColor='var(--ink)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">📥 Importar plan</button>
+        </div>
         <div class="ecard">
           <div class="echd"><div class="ectitle">👤 Datos del cliente</div></div>
           <div class="erow c2">
@@ -2810,6 +2833,44 @@ function volverDash(){
   clearTimeout(window.__saveTimer);
   showView('view-dash');
   renderClientes();
+}
+
+async function abrirImportar(){
+  if(!_user) return;
+  var lista=document.getElementById('importar-lista');
+  var err=document.getElementById('importar-err');
+  lista.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando clientes...</div>';
+  err.textContent='';
+  openModal('modal-importar');
+  try{
+    var {data:clientes}=await sb.from('clientes').select('id,nombre,apellido').eq('entrenador_id',_user.id).order('nombre');
+    var otros=(clientes||[]).filter(c=>c.id!==window.__cid);
+    if(!otros.length){ lista.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No tienes otros clientes con planes.</div>'; return; }
+    lista.innerHTML=otros.map(c=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--card)">
+        <span style="font-size:13px;font-weight:500">${c.nombre} ${c.apellido||''}</span>
+        <button onclick="importarPlan('${c.id}','${c.nombre}')" style="font-size:11px;padding:5px 12px;border:1px solid var(--ok);color:var(--ok);background:var(--ok-bg);cursor:pointer;font-family:var(--sans);border-radius:6px">Usar este plan</button>
+      </div>`).join('');
+  } catch(e){ err.textContent='Error al cargar clientes.'; }
+}
+
+async function importarPlan(fromId, fromNombre){
+  if(!confirm('¿Importar el plan de '+fromNombre+'? Se sobreescribirá la rutina actual (los datos personales no cambian).')) return;
+  try{
+    var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',fromId).single();
+    if(!pl?.datos?.P) { toast('Ese cliente no tiene plan guardado.',3000); return; }
+    var planOrigen=pl.datos.P;
+    // Copiar solo semanas y tipo, no datos personales
+    P.semanas=JSON.parse(JSON.stringify(planOrigen.semanas||P.semanas));
+    P.tipo=planOrigen.tipo||P.tipo;
+    P.planDesc=planOrigen.planDesc||P.planDesc;
+    P.restMain=planOrigen.restMain||P.restMain;
+    P.restAcc=planOrigen.restAcc||P.restAcc;
+    P.restWarn=planOrigen.restWarn||P.restWarn;
+    closeModal('modal-importar');
+    syncEd();
+    toast('Plan importado de '+fromNombre+' ✓');
+  } catch(e){ toast('Error al importar el plan.',3000); console.error(e); }
 }
 
 async function syncNow(){
