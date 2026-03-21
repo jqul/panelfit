@@ -53,7 +53,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* VISTAS */
-.view{display:none;}
+.view{display:none;opacity:0;}
+.view.active{display:block;animation:viewFadeIn .22s ease forwards;}
+@keyframes viewFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .view.active{display:block;}
 
 /* ── LOGIN ─────────────────────────── */
@@ -94,6 +96,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .cliente-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.1);}
 .cc-avatar{width:40px;height:40px;border-radius:50%;background:var(--bg2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:16px;color:var(--accent);margin-bottom:12px;flex-shrink:0;}
 .cc-name{font-family:var(--serif);font-size:19px;font-weight:400;margin-bottom:3px;letter-spacing:-.2px;}
+.skel-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;height:96px;position:relative;overflow:hidden;}
+.skel-card::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.4) 50%,transparent 100%);animation:skelShimmer 1.2s infinite;}
+@keyframes skelShimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 .cc-sub{font-size:11px;color:var(--muted);letter-spacing:.3px;}
 .cc-actions{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap;}
 .cc-btn{font-size:10px;padding:5px 11px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);letter-spacing:.3px;transition:all .15s;border-radius:4px;}
@@ -170,6 +175,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   <div class="content">
     <div class="page-title">Mis clientes</div>
     <div class="page-sub" id="dash-sub">Gestiona los planes de tus clientes</div>
+    <input id="cli-search" type="text" placeholder="🔍 Buscar cliente..." oninput="filtrarClientes(this.value)"
+      style="background:var(--card);border:1px solid var(--border2);color:var(--text);font-size:14px;padding:10px 14px;border-radius:10px;width:100%;max-width:340px;outline:none;font-family:var(--sans);margin-bottom:16px;display:block;">
     <div class="clientes-grid" id="clientes-grid">
       <div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>
     </div>
@@ -391,8 +398,11 @@ async function loadDash(){
 }
 
 async function renderClientes(){
-  var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
   var grid=document.getElementById('clientes-grid');
+  // Skeleton mientras carga
+  grid.innerHTML='<div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>'
+    +'<div class="add-card" onclick="openNewCliente()" style="opacity:.3;pointer-events:none">+ Nuevo cliente</div>';
+  var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
   var cards=( clientes||[]).map(c=>`
     <div class="cliente-card">
       <div class="cc-name">${c.nombre} ${c.apellido||''}</div>
@@ -483,8 +493,17 @@ async function loadClienteApp(token){
   loading(false);
 }
 
+function filtrarClientes(q){
+  var cards=document.querySelectorAll('.cliente-card');
+  cards.forEach(function(c){
+    var nombre=c.querySelector('.cc-name').textContent.toLowerCase();
+    c.style.display=nombre.includes(q.toLowerCase())?'':'none';
+  });
+}
+
 async function guardarPlan(clienteId, planObj){
-  await sb.from('planes').upsert({cliente_id:clienteId, datos:planObj, updated_at:new Date()},{onConflict:'cliente_id'});
+  var {error}=await sb.from('planes').upsert({cliente_id:clienteId, datos:planObj, updated_at:new Date()},{onConflict:'cliente_id'});
+  if(error){ toast('Error al guardar: '+error.message, 4000); console.error('guardarPlan error:',error); }
 }
 async function guardarRegistros(clienteId, regObj){
   await sb.from('registros').upsert({cliente_id:clienteId, datos:regObj, updated_at:new Date()},{onConflict:'cliente_id'});
@@ -582,7 +601,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .ea-ccom-lbl{font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
 .prog-btn{padding:7px 18px;border:1.5px solid var(--border);background:transparent;color:var(--muted);border-radius:20px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;transition:all .15s;}
 .prog-btn.active{border-color:var(--ink);background:var(--ink);color:#fff;}
-.panel.active{display:block;animation:fadeUp .18s ease;}
+.panel.active{display:block;animation:fadeUp .2s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .ptitle{font-family:var(--serif);font-size:22px;font-weight:400;margin-bottom:4px;letter-spacing:-.2px;}
 .psub{font-size:11px;color:var(--muted);margin-bottom:20px;letter-spacing:.3px;}
@@ -1160,6 +1179,9 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="dg4" id="dash-stats"></div>
   <div id="dash-sesion"></div>
   <div id="dash-msg"></div>
+  <div id="dash-peso-chart" style="display:none;margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Evolución de peso</div>
+  </div>
 </div>
 
 <!-- ENTRENO -->
@@ -1233,6 +1255,23 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="psub">Se actualizan automáticamente al superar un peso</div>
   <div class="recg" id="records-grid"></div>
   <div class="note yellow" id="rec-empty" style="display:none">Sin marcas aún. Anota pesos en el Entreno y aquí aparecerán tus récords.</div>
+  <!-- Calculadora 1RM -->
+  <div style="margin-top:24px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px">🧮 Calculadora 1RM</div>
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Peso (kg)</div>
+        <input id="rm-kg" type="number" placeholder="100" min="1" step="0.5" inputmode="decimal" oninput="calcRM()"
+          style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:16px;padding:8px 12px;border-radius:8px;width:90px;outline:none;font-family:var(--sans)">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Reps</div>
+        <input id="rm-rep" type="number" placeholder="5" min="1" max="20" step="1" inputmode="numeric" oninput="calcRM()"
+          style="background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-size:16px;padding:8px 12px;border-radius:8px;width:70px;outline:none;font-family:var(--sans)">
+      </div>
+    </div>
+    <div id="rm-result"></div>
+  </div>
 </div>
 
 <!-- HISTORIAL -->
@@ -1969,6 +2008,7 @@ function buildDashboard(){
   var msgHtml='';
   if(P.mensaje) msgHtml='<div class="note purple"><strong>💬 Tu entrenador dice:</strong> '+eH(P.mensaje)+'</div>';
   document.getElementById('dash-msg').innerHTML=msgHtml;
+  buildPesoChart();
 }
 
 // ── RÉCORDS ───────────────────────────
@@ -3366,6 +3406,52 @@ var _origTogDone = window.togDone;
 
 // Override tDone para mostrar "Siguiente" cuando acaba el descanso
 var _origTDone = window.tDone;
+
+// ── GRÁFICA DE PESO ───────────────────
+function buildPesoChart(){
+  var el=document.getElementById('dash-peso-chart');
+  if(!el) return;
+  // Usar datos de P.pesoHistorial si existe, o solo el peso actual
+  var datos=P.pesoHistorial||[];
+  if(datos.length<2){
+    el.style.display='none';
+    return;
+  }
+  el.style.display='block';
+  var min=Math.min.apply(null,datos.map(function(d){return d.v;}))-2;
+  var max=Math.max.apply(null,datos.map(function(d){return d.v;}))+2;
+  var w=el.offsetWidth||300, h=120;
+  var pts=datos.map(function(d,i){
+    var x=10+(i/(datos.length-1))*(w-20);
+    var y=h-10-((d.v-min)/(max-min))*(h-20);
+    return x+','+y;
+  }).join(' ');
+  el.innerHTML='<svg width="'+w+'" height="'+h+'" style="overflow:visible">'
+    +'<polyline points="'+pts+'" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    +datos.map(function(d,i){
+      var x=10+(i/(datos.length-1))*(w-20);
+      var y=h-10-((d.v-min)/(max-min))*(h-20);
+      return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="var(--ok)"/>'
+        +'<text x="'+x+'" y="'+(y-10)+'" font-size="10" fill="var(--muted)" text-anchor="middle">'+d.v+'</text>';
+    }).join('')
+    +'</svg>';
+}
+
+// ── CALCULADORA 1RM ────────────────────
+function calcRM(){
+  var kg=parseFloat(document.getElementById('rm-kg').value)||0;
+  var rep=parseFloat(document.getElementById('rm-rep').value)||0;
+  if(!kg||!rep){ document.getElementById('rm-result').textContent=''; return; }
+  var rm=Math.round(kg*(1+rep/30)*10)/10;
+  var pcts=[100,95,90,85,80,75,70].map(function(p){
+    return '<span style="display:inline-flex;flex-direction:column;align-items:center;background:var(--bg2);border-radius:8px;padding:6px 10px;gap:2px">'
+      +'<span style="font-size:15px;font-weight:700">'+Math.round(rm*p/100)+'</span>'
+      +'<span style="font-size:10px;color:var(--muted)">'+p+'%</span>'
+    +'</span>';
+  }).join('');
+  document.getElementById('rm-result').innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:8px">1RM estimado: <strong style="color:var(--ink);font-size:16px">'+rm+' kg</strong></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+pcts+'</div>';
+}
 
 // Cargar galería cuando se abre la pestaña fotos
 var _origShowTab=window.showTab;
