@@ -188,19 +188,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <div class="view" id="view-admin">
   <div class="topbar">
     <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
-    <div class="topbar-right"><button class="tbtn" onclick="showView('view-login')">Salir →</button></div>
-  </div>
-  <div class="content">
-    <div class="page-title">Panel de administración</div>
-    <div class="page-sub">Todos los entrenadores registrados</div>
-    <div id="admin-grid" style="display:grid;gap:10px;margin-top:20px"></div>
-  </div>
-</div>
-
-<!-- SUPERADMIN -->
-<div class="view" id="view-admin">
-  <div class="topbar">
-    <div class="topbar-logo">Panel<span>Fit</span> <span style="font-size:10px;color:var(--warn);letter-spacing:1px;margin-left:8px">ADMIN</span></div>
     <div class="topbar-right"><button class="tbtn" onclick="doLogout()">Salir →</button></div>
   </div>
   <div class="content">
@@ -339,6 +326,15 @@ function resetApp(){
     _user = session.user;
     console.log('usuario activo:', _user.email);
     if(_user.email==='javi_ql@hotmail.com'){ loading(false); loadSuperAdmin(); return; }
+    // Verificar que el entrenador sigue activo en la BD
+    var {data:ent} = await sb.from('entrenadores').select('activo').eq('id',_user.id).single();
+    if(ent && ent.activo===false){
+      await sb.auth.signOut();
+      loading(false);
+      showView('view-login');
+      toast('Tu cuenta está desactivada. Contacta con el administrador.', 5000);
+      return;
+    }
     await loadDash();
   } catch(e){
     clearTimeout(safetyTimer);
@@ -365,37 +361,49 @@ function getClientToken(){
 async function loadDash(){
   loading(true);
   try{
-    // Asegurar que existe el perfil — crearlo si no
-    var {data:perfil}=await sb.from('entrenadores').select('nombre').eq('id',_user.id).single();
+    // Verificar activo en cada carga del dash (por si se desactiva mientras está logado)
+    var {data:perfil, error:perfilErr}=await sb.from('entrenadores').select('nombre,activo').eq('id',_user.id).single();
+    if(perfil && perfil.activo===false){
+      await sb.auth.signOut(); loading(false);
+      toast('Tu cuenta ha sido desactivada.',5000); showView('view-login'); return;
+    }
     if(!perfil){
       await sb.from('entrenadores').insert({id:_user.id, nombre:_user.email, email:_user.email});
       perfil={nombre:_user.email};
     }
     document.getElementById('topbar-nombre').textContent=perfil.nombre||_user.email;
-
     await renderClientes();
-  } catch(e){ console.error('loadDash error:',e); }
+  } catch(e){
+    console.error('loadDash error:',e);
+    toast('Error de conexión. Comprueba tu internet.',4000);
+  }
   loading(false);
   showView('view-dash');
 }
 
 async function renderClientes(){
   var grid=document.getElementById('clientes-grid');
-  // Skeleton mientras carga
   grid.innerHTML='<div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>'
     +'<div class="add-card" onclick="openNewCliente()" style="opacity:.3;pointer-events:none">+ Nuevo cliente</div>';
-  var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
-  var cards=( clientes||[]).map(c=>`
-    <div class="cliente-card">
-      <div class="cc-name">${c.nombre} ${c.apellido||''}</div>
-      <div class="cc-sub">Creado ${new Date(c.created_at).toLocaleDateString('es-ES')}</div>
-      <div class="cc-actions">
-        <button class="cc-btn" onclick="editarCliente('${c.id}')">✏️ Plan</button>
-        <button class="cc-btn link" onclick="verLink('${c.id}','${c.nombre} ${c.apellido||''}','${c.token}')">🔗 Enlace</button>
-        <button class="cc-btn" onclick="borrarCliente('${c.id}','${c.nombre}')">🗑</button>
-      </div>
-    </div>`).join('');
-  grid.innerHTML=cards+`<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>`;
+  try{
+    var {data:clientes,error}=await sb.from('clientes').select('*').eq('entrenador_id',_user.id).order('created_at');
+    if(error) throw error;
+    var cards=(clientes||[]).map(c=>`
+      <div class="cliente-card">
+        <div class="cc-name">${c.nombre} ${c.apellido||''}</div>
+        <div class="cc-sub">Creado ${new Date(c.created_at).toLocaleDateString('es-ES')}</div>
+        <div class="cc-actions">
+          <button class="cc-btn" onclick="editarCliente('${c.id}')">✏️ Plan</button>
+          <button class="cc-btn link" onclick="verLink('${c.id}','${c.nombre} ${c.apellido||''}','${c.token}')">🔗 Enlace</button>
+          <button class="cc-btn" onclick="borrarCliente('${c.id}','${c.nombre}')">🗑</button>
+        </div>
+      </div>`).join('');
+    grid.innerHTML=cards+`<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>`;
+  } catch(e){
+    console.error('renderClientes error:',e);
+    toast('Error al cargar clientes. Comprueba tu conexión.',4000);
+    grid.innerHTML='<div class="add-card" onclick="openNewCliente()">+ Nuevo cliente</div>';
+  }
 }
 
 function openNewCliente(){
@@ -484,11 +492,21 @@ function filtrarClientes(q){
 }
 
 async function guardarPlan(clienteId, planObj){
-  var {error}=await sb.from('planes').upsert({cliente_id:clienteId, datos:planObj, updated_at:new Date()},{onConflict:'cliente_id'});
-  if(error){ toast('Error al guardar: '+error.message, 4000); console.error('guardarPlan error:',error); }
+  try{
+    var {error}=await sb.from('planes').upsert({cliente_id:clienteId, datos:planObj, updated_at:new Date()},{onConflict:'cliente_id'});
+    if(error) throw error;
+  } catch(e){
+    toast('❌ Error al guardar. Comprueba tu conexión.',4000);
+    console.error('guardarPlan error:',e);
+  }
 }
 async function guardarRegistros(clienteId, regObj){
-  await sb.from('registros').upsert({cliente_id:clienteId, datos:regObj, updated_at:new Date()},{onConflict:'cliente_id'});
+  try{
+    var {error}=await sb.from('registros').upsert({cliente_id:clienteId, datos:regObj, updated_at:new Date()},{onConflict:'cliente_id'});
+    if(error) throw error;
+  } catch(e){
+    console.error('guardarRegistros error:',e);
+  }
 }
 
 
