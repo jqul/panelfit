@@ -1313,7 +1313,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   .header{padding:0 40px;height:60px;}
   .hname{font-size:20px;}
   .hstats{gap:32px;}
-  .tabs{display:flex!important;padding:0 40px;}
+  .tabs{display:none!important;}
   .panel{max-width:none;padding:32px 40px;box-sizing:border-box;width:100%;}
   .panel.active{display:block;}
   .dg4{grid-template-columns:repeat(4,1fr);}
@@ -2988,7 +2988,6 @@ function showTab(name,el){
   document.querySelectorAll('.pc-nav-item').forEach(function(n){
     n.classList.toggle('active', n.dataset.tab===name);
   });
-  // Sincronizar tab bar móvil
   syncMobileTabBar(name);
 }
 
@@ -3035,17 +3034,24 @@ function buildPCSidebar(){
     {tab:'progreso',icon:'📊',label:'Progreso'},
   ];
   nav.innerHTML=items.filter(function(i){ return tv[i.tab]!==false; }).map(function(i){
-    return '<div class="pc-nav-item" data-tab="'+i.tab+'" onclick="showTab(\''+i.tab+'\',this)">'
+    return '<div class="pc-nav-item" data-tab="'+i.tab+'" onclick="navPC(\''+i.tab+'\')">'
       +'<span class="pc-nav-icon">'+i.icon+'</span>'+i.label
     +'</div>';
   }).join('');
-  // Logo entrenador en sidebar
   var img=document.getElementById('pc-sidebar-logo-img');
   var brand=document.getElementById('pc-sidebar-brand');
   var cliente=document.getElementById('pc-sidebar-cliente');
   if(img&&P.brandLogo){ img.src=P.brandLogo; img.style.display='block'; }
   if(brand) brand.textContent=P.brandName||'PanelFit';
   if(cliente) cliente.textContent=(P.nombre||'')+' '+(P.apellido||'');
+}
+
+function navPC(tab){
+  // Navegar y marcar activo en sidebar
+  showTab(tab, document.getElementById('tab-'+tab+'-btn'));
+  document.querySelectorAll('.pc-nav-item').forEach(function(n){
+    n.classList.toggle('active', n.dataset.tab===tab);
+  });
 }
 function applyVis(){
   if(!document.querySelector('.tabs')) return;
