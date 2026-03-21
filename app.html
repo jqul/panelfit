@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PanelFit</title>
+<!-- PWA -->
+<meta name="theme-color" content="#1a1814">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PanelFit">
+<meta name="description" content="Tu panel de entrenamiento personalizado">
+<link rel="manifest" href="manifest.json">
+<!-- Apple touch icons -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1814'/><text y='72' x='50' text-anchor='middle' font-size='60' fill='%23b89a7a'>P</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -612,15 +622,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .ea-meta{font-size:15px;color:var(--text2);margin-bottom:4px;font-weight:500;}
 .ea-ultimo{font-size:13px;color:var(--muted);margin-bottom:20px;}
 .ea-sets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-.ea-set{flex:1;min-width:70px;max-width:100px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;overflow:hidden;transition:all .2s;}
+.ea-set{flex:1;min-width:90px;max-width:130px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;overflow:hidden;transition:all .2s;}
 .ea-set.activa{border-color:var(--ink);background:var(--card);}
 .ea-set.hecha{border-color:var(--ok);background:#edf7ed;}
 .ea-set-lbl{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:5px 0 3px;width:100%;text-align:center;border-bottom:1px solid var(--border);color:var(--muted);}
 .ea-set.activa .ea-set-lbl{background:var(--ink);color:#fff;border-color:var(--ink);}
 .ea-set.hecha .ea-set-lbl{background:var(--ok);color:#fff;border-color:var(--ok);}
-.ea-set-inputs{display:flex;align-items:center;gap:2px;padding:8px 6px;}
-.ea-set-inputs input{flex:1;min-width:0;background:transparent;border:none;color:var(--text);font-size:20px;font-weight:600;outline:none;text-align:center;font-family:var(--sans);padding:0;max-width:46px;}
-.ea-set-inputs input::placeholder{color:var(--border2);font-size:16px;}
+.ea-set-inputs{display:flex;align-items:center;gap:4px;padding:10px 8px;}
+.ea-set-inputs input{flex:1;min-width:0;background:transparent;border:none;color:var(--text);font-size:22px;font-weight:600;outline:none;text-align:center;font-family:var(--sans);padding:0;max-width:58px;}
+.ea-set-inputs input::placeholder{color:var(--border2);font-size:18px;}
 .ea-set-x{font-size:11px;color:var(--border2);}
 .ea-ccom{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--text2);line-height:1.6;font-style:italic;}
 .ea-ccom-lbl{font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
@@ -703,8 +713,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .lset-lbl{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:5px 0 3px;width:100%;text-align:center;border-bottom:1px solid var(--border);}
 .lset-lbl.done-lbl{background:var(--ok);color:#fff;border-color:var(--ok);}
 .lset.completada{border-color:var(--ok);background:#f7fdf7;}
-.lset-fields{display:flex;align-items:center;gap:2px;padding:4px;}
-.lset input{width:100%;background:transparent;border:none;color:var(--text);font-size:18px;font-weight:400;outline:none;text-align:center;font-family:var(--serif);padding:4px 2px;}
+.lset-fields{display:flex;align-items:center;gap:2px;padding:6px 4px;}
+.lset input{width:100%;background:transparent;border:none;color:var(--text);font-size:20px;font-weight:500;outline:none;text-align:center;font-family:var(--serif);padding:4px 2px;}
 .lset input::placeholder{color:var(--border2);}
 .lset-x{font-size:10px;color:var(--border2);flex-shrink:0;}
 .dbtn{flex:1;padding:13px 14px;border:2px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-size:14px;font-family:var(--sans);font-weight:500;transition:all .15s;border-radius:10px;}
@@ -3784,6 +3794,17 @@ async function adminVerCliente(btn){
   if(!c){ loading(false); alert('Cliente no encontrado'); return; }
   montarPanel(c,pl?.datos||{},rg?.datos||{},token,true,clienteId);
   loading(false);
+}
+
+// ── SERVICE WORKER ─────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      console.log('SW registrado:', reg.scope);
+    }).catch(function(err){
+      console.log('SW error:', err);
+    });
+  });
 }
 
 </script>
