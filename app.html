@@ -845,6 +845,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 /* PIN */
 .pmod{display:none;position:fixed;inset:0;background:rgba(26,24,20,.9);z-index:600;align-items:center;justify-content:center;}
 .pmod.open{display:flex;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+#vid-modal .pbox{animation:slideUp .25s ease;}
 .pbox{background:var(--card);border:1px solid var(--border);padding:28px;text-align:center;min-width:260px;}
 .pbtitle{font-family:var(--serif);font-size:18px;font-weight:400;margin-bottom:4px;}
 .pbsub{font-size:11px;color:var(--muted);margin-bottom:16px;letter-spacing:.3px;}
@@ -1068,8 +1070,9 @@ var PANEL_HTML=`<!-- PIN -->
     </div>
   </div>
   <!-- VID MODAL — dentro del coach para heredar z-index correcto -->
-  <div id="vid-modal" style="display:none;position:fixed;inset:0;background:rgba(26,24,20,.92);z-index:700;align-items:center;justify-content:center;padding:20px">
-    <div class="pbox" style="min-width:300px;max-width:480px;text-align:left">
+  <div id="vid-modal" style="display:none;position:fixed;inset:0;background:rgba(26,24,20,.6);z-index:700;align-items:flex-end;justify-content:center">
+    <div class="pbox" style="width:100%;max-width:560px;text-align:left;border-radius:20px 20px 0 0;max-height:90vh;overflow-y:auto">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px"></div>
       <div class="pbtitle" style="text-align:center">🎬 Vídeo de referencia</div>
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
         <button id="vtab-url" onclick="swVTab('url')" style="flex:1;padding:8px;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer">🔗 YouTube / URL</button>
