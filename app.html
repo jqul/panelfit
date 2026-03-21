@@ -19,24 +19,6 @@
   --sans:'Outfit',system-ui,sans-serif;
   --r:6px; --shadow:0 2px 12px rgba(0,0,0,.07);
 }
-
-async function adminToggleActivo(btn){
-  var id=btn.dataset.eid, activo=btn.dataset.val==='true';
-  btn.disabled=true; btn.textContent='...';
-  await sb.from('entrenadores').update({activo:activo}).eq('id',id);
-  loadSuperAdmin();
-}
-
-async function adminVerCliente(btn){
-  var clienteId=btn.dataset.cid, token=btn.dataset.token;
-  loading(true);
-  var {data:c}=await sb.from('clientes').select('*').eq('id',clienteId).single();
-  var {data:pl}=await sb.from('planes').select('datos').eq('cliente_id',clienteId).single();
-  var {data:rg}=await sb.from('registros').select('datos').eq('cliente_id',clienteId).single();
-  if(!c){ loading(false); alert('Cliente no encontrado'); return; }
-  montarPanel(c, pl?.datos||{}, rg?.datos||{}, token, true, clienteId);
-  loading(false);
-}
 html.dark{
   --bg:#111110;--bg2:#181816;--card:#1e1d1b;--card2:#242320;
   --border:#2c2b28;--border2:#363430;
