@@ -1236,7 +1236,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .delbtn:hover{background:#fcecea;}
 .addbtn{background:transparent;border:2px dashed #d8d4ce;color:var(--muted);padding:10px;cursor:pointer;font-size:12px;width:100%;font-family:var(--sans);margin-top:6px;border-radius:8px;font-weight:500;transition:all .15s;}
 .addbtn:hover{border-color:var(--ink);color:var(--ink);}
-.sbar{background:#fff;border-top:1.5px solid #ece9e4;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;bottom:0;}
+.sbar{background:#fff;border-top:1.5px solid #ece9e4;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;}
 .sbtn{border:none;color:#fff;background:var(--ink);padding:10px 24px;cursor:pointer;font-size:13px;font-family:var(--sans);font-weight:600;border-radius:8px;transition:all .15s;}
 .sbtn:hover{opacity:.88;}
 .tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
@@ -1308,13 +1308,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 
 /* ── LAYOUT PC (≥1024px) ─────────────── */
 @media(min-width:1024px){
-  /* Ocultar tabs horizontales, mostrar sidebar */
-  .tabs{display:none!important;}
+  /* En PC mostrar tabs normales (sidebar es adicional, no reemplaza) */
+  .tabs{display:flex!important;}
   /* Layout principal: sidebar + contenido */
   #panel-root{display:flex;min-height:100vh;overflow-x:hidden;max-width:100%;}
   .pc-sidebar{display:flex!important;pointer-events:auto;}
-  .panel{max-width:none;margin:0;padding:32px 40px;flex:1;}
-  .panel.active{display:flex;flex-direction:column;}
+  .panel{max-width:none;margin:0;padding:24px 32px;flex:1;}
+  .panel.active{display:block;}
   /* Header compacto en PC */
   .header{height:56px;padding:0 40px;}
   .hname{font-size:18px;}
@@ -1323,8 +1323,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   /* Ejercicios activos: lista + ejercicio lado a lado */
   #entreno-activo{flex-direction:row!important;}
   #ea-lista-view{width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;height:100%;}
-  #ea-ejercicio-view{flex:1;max-width:none;padding:32px 40px;overflow-y:auto;}
-  #ea-lista-view,#ea-ejercicio-view{padding:24px;}
+  #ea-ejercicio-view{flex:1;max-width:none;padding:24px;overflow-y:auto;}
+  #ea-lista-view{padding:24px;}
   #ea-header{width:100%;}
   /* Récords 4 cols */
   .recg{grid-template-columns:repeat(4,1fr);}
@@ -1335,6 +1335,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   #tab-entreno #entreno-preview > div:last-child{max-width:800px;margin:0 auto;}
   /* Tab entreno ocupa todo el ancho */
   #tab-entreno{max-width:none!important;padding:0!important;}
+  /* cbody del coach más legible */
+  .cbody{max-width:900px;}
 }
 
 /* Sidebar PC */
@@ -1719,7 +1721,7 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
     </div>
     </div><!-- fin cbody -->
 
-    <div class="sbar">
+    <div class="sbar" style="flex-shrink:0">
       <span id="save-msg" style="font-size:11px;color:var(--muted)">Los cambios se aplican al guardar</span>
       <div style="display:flex;gap:8px">
         <button class="sbtn" onclick="saveClose()">💾 Guardar y cerrar</button>
@@ -3738,7 +3740,10 @@ function applyBrandLogo(){
   var sideImg=document.getElementById('coach-sidebar-logo');
   var sideName=document.getElementById('coach-sidebar-name');
   if(sideImg){ if(logo){sideImg.src=logo;sideImg.style.display='block';}else{sideImg.style.display='none';} }
-  if(sideName){ sideName.textContent=name||'Panel Entrenador'; }
+  if(sideName){
+    var displayName=name||(window._user&&window._user.email?window._user.email.split('@')[0]:'Entrenador');
+    sideName.textContent=displayName;
+  }
 }
 function previewBrandLogo(){
   var url=(document.getElementById('cfg-brand-logo')||{}).value||'';
