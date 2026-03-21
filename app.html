@@ -1234,8 +1234,24 @@ var PANEL_HTML=`<!-- PIN -->
   <div class="dg4" id="dash-stats"></div>
   <div id="dash-sesion"></div>
   <div id="dash-msg"></div>
-  <div id="dash-peso-chart" style="display:none;margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px">
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Evolución de peso</div>
+
+  <!-- REGISTRO DE PESO -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-top:16px">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px">⚖️ Registrar peso hoy</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input id="peso-input" type="number" step="0.1" placeholder="kg" style="background:var(--bg2);border:1.5px solid var(--border);color:var(--text);font-size:20px;font-family:var(--serif);padding:8px 12px;border-radius:10px;width:110px;outline:none;text-align:center" oninput="this.style.borderColor='var(--ink)'">
+      <button onclick="registrarPeso()" style="background:var(--ink);color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-family:var(--sans);font-weight:600;cursor:pointer">Guardar</button>
+      <span id="peso-ok" style="font-size:12px;color:var(--ok);display:none">✓ Guardado</span>
+    </div>
+  </div>
+
+  <!-- GRÁFICO PESO -->
+  <div id="dash-peso-chart" style="display:none;margin-top:12px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px">Evolución de peso</div>
+      <button onclick="borrarUltimoPeso()" style="font-size:10px;color:var(--muted);background:transparent;border:none;cursor:pointer;padding:2px 6px">✕ Borrar último</button>
+    </div>
+    <div id="peso-chart-svg"></div>
   </div>
 </div>
 
@@ -2063,6 +2079,9 @@ function buildDashboard(){
   var msgHtml='';
   if(P.mensaje) msgHtml='<div class="note purple"><strong>💬 Tu entrenador dice:</strong> '+eH(P.mensaje)+'</div>';
   document.getElementById('dash-msg').innerHTML=msgHtml;
+  // Precargar peso actual en el input
+  var pi=document.getElementById('peso-input');
+  if(pi && P.peso) pi.placeholder=P.peso+' kg';
   buildPesoChart();
 }
 
@@ -3543,32 +3562,82 @@ var _origTogDone = window.togDone;
 var _origTDone = window.tDone;
 
 // ── GRÁFICA DE PESO ───────────────────
+function registrarPeso(){
+  var inp=document.getElementById('peso-input');
+  var val=parseFloat(inp.value);
+  if(!val||val<20||val>300){ inp.style.borderColor='var(--warn)'; return; }
+  var hoy=new Date().toISOString().split('T')[0];
+  if(!P.pesoHistorial) P.pesoHistorial=[];
+  // Actualizar si ya hay registro de hoy, si no añadir
+  var idx=P.pesoHistorial.findIndex(function(d){return d.fecha===hoy;});
+  if(idx>=0) P.pesoHistorial[idx].v=val;
+  else P.pesoHistorial.push({v:val,fecha:hoy});
+  // Ordenar por fecha
+  P.pesoHistorial.sort(function(a,b){return a.fecha>b.fecha?1:-1;});
+  // Actualizar peso actual
+  P.peso=val;
+  applyUI();
+  schedSave();
+  inp.value=''; inp.style.borderColor='var(--border)';
+  var ok=document.getElementById('peso-ok'); ok.style.display='inline';
+  setTimeout(function(){ ok.style.display='none'; },2000);
+  buildPesoChart();
+}
+
+function borrarUltimoPeso(){
+  if(!P.pesoHistorial||!P.pesoHistorial.length) return;
+  if(!confirm('¿Borrar el último registro de peso?')) return;
+  P.pesoHistorial.pop();
+  schedSave();
+  buildPesoChart();
+}
+
 function buildPesoChart(){
   var el=document.getElementById('dash-peso-chart');
-  if(!el) return;
-  // Usar datos de P.pesoHistorial si existe, o solo el peso actual
-  var datos=P.pesoHistorial||[];
-  if(datos.length<2){
-    el.style.display='none';
-    return;
-  }
+  var svgEl=document.getElementById('peso-chart-svg');
+  if(!el||!svgEl) return;
+  var datos=(P.pesoHistorial||[]).filter(function(d){return d.v&&d.fecha;});
+  if(datos.length<2){ el.style.display='none'; return; }
   el.style.display='block';
-  var min=Math.min.apply(null,datos.map(function(d){return d.v;}))-2;
-  var max=Math.max.apply(null,datos.map(function(d){return d.v;}))+2;
-  var w=el.offsetWidth||300, h=120;
-  var pts=datos.map(function(d,i){
-    var x=10+(i/(datos.length-1))*(w-20);
-    var y=h-10-((d.v-min)/(max-min))*(h-20);
-    return x+','+y;
-  }).join(' ');
-  el.innerHTML='<svg width="'+w+'" height="'+h+'" style="overflow:visible">'
-    +'<polyline points="'+pts+'" fill="none" stroke="var(--ok)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
-    +datos.map(function(d,i){
-      var x=10+(i/(datos.length-1))*(w-20);
-      var y=h-10-((d.v-min)/(max-min))*(h-20);
-      return '<circle cx="'+x+'" cy="'+y+'" r="4" fill="var(--ok)"/>'
-        +'<text x="'+x+'" y="'+(y-10)+'" font-size="10" fill="var(--muted)" text-anchor="middle">'+d.v+'</text>';
+
+  // Últimos 12 registros
+  var d=datos.slice(-12);
+  var vals=d.map(function(x){return x.v;});
+  var minV=Math.min.apply(null,vals)-1.5;
+  var maxV=Math.max.apply(null,vals)+1.5;
+  var W=svgEl.offsetWidth||320, H=110;
+  var pad={l:36,r:10,t:10,b:28};
+  var iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+
+  function px(i){ return pad.l + (i/(d.length-1))*iW; }
+  function py(v){ return pad.t + iH - ((v-minV)/(maxV-minV))*iH; }
+
+  var pts=d.map(function(x,i){return px(i)+','+py(x.v);}).join(' ');
+  var area='M '+px(0)+','+py(d[0].v)+' '+d.slice(1).map(function(x,i){return 'L '+px(i+1)+','+py(x.v);}).join(' ')
+    +' L '+px(d.length-1)+','+(pad.t+iH)+' L '+px(0)+','+(pad.t+iH)+' Z';
+
+  // Etiquetas eje Y
+  var yLabels=[minV+1.5, (minV+maxV)/2, maxV-1.5].map(function(v){
+    return '<text x="'+(pad.l-6)+'" y="'+(py(v)+4)+'" font-size="9" fill="var(--muted)" text-anchor="end">'+Math.round(v*10)/10+'</text>';
+  }).join('');
+
+  // Etiquetas eje X — solo primera, media y última
+  var xIdxs=[0, Math.floor((d.length-1)/2), d.length-1];
+  var xLabels=xIdxs.map(function(i){
+    var f=d[i].fecha.slice(5).replace('-','/');
+    return '<text x="'+px(i)+'" y="'+(H-6)+'" font-size="9" fill="var(--muted)" text-anchor="middle">'+f+'</text>';
+  }).join('');
+
+  svgEl.innerHTML='<svg width="'+W+'" height="'+H+'" style="overflow:visible">'
+    +'<defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--ok)" stop-opacity="0.2"/><stop offset="100%" stop-color="var(--ok)" stop-opacity="0"/></linearGradient></defs>'
+    +'<path d="'+area+'" fill="url(#pg)"/>'
+    +'<polyline points="'+pts+'" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    +d.map(function(x,i){
+      var isLast=i===d.length-1;
+      return '<circle cx="'+px(i)+'" cy="'+py(x.v)+'" r="'+(isLast?4:2.5)+'" fill="var(--ok)" opacity="'+(isLast?1:.7)+'"/>'
+        +(isLast?'<text x="'+px(i)+'" y="'+(py(x.v)-10)+'" font-size="10" fill="var(--ok)" text-anchor="middle" font-weight="bold">'+x.v+' kg</text>':'');
     }).join('')
+    +yLabels+xLabels
     +'</svg>';
 }
 
