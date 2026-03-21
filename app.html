@@ -1503,8 +1503,7 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
       </div>
       <!-- Contenido principal con tabs -->
       <div style="display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden">
-
-      <!-- EDITOR PLAN -->
+      <div class="cbody">
       <div class="csec active" id="cs-editor">
         <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
           <button onclick="abrirImportar()" style="font-size:12px;padding:7px 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--sans);border-radius:8px;transition:all .15s" onmouseover="this.style.borderColor='var(--ink)';this.style.color='var(--ink)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">📥 Importar plan</button>
@@ -1718,6 +1717,7 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
       </div>
 
     </div>
+    </div><!-- fin cbody -->
 
     <div class="sbar">
       <span id="save-msg" style="font-size:11px;color:var(--muted)">Los cambios se aplican al guardar</span>
