@@ -984,31 +984,72 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
   .plan-week{grid-template-columns:repeat(2,1fr)}
 }
 @media(min-width:768px){
-  /* Panel cliente centrado con max-width */
   .panel{max-width:900px;margin-left:auto;margin-right:auto;padding:28px 32px;}
-  /* Header stats en fila completa */
   .hstats{gap:32px;}
-  /* Dashboard grid 4 columnas completas */
   .dg4{grid-template-columns:repeat(4,1fr);}
-  /* Lista de ejercicios en grid 2 columnas en modo entreno */
   #ea-lista-content{display:block;}
-  /* Modo ejercicio activo más ancho */
   #ea-ejercicio-view{max-width:680px;margin:0 auto;}
-  /* Historial 2 columnas */
   #historial-content .hcard{break-inside:avoid;}
-  /* Récords grid más columnas */
   .recg{grid-template-columns:repeat(3,1fr);}
-  /* Gráfica peso más alta */
   #peso-chart-svg svg{height:160px!important;}
-  /* Fotos galería 4 columnas */
   .fotos-grid-pc{grid-template-columns:repeat(4,1fr)!important;}
-  /* Header más compacto */
   .header{padding:12px 32px;height:64px;}
   .tabs{padding:0 32px;}
   .tab{padding:18px 22px;font-size:12px;}
-  /* Comparador de fotos lado a lado */
   .foto-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
 }
+
+/* ── LAYOUT PC (≥1024px) ─────────────── */
+@media(min-width:1024px){
+  /* Ocultar tabs horizontales, mostrar sidebar */
+  .tabs{display:none!important;}
+  /* Layout principal: sidebar + contenido */
+  #panel-root{display:flex;min-height:100vh;}
+  .pc-sidebar{display:flex!important;}
+  .panel{max-width:none;margin:0;padding:32px 40px;flex:1;}
+  .panel.active{display:flex;flex-direction:column;}
+  /* Header compacto en PC */
+  .header{height:56px;padding:0 40px;}
+  .hname{font-size:18px;}
+  /* Dashboard 4 stats completo */
+  .dg4{grid-template-columns:repeat(4,1fr);}
+  /* Ejercicios activos: lista + ejercicio lado a lado */
+  #entreno-activo{flex-direction:row!important;}
+  #ea-lista-view{width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;height:100%;}
+  #ea-ejercicio-view{flex:1;max-width:none;padding:32px 40px;overflow-y:auto;}
+  #ea-lista-view,#ea-ejercicio-view{padding:24px;}
+  #ea-header{width:100%;}
+  /* Récords 4 cols */
+  .recg{grid-template-columns:repeat(4,1fr);}
+  /* Progreso: upload + galería lado a lado */
+  #fotos-upload-area{max-width:380px;}
+}
+
+/* Sidebar PC */
+.pc-sidebar{
+  display:none;
+  width:220px;
+  flex-shrink:0;
+  background:var(--card);
+  border-right:1px solid var(--border);
+  flex-direction:column;
+  padding:20px 0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+}
+.pc-sidebar-logo{padding:16px 20px 20px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+.pc-sidebar-logo-img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--border2);margin-bottom:8px;}
+.pc-sidebar-name{font-size:13px;font-weight:700;color:var(--ink);}
+.pc-sidebar-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.pc-nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:13px;color:var(--text2);font-family:var(--sans);font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.pc-nav-item:hover{background:var(--bg2);color:var(--ink);}
+.pc-nav-item.active{color:var(--ink);font-weight:700;border-left-color:var(--ink);background:var(--bg2);}
+.pc-nav-icon{font-size:16px;width:20px;text-align:center;}
+.pc-sidebar-footer{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);}
+.pc-sidebar-footer button{width:100%;padding:8px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--sans);}
+
 
 /* COMPARADOR DE FOTOS */
 .compare-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;overflow-y:auto;padding:20px;}
@@ -1075,6 +1116,20 @@ var PANEL_HTML=`<!-- COMPARADOR FOTOS -->
   </div>
   <div class="comp-body">
     <div id="comp-result"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR PC -->
+<div class="pc-sidebar" id="pc-sidebar">
+  <div class="pc-sidebar-logo">
+    <img class="pc-sidebar-logo-img" id="pc-sidebar-logo-img" src="" alt="" style="display:none">
+    <div class="pc-sidebar-name" id="pc-sidebar-brand">PanelFit</div>
+    <div class="pc-sidebar-sub" id="pc-sidebar-cliente"></div>
+  </div>
+  <nav id="pc-nav"></nav>
+  <div class="pc-sidebar-footer">
+    <button onclick="oCoach&&oCoach()" id="pc-btn-coach" style="display:none;margin-bottom:8px;border-color:var(--accent);color:var(--accent)">🏋️ Panel Entrenador</button>
+    <button onclick="tToggle&&tToggle()">🌙 Modo oscuro</button>
   </div>
 </div>
 
@@ -2511,12 +2566,44 @@ function showTab(name,el){
   if(name==='fotos'){ setTimeout(cargarGaleria,100); }
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
-  document.getElementById('tab-'+name).classList.add('active'); el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(el) el.classList.add('active');
   if(name==='semana') buildSemana();
   if(name==='dashboard') buildDashboard();
   if(name==='records') buildRecords();
   if(name==='historial'){ populateHistFilter(); buildHistorial(); }
   if(name==='entreno'){ buildPreviewDia(curWeek); }
+  // Sincronizar sidebar PC
+  document.querySelectorAll('.pc-nav-item').forEach(function(n){
+    n.classList.toggle('active', n.dataset.tab===name);
+  });
+}
+
+function buildPCSidebar(){
+  var nav=document.getElementById('pc-nav'); if(!nav) return;
+  var tv=P.tabs_vis||{};
+  var items=[
+    {tab:'dashboard',icon:'🏠',label:'HOY'},
+    {tab:'semana',icon:'📅',label:'Mi Semana'},
+    {tab:'entreno',icon:'🏋️',label:'Entreno'},
+    {tab:'records',icon:'🏆',label:'Récords'},
+    {tab:'historial',icon:'📈',label:'Historial'},
+    {tab:'dieta',icon:'🍽️',label:'Dieta'},
+    {tab:'habitos',icon:'✅',label:'Hábitos'},
+    {tab:'progreso',icon:'📊',label:'Progreso'},
+  ];
+  nav.innerHTML=items.filter(function(i){ return tv[i.tab]!==false; }).map(function(i){
+    return '<div class="pc-nav-item" data-tab="'+i.tab+'" onclick="showTab(\''+i.tab+'\',this)">'
+      +'<span class="pc-nav-icon">'+i.icon+'</span>'+i.label
+    +'</div>';
+  }).join('');
+  // Logo entrenador en sidebar
+  var img=document.getElementById('pc-sidebar-logo-img');
+  var brand=document.getElementById('pc-sidebar-brand');
+  var cliente=document.getElementById('pc-sidebar-cliente');
+  if(img&&P.brandLogo){ img.src=P.brandLogo; img.style.display='block'; }
+  if(brand) brand.textContent=P.brandName||'PanelFit';
+  if(cliente) cliente.textContent=(P.nombre||'')+' '+(P.apellido||'');
 }
 function applyVis(){
   if(!document.querySelector('.tabs')) return;
@@ -2969,6 +3056,10 @@ function applyUI(){
   var rqbEl=document.getElementById('rqb-plan'); if(rqbEl) rqbEl.textContent='💜 Plan ('+m+':'+s+')';
   var ci=P.semanas.findIndex(function(w){return w.current;}); if(ci>=0) curWeek=ci;
   applyBrandLogo();
+  try{ buildPCSidebar(); }catch(e){}
+  // Marcar tab activo en sidebar
+  var activeTab=document.querySelector('.tab.active'); 
+  if(activeTab){ var fn=activeTab.getAttribute('onclick')||''; var m=fn.match(/showTab\('([^']+)'/); if(m) document.querySelectorAll('.pc-nav-item').forEach(function(n){ n.classList.toggle('active',n.dataset.tab===m[1]); }); }
 }
 function applyBrandLogo(){
   var name=P.brandName||''; var logo=P.brandLogo||'';
@@ -3095,13 +3186,14 @@ function montarPanel(cliente, plan, registros, token, isCoach, clienteId){
   showTab('dashboard', document.querySelector('#panel-root .tab'));
 
   if(isCoach){
-    // Guardar ID entrenador para Storage
     if(window._user) window.__entrenadorId=window._user.id;
-    // Ocultar PIN inmediatamente — entrenador ya autenticado
     var pinMod=document.getElementById('pin-modal');
     if(pinMod) pinMod.style.display='none';
     var pinBtn=document.querySelector('.abtn.p');
     if(pinBtn) pinBtn.style.display='none';
+    // Mostrar botón coach en sidebar PC
+    var pcCoach=document.getElementById('pc-btn-coach');
+    if(pcCoach) pcCoach.style.display='block';
     setTimeout(function(){ oCoach(); }, 200);
   }
 }
