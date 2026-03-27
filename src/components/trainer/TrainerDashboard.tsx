@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, ArrowRight, TrendingUp, Calendar, ChevronRight
+  LogOut, UserPlus, Search, Trash2, ArrowRight, TrendingUp, Calendar, ChevronRight,
+  Plus, Edit2, Check, X, Save
 } from 'lucide-react'
+import { DEFAULT_EXERCISES, TRAINING_TYPES } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
@@ -354,30 +356,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           )}
 
-          {/* PLACEHOLDER SECCIONES */}
-          {activeTab === 'exercises' && (
-            <div className="animate-fade-in">
-              <h2 className="text-3xl font-serif font-bold mb-2">Biblioteca de ejercicios</h2>
-              <p className="text-muted text-sm mb-8">Gestiona tus ejercicios con vídeos</p>
-              <div className="bg-card border border-border rounded-2xl p-12 text-center text-muted">
-                <Dumbbell className="w-10 h-10 mx-auto mb-4 opacity-30" />
-                <p className="font-serif text-lg">Próximamente</p>
-                <p className="text-sm mt-1">Aquí podrás gestionar tu biblioteca de ejercicios</p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'templates' && (
-            <div className="animate-fade-in">
-              <h2 className="text-3xl font-serif font-bold mb-2">Plantillas</h2>
-              <p className="text-muted text-sm mb-8">Reutiliza planes entre clientes</p>
-              <div className="bg-card border border-border rounded-2xl p-12 text-center text-muted">
-                <ClipboardList className="w-10 h-10 mx-auto mb-4 opacity-30" />
-                <p className="font-serif text-lg">Próximamente</p>
-                <p className="text-sm mt-1">Aquí podrás importar y exportar plantillas de entreno</p>
-              </div>
-            </div>
-          )}
+          {activeTab === 'exercises' && <ExercisesTab />}
+          {activeTab === 'templates' && <TemplatesTab />}
 
           {activeTab === 'settings' && (
             <div className="animate-fade-in">
@@ -435,6 +415,319 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </Button>
           </div>
         </div>
+      </Modal>
+    </div>
+  )
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// SECCIÓN: BIBLIOTECA DE EJERCICIOS
+// ═══════════════════════════════════════════════════════════════════
+function ExercisesTab() {
+  const [exercises, setExercises] = useState<string[]>(DEFAULT_EXERCISES)
+  const [search, setSearch] = useState('')
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+  const [editVal, setEditVal] = useState('')
+  const [deletingIdx, setDeletingIdx] = useState<number | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [newName, setNewName] = useState('')
+
+  const filtered = exercises
+    .map((name, idx) => ({ name, idx }))
+    .filter(({ name }) => name.toLowerCase().includes(search.toLowerCase()))
+
+  const handleAdd = () => {
+    const t = newName.trim()
+    if (!t) return
+    if (exercises.some(e => e.toLowerCase() === t.toLowerCase())) {
+      toast('Ese ejercicio ya existe', 'warn'); return
+    }
+    setExercises(prev => [...prev, t].sort())
+    setNewName(''); setShowAdd(false)
+    toast('Ejercicio añadido ✓', 'ok')
+  }
+
+  const confirmEdit = () => {
+    if (editingIdx === null) return
+    const t = editVal.trim()
+    if (!t) return
+    setExercises(prev => { const u = [...prev]; u[editingIdx] = t; return u.sort() })
+    setEditingIdx(null)
+    toast('Guardado ✓', 'ok')
+  }
+
+  const handleDelete = (idx: number) => {
+    setExercises(prev => prev.filter((_, i) => i !== idx))
+    setDeletingIdx(null)
+    toast('Eliminado', 'ok')
+  }
+
+  return (
+    <div className="animate-fade-in space-y-5">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+        <div>
+          <h2 className="text-3xl font-serif font-bold">Biblioteca de ejercicios</h2>
+          <p className="text-muted text-sm mt-1">{exercises.length} ejercicios disponibles</p>
+        </div>
+        <Button className="gap-2" onClick={() => setShowAdd(true)}>
+          <Plus className="w-4 h-4" /> Nuevo ejercicio
+        </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+        <input
+          type="text"
+          placeholder="Buscar ejercicio..."
+          className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+        {filtered.length === 0 && (
+          <p className="p-8 text-center text-muted text-sm">Sin resultados para "{search}"</p>
+        )}
+        {filtered.map(({ name, idx }) => (
+          <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-alt/40 transition-colors group">
+            <div className="w-8 h-8 rounded-lg bg-bg flex items-center justify-center text-muted flex-shrink-0">
+              <Dumbbell className="w-4 h-4" />
+            </div>
+            {editingIdx === idx ? (
+              <input
+                autoFocus
+                value={editVal}
+                onChange={e => setEditVal(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') setEditingIdx(null) }}
+                className="flex-1 bg-bg border border-accent/50 rounded-lg px-3 py-1.5 text-sm font-medium outline-none"
+              />
+            ) : (
+              <span className="flex-1 text-sm font-medium">{name}</span>
+            )}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {editingIdx === idx ? (
+                <>
+                  <button onClick={confirmEdit} className="p-1.5 rounded-lg bg-ok/10 text-ok hover:bg-ok/20 transition-colors">
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setEditingIdx(null)} className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : deletingIdx === idx ? (
+                <>
+                  <button onClick={() => handleDelete(idx)} className="px-2 py-1 bg-warn/10 text-warn border border-warn/20 rounded text-[10px] font-bold uppercase">Borrar</button>
+                  <button onClick={() => setDeletingIdx(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold uppercase text-muted ml-1">No</button>
+                </>
+              ) : (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => { setEditingIdx(idx); setEditVal(exercises[idx]) }} className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => setDeletingIdx(idx)} className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewName('') }} title="Nuevo ejercicio">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre del ejercicio</label>
+            <input
+              autoFocus type="text"
+              placeholder="Ej: Press inclinado con mancuernas"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
+            />
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={() => { setShowAdd(false); setNewName('') }}>Cancelar</Button>
+            <Button className="flex-1 gap-2" onClick={handleAdd} disabled={!newName.trim()}>
+              <Save className="w-4 h-4" /> Añadir
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECCIÓN: PLANTILLAS
+// ═══════════════════════════════════════════════════════════════════
+interface Template { id: string; name: string; type: string; weeks: number; description: string }
+
+const INITIAL_TEMPLATES: Template[] = [
+  { id: '1', name: 'Hipertrofia — Principiante', type: 'hipertrofia', weeks: 4, description: 'Programa base de 4 días para alumnos con menos de 1 año de experiencia.' },
+  { id: '2', name: 'Fuerza — Intermedio', type: 'fuerza', weeks: 8, description: 'Bloques de fuerza con progresión lineal. Sentadilla, banca y peso muerto.' },
+  { id: '3', name: 'Pérdida de grasa — Avanzado', type: 'perdida_grasa', weeks: 12, description: 'Alta frecuencia con déficit calórico. Fuerza y metabólico.' },
+]
+
+function TemplatesTab() {
+  const [templates, setTemplates] = useState<Template[]>(INITIAL_TEMPLATES)
+  const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<Template | null>(null)
+  const [isNew, setIsNew] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const filtered = templates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+
+  const openNew = () => {
+    setEditing({ id: '', name: '', type: 'hipertrofia', weeks: 4, description: '' })
+    setIsNew(true)
+  }
+
+  const handleSave = () => {
+    if (!editing?.name.trim()) return
+    if (isNew) {
+      setTemplates(prev => [...prev, { ...editing, id: Date.now().toString() }])
+      toast('Plantilla creada ✓', 'ok')
+    } else {
+      setTemplates(prev => prev.map(t => t.id === editing!.id ? editing! : t))
+      toast('Guardado ✓', 'ok')
+    }
+    setEditing(null); setIsNew(false)
+  }
+
+  const handleDelete = (id: string) => {
+    setTemplates(prev => prev.filter(t => t.id !== id))
+    setDeletingId(null)
+    toast('Eliminada', 'ok')
+  }
+
+  return (
+    <div className="animate-fade-in space-y-5">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+        <div>
+          <h2 className="text-3xl font-serif font-bold">Plantillas</h2>
+          <p className="text-muted text-sm mt-1">Crea y reutiliza tus programas estándar</p>
+        </div>
+        <Button className="gap-2" onClick={openNew}>
+          <Plus className="w-4 h-4" /> Nueva plantilla
+        </Button>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+        <input
+          type="text"
+          placeholder="Buscar plantilla..."
+          className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filtered.map(t => (
+          <div key={t.id} className="p-5 bg-card border border-border rounded-2xl hover:border-accent/40 transition-all">
+            <div className="flex items-start justify-between mb-3">
+              <div className="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-muted flex-shrink-0">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => { setEditing({ ...t }); setIsNew(false) }}
+                  className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                {deletingId === t.id ? (
+                  <>
+                    <button onClick={() => handleDelete(t.id)} className="px-2 py-1 bg-warn/10 text-warn border border-warn/20 rounded text-[10px] font-bold uppercase">Borrar</button>
+                    <button onClick={() => setDeletingId(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold uppercase text-muted ml-1">No</button>
+                  </>
+                ) : (
+                  <button onClick={() => setDeletingId(t.id)} className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+            <h3 className="font-serif font-bold text-base leading-tight">{t.name}</h3>
+            {t.description && <p className="text-xs text-muted mt-1 leading-relaxed">{t.description}</p>}
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted bg-bg px-2 py-1 rounded border border-border">
+                {TRAINING_TYPES.find(x => x.value === t.type)?.label || t.type}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted bg-bg px-2 py-1 rounded border border-border">
+                {t.weeks} semanas
+              </span>
+            </div>
+          </div>
+        ))}
+        <button
+          onClick={openNew}
+          className="p-5 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
+        >
+          <Plus className="w-6 h-6" />
+          <span className="text-sm font-medium">Nueva plantilla</span>
+        </button>
+      </div>
+
+      <Modal open={!!editing} onClose={() => { setEditing(null); setIsNew(false) }} title={isNew ? 'Nueva plantilla' : 'Editar plantilla'}>
+        {editing && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+              <input
+                autoFocus type="text"
+                placeholder="Ej: Fuerza Intermedio 8 semanas"
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                value={editing.name}
+                onChange={e => setEditing(p => p ? { ...p, name: e.target.value } : p)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo</label>
+              <div className="grid grid-cols-2 gap-2">
+                {TRAINING_TYPES.map(tt => (
+                  <button
+                    key={tt.value} type="button"
+                    onClick={() => setEditing(p => p ? { ...p, type: tt.value } : p)}
+                    className={`px-3 py-2 rounded-lg border text-sm transition-all ${editing.type === tt.value ? 'border-ink bg-ink text-white' : 'border-border bg-bg text-muted hover:border-muted'}`}
+                  >
+                    {tt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Semanas</label>
+              <input
+                type="number" min={1} max={52}
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+                value={editing.weeks}
+                onChange={e => setEditing(p => p ? { ...p, weeks: parseInt(e.target.value) || 1 } : p)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
+              <textarea
+                rows={3}
+                placeholder="Breve descripción del programa..."
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                value={editing.description}
+                onChange={e => setEditing(p => p ? { ...p, description: e.target.value } : p)}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => { setEditing(null); setIsNew(false) }}>Cancelar</Button>
+              <Button className="flex-1 gap-2" onClick={handleSave} disabled={!editing.name.trim()}>
+                <Save className="w-4 h-4" /> {isNew ? 'Crear' : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )
