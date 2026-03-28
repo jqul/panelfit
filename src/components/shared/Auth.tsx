@@ -1,3 +1,11 @@
+import { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+interface AuthProps {
+  onAuthSuccess: (user: any) => void;
+}
+
+export function Auth({ onAuthSuccess }: AuthProps) {
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Button } from '../shared/Button'
@@ -127,4 +135,14 @@ export function Auth({ onAuth }: AuthProps) {
       </div>
     </div>
   )
+}
+  return (
+    <div className="p-10">
+       {/* Tu formulario de login aquí */}
+       <button onClick={async () => {
+         const { data } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+         if (data?.user) onAuthSuccess(data.user);
+       }}>Entrar con Google</button>
+    </div>
+  );
 }
