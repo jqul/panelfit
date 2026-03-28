@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, Camera, FileText, BarChart2,
-  Dumbbell, MessageSquare, Settings, ClipboardList, StickyNote, TrendingUp
+  Dumbbell, MessageSquare, Settings, ClipboardList, StickyNote, TrendingUp, Eye
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { toast } from '../shared/Toast'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
+import { TrainingPlanView } from '../client/TrainingPlanView'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
 type Tab = 'plan' | 'dieta' | 'vista' | 'progreso' | 'fotos' | 'entrenos' | 'notas' | 'config'
@@ -22,7 +23,7 @@ interface Props {
 const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
   { id: 'plan',     icon: Dumbbell,       label: 'Plan' },
   { id: 'dieta',    icon: FileText,       label: 'Dieta' },
-  { id: 'vista',    icon: BarChart2,      label: 'Vista' },
+  { id: 'vista',    icon: Eye,            label: 'Vista cliente' },
   { id: 'progreso', icon: TrendingUp,     label: 'Progreso' },
   { id: 'fotos',    icon: Camera,         label: 'Fotos' },
   { id: 'entrenos', icon: ClipboardList,  label: 'Entrenos' },
@@ -221,8 +222,30 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                 {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
                 {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
 
-                {/* Placeholders para el resto */}
-                {['dieta', 'vista', 'progreso', 'fotos', 'entrenos'].includes(activeTab) && (
+                {/* Vista previa — el entrenador ve exactamente lo que verá el cliente */}
+                {activeTab === 'vista' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+                      <Eye className="w-5 h-5 text-accent flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-accent">Modo vista cliente</p>
+                        <p className="text-xs text-muted mt-0.5">Esto es exactamente lo que ve el cliente en su enlace. Los registros no se guardan aquí.</p>
+                      </div>
+                    </div>
+                    {plan && plan.weeks.length > 0 ? (
+                      <TrainingPlanView plan={plan} logs={{}} onLogsChange={() => {}} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-24 text-center text-muted">
+                        <Eye className="w-14 h-14 mb-4 opacity-20" />
+                        <h3 className="font-serif text-xl font-bold mb-1">Sin plan creado</h3>
+                        <p className="text-sm">Crea el plan en la pestaña "Plan" para ver la vista del cliente.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Placeholders para secciones pendientes */}
+                {['dieta', 'progreso', 'fotos', 'entrenos'].includes(activeTab) && (
                   <PlaceholderTab tab={activeTab} />
                 )}
               </>
