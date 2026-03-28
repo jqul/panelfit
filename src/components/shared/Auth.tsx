@@ -4,12 +4,10 @@ import { Button } from '../shared/Button'
 import { Eye, EyeOff } from 'lucide-react'
 
 interface AuthProps {
-  // He incluido ambas para que no falle sea cual sea la que use tu App.tsx
-  onAuth?: () => void;
-  onAuthSuccess?: (user: any) => void;
+  onAuth: () => void
 }
 
-export function Auth({ onAuth, onAuthSuccess }: AuthProps) {
+export function Auth({ onAuth }: AuthProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,60 +16,28 @@ export function Auth({ onAuth, onAuthSuccess }: AuthProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Función unificada para avisar al padre que el login fue exitoso
-  const notifySuccess = (user?: any) => {
-    if (onAuth) onAuth();
-    if (onAuthSuccess) onAuthSuccess(user);
-  }
-
   const handleLogin = async () => {
-    setError(''); 
-    setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      setError('Email o contraseña incorrectos');
-    } else {
-      notifySuccess(data.user);
-    }
-    setLoading(false);
+    setError(''); setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setError('Email o contraseña incorrectos')
+    else onAuth()
+    setLoading(false)
   }
 
   const handleRegister = async () => {
     if (!name.trim()) { setError('Introduce tu nombre'); return }
-    setError(''); 
-    setLoading(true);
-    
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
+    setError(''); setLoading(true)
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) { setError(error.message); setLoading(false); return }
     if (data.user) {
       await supabase.from('entrenadores').upsert({
-        id: data.user.id, 
-        nombre: name, 
-        email, 
-        activo: false
-      }, { onConflict: 'id' });
+        id: data.user.id, nombre: name, email, activo: false
+      }, { onConflict: 'id' })
     }
-
-    setLoading(false);
-    setMode('login');
-    alert('Cuenta creada. En breve recibirás confirmación de acceso.');
-  }
-
-  const handleGoogleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({ 
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin
-      }
-    });
-    if (error) setError(error.message);
+    setError('')
+    setLoading(false)
+    setMode('login')
+    alert('Cuenta creada. En breve recibirás confirmación de acceso.')
   }
 
   return (
@@ -110,6 +76,7 @@ export function Auth({ onAuth, onAuthSuccess }: AuthProps) {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 placeholder="tu@email.com"
                 className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-sm"
               />
@@ -121,6 +88,7 @@ export function Auth({ onAuth, onAuthSuccess }: AuthProps) {
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleRegister())}
                   placeholder="••••••••"
                   className="w-full px-4 py-3 pr-10 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all text-sm"
                 />
@@ -144,19 +112,6 @@ export function Auth({ onAuth, onAuthSuccess }: AuthProps) {
             disabled={loading}
           >
             {loading ? 'Cargando...' : mode === 'login' ? 'Entrar →' : 'Crear cuenta →'}
-          </Button>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted">O continuar con</span></div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleLogin}
-          >
-            Google
           </Button>
 
           <p className="text-center text-sm text-muted mt-4">

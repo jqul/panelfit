@@ -1,105 +1,93 @@
-import { useState, useEffect } from 'react';
-import { Clock } from 'lucide-react';
-import { supabase } from './lib/supabase'; 
-import { Auth } from './components/shared/Auth';
-import { TrainerDashboard } from './components/trainer/TrainerDashboard'; 
-import { ClientPanel } from './components/trainer/ClientPanel'; 
-import { UserProfile, ClientData } from './types'; 
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import { UserProfile, ClientData } from './types'
+import { Auth } from './components/shared/Auth'
+import { TrainerDashboard } from './components/trainer/TrainerDashboard'
+import { ClientPanel } from './components/trainer/ClientPanel'
+import { ClientView } from './components/client/ClientView'
+import { useToast, ToastContainer } from './components/shared/Toast'
 
-// Si estos archivos no existen en tu GitHub, estas líneas darán error.
-// He creado versiones temporales abajo para que el build pase.
-const Layout = ({ children }: any) => <div className="min-h-screen bg-bg">{children}</div>;
-const LandingPage = ({ onEnterApp }: any) => <div className="p-20 text-center"><button onClick={onEnterApp}>Entrar</button></div>;
+type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
 
 export default function App() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showApp, setShowApp] = useState(false);
+  const [view, setView] = useState<AppView>('loading')
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
+  const [allClients, setAllClients] = useState<ClientData[]>([])
+  const [clientToken, setClientToken] = useState<string | null>(null)
+  const { toasts } = useToast()
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('c');
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('c')
+    if (token) { setClientToken(token); setView('client-token'); return }
 
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) setUser(session.user);
-      } finally {
-        setLoading(false);
-      }
-    };
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
+      else setView('auth')
+    })
 
-    if (token) {
-      const fetchClientByToken = async () => {
-        const { data } = await supabase.from('clientes').select('*').eq('token', token).single();
-        if (data) setSelectedClient(data as ClientData);
-        else checkUser();
-        setLoading(false);
-      };
-      fetchClientByToken();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) loadProfile(session.user.id, session.user.email || '')
+      else { setView('auth'); setUserProfile(null) }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const loadProfile = async (uid: string, email: string) => {
+    if (email !== 'javi_ql@hotmail.com') {
+      const { data } = await supabase.from('entrenadores').select('nombre,activo').eq('id', uid).single()
+      if (!data || data.activo === false) { await supabase.auth.signOut(); setView('auth'); return }
+      setUserProfile({ uid, email, displayName: data.nombre || email.split('@')[0], role: 'trainer', approved: true, createdAt: Date.now() })
     } else {
-      checkUser();
+      setUserProfile({ uid, email, displayName: 'Javi', role: 'super_admin', createdAt: Date.now() })
     }
+    setView('trainer')
+  }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setView('auth'); setUserProfile(null); setSelectedClient(null)
+  }
 
-    return () => subscription.unsubscribe();
-  }, []);
+  if (view === 'loading') return (
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+    </div>
+  )
 
-  useEffect(() => {
-    if (!user?.id) return;
-    const fetchProfile = async () => {
-      const { data } = await supabase.from('entrenadores').select('*').eq('uid', user.id).maybeSingle();
-      if (data) setProfile(data as UserProfile);
-      else {
-        setProfile({
-          uid: user.id,
-          email: user.email,
-          displayName: user.email?.split('@')[0] || 'Entrenador',
-          role: 'trainer',
-          approved: true,
-          createdAt: Date.now()
-        });
-      }
-    };
-    fetchProfile();
-  }, [user?.id]);
+  if (view === 'client-token' && clientToken) return (
+    <><ClientView token={clientToken} /><ToastContainer toasts={toasts} /></>
+  )
 
-  if (loading) return <div className="flex h-screen items-center justify-center">Cargando...</div>;
+  if (view === 'auth') return (
+    <><Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
+    })} /><ToastContainer toasts={toasts} /></>
+  )
 
-  if (selectedClient && !user) return <Layout><ClientPanel client={selectedClient} isTrainer={false} /></Layout>;
-
-  if (!showApp && !user) return <LandingPage onEnterApp={() => setShowApp(true)} />;
-
-  if (!user) return <Auth onAuthSuccess={(u: any) => setUser(u)} />;
-
-  if (!profile) return <div className="flex h-screen items-center justify-center">Sincronizando...</div>;
-
-  return (
-    <Layout>
+  if (view === 'trainer' && userProfile) return (
+    <>
       {selectedClient ? (
-        <ClientPanel 
-          client={selectedClient} 
-          isTrainer={true} 
-          onBack={() => setSelectedClient(null)} 
+        <ClientPanel
+          client={selectedClient}
+          userProfile={userProfile}
+          allClients={allClients}
+          onClose={() => setSelectedClient(null)}
         />
       ) : (
-        <TrainerDashboard 
-          userProfile={profile} 
-          onLogout={() => supabase.auth.signOut()} 
-          onSelectClient={(client: ClientData) => setSelectedClient(client)}
+        <TrainerDashboard
+          userProfile={userProfile}
+          onLogout={handleLogout}
+          onSelectClient={(client) => {
+            setSelectedClient(client)
+            setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
+          }}
         />
       )}
-    </Layout>
-  );
+      <ToastContainer toasts={toasts} />
+    </>
+  )
+
+  return null
 }
