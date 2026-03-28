@@ -1,3 +1,21 @@
+import { ClientData } from '../../types';
+
+interface ClientPanelProps {
+  client: ClientData;
+  isTrainer: boolean;
+  onBack?: () => void;
+}
+
+export function ClientPanel({ client, isTrainer, onBack }: ClientPanelProps) {
+  return (
+    <div className="p-6">
+      <button onClick={onBack}>Volver</button>
+      <h1>Panel de {client.name}</h1>
+      {isTrainer && <p>Modo Entrenador Activo</p>}
+      {/* ... resto de tu código ... */}
+    </div>
+  );
+}
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, Camera, FileText, BarChart2,
