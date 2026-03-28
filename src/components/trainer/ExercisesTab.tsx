@@ -150,7 +150,6 @@ function ExerciseForm({
           toast('Vídeo subido ✓', 'ok')
         }} trainerId={trainerId} />
       </div>
-      </div>
 
       {/* Acciones */}
       <div className="flex gap-3 pt-2">
