@@ -40,7 +40,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       .order('created_at', { ascending: false })
     setClients((data as ClientData[]) || [])
 
-    // Cargar quién entrenó hoy
     if (data && data.length) {
       const hoy = new Date().toISOString().split('T')[0]
       const ids = data.map((c: ClientData) => c.id)
@@ -75,7 +74,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       entrenador_id: userProfile.uid,
       nombre: newClient.name.trim(),
       apellido: newClient.surname.trim(),
-      nombre_completo: `${newClient.name} ${newClient.surname}`.trim(),
       token, activo: true,
     })
     if (error) toast('Error al crear cliente: ' + error.message, 'warn')
@@ -119,16 +117,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
-      {/* ── Sidebar ── */}
       <aside className="w-64 flex-shrink-0 bg-card border-r border-border flex flex-col">
-        {/* Logo */}
         <div className="px-6 py-5 border-b border-border">
           <h1 className="text-2xl font-serif font-bold">
             Panel<span className="text-accent italic">Fit</span>
           </h1>
         </div>
-
-        {/* User */}
         <div className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-accent text-sm font-bold">
@@ -140,17 +134,11 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           </div>
         </div>
-
-        {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {navItems.map(({ id, icon: Icon, label, badge }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
+            <button key={id} onClick={() => setActiveTab(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === id
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-bg-alt hover:text-ink'
+                activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
               }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -163,8 +151,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </button>
           ))}
         </nav>
-
-        {/* Footer */}
         <div className="p-4 border-t border-border space-y-2">
           <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={onLogout}>
             <LogOut className="w-4 h-4" /> Cerrar sesión
@@ -175,19 +161,15 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
         </div>
       </aside>
 
-      {/* ── Main ── */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-8 py-8">
 
-          {/* DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-fade-in">
               <div>
                 <h2 className="text-3xl font-serif font-bold">Resumen</h2>
                 <p className="text-muted text-sm mt-1">Bienvenido, {userProfile.displayName.split(' ')[0]}</p>
               </div>
-
-              {/* Stats */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { label: 'Clientes', value: clients.length, color: 'text-ink' },
@@ -201,8 +183,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   </div>
                 ))}
               </div>
-
-              {/* Gráfica + recientes */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
                   <div className="flex items-center justify-between mb-6">
@@ -227,7 +207,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                     </ResponsiveContainer>
                   </div>
                 </div>
-
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                     <h3 className="font-serif font-bold">Altas recientes</h3>
@@ -235,9 +214,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   </div>
                   <div className="divide-y divide-border">
                     {clients.slice(0, 5).map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => onSelectClient(c)}
+                      <button key={c.id} onClick={() => onSelectClient(c)}
                         className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group"
                       >
                         <div className="relative w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
@@ -253,9 +230,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                         <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     ))}
-                    {!clients.length && (
-                      <p className="px-5 py-8 text-sm text-muted text-center">Sin clientes aún</p>
-                    )}
+                    {!clients.length && <p className="px-5 py-8 text-sm text-muted text-center">Sin clientes aún</p>}
                   </div>
                   {clients.length > 0 && (
                     <div className="px-5 py-3 bg-bg-alt/50 border-t border-border">
@@ -269,7 +244,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           )}
 
-          {/* CLIENTES */}
           {activeTab === 'clients' && (
             <div className="animate-fade-in">
               <div className="flex items-center justify-between mb-6">
@@ -281,27 +255,21 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   <UserPlus className="w-4 h-4" /> Nuevo cliente
                 </Button>
               </div>
-
               <div className="relative mb-5">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Buscar cliente..."
-                  value={search}
+                <input type="text" placeholder="Buscar cliente..." value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
                 />
               </div>
-
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3].map(i => <div key={i} className="h-36 bg-card border border-border rounded-xl animate-pulse" />)}
+                  {[1,2,3].map(i => <div key={i} className="h-36 bg-card border border-border rounded-xl animate-pulse" />)}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredClients.map(client => (
-                    <div
-                      key={client.id}
+                    <div key={client.id}
                       className="bg-card border border-border rounded-xl p-5 hover:border-accent hover:shadow-sm transition-all cursor-pointer group"
                       onClick={() => onSelectClient(client)}
                     >
@@ -309,7 +277,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                         <div className="relative w-11 h-11 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors flex-shrink-0">
                           {client.name?.[0]?.toUpperCase()}
                           {todayActive[client.id] && (
-                            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" title="Entrenó hoy" />
+                            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" />
                           )}
                         </div>
                         <div className="min-w-0">
@@ -321,7 +289,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                           </p>
                         </div>
                       </div>
-
                       {deletingId === client.id ? (
                         <div className="flex gap-2">
                           <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
@@ -332,8 +299,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                           <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
                           <Button variant="outline" size="sm" className="flex-1" onClick={e => {
                             e.stopPropagation()
-                            const url = `${window.location.origin}?c=${client.token}`
-                            navigator.clipboard.writeText(url)
+                            navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}`)
                             toast('Enlace copiado ✓', 'ok')
                           }}>🔗 Enlace</Button>
                           <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
@@ -343,9 +309,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                       )}
                     </div>
                   ))}
-
-                  <button
-                    onClick={() => setShowAdd(true)}
+                  <button onClick={() => setShowAdd(true)}
                     className="border-2 border-dashed border-border rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
                   >
                     <UserPlus className="w-6 h-6" />
@@ -378,19 +342,14 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               </div>
             </div>
           )}
-
         </div>
       </main>
 
-      {/* Modal nuevo cliente */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-            <input
-              type="text"
-              autoFocus
-              value={newClient.name}
+            <input type="text" autoFocus value={newClient.name}
               onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Nombre"
@@ -399,9 +358,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-            <input
-              type="text"
-              value={newClient.surname}
+            <input type="text" value={newClient.surname}
               onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Apellido"
@@ -420,11 +377,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   )
 }
 
-
-
-// ═══════════════════════════════════════════════════════════════════
-// SECCIÓN: BIBLIOTECA DE EJERCICIOS
-// ═══════════════════════════════════════════════════════════════════
+// ── EJERCICIOS ────────────────────────────────────────────
 function ExercisesTab() {
   const [exercises, setExercises] = useState<string[]>(DEFAULT_EXERCISES)
   const [search, setSearch] = useState('')
@@ -434,16 +387,13 @@ function ExercisesTab() {
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
 
-  const filtered = exercises
-    .map((name, idx) => ({ name, idx }))
+  const filtered = exercises.map((name, idx) => ({ name, idx }))
     .filter(({ name }) => name.toLowerCase().includes(search.toLowerCase()))
 
   const handleAdd = () => {
     const t = newName.trim()
     if (!t) return
-    if (exercises.some(e => e.toLowerCase() === t.toLowerCase())) {
-      toast('Ese ejercicio ya existe', 'warn'); return
-    }
+    if (exercises.some(e => e.toLowerCase() === t.toLowerCase())) { toast('Ese ejercicio ya existe', 'warn'); return }
     setExercises(prev => [...prev, t].sort())
     setNewName(''); setShowAdd(false)
     toast('Ejercicio añadido ✓', 'ok')
@@ -451,17 +401,14 @@ function ExercisesTab() {
 
   const confirmEdit = () => {
     if (editingIdx === null) return
-    const t = editVal.trim()
-    if (!t) return
+    const t = editVal.trim(); if (!t) return
     setExercises(prev => { const u = [...prev]; u[editingIdx] = t; return u.sort() })
-    setEditingIdx(null)
-    toast('Guardado ✓', 'ok')
+    setEditingIdx(null); toast('Guardado ✓', 'ok')
   }
 
   const handleDelete = (idx: number) => {
     setExercises(prev => prev.filter((_, i) => i !== idx))
-    setDeletingIdx(null)
-    toast('Eliminado', 'ok')
+    setDeletingIdx(null); toast('Eliminado', 'ok')
   }
 
   return (
@@ -471,66 +418,43 @@ function ExercisesTab() {
           <h2 className="text-3xl font-serif font-bold">Biblioteca de ejercicios</h2>
           <p className="text-muted text-sm mt-1">{exercises.length} ejercicios disponibles</p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-        >
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
           <Plus className="w-4 h-4" /> Nuevo ejercicio
         </button>
       </div>
-
-      {/* Panel añadir — inline, sin Modal */}
       {showAdd && (
         <div className="bg-card border-2 border-accent/30 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-serif font-bold">Nuevo ejercicio</h3>
-            <button onClick={() => { setShowAdd(false); setNewName('') }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <button onClick={() => { setShowAdd(false); setNewName('') }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors"><X className="w-4 h-4" /></button>
           </div>
-          <input
-            autoFocus
-            type="text"
-            placeholder="Ej: Press inclinado con mancuernas"
+          <input autoFocus type="text" placeholder="Ej: Press inclinado con mancuernas"
             className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
+            value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowAdd(false); setNewName('') } }}
           />
           <div className="flex gap-3">
             <button onClick={() => { setShowAdd(false); setNewName('') }} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors">Cancelar</button>
-            <button onClick={handleAdd} disabled={!newName.trim()} className="flex-1 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity">
-              Añadir
-            </button>
+            <button onClick={handleAdd} disabled={!newName.trim()} className="flex-1 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity">Añadir</button>
           </div>
         </div>
       )}
-
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
-          type="text"
-          placeholder="Buscar ejercicio..."
+        <input type="text" placeholder="Buscar ejercicio..."
           className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          value={search} onChange={e => setSearch(e.target.value)}
         />
       </div>
-
       <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
-        {filtered.length === 0 && (
-          <p className="p-8 text-center text-muted text-sm">Sin resultados para "{search}"</p>
-        )}
+        {filtered.length === 0 && <p className="p-8 text-center text-muted text-sm">Sin resultados para "{search}"</p>}
         {filtered.map(({ name, idx }) => (
           <div key={idx} className="flex items-center gap-3 px-4 py-3 hover:bg-bg-alt/40 transition-colors group">
             <div className="w-8 h-8 rounded-lg bg-bg flex items-center justify-center text-muted flex-shrink-0">
               <Dumbbell className="w-4 h-4" />
             </div>
             {editingIdx === idx ? (
-              <input
-                autoFocus
-                value={editVal}
-                onChange={e => setEditVal(e.target.value)}
+              <input autoFocus value={editVal} onChange={e => setEditVal(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') confirmEdit(); if (e.key === 'Escape') setEditingIdx(null) }}
                 className="flex-1 bg-bg border border-accent/50 rounded-lg px-3 py-1.5 text-sm font-medium outline-none"
               />
@@ -540,12 +464,8 @@ function ExercisesTab() {
             <div className="flex items-center gap-1 flex-shrink-0">
               {editingIdx === idx ? (
                 <>
-                  <button onClick={confirmEdit} className="p-1.5 rounded-lg bg-ok/10 text-ok hover:bg-ok/20 transition-colors" title="Confirmar">
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setEditingIdx(null)} className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors" title="Cancelar">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <button onClick={confirmEdit} className="p-1.5 rounded-lg bg-ok/10 text-ok hover:bg-ok/20 transition-colors"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setEditingIdx(null)} className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors"><X className="w-4 h-4" /></button>
                 </>
               ) : deletingIdx === idx ? (
                 <>
@@ -554,20 +474,8 @@ function ExercisesTab() {
                 </>
               ) : (
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => { setEditingIdx(idx); setEditVal(exercises[idx]) }}
-                    className="p-1.5 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setDeletingIdx(idx)}
-                    className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={() => { setEditingIdx(idx); setEditVal(exercises[idx]) }} className="p-1.5 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setDeletingIdx(idx)} className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               )}
             </div>
@@ -578,11 +486,8 @@ function ExercisesTab() {
   )
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// SECCIÓN: PLANTILLAS
-// ═══════════════════════════════════════════════════════════════════
+// ── PLANTILLAS ────────────────────────────────────────────
 interface Template { id: string; name: string; type: string; weeks: number; description: string }
-
 const INITIAL_TEMPLATES: Template[] = [
   { id: '1', name: 'Hipertrofia — Principiante', type: 'hipertrofia', weeks: 4, description: 'Programa base de 4 días para alumnos con menos de 1 año de experiencia.' },
   { id: '2', name: 'Fuerza — Intermedio', type: 'fuerza', weeks: 8, description: 'Bloques de fuerza con progresión lineal. Sentadilla, banca y peso muerto.' },
@@ -598,28 +503,16 @@ function TemplatesTab() {
 
   const filtered = templates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
 
-  const openNew = () => {
-    setEditing({ id: '', name: '', type: 'hipertrofia', weeks: 4, description: '' })
-    setIsNew(true)
-  }
+  const openNew = () => { setEditing({ id: '', name: '', type: 'hipertrofia', weeks: 4, description: '' }); setIsNew(true) }
 
   const handleSave = () => {
     if (!editing?.name.trim()) return
-    if (isNew) {
-      setTemplates(prev => [...prev, { ...editing, id: Date.now().toString() }])
-      toast('Plantilla creada ✓', 'ok')
-    } else {
-      setTemplates(prev => prev.map(t => t.id === editing!.id ? editing! : t))
-      toast('Guardado ✓', 'ok')
-    }
+    if (isNew) { setTemplates(prev => [...prev, { ...editing, id: Date.now().toString() }]); toast('Plantilla creada ✓', 'ok') }
+    else { setTemplates(prev => prev.map(t => t.id === editing!.id ? editing! : t)); toast('Guardado ✓', 'ok') }
     setEditing(null); setIsNew(false)
   }
 
-  const handleDelete = (id: string) => {
-    setTemplates(prev => prev.filter(t => t.id !== id))
-    setDeletingId(null)
-    toast('Eliminada', 'ok')
-  }
+  const handleDelete = (id: string) => { setTemplates(prev => prev.filter(t => t.id !== id)); setDeletingId(null); toast('Eliminada', 'ok') }
 
   return (
     <div className="space-y-5">
@@ -628,135 +521,76 @@ function TemplatesTab() {
           <h2 className="text-3xl font-serif font-bold">Plantillas</h2>
           <p className="text-muted text-sm mt-1">Crea y reutiliza tus programas estándar</p>
         </div>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-        >
+        <button onClick={openNew} className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
           <Plus className="w-4 h-4" /> Nueva plantilla
         </button>
       </div>
-
-      {/* Formulario inline — sin Modal, siempre visible cuando editing != null */}
       {editing && (
         <div className="bg-card border-2 border-accent/30 rounded-2xl p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="font-serif font-bold text-lg">{isNew ? 'Nueva plantilla' : 'Editar plantilla'}</h3>
-            <button onClick={() => { setEditing(null); setIsNew(false) }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <button onClick={() => { setEditing(null); setIsNew(false) }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors"><X className="w-4 h-4" /></button>
           </div>
-
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-            <input
-              autoFocus
-              type="text"
-              placeholder="Ej: Fuerza Intermedio 8 semanas"
+            <input autoFocus type="text" placeholder="Ej: Fuerza Intermedio 8 semanas"
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              value={editing.name}
-              onChange={e => setEditing(p => p ? { ...p, name: e.target.value } : p)}
+              value={editing.name} onChange={e => setEditing(p => p ? { ...p, name: e.target.value } : p)}
             />
           </div>
-
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo de entrenamiento</label>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {TRAINING_TYPES.map(tt => (
-                <button
-                  key={tt.value}
-                  type="button"
-                  onClick={() => setEditing(p => p ? { ...p, type: tt.value } : p)}
-                  className={`px-3 py-2 rounded-lg border text-sm transition-all ${
-                    editing.type === tt.value
-                      ? 'border-ink bg-ink text-white'
-                      : 'border-border bg-bg text-muted hover:border-muted'
-                  }`}
-                >
-                  {tt.label}
-                </button>
+                <button key={tt.value} type="button" onClick={() => setEditing(p => p ? { ...p, type: tt.value } : p)}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-all ${editing.type === tt.value ? 'border-ink bg-ink text-white' : 'border-border bg-bg text-muted hover:border-muted'}`}
+                >{tt.label}</button>
               ))}
             </div>
           </div>
-
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Duración (semanas)</label>
-            <input
-              type="number" min={1} max={52}
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Semanas</label>
+            <input type="number" min={1} max={52}
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-              value={editing.weeks}
-              onChange={e => setEditing(p => p ? { ...p, weeks: parseInt(e.target.value) || 1 } : p)}
+              value={editing.weeks} onChange={e => setEditing(p => p ? { ...p, weeks: parseInt(e.target.value) || 1 } : p)}
             />
           </div>
-
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
-            <textarea
-              rows={3}
-              placeholder="Breve descripción del programa..."
+            <textarea rows={3} placeholder="Breve descripción..."
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-              value={editing.description}
-              onChange={e => setEditing(p => p ? { ...p, description: e.target.value } : p)}
+              value={editing.description} onChange={e => setEditing(p => p ? { ...p, description: e.target.value } : p)}
             />
           </div>
-
           <div className="flex gap-3 pt-2">
-            <button
-              onClick={() => { setEditing(null); setIsNew(false) }}
-              className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!editing.name.trim()}
+            <button onClick={() => { setEditing(null); setIsNew(false) }} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors">Cancelar</button>
+            <button onClick={handleSave} disabled={!editing.name.trim()}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity"
-            >
-              <Save className="w-4 h-4" />
-              {isNew ? 'Crear plantilla' : 'Guardar cambios'}
-            </button>
+            ><Save className="w-4 h-4" />{isNew ? 'Crear' : 'Guardar'}</button>
           </div>
         </div>
       )}
-
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
-          type="text"
-          placeholder="Buscar plantilla..."
+        <input type="text" placeholder="Buscar plantilla..."
           className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          value={search} onChange={e => setSearch(e.target.value)}
         />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filtered.map(t => (
           <div key={t.id} className="p-5 bg-card border border-border rounded-2xl hover:border-accent/40 transition-all">
             <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-muted flex-shrink-0">
-                <ClipboardList className="w-5 h-5" />
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-muted flex-shrink-0"><ClipboardList className="w-5 h-5" /></div>
               <div className="flex gap-1">
-                <button
-                  onClick={() => { setEditing({ ...t }); setIsNew(false) }}
-                  className="p-2 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                  title="Editar"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
+                <button onClick={() => { setEditing({ ...t }); setIsNew(false) }} className="p-2 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 className="w-4 h-4" /></button>
                 {deletingId === t.id ? (
                   <>
                     <button onClick={() => handleDelete(t.id)} className="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-bold uppercase">Borrar</button>
                     <button onClick={() => setDeletingId(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold uppercase text-muted ml-1">No</button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setDeletingId(t.id)}
-                    className="p-2 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => setDeletingId(t.id)} className="p-2 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></button>
                 )}
               </div>
             </div>
@@ -766,18 +600,12 @@ function TemplatesTab() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted bg-bg px-2 py-1 rounded border border-border">
                 {TRAINING_TYPES.find(x => x.value === t.type)?.label || t.type}
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted bg-bg px-2 py-1 rounded border border-border">
-                {t.weeks} semanas
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted bg-bg px-2 py-1 rounded border border-border">{t.weeks} semanas</span>
             </div>
           </div>
         ))}
-
         {!editing && (
-          <button
-            onClick={openNew}
-            className="p-5 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
-          >
+          <button onClick={openNew} className="p-5 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]">
             <Plus className="w-6 h-6" />
             <span className="text-sm font-medium">Nueva plantilla</span>
           </button>
