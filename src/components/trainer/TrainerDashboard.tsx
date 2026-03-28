@@ -40,7 +40,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
-      .eq('entrenador_id', userProfile.uid)
+      .filter('trainerId', 'eq', userProfile.uid)
       .order('created_at', { ascending: false })
 
     if (error) { console.error('Error cargando clientes:', error); setLoading(false); return }
@@ -70,7 +70,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const channel = supabase
       .channel('clientes-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `entrenador_id=eq.${userProfile.uid}` }, fetchClients)
+        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [userProfile.uid])
@@ -80,7 +80,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
     const { error } = await supabase.from('clientes').insert({
-      entrenador_id: userProfile.uid,
+      trainerId: userProfile.uid,
       nombre: newClient.name.trim(),
       apellido: newClient.surname.trim(),
       token,
