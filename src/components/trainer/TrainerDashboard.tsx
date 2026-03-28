@@ -38,7 +38,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const { data } = await supabase
       .from('clientes')
       .select('*')
-      .eq('entrenador_id', userProfile.uid)
+      .eq('trainerId', userProfile.uid)
       .order('created_at', { ascending: false })
     setClients((data as ClientData[]) || [])
 
@@ -46,12 +46,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       const hoy = new Date().toISOString().split('T')[0]
       const ids = data.map((c: ClientData) => c.id)
       const { data: regs } = await supabase
-        .from('registros').select('cliente_id,datos').in('cliente_id', ids)
+        .from('registros').select('clientId,datos').in('clientId', ids)
       const active: Record<string, boolean> = {}
       ;(regs || []).forEach((r: any) => {
         const logs = r.datos?.logs || {}
         const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.fechaDone === hoy)
-        if (entrenóHoy) active[r.cliente_id] = true
+        if (entrenóHoy) active[r.clientId] = true
       })
       setTodayActive(active)
     }
@@ -63,7 +63,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const channel = supabase
       .channel('clientes-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `entrenador_id=eq.${userProfile.uid}` }, fetchClients)
+        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [userProfile.uid])
@@ -73,10 +73,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
     const { error } = await supabase.from('clientes').insert({
-      entrenador_id: userProfile.uid,
-      nombre: newClient.name.trim(),
-      apellido: newClient.surname.trim(),
-      token, activo: true,
+      trainerId: userProfile.uid,
+      name: newClient.name.trim(),
+      surname: newClient.surname.trim(),
+      token,
+      weight: 0, fatPercentage: 0, muscleMass: 0, totalLifted: 0,
+      planDescription: 'Nuevo plan',
+      createdAt: Date.now(),
     })
     if (error) toast('Error al crear cliente: ' + error.message, 'warn')
     else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '' }) }
