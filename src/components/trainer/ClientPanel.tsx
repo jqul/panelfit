@@ -15,19 +15,24 @@ type Tab = 'plan' | 'dieta' | 'vista' | 'progreso' | 'fotos' | 'entrenos' | 'not
 
 interface Props {
   client: ClientData
-  userProfile: UserProfile
-  allClients: ClientData[]
-  onClose: () => void
-  isTrainer?: boolean
+  isTrainer: boolean
+  // Estas son opcionales para que no rompa cuando es modo cliente
+  userProfile?: UserProfile 
+  allClients?: ClientData[]
+  onClose?: () => void
+  onBack?: () => void 
 }
 
-export function ClientPanel({ client, userProfile, allClients, onClose }: Props) {
+export function ClientPanel({ client, isTrainer, userProfile, allClients, onClose, onBack }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('plan')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+
+  // Usamos cualquiera de las dos funciones de cierre que venga
+  const handleExit = onClose || onBack || (() => window.location.reload());
 
   useEffect(() => {
     loadPlan()
@@ -57,17 +62,16 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   }
 
   const handlePlanChange = (newPlan: TrainingPlan) => {
+    if (!isTrainer) return // Un cliente no puede editar su plan
     setPlan(newPlan)
     clearTimeout(saveTimer.current)
     setSaveMsg('Escribiendo...')
-    saveTimer.current = setTimeout(() => {
-      savePlan(newPlan)
-    }, 1500)
+    saveTimer.current = setTimeout(() => savePlan(newPlan), 1500)
   }
 
   const savePlan = async (planToSave?: TrainingPlan) => {
     const p = planToSave || plan
-    if (!p) return
+    if (!p || !isTrainer) return
     setSaving(true)
     setSaveMsg('Guardando...')
     const { error } = await supabase
@@ -79,7 +83,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
       }, { onConflict: 'cliente_id' })
     
     if (error) {
-      toast('Error al guardar: ' + error.message, 'warn')
+      toast('Error al guardar', 'warn')
       setSaveMsg('Error')
     } else {
       setSaveMsg('✓ Guardado')
@@ -88,71 +92,79 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setSaving(false)
   }
 
-  const otherClients = allClients.filter(c => c.id !== client.id)
-  const library = useExerciseLibrary(userProfile.uid)
+  const otherClients = allClients?.filter(c => c.id !== client.id) || []
+  const library = useExerciseLibrary(userProfile?.uid || '')
 
   const TABS: { id: Tab; icon: any; label: string }[] = [
-    { id: 'plan', icon: Dumbbell, label: 'Plan' },
-    { id: 'vista', icon: Eye, label: 'Vista' },
-    { id: 'notas', icon: StickyNote, label: 'Notas' },
-    { id: 'config', icon: Settings, label: 'Config' },
+    { id: 'plan', icon: Dumbbell, label: isTrainer ? 'Plan' : 'Mi Plan' },
+    ...(isTrainer ? [{ id: 'vista' as Tab, icon: Eye, label: 'Vista' }] : []),
+    ...(isTrainer ? [{ id: 'notas' as Tab, icon: StickyNote, label: 'Notas' }] : []),
+    { id: 'config', icon: Settings, label: 'Ajustes' },
   ]
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
       <header className="border-b h-14 flex items-center px-4 justify-between bg-white">
         <div className="flex items-center gap-4">
-          <button onClick={onClose}><ChevronLeft /></button>
+          <button onClick={handleExit} className="p-2"><ChevronLeft size={20}/></button>
           <span className="font-bold">{client.name}</span>
         </div>
+        
         <nav className="flex gap-4">
           {TABS.map(t => (
             <button 
               key={t.id} 
               onClick={() => setActiveTab(t.id)}
-              className={activeTab === t.id ? 'text-blue-600' : 'text-gray-500'}
+              className={`text-sm font-medium ${activeTab === t.id ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
             >
               {t.label}
             </button>
           ))}
         </nav>
+
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{saveMsg}</span>
-          <Button onClick={() => savePlan()} disabled={saving} size="sm">Guardar</Button>
-          <button onClick={onClose}><X /></button>
+          {isTrainer && (
+            <>
+              <span className="text-xs text-gray-400">{saveMsg}</span>
+              <Button onClick={() => savePlan()} disabled={saving} size="sm">Guardar</Button>
+            </>
+          )}
+          <button onClick={handleExit} className="p-2"><X size={20}/></button>
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <main className="flex-1 overflow-y-auto p-4 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           {loading ? (
-            <p>Cargando...</p>
+            <div className="p-8 text-center text-gray-500">Cargando plan...</div>
           ) : (
             <>
-              {activeTab === 'plan' && plan && (
-                <TrainingPlanEditor 
-                  plan={plan} 
-                  onChange={handlePlanChange} 
-                  allClients={otherClients}
-                  library={library.exercises}
-                  onImportFromClient={async () => null}
-                />
+              {(activeTab === 'plan' || activeTab === 'vista') && plan && (
+                isTrainer && activeTab === 'plan' ? (
+                  <TrainingPlanEditor 
+                    plan={plan} 
+                    onChange={handlePlanChange} 
+                    allClients={otherClients}
+                    library={library.exercises}
+                    onImportFromClient={async () => null}
+                  />
+                ) : (
+                  <TrainingPlanView plan={plan} logs={{}} onLogsChange={() => {}} />
+                )
               )}
-              {activeTab === 'vista' && plan && (
-                <TrainingPlanView plan={plan} logs={{}} onLogsChange={() => {}} />
-              )}
-              {activeTab === 'notas' && plan && (
+              {activeTab === 'notas' && isTrainer && plan && (
                 <textarea 
-                  className="w-full h-64 p-4 border rounded-xl"
+                  className="w-full h-64 p-4 border rounded-xl bg-white shadow-sm"
                   value={plan.coachNotes || ''}
                   onChange={(e) => handlePlanChange({...plan, coachNotes: e.target.value})}
-                  placeholder="Notas privadas..."
+                  placeholder="Notas privadas sobre el cliente..."
                 />
               )}
               {activeTab === 'config' && (
-                <div className="p-4 bg-white border rounded-xl">
-                  <h3 className="font-bold mb-4">Configuración del cliente</h3>
-                  <p className="text-sm text-gray-500">ID: {client.id}</p>
+                <div className="p-6 bg-white border rounded-xl shadow-sm">
+                  <h3 className="font-bold mb-4">Configuración</h3>
+                  <p className="text-sm text-gray-600">Nombre: {client.name} {client.surname}</p>
+                  <p className="text-sm text-gray-600">Email: {client.email}</p>
                 </div>
               )}
             </>
