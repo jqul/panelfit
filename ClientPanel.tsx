@@ -43,14 +43,14 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   // Cargar plan
   useEffect(() => {
     loadPlan()
-  }, [client.id])
+  }, [clientId])
 
   const loadPlan = async () => {
     setLoading(true)
     const { data } = await supabase
       .from('planes')
       .select('datos')
-      .eq('cliente_id', client.id)
+      .eq('cliente_id', clientId)
       .single()
 
     if (data?.datos?.P) {
@@ -58,7 +58,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     } else {
       // Plan vacío por defecto
       setPlan({
-        clientId: client.id,
+        clientId: clientId,
         type: 'hipertrofia',
         restMain: 180,
         restAcc: 90,
@@ -86,7 +86,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setSaveMsg('Guardando...')
     const { error } = await supabase
       .from('planes')
-      .upsert({ cliente_id: client.id, datos: { P: p }, updated_at: new Date().toISOString() },
+      .upsert({ cliente_id: clientId, datos: { P: p }, updated_at: new Date().toISOString() },
                { onConflict: 'cliente_id' })
     if (error) {
       toast('Error al guardar: ' + error.message, 'warn')
