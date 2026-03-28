@@ -421,6 +421,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 }
 
 
+
 // ═══════════════════════════════════════════════════════════════════
 // SECCIÓN: BIBLIOTECA DE EJERCICIOS
 // ═══════════════════════════════════════════════════════════════════
@@ -464,23 +465,53 @@ function ExercisesTab() {
   }
 
   return (
-    <div className="animate-fade-in space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div>
           <h2 className="text-3xl font-serif font-bold">Biblioteca de ejercicios</h2>
           <p className="text-muted text-sm mt-1">{exercises.length} ejercicios disponibles</p>
         </div>
-        <Button className="gap-2" onClick={() => setShowAdd(true)}>
+        <button
+          onClick={() => setShowAdd(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+        >
           <Plus className="w-4 h-4" /> Nuevo ejercicio
-        </Button>
+        </button>
       </div>
+
+      {/* Panel añadir — inline, sin Modal */}
+      {showAdd && (
+        <div className="bg-card border-2 border-accent/30 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-serif font-bold">Nuevo ejercicio</h3>
+            <button onClick={() => { setShowAdd(false); setNewName('') }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <input
+            autoFocus
+            type="text"
+            placeholder="Ej: Press inclinado con mancuernas"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowAdd(false); setNewName('') } }}
+          />
+          <div className="flex gap-3">
+            <button onClick={() => { setShowAdd(false); setNewName('') }} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors">Cancelar</button>
+            <button onClick={handleAdd} disabled={!newName.trim()} className="flex-1 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity">
+              Añadir
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
         <input
           type="text"
           placeholder="Buscar ejercicio..."
-          className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+          className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -509,24 +540,32 @@ function ExercisesTab() {
             <div className="flex items-center gap-1 flex-shrink-0">
               {editingIdx === idx ? (
                 <>
-                  <button onClick={confirmEdit} className="p-1.5 rounded-lg bg-ok/10 text-ok hover:bg-ok/20 transition-colors">
+                  <button onClick={confirmEdit} className="p-1.5 rounded-lg bg-ok/10 text-ok hover:bg-ok/20 transition-colors" title="Confirmar">
                     <Check className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setEditingIdx(null)} className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors">
+                  <button onClick={() => setEditingIdx(null)} className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors" title="Cancelar">
                     <X className="w-4 h-4" />
                   </button>
                 </>
               ) : deletingIdx === idx ? (
                 <>
-                  <button onClick={() => handleDelete(idx)} className="px-2 py-1 bg-warn/10 text-warn border border-warn/20 rounded text-[10px] font-bold uppercase">Borrar</button>
+                  <button onClick={() => handleDelete(idx)} className="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-bold uppercase">Borrar</button>
                   <button onClick={() => setDeletingIdx(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold uppercase text-muted ml-1">No</button>
                 </>
               ) : (
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => { setEditingIdx(idx); setEditVal(exercises[idx]) }} className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors">
+                  <button
+                    onClick={() => { setEditingIdx(idx); setEditVal(exercises[idx]) }}
+                    className="p-1.5 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    title="Editar"
+                  >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => setDeletingIdx(idx)} className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
+                  <button
+                    onClick={() => setDeletingIdx(idx)}
+                    className="p-1.5 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Eliminar"
+                  >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -535,28 +574,6 @@ function ExercisesTab() {
           </div>
         ))}
       </div>
-
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewName('') }} title="Nuevo ejercicio">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre del ejercicio</label>
-            <input
-              autoFocus type="text"
-              placeholder="Ej: Press inclinado con mancuernas"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAdd() }}
-            />
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => { setShowAdd(false); setNewName('') }}>Cancelar</Button>
-            <Button className="flex-1 gap-2" onClick={handleAdd} disabled={!newName.trim()}>
-              <Save className="w-4 h-4" /> Añadir
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
@@ -605,16 +622,101 @@ function TemplatesTab() {
   }
 
   return (
-    <div className="animate-fade-in space-y-5">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div>
           <h2 className="text-3xl font-serif font-bold">Plantillas</h2>
           <p className="text-muted text-sm mt-1">Crea y reutiliza tus programas estándar</p>
         </div>
-        <Button className="gap-2" onClick={openNew}>
+        <button
+          onClick={openNew}
+          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+        >
           <Plus className="w-4 h-4" /> Nueva plantilla
-        </Button>
+        </button>
       </div>
+
+      {/* Formulario inline — sin Modal, siempre visible cuando editing != null */}
+      {editing && (
+        <div className="bg-card border-2 border-accent/30 rounded-2xl p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-serif font-bold text-lg">{isNew ? 'Nueva plantilla' : 'Editar plantilla'}</h3>
+            <button onClick={() => { setEditing(null); setIsNew(false) }} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Ej: Fuerza Intermedio 8 semanas"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              value={editing.name}
+              onChange={e => setEditing(p => p ? { ...p, name: e.target.value } : p)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo de entrenamiento</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {TRAINING_TYPES.map(tt => (
+                <button
+                  key={tt.value}
+                  type="button"
+                  onClick={() => setEditing(p => p ? { ...p, type: tt.value } : p)}
+                  className={`px-3 py-2 rounded-lg border text-sm transition-all ${
+                    editing.type === tt.value
+                      ? 'border-ink bg-ink text-white'
+                      : 'border-border bg-bg text-muted hover:border-muted'
+                  }`}
+                >
+                  {tt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Duración (semanas)</label>
+            <input
+              type="number" min={1} max={52}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              value={editing.weeks}
+              onChange={e => setEditing(p => p ? { ...p, weeks: parseInt(e.target.value) || 1 } : p)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
+            <textarea
+              rows={3}
+              placeholder="Breve descripción del programa..."
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+              value={editing.description}
+              onChange={e => setEditing(p => p ? { ...p, description: e.target.value } : p)}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => { setEditing(null); setIsNew(false) }}
+              className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!editing.name.trim()}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-opacity"
+            >
+              <Save className="w-4 h-4" />
+              {isNew ? 'Crear plantilla' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
@@ -637,18 +739,23 @@ function TemplatesTab() {
               <div className="flex gap-1">
                 <button
                   onClick={() => { setEditing({ ...t }); setIsNew(false) }}
-                  className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                  className="p-2 rounded-lg text-muted hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Editar"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
+                  <Edit2 className="w-4 h-4" />
                 </button>
                 {deletingId === t.id ? (
                   <>
-                    <button onClick={() => handleDelete(t.id)} className="px-2 py-1 bg-warn/10 text-warn border border-warn/20 rounded text-[10px] font-bold uppercase">Borrar</button>
+                    <button onClick={() => handleDelete(t.id)} className="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-[10px] font-bold uppercase">Borrar</button>
                     <button onClick={() => setDeletingId(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold uppercase text-muted ml-1">No</button>
                   </>
                 ) : (
-                  <button onClick={() => setDeletingId(t.id)} className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
+                  <button
+                    onClick={() => setDeletingId(t.id)}
+                    className="p-2 rounded-lg text-muted hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -665,70 +772,17 @@ function TemplatesTab() {
             </div>
           </div>
         ))}
-        <button
-          onClick={openNew}
-          className="p-5 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
-        >
-          <Plus className="w-6 h-6" />
-          <span className="text-sm font-medium">Nueva plantilla</span>
-        </button>
-      </div>
 
-      <Modal open={!!editing} onClose={() => { setEditing(null); setIsNew(false) }} title={isNew ? 'Nueva plantilla' : 'Editar plantilla'}>
-        {editing && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-              <input
-                autoFocus type="text"
-                placeholder="Ej: Fuerza Intermedio 8 semanas"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-                value={editing.name}
-                onChange={e => setEditing(p => p ? { ...p, name: e.target.value } : p)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo</label>
-              <div className="grid grid-cols-2 gap-2">
-                {TRAINING_TYPES.map(tt => (
-                  <button
-                    key={tt.value} type="button"
-                    onClick={() => setEditing(p => p ? { ...p, type: tt.value } : p)}
-                    className={`px-3 py-2 rounded-lg border text-sm transition-all ${editing.type === tt.value ? 'border-ink bg-ink text-white' : 'border-border bg-bg text-muted hover:border-muted'}`}
-                  >
-                    {tt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Semanas</label>
-              <input
-                type="number" min={1} max={52}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-                value={editing.weeks}
-                onChange={e => setEditing(p => p ? { ...p, weeks: parseInt(e.target.value) || 1 } : p)}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
-              <textarea
-                rows={3}
-                placeholder="Breve descripción del programa..."
-                className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-                value={editing.description}
-                onChange={e => setEditing(p => p ? { ...p, description: e.target.value } : p)}
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => { setEditing(null); setIsNew(false) }}>Cancelar</Button>
-              <Button className="flex-1 gap-2" onClick={handleSave} disabled={!editing.name.trim()}>
-                <Save className="w-4 h-4" /> {isNew ? 'Crear' : 'Guardar'}
-              </Button>
-            </div>
-          </div>
+        {!editing && (
+          <button
+            onClick={openNew}
+            className="p-5 border-2 border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="text-sm font-medium">Nueva plantilla</span>
+          </button>
         )}
-      </Modal>
+      </div>
     </div>
   )
 }
