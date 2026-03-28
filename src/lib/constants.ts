@@ -88,3 +88,8 @@ export const DEMO_PLAN: TrainingPlan = {
     },
   ],
 }
+
+export const EXERCISE_CATEGORIES = [
+  'Piernas', 'Pecho', 'Espalda', 'Hombros',
+  'Bíceps', 'Tríceps', 'Core', 'Cardio', 'General'
+]

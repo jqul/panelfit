@@ -4,7 +4,9 @@ import {
   LogOut, UserPlus, Search, Trash2, ArrowRight, TrendingUp, Calendar, ChevronRight,
   Plus, Edit2, Check, X, Save
 } from 'lucide-react'
-import { DEFAULT_EXERCISES, TRAINING_TYPES } from '../../lib/constants'
+import { TRAINING_TYPES } from '../../lib/constants'
+import { ExercisesTab } from './ExercisesTab'
+import { TemplatesTab } from './TemplatesTab'
 import { supabase } from '../../lib/supabase'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
@@ -320,8 +322,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab />}
-          {activeTab === 'templates' && <TemplatesTab />}
+          {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
+          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} />}
 
           {activeTab === 'settings' && (
             <div className="animate-fade-in">

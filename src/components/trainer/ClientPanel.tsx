@@ -8,6 +8,7 @@ import { ClientData, TrainingPlan, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { toast } from '../shared/Toast'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
+import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
 type Tab = 'plan' | 'dieta' | 'vista' | 'progreso' | 'fotos' | 'entrenos' | 'notas' | 'config'
 
@@ -106,6 +107,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   }
 
   const otherClients = allClients.filter(c => c.id !== client.id)
+  const library = useExerciseLibrary(userProfile.uid)
 
   return (
     <div className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-in">
@@ -211,6 +213,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                     plan={plan}
                     onChange={handlePlanChange}
                     allClients={otherClients}
+                    library={library.exercises}
                     onImportFromClient={importFromClient}
                   />
                 )}
