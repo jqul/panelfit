@@ -53,7 +53,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       const hoy = new Date().toISOString().split('T')[0]
       const ids = mapped.map(c => c.id)
       const { data: regs } = await supabase
-        .from('registros').select('cliente_id,datos').in('cliente_id', ids)
+        .from('registros').select('cliente_id,datos').in('id', ids)
       const active: Record<string, boolean> = {}
       ;(regs || []).forEach((r: any) => {
         const logs = r.datos?.logs || {}
