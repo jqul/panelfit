@@ -1,385 +1,653 @@
-import { useState, useEffect, useMemo } from 'react'
-import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, ArrowRight, TrendingUp, Calendar, ChevronRight,
-  Plus, Edit2, Check, X, Save
-} from 'lucide-react'
-import { TRAINING_TYPES } from '../../lib/constants'
-import { ExercisesTab } from './ExercisesTab'
-import { TemplatesTab } from './TemplatesTab'
-import { supabase } from '../../lib/supabase'
-import { ClientData, UserProfile } from '../../types'
-import { Button } from '../shared/Button'
-import { Modal } from '../shared/Modal'
-import { toast } from '../shared/Toast'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Users, BarChart3, ClipboardList, LogOut, Search, UserPlus, Settings as SettingsIcon, Dumbbell, LayoutDashboard, TrendingUp, Calendar, ArrowRight, Trash2 } from 'lucide-react';
+import { supabase } from '../supabase';
+import { Button } from './Button';
+import { ClientData, UserProfile } from '../types';
+import { Settings } from './Settings';
+import { ExerciseLibrary } from './ExerciseLibrary';
+import { ClientPanel } from './ClientPanel';
+import { TrainingTemplates } from './TrainingTemplates';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings'
-
-interface Props {
-  userProfile: UserProfile
-  onLogout: () => void
-  onSelectClient: (client: ClientData) => void
-}
-
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Props) {
-  const [clients, setClients] = useState<ClientData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [search, setSearch] = useState('')
-  const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '' })
-  const [adding, setAdding] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [todayActive, setTodayActive] = useState<Record<string, boolean>>({})
+export function TrainerDashboard({ 
+  userProfile, 
+  onLogout, 
+  onSelectClient 
+}: { 
+  userProfile: UserProfile, 
+  onLogout: () => void,
+  onSelectClient?: (client: ClientData) => void
+}) {
+  console.log('🏋️ PanelFit: TrainerDashboard render');
+  const [clients, setClients] = useState<ClientData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newClient, setNewClient] = useState({ name: '', surname: '' });
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings'>('dashboard');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchClients = async () => {
-    setLoading(true)
-    const { data } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('trainerId', userProfile.uid)
-      .order('created_at', { ascending: false })
-    setClients((data as ClientData[]) || [])
+    setLoading(true);
+    setError(null);
+    try {
+      if (userProfile.uid === 'demo-trainer' || userProfile.uid.startsWith('demo-')) {
+        setClients([
+          {
+            id: 'demo-client-1',
+            name: 'Juan',
+            surname: 'Pérez',
+            weight: 82,
+            fatPercentage: 18,
+            muscleMass: 35,
+            totalLifted: 450,
+            planDescription: 'Hipertrofia Avanzada',
+            trainerId: 'demo-trainer',
+            token: 'demo-token-1',
+            createdAt: Date.now() - 10000000
+          },
+          {
+            id: 'demo-client-2',
+            name: 'María',
+            surname: 'García',
+            weight: 65,
+            fatPercentage: 22,
+            muscleMass: 28,
+            totalLifted: 210,
+            planDescription: 'Pérdida de Grasa',
+            trainerId: 'demo-trainer',
+            token: 'demo-token-2',
+            createdAt: Date.now() - 5000000
+          }
+        ]);
+        setLoading(false);
+        return;
+      }
 
-    if (data && data.length) {
-      const hoy = new Date().toISOString().split('T')[0]
-      const ids = data.map((c: ClientData) => c.id)
-      const { data: regs } = await supabase
-        .from('registros').select('clientId,datos').in('clientId', ids)
-      const active: Record<string, boolean> = {}
-      ;(regs || []).forEach((r: any) => {
-        const logs = r.datos?.logs || {}
-        const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.fechaDone === hoy)
-        if (entrenóHoy) active[r.clientId] = true
-      })
-      setTodayActive(active)
+      const { data, error: fetchError } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('trainerId', userProfile.uid);
+      
+      if (fetchError) throw fetchError;
+
+      if (data) {
+        // Map database fields (nombre, apellido) to UI fields (name, surname)
+        const mappedClients = data.map((c: any) => ({
+          ...c,
+          name: c.nombre || c.name || 'Sin nombre',
+          surname: c.apellido || c.surname || ''
+        }));
+        setClients(mappedClients as ClientData[]);
+      }
+    } catch (err: any) {
+      console.error('❌ PanelFit: Error cargando clientes:', err);
+      setError(err.message || 'No se pudieron cargar tus clientes');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
-  }
+  };
+
+  const handleDeleteClient = async (clientId: string) => {
+    if (clientId.startsWith('demo-client-')) {
+      setClients(prev => prev.filter(c => c.id !== clientId));
+      setDeletingId(null);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', clientId);
+      
+      if (error) throw error;
+      
+      // Update local state immediately for better UX
+      setClients(prev => prev.filter(c => c.id !== clientId));
+      setDeletingId(null);
+    } catch (error: any) {
+      console.error('❌ PanelFit: Error eliminando cliente:', error);
+      alert('Error al eliminar el cliente: ' + error.message);
+    }
+  };
 
   useEffect(() => {
-    fetchClients()
-    const channel = supabase
-      .channel('clientes-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [userProfile.uid])
+    fetchClients();
 
-  const handleAdd = async () => {
-    if (!newClient.name.trim()) return
-    setAdding(true)
-    const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({
-      trainerId: userProfile.uid,
-      name: newClient.name.trim(),
-      surname: newClient.surname.trim(),
-      token,
-      weight: 0, fatPercentage: 0, muscleMass: 0, totalLifted: 0,
-      planDescription: 'Nuevo plan',
-      createdAt: Date.now(),
-    })
-    if (error) toast('Error al crear cliente: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '' }) }
-    setAdding(false)
-  }
+    if (userProfile.uid !== 'demo-trainer') {
+      // Real-time subscription
+      const channel = supabase
+        .channel('public:clientes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `trainerId=eq.${userProfile.uid}` }, payload => {
+          if (payload.eventType === 'INSERT') {
+            const newClient = payload.new as any;
+            const mappedClient: ClientData = {
+              ...newClient,
+              name: newClient.nombre || newClient.name || 'Sin nombre',
+              surname: newClient.apellido || newClient.surname || ''
+            };
+            setClients(prev => {
+              if (prev.some(c => c.id === mappedClient.id)) return prev;
+              return [...prev, mappedClient];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedClient = payload.new as any;
+            const mappedClient: ClientData = {
+              ...updatedClient,
+              name: updatedClient.nombre || updatedClient.name || 'Sin nombre',
+              surname: updatedClient.apellido || updatedClient.surname || ''
+            };
+            setClients(prev => prev.map(c => c.id === mappedClient.id ? mappedClient : c));
+          } else if (payload.eventType === 'DELETE') {
+            setClients(prev => prev.filter(c => c.id !== payload.old.id));
+          }
+        })
+        .subscribe();
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
-    setDeletingId(null)
-    toast('Cliente eliminado', 'ok')
-  }
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userProfile.uid]);
 
-  const filteredClients = clients.filter(c =>
+  const handleAddClient = async () => {
+    if (!newClient.name) return;
+
+    if (userProfile.uid === 'demo-trainer') {
+      const demoClient: ClientData = {
+        id: `demo-client-${Date.now()}`,
+        name: newClient.name,
+        surname: newClient.surname,
+        weight: 0,
+        fatPercentage: 0,
+        muscleMass: 0,
+        totalLifted: 0,
+        planDescription: 'Nuevo plan',
+        trainerId: userProfile.uid,
+        token: Math.random().toString(36).substring(2, 15),
+        createdAt: Date.now(),
+      };
+      setClients(prev => [...prev, demoClient]);
+      setShowAddModal(false);
+      setNewClient({ name: '', surname: '' });
+      return;
+    }
+
+    try {
+      const clientToInsert = {
+        nombre: newClient.name,
+        apellido: newClient.surname,
+        trainerId: userProfile.uid,
+        weight: 0,
+        fatPercentage: 0,
+        muscleMass: 0,
+        totalLifted: 0,
+        planDescription: 'Nuevo plan',
+        token: Math.random().toString(36).substring(2, 15),
+        createdAt: Date.now(),
+      };
+
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert([clientToInsert])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        const mappedClient: ClientData = {
+          ...data,
+          name: data.nombre || data.name,
+          surname: data.apellido || data.surname
+        };
+        // Update local state immediately
+        setClients(prev => [...prev, mappedClient]);
+      }
+      
+      setShowAddModal(false);
+      setNewClient({ name: '', surname: '' });
+    } catch (error: any) {
+      console.error('❌ PanelFit: Error creando cliente:', error);
+      alert('Error al crear el cliente: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
+  const filteredClients = clients.filter(c => 
     `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
-  )
+  );
 
   const chartData = useMemo(() => {
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(); d.setMonth(d.getMonth() - (5 - i))
-      return { month: d.toLocaleString('es-ES', { month: 'short' }), count: 0 }
-    })
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      return {
+        month: d.toLocaleString('es-ES', { month: 'short' }),
+        count: 0
+      };
+    }).reverse();
+
     clients.forEach(c => {
-      const m = new Date(c.createdAt).toLocaleString('es-ES', { month: 'short' })
-      const found = months.find(x => x.month === m)
-      if (found) found.count++
-    })
-    let total = 0
-    return months.map(m => { total += m.count; return { ...m, total } })
-  }, [clients])
+      const cDate = new Date(c.createdAt);
+      const monthStr = cDate.toLocaleString('es-ES', { month: 'short' });
+      const monthData = last6Months.find(m => m.month === monthStr);
+      if (monthData) monthData.count++;
+    });
 
-  const hoyCount = Object.values(todayActive).filter(Boolean).length
+    // Cumulative count
+    let total = 0;
+    return last6Months.map(m => {
+      total += m.count;
+      return { ...m, total };
+    });
+  }, [clients]);
 
-  const navItems = [
-    { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-    { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
-    { id: 'exercises' as Tab, icon: Dumbbell,        label: 'Ejercicios' },
-    { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
-    { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
-  ]
+  const recentClients = [...clients].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
-      <aside className="w-64 flex-shrink-0 bg-card border-r border-border flex flex-col">
-        <div className="px-6 py-5 border-b border-border">
-          <h1 className="text-2xl font-serif font-bold">
-            Panel<span className="text-accent italic">Fit</span>
+    <div className="flex flex-col lg:flex-row h-screen overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-full lg:w-64 bg-card border-r border-border flex flex-col">
+        <div className="p-6 border-b border-border">
+          <h1 className="text-2xl font-serif font-bold tracking-tight">
+            Panel<span className="text-accent">Fit</span>
           </h1>
         </div>
-        <div className="px-5 py-4 border-b border-border">
+        
+        <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-accent text-sm font-bold">
-              {userProfile.displayName?.[0]?.toUpperCase() || '?'}
+            <div className="w-10 h-10 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-accent overflow-hidden">
+              {userProfile.photoURL ? (
+                <img src={userProfile.photoURL} alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                userProfile.displayName[0]
+              )}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-              <p className="text-[11px] text-muted truncate">{userProfile.email}</p>
+              <p className="text-xs text-muted truncate">{userProfile.email}</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ id, icon: Icon, label, badge }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1 text-left">{label}</span>
-              {badge !== undefined && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  activeTab === id ? 'bg-white/20 text-white' : 'bg-bg-alt text-muted'
-                }`}>{badge}</span>
-              )}
-            </button>
-          ))}
+
+        <nav className="flex-1 p-4 space-y-1">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'dashboard' ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            Dashboard
+          </button>
+          <button 
+            onClick={() => setActiveTab('clients')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'clients' ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Clientes
+            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === 'clients' ? 'bg-ok text-white' : 'bg-bg-alt text-muted'
+            }`}>
+              {clients.length}
+            </span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('exercises')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'exercises' ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+            }`}
+          >
+            <Dumbbell className="w-4 h-4" />
+            Ejercicios
+          </button>
+          <button 
+            onClick={() => setActiveTab('templates')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'templates' ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            Plantillas
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'settings' ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+            }`}
+          >
+            <SettingsIcon className="w-4 h-4" />
+            Configuración
+          </button>
         </nav>
+
         <div className="p-4 border-t border-border space-y-2">
-          <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={onLogout}>
-            <LogOut className="w-4 h-4" /> Cerrar sesión
+          <Button variant="outline" className="w-full justify-start gap-3" onClick={onLogout}>
+            <LogOut className="w-4 h-4" />
+            Cerrar sesión
           </Button>
-          <Button className="w-full gap-2 text-sm" onClick={() => setShowAdd(true)}>
-            <UserPlus className="w-4 h-4" /> Nuevo cliente
+          <Button className="w-full gap-2" onClick={() => setShowAddModal(true)}>
+            <UserPlus className="w-4 h-4" />
+            Nuevo Cliente
           </Button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-8 py-8">
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto bg-bg p-8">
+        <div className="max-w-6xl mx-auto">
+          {activeTab === 'dashboard' ? (
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-serif font-bold">Resumen</h2>
+                  <p className="text-muted text-sm mt-1">Bienvenido de nuevo, {userProfile.displayName}</p>
+                </div>
+                <Button className="gap-2" onClick={() => setShowAddModal(true)}>
+                  <UserPlus className="w-4 h-4" />
+                  Nuevo Cliente
+                </Button>
+              </div>
 
-          {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-fade-in">
-              <div>
-                <h2 className="text-3xl font-serif font-bold">Resumen</h2>
-                <p className="text-muted text-sm mt-1">Bienvenido, {userProfile.displayName.split(' ')[0]}</p>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Clientes', value: clients.length, color: 'text-ink' },
-                  { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok' },
-                  { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent' },
-                  { label: 'Sin entrenar +7d', value: clients.length - hoyCount, color: 'text-warn' },
-                ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
-                    <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-[10px] text-muted uppercase tracking-widest font-semibold mt-1">{s.label}</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-accent/10 text-accent rounded-xl">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted">Total Clientes</span>
                   </div>
-                ))}
+                  <p className="text-4xl font-serif font-bold">{clients.length}</p>
+                </div>
+                <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-ok/10 text-ok rounded-xl">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted">Crecimiento</span>
+                  </div>
+                  <p className="text-4xl font-serif font-bold">+{chartData[chartData.length - 1]?.count || 0}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-widest font-bold mt-1">Este mes</p>
+                </div>
+                <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-warn/10 text-warn rounded-xl">
+                      <Calendar className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-muted">Próxima Sesión</span>
+                  </div>
+                  <p className="text-2xl font-serif font-bold">Hoy</p>
+                  <p className="text-[10px] text-muted uppercase tracking-widest font-bold mt-1">3 entrenos programados</p>
+                </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-card border border-border p-6 rounded-2xl shadow-sm">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-serif font-bold text-lg">Crecimiento de alumnos</h3>
-                    <TrendingUp className="w-4 h-4 text-muted" />
+                    <h3 className="text-lg font-serif font-bold">Crecimiento de Alumnos</h3>
+                    <p className="text-[10px] text-muted uppercase tracking-widest font-bold">Histórico</p>
                   </div>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-[250px] w-full" style={{ minHeight: '250px' }}>
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <AreaChart data={chartData}>
                         <defs>
-                          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6e5438" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#6e5438" stopOpacity={0} />
+                          <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#FF6321" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#FF6321" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d8d4ca" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                        <Tooltip contentStyle={{ background: '#faf8f5', border: '1px solid #d8d4ca', borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="total" stroke="#6e5438" strokeWidth={2} fill="url(#grad)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#2A2A2A" />
+                        <XAxis 
+                          dataKey="month" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#8E9299', fontSize: 10 }}
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#8E9299', fontSize: 10 }}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '8px' }}
+                          itemStyle={{ color: '#FF6321', fontSize: '12px' }}
+                          labelStyle={{ color: '#FFFFFF', fontSize: '10px', marginBottom: '4px' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="total" 
+                          stroke="#FF6321" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorTotal)" 
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                    <h3 className="font-serif font-bold">Altas recientes</h3>
-                    <Calendar className="w-4 h-4 text-muted" />
+
+                <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-border">
+                    <h3 className="text-lg font-serif font-bold">Altas Recientes</h3>
                   </div>
                   <div className="divide-y divide-border">
-                    {clients.slice(0, 5).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group"
-                      >
-                        <div className="relative w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
-                          {c.name?.[0]?.toUpperCase()}
-                          {todayActive[c.id] && (
-                            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card pulse-dot" />
-                          )}
+                    {recentClients.length > 0 ? (
+                      recentClients.map(c => (
+                        <div 
+                          key={c.id} 
+                          className="p-4 hover:bg-bg-alt transition-colors cursor-pointer flex items-center justify-between group"
+                          onClick={() => onSelectClient?.(c)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
+                              {c.name[0]}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">{c.name} {c.surname}</p>
+                              <p className="text-[10px] text-muted">{new Date(c.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-muted opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                          <p className="text-[10px] text-muted">{new Date(c.createdAt).toLocaleDateString('es-ES')}</p>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                    {!clients.length && <p className="px-5 py-8 text-sm text-muted text-center">Sin clientes aún</p>}
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-muted italic text-sm">
+                        No hay clientes recientes
+                      </div>
+                    )}
                   </div>
-                  {clients.length > 0 && (
-                    <div className="px-5 py-3 bg-bg-alt/50 border-t border-border">
-                      <button onClick={() => setActiveTab('clients')} className="text-[10px] uppercase tracking-widest font-bold text-accent hover:underline w-full text-center">
-                        Ver todos →
-                      </button>
-                    </div>
-                  )}
+                  <div className="p-4 bg-bg-alt/50 border-t border-border">
+                    <button 
+                      onClick={() => setActiveTab('clients')}
+                      className="text-[10px] uppercase tracking-widest font-bold text-accent hover:underline w-full text-center"
+                    >
+                      Ver todos los clientes
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-
-          {activeTab === 'clients' && (
-            <div className="animate-fade-in">
-              <div className="flex items-center justify-between mb-6">
+          ) : activeTab === 'clients' ? (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                   <h2 className="text-3xl font-serif font-bold">Clientes</h2>
-                  <p className="text-muted text-sm mt-1">Gestiona los planes de tus alumnos</p>
+                  <p className="text-muted text-sm mt-1">Gestiona los planes de entrenamiento de tus alumnos</p>
                 </div>
-                <Button className="gap-2" onClick={() => setShowAdd(true)}>
-                  <UserPlus className="w-4 h-4" /> Nuevo cliente
-                </Button>
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 transition-all text-sm"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
               </div>
-              <div className="relative mb-5">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input type="text" placeholder="Buscar cliente..." value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-                />
-              </div>
-              {loading ? (
+
+              {error ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center bg-warn/5 border border-warn/20 rounded-2xl gap-4">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-warn">Error de Conexión</h3>
+                    <p className="text-muted text-sm max-w-md mx-auto">
+                      No hemos podido cargar tu lista de clientes. Por favor, comprueba tu conexión o intenta reintentar.
+                    </p>
+                    <p className="text-warn/60 text-xs font-mono mt-2">{error}</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button size="sm" onClick={() => fetchClients()} className="gap-2">
+                      Reintentar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                      Recargar Página
+                    </Button>
+                  </div>
+                </div>
+              ) : loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1,2,3].map(i => <div key={i} className="h-36 bg-card border border-border rounded-xl animate-pulse" />)}
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-32 bg-card border border-border rounded-xl animate-pulse" />
+                  ))}
                 </div>
-              ) : (
+              ) : filteredClients.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredClients.map(client => (
-                    <div key={client.id}
-                      className="bg-card border border-border rounded-xl p-5 hover:border-accent hover:shadow-sm transition-all cursor-pointer group"
-                      onClick={() => onSelectClient(client)}
+                    <div 
+                      key={client.id}
+                      className="group bg-card border border-border rounded-xl p-5 hover:border-accent hover:shadow-md transition-all cursor-pointer relative"
+                      onClick={() => onSelectClient?.(client)}
                     >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="relative w-11 h-11 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors flex-shrink-0">
-                          {client.name?.[0]?.toUpperCase()}
-                          {todayActive[client.id] && (
-                            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" />
-                          )}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors">
+                          {client.name[0]}
                         </div>
-                        <div className="min-w-0">
-                          <h3 className="font-serif font-bold text-base leading-tight truncate">{client.name} {client.surname}</h3>
-                          <p className="text-[11px] text-muted mt-0.5">
-                            {todayActive[client.id]
-                              ? <span className="text-ok font-semibold">✓ Entrenó hoy</span>
-                              : new Date(client.createdAt).toLocaleDateString('es-ES')}
-                          </p>
+                        <div>
+                          <h3 className="font-serif font-bold text-lg leading-tight">{client.name} {client.surname}</h3>
+                          <p className="text-xs text-muted mt-0.5">Creado el {new Date(client.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      {deletingId === client.id ? (
-                        <div className="flex gap-2">
-                          <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => {
-                            e.stopPropagation()
-                            navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}`)
-                            toast('Enlace copiado ✓', 'ok')
-                          }}>🔗 Enlace</Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
-                            <Trash2 className="w-3.5 h-3.5 text-warn" />
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-2">
+                        {deletingId === client.id ? (
+                          <div className="flex-1 flex gap-2">
+                            <Button 
+                              variant="danger" 
+                              size="sm" 
+                              className="flex-1 text-[10px] uppercase tracking-wider"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }}
+                            >
+                              Confirmar
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 text-[10px] uppercase tracking-wider"
+                              onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                            >
+                              No
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button variant="outline" size="sm" className="flex-1 text-[10px] uppercase tracking-wider" onClick={(e) => { e.stopPropagation(); onSelectClient?.(client); }}>Plan</Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="flex-1 text-[10px] uppercase tracking-wider"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = `${window.location.origin}?c=${client.token}`;
+                                navigator.clipboard.writeText(url);
+                                alert('Enlace copiado al portapapeles');
+                              }}
+                            >
+                              Enlace
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="px-2 hover:bg-warn/10 hover:border-warn/30 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingId(client.id);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4 text-warn" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ))}
-                  <button onClick={() => setShowAdd(true)}
+                  <button 
                     className="border-2 border-dashed border-border rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
+                    onClick={() => setShowAddModal(true)}
                   >
-                    <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">Añadir cliente</span>
+                    <Plus className="w-6 h-6" />
+                    <span className="text-sm font-medium">Añadir Cliente</span>
                   </button>
                 </div>
+              ) : (
+                <div className="text-center py-20 bg-card border border-border rounded-2xl border-dashed">
+                  <Users className="w-12 h-12 text-muted/30 mx-auto mb-4" />
+                  <h3 className="text-lg font-serif font-bold">No hay clientes</h3>
+                  <p className="text-muted text-sm mt-1">Empieza añadiendo a tu primer alumno</p>
+                  <Button className="mt-6 gap-2" onClick={() => setShowAddModal(true)}>
+                    <UserPlus className="w-4 h-4" />
+                    Añadir mi primer cliente
+                  </Button>
+                </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} />}
-
-          {activeTab === 'settings' && (
-            <div className="animate-fade-in">
-              <h2 className="text-3xl font-serif font-bold mb-6">Configuración</h2>
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4 max-w-lg">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</p>
-                  <p className="text-sm">{userProfile.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Nombre</p>
-                  <p className="text-sm">{userProfile.displayName}</p>
-                </div>
-                <hr className="border-border" />
-                <Button variant="outline" className="gap-2" onClick={onLogout}>
-                  <LogOut className="w-4 h-4" /> Cerrar sesión
-                </Button>
-              </div>
-            </div>
+            </>
+          ) : activeTab === 'exercises' ? (
+            <ExerciseLibrary />
+          ) : activeTab === 'templates' ? (
+            <TrainingTemplates />
+          ) : (
+            <Settings userProfile={userProfile} />
           )}
         </div>
       </main>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-            <input type="text" autoFocus value={newClient.name}
-              onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Nombre"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-            <input type="text" value={newClient.surname}
-              onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Apellido"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding}>
-              {adding ? 'Creando...' : 'Crear cliente'}
-            </Button>
+      {/* Add Client Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-ink/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl p-8">
+            <h3 className="text-xl font-serif font-bold mb-6">Nuevo Cliente</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Nombre</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent transition-all"
+                  placeholder="Nombre"
+                  value={newClient.name}
+                  onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Apellido</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent transition-all"
+                  placeholder="Apellido"
+                  value={newClient.surname}
+                  onChange={(e) => setNewClient({ ...newClient, surname: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-8">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddModal(false)}>Cancelar</Button>
+              <Button className="flex-1" onClick={handleAddClient}>Crear Cliente</Button>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
-  )
+  );
 }
-
-// ── EJERCICIOS ────────────────────────────────────────────
