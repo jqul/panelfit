@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react'
 import {
   Plus, Search, Dumbbell, Video, Trash2, Edit2,
-  Check, X, ChevronDown, ChevronUp, ExternalLink, Youtube
+  Check, X, ChevronDown, ChevronUp, ExternalLink, Youtube, Upload
 } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
-import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { useExerciseLibrary, uploadVideoToStorage } from '../../hooks/useExerciseLibrary'
 import { toast } from '../shared/Toast'
 import { EXERCISE_CATEGORIES } from '../../lib/constants'
 
@@ -23,12 +23,13 @@ interface ExForm {
 const emptyForm = (): ExForm => ({ name: '', description: '', category: 'General', videos: [] })
 
 function ExerciseForm({
-  initial, onSave, onCancel, isNew
+  initial, onSave, onCancel, isNew, trainerId
 }: {
   initial: ExForm
   onSave: (f: ExForm) => void
   onCancel: () => void
   isNew: boolean
+  trainerId: string
 }) {
   const [form, setForm] = useState<ExForm>(initial)
   const [newVideoUrl, setNewVideoUrl] = useState('')
@@ -121,7 +122,7 @@ function ExerciseForm({
           </div>
         )}
 
-        {/* Añadir vídeo */}
+        {/* Añadir vídeo YouTube */}
         <div className="flex flex-col gap-2 p-4 bg-bg border border-dashed border-border rounded-xl">
           <p className="text-[10px] text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5">
             <Youtube className="w-3.5 h-3.5" /> Añadir vídeo de YouTube
@@ -142,6 +143,13 @@ function ExerciseForm({
             >+ Añadir</button>
           </div>
         </div>
+
+        {/* Subir vídeo propio */}
+        <UploadVideoSection onUploaded={(url, label) => {
+          setForm(f => ({ ...f, videos: [...f.videos, { url, label }] }))
+          toast('Vídeo subido ✓', 'ok')
+        }} trainerId={trainerId} />
+      </div>
       </div>
 
       {/* Acciones */}
@@ -154,6 +162,53 @@ function ExerciseForm({
           <Check className="w-4 h-4" /> {isNew ? 'Crear ejercicio' : 'Guardar cambios'}
         </button>
       </div>
+    </div>
+  )
+}
+
+// ── Subir vídeo propio ─────────────────────────────────
+function UploadVideoSection({ onUploaded, trainerId }: {
+  onUploaded: (url: string, label: string) => void
+  trainerId: string
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [label, setLabel] = useState('')
+  const [progress, setProgress] = useState(0)
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 100 * 1024 * 1024) { toast('Máximo 100MB por vídeo', 'warn'); return }
+    setUploading(true); setProgress(10)
+    const url = await uploadVideoToStorage(trainerId, file)
+    setProgress(100)
+    if (url) onUploaded(url, label || file.name.replace(/\.[^.]+$/, ''))
+    else toast('Error al subir el vídeo', 'warn')
+    setUploading(false); setProgress(0); setLabel('')
+    e.target.value = ''
+  }
+
+  return (
+    <div className="flex flex-col gap-2 p-4 bg-bg border border-dashed border-border rounded-xl">
+      <p className="text-[10px] text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5">
+        <Upload className="w-3.5 h-3.5" /> Subir vídeo propio (MP4, MOV...)
+      </p>
+      <input type="text" placeholder="Etiqueta del vídeo (ej: Técnica sentadilla)"
+        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+        value={label} onChange={e => setLabel(e.target.value)}
+      />
+      <label className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium cursor-pointer transition-all ${
+        uploading ? 'bg-bg-alt border-border text-muted cursor-wait' : 'border-border text-muted hover:border-accent hover:text-accent'
+      }`}>
+        <Upload className="w-4 h-4" />
+        {uploading ? `Subiendo... ${progress}%` : 'Seleccionar archivo'}
+        <input type="file" accept="video/*" className="hidden" onChange={handleFile} disabled={uploading} />
+      </label>
+      {uploading && (
+        <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
+          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -222,6 +277,7 @@ export function ExercisesTab({ trainerId }: Props) {
           isNew={forming.mode === 'new'}
           onSave={handleSave}
           onCancel={() => setForming(null)}
+          trainerId={trainerId}
         />
       )}
 

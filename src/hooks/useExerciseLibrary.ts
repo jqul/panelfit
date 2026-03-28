@@ -1,3 +1,4 @@
+import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
@@ -84,4 +85,22 @@ function detectCategory(name: string): string {
   if (/plancha|crunch|abdom|russian|rueda/.test(n)) return 'Core'
   if (/cardio|cinta|bicicleta|elíp|hiit/.test(n)) return 'Cardio'
   return 'General'
+}
+
+export async function uploadVideoToStorage(
+  trainerId: string,
+  file: File,
+  onProgress?: (pct: number) => void
+): Promise<string | null> {
+  const ext = file.name.split('.').pop()
+  const path = `videos/${trainerId}/${Date.now()}.${ext}`
+
+  const { data, error } = await supabase.storage
+    .from('media')
+    .upload(path, file, { upsert: true })
+
+  if (error) { console.error('Upload error:', error); return null }
+
+  const { data: urlData } = supabase.storage.from('media').getPublicUrl(path)
+  return urlData.publicUrl
 }
