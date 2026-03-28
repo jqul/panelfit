@@ -63,7 +63,7 @@ export function ClientView({ token }: Props) {
     setLogs(newLogs)
     // Guardar en Supabase
     await supabase.from('registros').upsert({
-      cliente_id: client.id,
+      cliente_id: clientId,
       datos: { logs: newLogs, pesoHistorial: weightHistory },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'cliente_id' })
