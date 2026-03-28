@@ -164,7 +164,7 @@ export function ClientPanel({ client, isTrainer, userProfile, allClients, onClos
                 <div className="p-6 bg-white border rounded-xl shadow-sm">
                   <h3 className="font-bold mb-4">Configuración</h3>
                   <p className="text-sm text-gray-600">Nombre: {client.name} {client.surname}</p>
-                  <p className="text-sm text-gray-600">Email: {client.email}</p>
+                  <p className="text-sm text-gray-600">ID: {client.id}</p>
                 </div>
               )}
             </>
