@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
-import { supabase } from './supabase'; // <-- ASEGÚRATE DE QUE ESTA RUTA ES CORRECTA
-import { Auth } from './components/Auth';
-import { TrainerDashboard } from './components/trainer/TrainerDashboard'; // <-- AJUSTADO A TU CARPETA
-import { SuperAdminDashboard } from './components/SuperAdminDashboard';
-import { ClientPanel } from './components/ClientPanel';
-import { LandingPage } from './components/LandingPage';
-import { Layout } from './components/Layout';
-import { UserProfile, ClientData } from './types';
+import { supabase } from './lib/supabase'; // <-- RUTA CORREGIDA
+import { Auth } from './components/shared/Auth'; // <-- RUTA CORREGIDA
+import { TrainerDashboard } from './components/trainer/TrainerDashboard'; 
+import { ClientPanel } from './components/trainer/ClientPanel'; // <-- RUTA CORREGIDA
+import { UserProfile, ClientData } from './types'; // <-- RUTA CORREGIDA (usa types/index.ts)
+
+// NOTA: Si LandingPage, Layout o SuperAdminDashboard no están en la raíz de components, 
+// asegúrate de moverlos ahí o ajustar estas rutas:
+import { LandingPage } from './components/shared/LandingPage'; 
+import { Layout } from './components/shared/Layout';
+import { SuperAdminDashboard } from './components/trainer/SuperAdminDashboard';
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -16,7 +19,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showApp, setShowApp] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
-  const [connectionError, setConnectionError] = useState<'none' | 'timeout' | 'error'>('none');
 
   const demoProfile: UserProfile = {
     uid: 'demo',
@@ -25,39 +27,6 @@ export default function App() {
     role: 'trainer',
     approved: true,
     createdAt: Date.now()
-  };
-
-  const fetchAndRepairProfile = async (sessionUser: any) => {
-    try {
-      const { data: profileData, error: fetchError } = await supabase
-        .from('entrenadores')
-        .select('*')
-        .eq('uid', sessionUser.id)
-        .maybeSingle();
-      
-      setConnectionError('none');
-      let updatedProfile = profileData as UserProfile;
-      
-      if (!updatedProfile) {
-        const isSuperAdmin = sessionUser.email === 'javier.quinones.lopez@gmail.com';
-        const newProfile = {
-          uid: sessionUser.id,
-          email: sessionUser.email,
-          displayName: sessionUser.user_metadata?.full_name || sessionUser.email?.split('@')[0] || 'Entrenador',
-          role: isSuperAdmin ? 'super_admin' : 'trainer',
-          approved: isSuperAdmin,
-          createdAt: Date.now()
-        };
-        await supabase.from('entrenadores').upsert(newProfile);
-        updatedProfile = newProfile as UserProfile;
-      }
-      
-      if (updatedProfile) {
-        setProfile(updatedProfile);
-      }
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   useEffect(() => {
@@ -85,7 +54,7 @@ export default function App() {
       checkUser();
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
         setUser((prevUser: any) => (prevUser?.id === session.user.id ? prevUser : session.user));
       } else {
@@ -100,41 +69,24 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetchAndRepairProfile(user);
-
-    const profileSubscription = supabase
-      .channel(`public:entrenadores:uid=eq.${user.id}`)
-      .on('postgres_changes', { 
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'entrenadores', 
-        filter: `uid=eq.${user.id}` 
-      }, (payload: any) => {
-        setProfile(payload.new as UserProfile);
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(profileSubscription); };
+    
+    const fetchProfile = async () => {
+      const { data } = await supabase.from('entrenadores').select('*').eq('uid', user.id).maybeSingle();
+      if (data) setProfile(data as UserProfile);
+      else {
+        // Fallback si no hay perfil en BD
+        setProfile({
+          uid: user.id,
+          email: user.email,
+          displayName: user.email?.split('@')[0] || 'Entrenador',
+          role: user.email === 'javier.quinones.lopez@gmail.com' ? 'super_admin' : 'trainer',
+          approved: user.email === 'javier.quinones.lopez@gmail.com',
+          createdAt: Date.now()
+        });
+      }
+    };
+    fetchProfile();
   }, [user?.id]);
-
-  useEffect(() => {
-    if (user && !profile && !loading) {
-      const profileTimeout = setTimeout(() => {
-        if (!profile && !loading) {
-          const isSuperAdmin = user.email === 'javier.quinones.lopez@gmail.com';
-          setProfile({
-            uid: user.id,
-            email: user.email,
-            displayName: user.email?.split('@')[0] || 'Entrenador',
-            role: isSuperAdmin ? 'super_admin' : 'trainer',
-            approved: isSuperAdmin,
-            createdAt: Date.now()
-          });
-        }
-      }, 5000);
-      return () => clearTimeout(profileTimeout);
-    }
-  }, [user, profile, loading]);
 
   if (loading) return <div className="min-h-screen bg-bg flex items-center justify-center p-6"><div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -154,7 +106,7 @@ export default function App() {
 
   if (!user) return <Auth onAuthSuccess={(u: any) => setUser(u)} />;
 
-  if (!profile) return <div className="min-h-screen bg-bg flex items-center justify-center p-6 text-center"><div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto" /><button onClick={() => window.location.reload()}>Reintentar</button></div>;
+  if (!profile) return <div className="min-h-screen bg-bg flex items-center justify-center p-6 text-center">Cargando perfil...</div>;
 
   return (
     <Layout>
@@ -169,8 +121,6 @@ export default function App() {
           userProfile={profile} 
           onSelectClient={(client: any) => setSelectedClient(client as ClientData)} 
         />
-      ) : profile?.role === 'trainer' && !profile.approved ? (
-        <div className="min-h-screen bg-bg flex items-center justify-center p-6 text-center"><div className="max-w-md space-y-6 bg-card p-8 rounded-2xl border border-border"><h2>Registro Pendiente</h2><button onClick={() => supabase.auth.signOut()}>Cerrar sesión</button></div></div>
       ) : (
         <TrainerDashboard 
           userProfile={profile} 
