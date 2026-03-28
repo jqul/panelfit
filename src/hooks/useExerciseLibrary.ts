@@ -1,10 +1,8 @@
-import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { DEFAULT_EXERCISES } from '../lib/constants'
 
-// Clave de localStorage para persistir sin Supabase
 const LS_KEY = (uid: string) => `pf_library_${uid}`
 
 function getYTId(url: string) {
@@ -16,14 +14,12 @@ export function useExerciseLibrary(trainerId: string) {
   const [exercises, setExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Cargar desde localStorage (fallback rápido)
   useEffect(() => {
     if (!trainerId) return
     const cached = localStorage.getItem(LS_KEY(trainerId))
     if (cached) {
       try { setExercises(JSON.parse(cached)) } catch {}
     } else {
-      // Primera vez: seed con ejercicios por defecto
       const defaults: LibraryExercise[] = DEFAULT_EXERCISES.map((name, i) => ({
         id: `default_${i}`,
         trainerId,
@@ -89,18 +85,14 @@ function detectCategory(name: string): string {
 
 export async function uploadVideoToStorage(
   trainerId: string,
-  file: File,
-  onProgress?: (pct: number) => void
+  file: File
 ): Promise<string | null> {
   const ext = file.name.split('.').pop()
   const path = `videos/${trainerId}/${Date.now()}.${ext}`
-
-  const { data, error } = await supabase.storage
+  const { error } = await supabase.storage
     .from('media')
     .upload(path, file, { upsert: true })
-
   if (error) { console.error('Upload error:', error); return null }
-
   const { data: urlData } = supabase.storage.from('media').getPublicUrl(path)
   return urlData.publicUrl
 }
