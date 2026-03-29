@@ -3,7 +3,6 @@ import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal } from 'lucide-reac
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard } from './ClientDashboard'
-import { DietEditor } from '../trainer/DietEditor'
 import { TrainingPlanView } from './TrainingPlanView'
 
 interface Props {
@@ -63,7 +62,7 @@ export function ClientView({ token }: Props) {
     setLogs(newLogs)
     // Guardar en Supabase
     await supabase.from('registros').upsert({
-      cliente_id: clientId,
+      cliente_id: client.id,
       datos: { logs: newLogs, pesoHistorial: weightHistory },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'cliente_id' })
@@ -143,7 +142,7 @@ export function ClientView({ token }: Props) {
           </div>
         )}
         {activeTab === 'dieta' && (
-          <DietEditor clientId={client?.id || ''} isTrainer={false} />
+          <DietClientView clientId={client?.id || ''} />
         )}
         {!plan && activeTab !== 'hoy' && (
           <div className="p-6 text-center text-muted py-20">
@@ -172,6 +171,82 @@ export function ClientView({ token }: Props) {
           ))}
         </div>
       </nav>
+    </div>
+  )
+}
+
+
+// ── Vista dieta del cliente (solo lectura) ────────────────
+function DietClientView({ clientId }: { clientId: string }) {
+  const [diet, setDiet] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!clientId) return
+    supabase.from('dietas').select('datos').eq('cliente_id', clientId).single()
+      .then(({ data }) => { setDiet(data?.datos || null); setLoading(false) })
+  }, [clientId])
+
+  if (loading) return (
+    <div className="p-6 animate-pulse space-y-3">
+      {[1,2,3].map(i => <div key={i} className="h-16 bg-card/50 rounded-xl"/>)}
+    </div>
+  )
+
+  if (!diet || (!diet.meals?.length && !diet.advice)) return (
+    <div className="p-6 text-center text-muted py-20">
+      <Utensils className="w-10 h-10 mx-auto mb-3 opacity-30"/>
+      <p className="font-serif text-lg">Sin plan nutricional</p>
+      <p className="text-sm mt-1">Tu entrenador aún no ha creado tu dieta.</p>
+    </div>
+  )
+
+  const sortedMeals = [...(diet.meals||[])].sort((a:any,b:any)=>a.time.localeCompare(b.time))
+
+  return (
+    <div className="space-y-5 max-w-xl mx-auto py-6 px-4">
+      {/* Macros */}
+      <div className="grid grid-cols-2 gap-3">
+        {([['kcal','Calorías','kcal','#6e5438'],['protein','Proteína','g','#1a6038'],['carbs','Carbos','g','#1e40af'],['fats','Grasas','g','#92400e']] as [string,string,string,string][]).map(([key,label,unit,color])=>(
+          <div key={key} className="bg-card border border-border rounded-2xl p-4 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-1">{label}</p>
+            <p className="text-2xl font-serif font-bold" style={{color}}>{diet[key]||0}</p>
+            <p className="text-xs text-muted">{unit}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Comidas */}
+      <div className="space-y-3">
+        {sortedMeals.map((meal:any, i:number) => (
+          <div key={i} className="bg-card border border-border rounded-2xl p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-sm font-bold text-muted">{meal.time}</span>
+              <h3 className="font-serif font-bold text-base flex-1">{meal.name}</h3>
+              {meal.kcal>0 && (
+                <span className="text-xs font-bold text-muted bg-bg px-2 py-1 rounded-full border border-border">
+                  {meal.kcal} kcal
+                </span>
+              )}
+            </div>
+            <ul className="space-y-1">
+              {(meal.items||[]).filter(Boolean).map((item:string, j:number) => (
+                <li key={j} className="flex items-start gap-2 text-sm text-muted">
+                  <span className="text-accent mt-0.5 flex-shrink-0">·</span>{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Consejo */}
+      {diet.advice && (
+        <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p>
+          <p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p>
+        </div>
+      )}
     </div>
   )
 }

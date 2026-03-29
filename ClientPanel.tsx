@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, Camera, FileText, BarChart2,
-  Dumbbell, MessageSquare, Settings, ClipboardList, StickyNote, TrendingUp, Eye
+  Dumbbell, MessageSquare, Settings, ClipboardList, StickyNote, TrendingUp,
+  Eye, Plus, Trash2
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { toast } from '../shared/Toast'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
-import { DietEditor } from './DietEditor'
 import { TrainingPlanView } from '../client/TrainingPlanView'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
@@ -43,14 +43,14 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   // Cargar plan
   useEffect(() => {
     loadPlan()
-  }, [clientId])
+  }, [client.id])
 
   const loadPlan = async () => {
     setLoading(true)
     const { data } = await supabase
       .from('planes')
       .select('datos')
-      .eq('cliente_id', clientId)
+      .eq('cliente_id', client.id)
       .single()
 
     if (data?.datos?.P) {
@@ -58,7 +58,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     } else {
       // Plan vacío por defecto
       setPlan({
-        clientId: clientId,
+        clientId: client.id,
         type: 'hipertrofia',
         restMain: 180,
         restAcc: 90,
@@ -86,7 +86,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setSaveMsg('Guardando...')
     const { error } = await supabase
       .from('planes')
-      .upsert({ cliente_id: clientId, datos: { P: p }, updated_at: new Date().toISOString() },
+      .upsert({ cliente_id: client.id, datos: { P: p }, updated_at: new Date().toISOString() },
                { onConflict: 'cliente_id' })
     if (error) {
       toast('Error al guardar: ' + error.message, 'warn')
@@ -223,34 +223,28 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                 {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
                 {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
 
-                {/* Vista previa — el entrenador ve exactamente lo que verá el cliente */}
+                {activeTab === 'dieta' && <DietEditorTab clientId={client.id} />}
+
                 {activeTab === 'vista' && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 p-4 bg-accent/5 border border-accent/20 rounded-xl">
                       <Eye className="w-5 h-5 text-accent flex-shrink-0" />
                       <div>
                         <p className="text-sm font-semibold text-accent">Modo vista cliente</p>
-                        <p className="text-xs text-muted mt-0.5">Esto es exactamente lo que ve el cliente en su enlace. Los registros no se guardan aquí.</p>
+                        <p className="text-xs text-muted mt-0.5">Esto es exactamente lo que ve el cliente. Los registros aquí no se guardan.</p>
                       </div>
                     </div>
-                    {plan && plan.weeks.length > 0 ? (
-                      <TrainingPlanView plan={plan} logs={{}} onLogsChange={() => {}} />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center py-24 text-center text-muted">
-                        <Eye className="w-14 h-14 mb-4 opacity-20" />
-                        <h3 className="font-serif text-xl font-bold mb-1">Sin plan creado</h3>
-                        <p className="text-sm">Crea el plan en la pestaña "Plan" para ver la vista del cliente.</p>
-                      </div>
-                    )}
+                    {plan && plan.weeks.length > 0
+                      ? <TrainingPlanView plan={plan} logs={{}} onLogsChange={() => {}} />
+                      : <div className="flex flex-col items-center justify-center py-24 text-center text-muted">
+                          <Eye className="w-14 h-14 mb-4 opacity-20" />
+                          <h3 className="font-serif text-xl font-bold mb-1">Sin plan creado</h3>
+                          <p className="text-sm">Crea el plan en la pestaña Plan primero.</p>
+                        </div>
+                    }
                   </div>
                 )}
 
-                {/* Dieta — editor completo */}
-                {activeTab === 'dieta' && (
-                  <DietEditor clientId={client.id} isTrainer={true} />
-                )}
-
-                {/* Placeholders para secciones pendientes */}
                 {['progreso', 'fotos', 'entrenos'].includes(activeTab) && (
                   <PlaceholderTab tab={activeTab} />
                 )}
@@ -262,6 +256,122 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     </div>
   )
 }
+
+// ── Editor de dieta (tab Dieta del entrenador) ───────────
+function DietEditorTab({ clientId }: { clientId: string }) {
+  const [diet, setDiet] = useState<any>(null)
+  const [dietLoading, setDietLoading] = useState(true)
+  const [dietSaving, setDietSaving] = useState(false)
+
+  useEffect(() => {
+    supabase.from('dietas').select('datos').eq('cliente_id', clientId).single()
+      .then(({ data }) => {
+        setDiet(data?.datos || { kcal: 2000, protein: 150, carbs: 200, fats: 60, meals: [], advice: '' })
+        setDietLoading(false)
+      })
+  }, [clientId])
+
+  const saveDiet = async () => {
+    setDietSaving(true)
+    const { error } = await supabase.from('dietas')
+      .upsert({ cliente_id: clientId, datos: diet, updated_at: new Date().toISOString() }, { onConflict: 'cliente_id' })
+    if (error) toast('Error: ' + error.message, 'warn')
+    else toast('Dieta guardada ✓', 'ok')
+    setDietSaving(false)
+  }
+
+  if (dietLoading) return <div className="animate-pulse space-y-3">{[1,2,3].map(i=><div key={i} className="h-16 bg-card border border-border rounded-xl"/>)}</div>
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-serif font-bold">Plan Nutricional</h2>
+          <p className="text-muted text-sm mt-0.5">{diet?.meals?.length||0} comidas · {diet?.kcal||0} kcal objetivo</p>
+        </div>
+        <button onClick={saveDiet} disabled={dietSaving}
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+          <Save className="w-4 h-4"/>{dietSaving?'Guardando...':'Guardar dieta'}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {([['kcal','Calorías','kcal'],['protein','Proteína','g'],['carbs','Carbos','g'],['fats','Grasas','g']] as [string,string,string][]).map(([key,label,unit])=>(
+          <div key={key} className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">{label}</p>
+            <div className="flex items-baseline gap-1">
+              <input type="number" min={0} value={diet?.[key]||0}
+                onChange={e=>setDiet((d:any)=>({...d,[key]:parseInt(e.target.value)||0}))}
+                className="w-full text-2xl font-serif font-bold bg-transparent outline-none p-0"/>
+              <span className="text-xs text-muted">{unit}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Comidas del día</p>
+        {(!diet?.meals||diet.meals.length===0)&&(
+          <div className="bg-card border-2 border-dashed border-border rounded-2xl p-10 text-center text-muted">
+            <FileText className="w-10 h-10 mx-auto mb-3 opacity-30"/>
+            <p className="text-sm">Sin comidas aún. Pulsa abajo para añadir.</p>
+          </div>
+        )}
+        {(diet?.meals||[]).map((meal:any,i:number)=>(
+          <div key={i} className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-3 gap-3 px-4 py-3 border-b border-border items-center">
+              <input type="time" value={meal.time||'08:00'}
+                onChange={e=>{const m=[...diet.meals];m[i]={...m[i],time:e.target.value};setDiet((d:any)=>({...d,meals:m}))}}
+                className="text-sm font-semibold bg-transparent outline-none"/>
+              <input type="text" placeholder="Nombre (ej: Desayuno)" value={meal.name||''}
+                onChange={e=>{const m=[...diet.meals];m[i]={...m[i],name:e.target.value};setDiet((d:any)=>({...d,meals:m}))}}
+                className="text-sm bg-transparent outline-none"/>
+              <div className="flex items-center gap-1 justify-end">
+                <input type="number" min={0} value={meal.kcal||''} placeholder="0"
+                  onChange={e=>{const m=[...diet.meals];m[i]={...m[i],kcal:parseInt(e.target.value)||0};setDiet((d:any)=>({...d,meals:m}))}}
+                  className="w-16 text-sm text-right bg-transparent outline-none"/>
+                <span className="text-xs text-muted">kcal</span>
+                <button onClick={()=>setDiet((d:any)=>({...d,meals:d.meals.filter((_:any,idx:number)=>idx!==i)}))}
+                  className="ml-2 p-1 text-muted hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5"/></button>
+              </div>
+            </div>
+            <div className="px-4 pb-3 space-y-2 pt-2">
+              {(meal.items||['']).map((item:string,j:number)=>(
+                <div key={j} className="flex items-center gap-2">
+                  <span className="text-muted text-xs w-4 flex-shrink-0">{j+1}.</span>
+                  <input type="text" placeholder="Ej: Avena 60g, Leche 200ml..." value={item}
+                    onChange={e=>{const m=[...diet.meals];const items=[...(m[i].items||[])];items[j]=e.target.value;m[i]={...m[i],items};setDiet((d:any)=>({...d,meals:m}))}}
+                    className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"/>
+                  {(meal.items||[]).length>1&&(
+                    <button onClick={()=>{const m=[...diet.meals];m[i]={...m[i],items:m[i].items.filter((_:any,idx:number)=>idx!==j)};setDiet((d:any)=>({...d,meals:m}))}}
+                      className="p-1 text-muted hover:text-red-500 transition-colors"><X className="w-3.5 h-3.5"/></button>
+                  )}
+                </div>
+              ))}
+              <button onClick={()=>{const m=[...diet.meals];m[i]={...m[i],items:[...(m[i].items||[]),'']};setDiet((d:any)=>({...d,meals:m}))}}
+                className="w-full py-2 border border-dashed border-border rounded-lg text-xs text-muted hover:border-accent hover:text-accent transition-all">
+                + Añadir alimento
+              </button>
+            </div>
+          </div>
+        ))}
+        <button onClick={()=>setDiet((d:any)=>({...d,meals:[...(d.meals||[]),{time:'12:00',name:'',kcal:0,items:['']}]}))}
+          className="w-full py-3 border-2 border-dashed border-border rounded-2xl flex items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all text-sm font-medium">
+          <Plus className="w-4 h-4"/> Añadir comida
+        </button>
+      </div>
+
+      <div>
+        <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-2">Consejo nutricional para el cliente</p>
+        <textarea rows={3} placeholder="Ej: Prioriza los carbohidratos antes del entrenamiento..."
+          value={diet?.advice||''}
+          onChange={e=>setDiet((d:any)=>({...d,advice:e.target.value}))}
+          className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"/>
+      </div>
+    </div>
+  )
+}
+
 
 // ── Notas privadas ────────────────────────────────────────
 function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
