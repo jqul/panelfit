@@ -1,10 +1,14 @@
-// Updated ClientView.tsx
 import React from 'react';
 
-const ClientView = ({ planData, regData }) => {
+interface ClientViewProps {
+  planData?: any;
+  regData?: any;
+}
+
+export const ClientView: React.FC<ClientViewProps> = ({ planData, regData }) => {
   // Update property access to fix errors
-  const updatedPlan = planData.datos.P;
-  const updatedLogs = regData.datos.logs;
+  const updatedPlan = planData?.datos?.P;
+  const updatedLogs = regData?.datos?.logs;
 
   return (
     <div>
