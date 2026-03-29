@@ -52,13 +52,13 @@ const { data, error } = await supabase
       const hoy = new Date().toISOString().split('T')[0]
       const ids = mapped.map(c => c.id)
       const { data: regs } = await supabase
-        .from('registros').select('cliente_id,datos').in('cliente_id', ids)
+  .from('registros').select('clientId,logs').in('clientId', ids)
       const active: Record<string, boolean> = {}
       ;(regs || []).forEach((r: any) => {
-        const logs = r.datos?.logs || {}
-        const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
-        if (entrenóHoy) active[r.cliente_id] = true
-      })
+  const logs = r.logs || {}
+  const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
+  if (entrenóHoy) active[r.clientId] = true
+})
       setTodayActive(active)
     }
     setLoading(false)
