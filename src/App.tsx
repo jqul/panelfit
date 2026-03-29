@@ -4,7 +4,7 @@ import { UserProfile, ClientData } from './types'
 import { Auth } from './components/shared/Auth'
 import { TrainerDashboard } from './components/trainer/TrainerDashboard'
 import { ClientPanel } from './components/trainer/ClientPanel'
-import { ClientView } from './components/client/ClientView'
+import ClientView from './components/client/ClientView'
 import { useToast, ToastContainer } from './components/shared/Toast'
 
 type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
