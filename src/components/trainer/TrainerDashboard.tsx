@@ -40,8 +40,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 const { data, error } = await supabase
   .from('clientes')
   .select('*')
-  .filter('trainerId', 'eq', userProfile.uid)
-      .order('created_at', { ascending: false })
+  .eq('trainerId', userProfile.uid)
 
     if (error) { console.error('Error cargando clientes:', error); setLoading(false); return }
 
