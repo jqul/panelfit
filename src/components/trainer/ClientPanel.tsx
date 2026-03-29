@@ -38,21 +38,21 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   const [saveMsg, setSaveMsg] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const library = useExerciseLibrary(userProfile.uid)
-  const otherClients = allClients.filter(c => c.id !== client.id)
+  const otherClients = allClients.filter(c => c.id !== clientId)
 
-  useEffect(() => { loadData() }, [client.id])
+  useEffect(() => { loadData() }, [clientId])
 
   const loadData = async () => {
     setLoading(true)
     // Plan - FIXED: usando cliente_id y datos?.P
     const { data: planData } = await supabase
-      .from('planes').select('datos').eq('cliente_id', client.id).single()
+      .from('planes').select('datos').eq('cliente_id', clientId).single()
     if (planData?.datos?.P) setPlan(planData.datos.P as TrainingPlan)
-    else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
+    else setPlan({ clientId: clientId, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
 
     // Registros - FIXED: usando cliente_id y datos?.logs
     const { data: regData } = await supabase
-      .from('registros').select('datos').eq('cliente_id', client.id).single()
+      .from('registros').select('datos').eq('cliente_id', clientId).single()
     if (regData?.datos?.logs) setLogs(regData.datos.logs as TrainingLogs)
 
     setLoading(false)
@@ -70,7 +70,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setSaving(true); setSaveMsg('Guardando...')
     // FIXED: usando cliente_id, datos, updated_at y onConflict
     const { error } = await supabase.from('planes')
-      .upsert({ cliente_id: client.id, datos: { P: p }, updated_at: new Date().toISOString() },
+      .upsert({ cliente_id: clientId, datos: { P: p }, updated_at: new Date().toISOString() },
          { onConflict: 'cliente_id' })
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaveMsg('Error') }
     else { setSaveMsg('✓ Guardado'); setTimeout(() => setSaveMsg(''), 2000) }
