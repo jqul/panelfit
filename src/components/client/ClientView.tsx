@@ -40,19 +40,19 @@ export function ClientView({ token }: Props) {
     const { data: planData } = await supabase
       .from('planes')
       .select('datos')
-      .eq('cliente_id', clientData.id)
+      .eq('clientId', clientData.id)
       .single()
 
-    if (planData?.datos?.P) setPlan(planData.datos.P as TrainingPlan)
+    if (planData?.datos?.P) setPlan(planData.plan as TrainingPlan)
 
     // 3. Cargar registros
     const { data: regData } = await supabase
       .from('registros')
       .select('datos')
-      .eq('cliente_id', clientData.id)
+      .eq('clientId', clientData.id)
       .single()
 
-    if (regData?.datos?.logs) setLogs(regData.datos.logs as TrainingLogs)
+    if (regData?.datos?.logs) setLogs(regData.logs as TrainingLogs)
     if (regData?.datos?.pesoHistorial) setWeightHistory(regData.datos.pesoHistorial)
 
     setLoading(false)
@@ -62,10 +62,10 @@ export function ClientView({ token }: Props) {
     setLogs(newLogs)
     // Guardar en Supabase
     await supabase.from('registros').upsert({
-      cliente_id: client.id,
+      clientId: client.id,
       datos: { logs: newLogs, pesoHistorial: weightHistory },
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'cliente_id' })
+    }, { onConflict: 'clientId' })
   }
 
   if (loading) return (
