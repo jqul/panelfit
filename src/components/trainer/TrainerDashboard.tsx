@@ -70,7 +70,7 @@ const { data, error } = await supabase
     const channel = supabase
       .channel('clientes-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `trainerId=eq.${userProfile.uid}`
+        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [userProfile.uid])
