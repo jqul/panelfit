@@ -69,11 +69,11 @@ export function ClientView({ token }: ClientViewProps) {
   const brandName = plan?.brandName || 'PanelFit'
 
   const TABS = [
-    { id: 'hoy' as Tab,      icon: Home,            label: 'Hoy' },
-    { id: 'entreno' as Tab,  icon: Dumbbell,        label: 'Entreno' },
-    { id: 'progreso' as Tab, icon: BarChart2,       label: 'Progreso' },
-    { id: 'dieta' as Tab,    icon: Utensils,        label: 'Dieta' },
-    { id: 'mas' as Tab,      icon: MoreHorizontal,  label: 'Más' },
+    { id: 'hoy' as Tab,     icon: Home,           label: 'Hoy' },
+    { id: 'entreno' as Tab, icon: Dumbbell,       label: 'Entreno' },
+    { id: 'progreso' as Tab,icon: BarChart2,      label: 'Progreso' },
+    { id: 'dieta' as Tab,   icon: Utensils,       label: 'Dieta' },
+    { id: 'mas' as Tab,     icon: MoreHorizontal, label: 'Más' },
   ]
 
   return (
@@ -101,7 +101,9 @@ export function ClientView({ token }: ClientViewProps) {
         {activeTab === 'entreno' && plan && (
           <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} />
         )}
-        {activeTab === 'dieta' && <DietaClienteView plan={plan} />}
+        {activeTab === 'dieta' && (
+          <DietaClienteView plan={plan} />
+        )}
         {activeTab === 'progreso' && (
           <div className="p-6 text-center text-muted py-20">
             <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -109,7 +111,7 @@ export function ClientView({ token }: ClientViewProps) {
             <p className="text-sm mt-1">Próximamente</p>
           </div>
         )}
-        {!plan && activeTab !== 'progreso' && activeTab !== 'dieta' && (
+        {!plan && (
           <div className="p-6 text-center text-muted py-20">
             <p className="font-serif text-lg">Sin plan asignado</p>
             <p className="text-sm mt-1">Tu entrenador aún no ha creado tu plan.</p>
@@ -126,7 +128,7 @@ export function ClientView({ token }: ClientViewProps) {
               }`}
             >
               <Icon className={`w-5 h-5 ${activeTab === id ? 'text-ink' : 'text-muted'}`} />
-              <span className={`text-[10px] font-medium ${activeTab === id ? 'font-bold' : ''}`}>{label}</span>
+              <span className={`text-[10px] font-medium ${activeTab === id ? 'font-bold text-ink' : ''}`}>{label}</span>
             </button>
           ))}
         </div>
