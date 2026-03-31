@@ -2,9 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight,
-  Plus, Edit2, Check, X, Save, MessageCircle, Link, Copy
+  MessageCircle, Link, Copy
 } from 'lucide-react'
-import { TRAINING_TYPES } from '../../lib/constants'
 import { supabase } from '../../lib/supabase'
 import { mapClientes } from '../../lib/mappers'
 import { ClientData, UserProfile } from '../../types'
@@ -40,26 +39,24 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
-      .eq('trainerId', userProfile.uid)
-      filter: `trainerId=eq.${userProfile.uid}`
+      .filter('trainerId', 'eq', userProfile.uid)
 
     if (error) { console.error('Error cargando clientes:', error); setLoading(false); return }
 
     const mapped = mapClientes(data || [])
     setClients(mapped)
 
-    // Ver quién entrenó hoy
     if (mapped.length) {
       const hoy = new Date().toISOString().split('T')[0]
       const ids = mapped.map(c => c.id)
       const { data: regs } = await supabase
-  .from('registros').select('clientId,logs').in('clientId', ids)
-const active: Record<string, boolean> = {}
-;(regs || []).forEach((r: any) => {
-  const logs = r.logs || {}
-  const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
-  if (entrenóHoy) active[r.clientId] = true
-})
+        .from('registros').select('clientId,logs').in('clientId', ids)
+      const active: Record<string, boolean> = {}
+      ;(regs || []).forEach((r: any) => {
+        const logs = r.logs || {}
+        const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
+        if (entrenóHoy) active[r.clientId] = true
+      })
       setTodayActive(active)
     }
     setLoading(false)
@@ -70,7 +67,7 @@ const active: Record<string, boolean> = {}
     const channel = supabase
       .channel('clientes-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        .filter('trainerId', 'eq', userProfile.uid)
+        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [userProfile.uid])
@@ -81,10 +78,10 @@ const active: Record<string, boolean> = {}
     const token = Math.random().toString(36).slice(2, 14)
     const { error } = await supabase.from('clientes').insert({
       trainerId: userProfile.uid,
-      nombre: newClient.name.trim(),
-      apellido: newClient.surname.trim(),
+      name: newClient.name.trim(),
+      surname: newClient.surname.trim(),
       token,
-      activo: true,
+      createdAt: Date.now(),
     })
     if (error) toast('Error al crear cliente: ' + error.message, 'warn')
     else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '' }) }
@@ -142,7 +139,6 @@ const active: Record<string, boolean> = {}
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
-      {/* Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-card border-r border-border flex flex-col">
         <div className="px-6 py-5 border-b border-border">
           <h1 className="text-2xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
@@ -185,11 +181,9 @@ const active: Record<string, boolean> = {}
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto px-8 py-8">
 
-          {/* DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-fade-in">
               <div>
@@ -201,7 +195,7 @@ const active: Record<string, boolean> = {}
                   { label: 'Clientes', value: clients.length, color: 'text-ink' },
                   { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok' },
                   { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent' },
-                  { label: 'Sin entrenar +7d', value: Math.max(0, clients.length - hoyCount), color: 'text-warn' },
+                  { label: 'Sin entrenar', value: Math.max(0, clients.length - hoyCount), color: 'text-warn' },
                 ].map(s => (
                   <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
                     <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
@@ -245,9 +239,7 @@ const active: Record<string, boolean> = {}
                       >
                         <div className="relative w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
                           {(c.name?.[0] || '?').toUpperCase()}
-                          {todayActive[c.id] && (
-                            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card" />
-                          )}
+                          {todayActive[c.id] && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
@@ -270,7 +262,6 @@ const active: Record<string, boolean> = {}
             </div>
           )}
 
-          {/* CLIENTES */}
           {activeTab === 'clients' && (
             <div className="animate-fade-in">
               <div className="flex items-center justify-between mb-6">
@@ -286,7 +277,7 @@ const active: Record<string, boolean> = {}
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input type="text" placeholder="Buscar cliente..." value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                 />
               </div>
               {loading ? (
@@ -312,9 +303,7 @@ const active: Record<string, boolean> = {}
                       <div className="flex items-center gap-3 mb-4">
                         <div className="relative w-11 h-11 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors flex-shrink-0">
                           {(client.name?.[0] || '?').toUpperCase()}
-                          {todayActive[client.id] && (
-                            <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" title="Entrenó hoy" />
-                          )}
+                          {todayActive[client.id] && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" />}
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-serif font-bold text-base leading-tight truncate">{client.name} {client.surname}</h3>
@@ -371,7 +360,6 @@ const active: Record<string, boolean> = {}
         </div>
       </main>
 
-      {/* Modal nuevo cliente */}
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
         <div className="space-y-4">
           <div>
@@ -380,7 +368,7 @@ const active: Record<string, boolean> = {}
               onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Nombre"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
           <div>
@@ -389,7 +377,7 @@ const active: Record<string, boolean> = {}
               onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Apellido"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
           <div className="flex gap-3 pt-2">
@@ -401,36 +389,26 @@ const active: Record<string, boolean> = {}
         </div>
       </Modal>
 
-      {/* Modal enlace cliente */}
       {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.client.name}`}>
           <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace con tu cliente. No necesita contraseña ni registrarse.</p>
-
-            {/* URL */}
+            <p className="text-sm text-muted">Comparte este enlace con tu cliente. No necesita contraseña.</p>
             <div className="flex gap-2">
               <input readOnly value={getClientUrl(linkModal.client)}
                 className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted outline-none font-mono"
               />
               <button onClick={() => copyLink(linkModal.client)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0"
               >
                 <Copy className="w-3.5 h-3.5" /> Copiar
               </button>
             </div>
-
-            {/* WhatsApp */}
             <button
               onClick={() => { sendWhatsApp(linkModal.client); setLinkModal(null) }}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-all"
             >
-              <MessageCircle className="w-5 h-5" />
-              Enviar por WhatsApp
+              <MessageCircle className="w-5 h-5" /> Enviar por WhatsApp
             </button>
-
-            <p className="text-[10px] text-muted text-center">
-              Se abrirá WhatsApp con el mensaje y el enlace ya preparados
-            </p>
           </div>
         </Modal>
       )}
