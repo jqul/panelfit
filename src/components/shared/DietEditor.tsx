@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { toast } from './Toast'
 
 // ── Tipos ─────────────────────────────────────────────────────────
