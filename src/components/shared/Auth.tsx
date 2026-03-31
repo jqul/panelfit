@@ -8,19 +8,19 @@ interface AuthProps {
 }
 
 const FEATURES = [
-  { icon: Dumbbell,      title: 'Planes de entrenamiento',    desc: 'Crea rutinas semanales con ejercicios, series, vídeos y notas técnicas.' },
-  { icon: BarChart2,     title: 'Seguimiento en tiempo real', desc: 'Ve el progreso de cada cliente, sus pesos y las sesiones completadas.' },
-  { icon: MessageSquare, title: 'Comunicación directa',       desc: 'Envía el plan por WhatsApp con un clic. Sin apps adicionales.' },
-  { icon: Zap,           title: 'Panel del cliente',          desc: 'Tu cliente accede desde el móvil sin registrarse. Solo con su enlace.' },
-  { icon: Users,         title: 'Multi-cliente',              desc: 'Gestiona todos tus alumnos desde un único panel organizado.' },
-  { icon: Shield,        title: 'Privado y seguro',           desc: 'Cada cliente solo ve su propio plan. Tus notas son privadas.' },
+  { icon: Dumbbell,     title: 'Planes de entrenamiento',   desc: 'Crea rutinas semanales con ejercicios, series, vídeos y notas técnicas.' },
+  { icon: BarChart2,    title: 'Seguimiento en tiempo real', desc: 'Ve el progreso de cada cliente, sus pesos y las sesiones completadas.' },
+  { icon: MessageSquare,title: 'Comunicación directa',       desc: 'Envía el plan por WhatsApp con un clic. Sin apps adicionales.' },
+  { icon: Zap,          title: 'Panel del cliente',          desc: 'Tu cliente accede desde el móvil sin registrarse. Solo con su enlace.' },
+  { icon: Users,        title: 'Multi-cliente',              desc: 'Gestiona todos tus alumnos desde un único panel organizado.' },
+  { icon: Shield,       title: 'Privado y seguro',           desc: 'Cada cliente solo ve su propio plan. Tus notas son privadas.' },
 ]
 
 const DEMO_SCREENS = [
-  { label: 'Dashboard',    emoji: '📊', desc: 'Vista general de todos tus clientes' },
+  { label: 'Dashboard', emoji: '📊', desc: 'Vista general de todos tus clientes' },
   { label: 'Plan semanal', emoji: '📋', desc: 'Editor de rutinas por semana y día' },
-  { label: 'Panel cliente',emoji: '📱', desc: 'Lo que ve tu alumno en el móvil' },
-  { label: 'Dieta',        emoji: '🥗', desc: 'Plan nutricional con macros y comidas' },
+  { label: 'Panel cliente', emoji: '📱', desc: 'Lo que ve tu alumno en el móvil' },
+  { label: 'Dieta', emoji: '🥗', desc: 'Plan nutricional con macros y comidas' },
 ]
 
 export function Auth({ onAuth, onDemo }: AuthProps) {
@@ -56,8 +56,10 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     setRegistered(true)
   }
 
+  // ── LANDING ───────────────────────────────────────────────
   if (view === 'landing') return (
     <div className="min-h-screen bg-bg">
+      {/* Nav */}
       <nav className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <h1 className="text-2xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
@@ -74,6 +76,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
       </nav>
 
+      {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-full text-xs font-semibold text-accent mb-6">
           ✦ Plataforma para entrenadores personales
@@ -83,7 +86,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
           <span className="text-accent italic">como un profesional</span>
         </h2>
         <p className="text-lg text-muted max-w-2xl mx-auto mb-10 leading-relaxed">
-          Crea planes de entrenamiento personalizados, haz seguimiento del progreso
+          Crea planes de entrenamiento personalizados, hace seguimiento del progreso
           y mantén a tus alumnos motivados — todo desde un único panel.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -101,6 +104,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         <p className="text-xs text-muted mt-4">Sin tarjeta de crédito · Gratis para empezar</p>
       </section>
 
+      {/* Demo screens */}
       <section className="max-w-6xl mx-auto px-6 pb-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {DEMO_SCREENS.map(s => (
@@ -113,6 +117,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
       </section>
 
+      {/* Features */}
       <section className="bg-card border-y border-border">
         <div className="max-w-6xl mx-auto px-6 py-16">
           <h3 className="text-3xl font-serif font-bold text-center mb-12">Todo lo que necesitas</h3>
@@ -132,6 +137,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
       </section>
 
+      {/* Precios */}
       <section className="max-w-6xl mx-auto px-6 py-16">
         <h3 className="text-3xl font-serif font-bold text-center mb-4">Simple y transparente</h3>
         <p className="text-muted text-center mb-12">Sin sorpresas. Sin comisiones.</p>
@@ -165,6 +171,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
       </section>
 
+      {/* Footer CTA */}
       <section className="bg-ink text-white">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
           <h3 className="text-3xl font-serif font-bold mb-4">Empieza hoy mismo</h3>
@@ -178,6 +185,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     </div>
   )
 
+  // ── LOGIN / REGISTER ──────────────────────────────────────
   if (registered) return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
@@ -187,7 +195,9 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
             <Check className="w-8 h-8 text-ok" />
           </div>
           <h2 className="font-serif font-bold text-xl mb-2">¡Solicitud enviada!</h2>
-          <p className="text-muted text-sm leading-relaxed">Tu cuenta ha sido creada. Recibirás confirmación de acceso en breve.</p>
+          <p className="text-muted text-sm leading-relaxed">
+            Tu cuenta ha sido creada. Recibirás confirmación de acceso en breve.
+          </p>
           <button onClick={() => { setRegistered(false); setView('login') }}
             className="mt-6 w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90">
             Volver al inicio
@@ -197,7 +207,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     </div>
   )
 
-  return (
+  if (!registered) return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
@@ -205,14 +215,19 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
           <h1 className="text-4xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
           <p className="text-muted text-sm mt-1">Plataforma de entrenamiento personalizado</p>
         </div>
+
         <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-serif font-bold mb-6">{view === 'login' ? 'Entrar' : 'Crear cuenta'}</h2>
+          <h2 className="text-xl font-serif font-bold mb-6">
+            {view === 'login' ? 'Entrar' : 'Crear cuenta'}
+          </h2>
           <div className="space-y-4">
             {view === 'register' && (
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre completo</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre"
-                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm"
+                />
               </div>
             )}
             <div>
@@ -220,7 +235,8 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (view === 'login' ? handleLogin() : handleRegister())}
                 placeholder="tu@email.com"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm" />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm"
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Contraseña</label>
@@ -229,7 +245,8 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (view === 'login' ? handleLogin() : handleRegister())}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-10 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm" />
+                  className="w-full px-4 py-3 pr-10 bg-bg border border-border rounded-lg outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm"
+                />
                 <button type="button" onClick={() => setShowPass(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -237,11 +254,28 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
               </div>
             </div>
           </div>
+
           {error && <p className="mt-3 text-sm text-warn">{error}</p>}
-          <button className="w-full mt-6 py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition-opacity"
-            onClick={view === 'login' ? handleLogin : handleRegister} disabled={loading}>
+
+          <button
+            className="w-full mt-6 py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition-opacity"
+            onClick={view === 'login' ? handleLogin : handleRegister}
+            disabled={loading}
+          >
             {loading ? 'Cargando...' : view === 'login' ? 'Entrar →' : 'Crear cuenta →'}
           </button>
+
           <p className="text-center text-sm text-muted mt-4">
             {view === 'login' ? '¿Sin cuenta? ' : '¿Ya tienes cuenta? '}
-            <button onClick={() => { setView(view === 'login' ? 'register' : 'login'); s
+            <button onClick={() => { setView(view === 'login' ? 'register' : 'login'); setError('') }}
+              className="text-accent hover:underline font-medium">
+              {view === 'login' ? 'Regístrate' : 'Entra aquí'}
+            </button>
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+
+  return null
+}
