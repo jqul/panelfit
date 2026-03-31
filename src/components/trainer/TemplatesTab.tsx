@@ -177,4 +177,217 @@ export function TemplatesTab({ trainerId, clients }: Props) {
                       </>
                     ) : (
                       <button onClick={() => setDeletingId(t.id)} className="p-2 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
-                        <T
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <h3 className="font-serif font-bold text-base mb-1">{t.name}</h3>
+                {t.description && <p className="text-xs text-muted mb-3 line-clamp-2">{t.description}</p>}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-bg px-2 py-1 rounded border border-border">
+                    {TRAINING_TYPES.find(x => x.value === t.type)?.label || t.type}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-bg px-2 py-1 rounded border border-border">
+                    {t.weeks.length} sem · {t.weeks.reduce((a, w) => a + w.days.length, 0)} días
+                  </span>
+                </div>
+                <button onClick={() => setApplyModal({ template: t })}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                  <Users className="w-4 h-4" /> Aplicar a un cliente
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {tab === 'diet' && (
+        dietTemplates.length === 0 ? (
+          <div className="bg-card border-2 border-dashed border-border rounded-2xl p-16 text-center">
+            <Utensils className="w-10 h-10 text-muted/30 mx-auto mb-3" />
+            <h3 className="font-serif font-bold text-lg mb-1">Sin plantillas de dieta</h3>
+            <p className="text-muted text-sm mb-6">Crea una dieta tipo y aplícala a cualquier cliente.</p>
+            <button onClick={() => { setDietForm({ name: '', description: '', kcal: 2000, protein: 150, carbs: 200, fats: 60, advice: '', meals: [] }); setView('diet-new') }}
+              className="px-5 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
+              Crear primera dieta
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {dietTemplates.map(t => (
+              <div key={t.id} className="bg-card border border-border rounded-2xl p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-bg flex items-center justify-center text-muted flex-shrink-0">
+                    <Utensils className="w-5 h-5" />
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => { setDietForm({ name: t.name, description: t.description, kcal: t.kcal, protein: t.protein, carbs: t.carbs, fats: t.fats, advice: t.advice, meals: t.meals }); setEditingId(t.id); setView('diet-edit') }}
+                      className="p-2 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    {deletingId === t.id ? (
+                      <>
+                        <button onClick={() => { persistDietTemplates(dietTemplates.filter(x => x.id !== t.id)); setDeletingId(null); toast('Eliminada', 'ok') }}
+                          className="px-2 py-1 bg-warn/10 text-warn border border-warn/30 rounded text-[10px] font-bold">Borrar</button>
+                        <button onClick={() => setDeletingId(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] text-muted ml-1">No</button>
+                      </>
+                    ) : (
+                      <button onClick={() => setDeletingId(t.id)} className="p-2 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <h3 className="font-serif font-bold text-base mb-1">{t.name}</h3>
+                {t.description && <p className="text-xs text-muted mb-3 line-clamp-2">{t.description}</p>}
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {[['Kcal', t.kcal], ['P', t.protein + 'g'], ['C', t.carbs + 'g'], ['G', t.fats + 'g']].map(([l, v]) => (
+                    <span key={l} className="text-[10px] font-bold uppercase tracking-wider text-muted bg-bg px-2 py-1 rounded border border-border">{l}: {v}</span>
+                  ))}
+                </div>
+                <button onClick={() => setApplyDietModal({ template: t })}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+                  <Users className="w-4 h-4" /> Aplicar a un cliente
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      <Modal open={!!applyModal} onClose={() => setApplyModal(null)} title="Aplicar plantilla a cliente">
+        {applyModal && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted mb-4">Selecciona el cliente. <span className="text-warn font-medium">Esto reemplazará su plan actual.</span></p>
+            {clients.length === 0 && <p className="text-sm text-muted text-center py-4">No tienes clientes aún.</p>}
+            {clients.map(c => (
+              <button key={c.id} onClick={() => applyTemplateToClient(c.id)} disabled={applying}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent transition-all text-left disabled:opacity-50">
+                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">{c.name[0]}</div>
+                <p className="text-sm font-semibold">{c.name} {c.surname}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!applyDietModal} onClose={() => setApplyDietModal(null)} title="Aplicar dieta a cliente">
+        {applyDietModal && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted mb-4">Selecciona el cliente. <span className="text-warn font-medium">Esto reemplazará su dieta actual.</span></p>
+            {clients.length === 0 && <p className="text-sm text-muted text-center py-4">No tienes clientes aún.</p>}
+            {clients.map(c => (
+              <button key={c.id} onClick={() => applyDietToClient(c.id)} disabled={applying}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent transition-all text-left disabled:opacity-50">
+                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">{c.name[0]}</div>
+                <p className="text-sm font-semibold">{c.name} {c.surname}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+
+  if (view === 'new' || view === 'edit') return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setView('list')} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-2xl font-serif font-bold flex-1">{view === 'new' ? 'Nueva plantilla' : 'Editar plantilla'}</h2>
+        <button onClick={handleSaveTemplate}
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
+          <Save className="w-4 h-4" /> Guardar
+        </button>
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+          <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Ej: Fuerza Intermedio 8 semanas"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tipo</label>
+          <div className="flex flex-wrap gap-2">
+            {TRAINING_TYPES.map(tt => (
+              <button key={tt.value} onClick={() => setForm(f => ({ ...f, type: tt.value }))}
+                className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${form.type === tt.value ? 'border-ink bg-ink text-white' : 'border-border bg-bg text-muted hover:border-muted'}`}>
+                {tt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
+          <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Breve descripción del programa..."
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+          />
+        </div>
+      </div>
+      <TrainingPlanEditor
+        plan={{ clientId: 'template', type: form.type, restMain: 180, restAcc: 90, restWarn: 30, weeks: form.weeks }}
+        onChange={p => setForm(f => ({ ...f, weeks: p.weeks }))}
+        library={library.exercises}
+      />
+    </div>
+  )
+
+  if (view === 'diet-new' || view === 'diet-edit') return (
+    <div className="space-y-5 max-w-2xl">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setView('list')} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-2xl font-serif font-bold flex-1">{view === 'diet-new' ? 'Nueva dieta tipo' : 'Editar dieta'}</h2>
+        <button onClick={handleSaveDietTemplate}
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
+          <Save className="w-4 h-4" /> Guardar
+        </button>
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+          <input type="text" value={dietForm.name} onChange={e => setDietForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Ej: Déficit calórico moderado · 2000 kcal"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
+          <textarea rows={2} value={dietForm.description} onChange={e => setDietForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Para quién es esta dieta, objetivo..."
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none"
+          />
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h4 className="text-sm font-semibold">Macros objetivo</h4>
+        <div className="grid grid-cols-2 gap-3">
+          {[['kcal', 'Calorías (kcal)'], ['protein', 'Proteína (g)'], ['carbs', 'Carbohidratos (g)'], ['fats', 'Grasas (g)']].map(([key, label]) => (
+            <div key={key}>
+              <label className="block text-xs text-muted mb-1">{label}</label>
+              <input type="number" value={(dietForm as any)[key]}
+                onChange={e => setDietForm(f => ({ ...f, [key]: Number(e.target.value) }))}
+                className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h4 className="text-sm font-semibold">Consejo / Nota</h4>
+        <textarea rows={3} value={dietForm.advice} onChange={e => setDietForm(f => ({ ...f, advice: e.target.value }))}
+          placeholder="Indicaciones generales de esta dieta..."
+          className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+        />
+      </div>
+    </div>
+  )
+
+  return null
+}
