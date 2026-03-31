@@ -40,8 +40,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
-      .eq('entrenador_id', userProfile.uid)
-      .order('created_at', { ascending: false })
+      .eq('trainerId', userProfile.uid)
+      filter: `trainerId=eq.${userProfile.uid}`
 
     if (error) { console.error('Error cargando clientes:', error); setLoading(false); return }
 
@@ -53,13 +53,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       const hoy = new Date().toISOString().split('T')[0]
       const ids = mapped.map(c => c.id)
       const { data: regs } = await supabase
-        .from('registros').select('cliente_id,datos').in('cliente_id', ids)
-      const active: Record<string, boolean> = {}
-      ;(regs || []).forEach((r: any) => {
-        const logs = r.datos?.logs || {}
-        const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
-        if (entrenóHoy) active[r.cliente_id] = true
-      })
+  .from('registros').select('clientId,logs').in('clientId', ids)
+const active: Record<string, boolean> = {}
+;(regs || []).forEach((r: any) => {
+  const logs = r.logs || {}
+  const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
+  if (entrenóHoy) active[r.clientId] = true
+})
       setTodayActive(active)
     }
     setLoading(false)
@@ -70,7 +70,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     const channel = supabase
       .channel('clientes-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `entrenador_id=eq.${userProfile.uid}` }, fetchClients)
+        .filter('trainerId', 'eq', userProfile.uid)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [userProfile.uid])
@@ -80,7 +80,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
     const { error } = await supabase.from('clientes').insert({
-      entrenador_id: userProfile.uid,
+      trainerId: userProfile.uid,
       nombre: newClient.name.trim(),
       apellido: newClient.surname.trim(),
       token,
