@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight,
+  LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight, Save,
   MessageCircle, Link, Copy
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -195,7 +195,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   { label: 'Clientes', value: clients.length, color: 'text-ink' },
                   { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok' },
                   { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent' },
-                  { label: 'Sin entrenar', value: Math.max(0, clients.length - hoyCount), color: 'text-warn' },
+                  { label: 'Sin entrenar +7d', value: Math.max(0, clients.length - hoyCount), color: 'text-warn' },
                 ].map(s => (
                   <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
                     <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
@@ -277,7 +277,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                 <input type="text" placeholder="Buscar cliente..." value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
                 />
               </div>
               {loading ? (
@@ -344,18 +344,10 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
           )}
 
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} />}
+          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
-            <div className="animate-fade-in">
-              <h2 className="text-3xl font-serif font-bold mb-6">Configuración</h2>
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4 max-w-lg">
-                <div><p className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</p><p className="text-sm">{userProfile.email}</p></div>
-                <div><p className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">Nombre</p><p className="text-sm">{userProfile.displayName}</p></div>
-                <hr className="border-border" />
-                <Button variant="outline" className="gap-2" onClick={onLogout}><LogOut className="w-4 h-4" /> Cerrar sesión</Button>
-              </div>
-            </div>
+            <SettingsTab userProfile={userProfile} onLogout={onLogout} />
           )}
         </div>
       </main>
@@ -368,7 +360,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Nombre"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
             />
           </div>
           <div>
@@ -377,7 +369,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Apellido"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
             />
           </div>
           <div className="flex gap-3 pt-2">
@@ -392,26 +384,137 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.client.name}`}>
           <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace con tu cliente. No necesita contraseña.</p>
+            <p className="text-sm text-muted">Comparte este enlace con tu cliente. No necesita contraseña ni registrarse.</p>
             <div className="flex gap-2">
               <input readOnly value={getClientUrl(linkModal.client)}
                 className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted outline-none font-mono"
               />
               <button onClick={() => copyLink(linkModal.client)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
               >
                 <Copy className="w-3.5 h-3.5" /> Copiar
               </button>
             </div>
             <button
               onClick={() => { sendWhatsApp(linkModal.client); setLinkModal(null) }}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-all"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 active:scale-[0.98] transition-all"
             >
               <MessageCircle className="w-5 h-5" /> Enviar por WhatsApp
             </button>
           </div>
         </Modal>
       )}
+    </div>
+  )
+}
+
+// ── Configuración del entrenador ──────────────────────────
+function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
+  const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
+
+  const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
+  const [brandName, setBrandName] = useState(saved.brandName || '')
+  const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
+  const [phone, setPhone] = useState(saved.phone || '')
+  const [bio, setBio] = useState(saved.bio || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    const profile = { displayName, brandName, brandLogo, phone, bio }
+    localStorage.setItem(LS_KEY, JSON.stringify(profile))
+    // Actualizar nombre en tabla entrenadores
+    await supabase.from('entrenadores').update({ nombre: displayName }).eq('id', userProfile.uid)
+    toast('Perfil guardado ✓', 'ok')
+    setSaving(false)
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { toast('Máximo 2MB', 'warn'); return }
+    const reader = new FileReader()
+    reader.onload = () => setBrandLogo(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="animate-fade-in space-y-6 max-w-lg">
+      <h2 className="text-3xl font-serif font-bold">Configuración</h2>
+
+      {/* Perfil personal */}
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Perfil personal</h3>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
+          <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
+          <input type="text" value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder="+34 600 000 000"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio / Especialidad</label>
+          <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)}
+            placeholder="Entrenador personal especializado en fuerza e hipertrofia..."
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</label>
+          <p className="text-sm text-muted px-1">{userProfile.email}</p>
+        </div>
+      </div>
+
+      {/* Marca / Branding */}
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
+        <p className="text-xs text-muted">Aparecerá en el panel de tus clientes en lugar de "PanelFit".</p>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
+          <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
+            placeholder="Ej: Carlos Training · FitPro · Tu nombre"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo</label>
+          <div className="flex items-center gap-4">
+            {brandLogo ? (
+              <div className="relative">
+                <img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="Logo" />
+                <button onClick={() => setBrandLogo('')}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full flex items-center justify-center text-xs">×</button>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs">
+                Logo
+              </div>
+            )}
+            <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-all cursor-pointer">
+              Subir imagen
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+            </label>
+          </div>
+          <p className="text-[10px] text-muted mt-1">PNG, JPG · Máx 2MB · Recomendado cuadrado</p>
+        </div>
+      </div>
+
+      {/* Botones */}
+      <div className="flex gap-3">
+        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+          <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar cambios'}
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={onLogout}>
+          <LogOut className="w-4 h-4" /> Salir
+        </Button>
+      </div>
     </div>
   )
 }
