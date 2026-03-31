@@ -9,6 +9,15 @@ import { useToast, ToastContainer } from './components/shared/Toast'
 
 type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
 
+const DEMO_PROFILE: UserProfile = {
+  uid: 'demo-uid',
+  email: 'demo@panelfit.app',
+  displayName: 'Demo Entrenador',
+  role: 'trainer',
+  approved: true,
+  createdAt: Date.now(),
+}
+
 export default function App() {
   const [view, setView] = useState<AppView>('loading')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -35,12 +44,12 @@ export default function App() {
   }, [])
 
   const loadProfile = async (uid: string, email: string) => {
-    if (email !== 'javi_ql@hotmail.com') {
+    if (email === 'javi_ql@hotmail.com') {
+      setUserProfile({ uid, email, displayName: 'Javi', role: 'super_admin', createdAt: Date.now() })
+    } else {
       const { data } = await supabase.from('entrenadores').select('nombre,activo').eq('id', uid).single()
       if (!data || data.activo === false) { await supabase.auth.signOut(); setView('auth'); return }
       setUserProfile({ uid, email, displayName: data.nombre || email.split('@')[0], role: 'trainer', approved: true, createdAt: Date.now() })
-    } else {
-      setUserProfile({ uid, email, displayName: 'Javi', role: 'super_admin', createdAt: Date.now() })
     }
     setView('trainer')
   }
@@ -48,6 +57,11 @@ export default function App() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setView('auth'); setUserProfile(null); setSelectedClient(null)
+  }
+
+  const handleDemo = () => {
+    setUserProfile(DEMO_PROFILE)
+    setView('trainer')
   }
 
   if (view === 'loading') return (
@@ -63,27 +77,20 @@ export default function App() {
   if (view === 'auth') return (
     <><Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
-    })} /><ToastContainer toasts={toasts} /></>
+    })} onDemo={handleDemo} /><ToastContainer toasts={toasts} /></>
   )
 
   if (view === 'trainer' && userProfile) return (
     <>
       {selectedClient ? (
-        <ClientPanel
-          client={selectedClient}
-          userProfile={userProfile}
-          allClients={allClients}
-          onClose={() => setSelectedClient(null)}
-        />
+        <ClientPanel client={selectedClient} userProfile={userProfile}
+          allClients={allClients} onClose={() => setSelectedClient(null)} />
       ) : (
-        <TrainerDashboard
-          userProfile={userProfile}
-          onLogout={handleLogout}
+        <TrainerDashboard userProfile={userProfile} onLogout={handleLogout}
           onSelectClient={(client) => {
             setSelectedClient(client)
             setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
-          }}
-        />
+          }} />
       )}
       <ToastContainer toasts={toasts} />
     </>
