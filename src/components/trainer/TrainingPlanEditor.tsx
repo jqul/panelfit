@@ -141,17 +141,17 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
           <div className="px-5 py-3.5 border-b border-border flex items-center gap-3 flex-wrap bg-bg-alt/30">
             <input value={currentWeek.label}
               onChange={e => updateWeek(activeWeek, { label: e.target.value })}
-              className="text-sm font-semibold bg-transparent outline-none border-b border-transparent hover:border-border focus:border-accent transition-colors flex-1 min-w-0"
+              aria-label="Nombre de semana" className="text-sm font-semibold bg-transparent outline-none border-b border-transparent hover:border-border focus:border-accent transition-colors flex-1 min-w-0"
             />
             <input value={currentWeek.rpe} onChange={e => updateWeek(activeWeek, { rpe: e.target.value })}
-              placeholder="@7"
+              placeholder="@7" aria-label="RPE de la semana"
               className="w-16 text-sm text-center bg-bg border border-border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent/20"
             />
-            <button onClick={() => setCurrentWeek(activeWeek)} title="Marcar como semana actual"
+            <button onClick={() => setCurrentWeek(activeWeek)} title="Marcar como semana actual" aria-label="Marcar como semana actual"
               className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/10'}`}
             ><Star className="w-4 h-4" /></button>
-            <button onClick={() => copyWeek(activeWeek)} title="Copiar semana" className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"><Copy className="w-4 h-4" /></button>
-            <button onClick={() => deleteWeek(activeWeek)} title="Eliminar semana" className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => copyWeek(activeWeek)} title="Copiar semana" aria-label="Copiar semana" className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"><Copy className="w-4 h-4" /></button>
+            <button onClick={() => deleteWeek(activeWeek)} title="Eliminar semana" aria-label="Eliminar semana" className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors"><Trash2 className="w-4 h-4" /></button>
           </div>
 
           {/* Días */}
