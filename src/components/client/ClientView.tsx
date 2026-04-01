@@ -16,6 +16,9 @@ export function ClientView({ token }: ClientViewProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [client, setClient] = useState<any>(null)
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState(false)
+  const [pinVerified, setPinVerified] = useState(false)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
@@ -91,7 +94,42 @@ export function ClientView({ token }: ClientViewProps) {
     </div>
   )
 
-  const clientName = `${client.name || ''} ${client.surname || ''}`.trim()
+  // Verificar PIN si el plan lo requiere
+  const planPin = (plan as any)?.pin
+  if (!loading && !error && planPin && !pinVerified) {
+    const checkPin = () => {
+      if (pinInput === planPin) { setPinVerified(true); setPinError(false) }
+      else { setPinError(true); setPinInput('') }
+    }
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+        <div className="w-full max-w-xs text-center space-y-6">
+          <div>
+            <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+            <p className="text-muted text-sm mt-2">Introduce tu PIN para acceder</p>
+          </div>
+          <div className="space-y-3">
+            <input type="number" value={pinInput} onChange={e => { setPinInput(e.target.value); setPinError(false) }}
+              onKeyDown={e => e.key === 'Enter' && checkPin()}
+              placeholder="PIN de acceso"
+              className={`w-full px-4 py-4 bg-card border rounded-2xl text-center text-2xl font-serif outline-none tracking-widest ${pinError ? 'border-warn' : 'border-border focus:border-accent'}`}
+              style={{ fontSize: '24px' }}
+              autoFocus
+            />
+            {pinError && <p className="text-sm text-warn">PIN incorrecto. Inténtalo de nuevo.</p>}
+            <button onClick={checkPin}
+              className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90"
+              style={{ minHeight: '52px' }}>
+              Entrar
+            </button>
+          </div>
+          <p className="text-xs text-muted">Si no recuerdas tu PIN, contacta con tu entrenador.</p>
+        </div>
+      </div>
+    )
+  }
+
+  const clientName = `${client?.name || ''} ${client?.surname || ''}`.trim()
   const brandName = plan?.brandName || 'PanelFit'
   const brandLogo = plan?.brandLogo
 
