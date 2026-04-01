@@ -43,7 +43,7 @@ export function ClientView({ token }: ClientViewProps) {
     await supabase.from('registros').upsert({
       clientId: client.id,
       logs: newLogs,
-      updatedAt: new Date().toISOString(),
+      updatedAt: Date.now(),
     }, { onConflict: 'clientId' })
   }
 
