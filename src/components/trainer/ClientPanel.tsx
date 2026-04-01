@@ -1,4 +1,4 @@
-cat > /home/claude/panelfit-v3/src/components/trainer/ClientPanel.tsx << 'ENDOFFILE'
+
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings,
