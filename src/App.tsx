@@ -8,6 +8,7 @@ import { useToast, ToastContainer } from './components/shared/Toast'
 const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
 const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
 const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
+const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 
 type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
 
@@ -62,7 +63,8 @@ export default function App() {
   }, [])
 
   const loadProfile = async (uid: string, email: string) => {
-    if (email === 'javi_ql@hotmail.com') {
+    const isSuperAdmin = email === 'javi_ql@hotmail.com' || email === 'javier.quinones.lopez@gmail.com'
+    if (isSuperAdmin) {
       setUserProfile({ uid, email, displayName: 'Javi', role: 'super_admin', createdAt: Date.now() })
     } else {
       const { data } = await supabase.from('entrenadores').select('nombre,activo').eq('id', uid).single()
@@ -102,7 +104,12 @@ export default function App() {
 
   if (view === 'trainer' && userProfile) return (
     <Suspense fallback={<LoadingScreen />}>
-      {selectedClient ? (
+      {userProfile.role === 'super_admin' ? (
+        <>
+          <SuperAdminPanel onLogout={handleLogout} />
+          <ToastContainer toasts={toasts} />
+        </>
+      ) : selectedClient ? (
         <ClientPanel client={selectedClient} userProfile={userProfile}
           allClients={allClients} onClose={() => setSelectedClient(null)} />
       ) : (
