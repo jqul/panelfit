@@ -81,7 +81,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
     setApplying(true)
     const plan = { clientId, type: applyModal.template.type, restMain: 180, restAcc: 90, restWarn: 30, weeks: applyModal.template.weeks }
     const { error } = await supabase.from('planes')
-      .upsert({ clientId, plan: { P: plan }, updatedAt: new Date().toISOString() }, { onConflict: 'clientId' })
+      .upsert({ clientId, plan: { P: plan }, Date.now() }, { onConflict: 'clientId' })
     if (error) toast('Error: ' + error.message, 'warn')
     else toast(`Plantilla aplicada a ${clients.find(c => c.id === clientId)?.name} ✓`, 'ok')
     setApplying(false)
