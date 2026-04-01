@@ -76,7 +76,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     if (!p) return
     setSaving(true); setSaveMsg('Guardando...')
     const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
+      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() }, { onConflict: 'clientId' })
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaveMsg('Error') }
     else { setSaveMsg('✓ Guardado'); setTimeout(() => setSaveMsg(''), 2000) }
     setSaving(false)
