@@ -4,11 +4,12 @@ import { toast } from '../shared/Toast'
 import { Check, X, Users, LogOut, RefreshCw, Shield, Mail, Clock } from 'lucide-react'
 
 interface Entrenador {
-  id: string
-  nombre: string
+  uid: string
+  displayName: string
   email: string
-  activo: boolean
-  created_at?: string
+  approved: boolean
+  rol: string
+  createdAt?: string
 }
 
 interface Props {
@@ -27,14 +28,14 @@ export function SuperAdminPanel({ onLogout }: Props) {
     const { data, error } = await supabase
       .from('entrenadores')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('createdAt', { ascending: false })
     if (error) { toast('Error al cargar entrenadores', 'warn') }
     else setEntrenadores(data || [])
     setLoading(false)
   }
 
   const setActivo = async (id: string, activo: boolean) => {
-    const { error } = await supabase.from('entrenadores').update({ activo }).eq('id', id)
+    const { error } = await supabase.from('entrenadores').update({ approved: activo }).eq('uid', id)
     if (error) { toast('Error al actualizar', 'warn'); return }
     setEntrenadores(prev => prev.map(e => e.id === id ? { ...e, activo } : e))
     toast(activo ? 'Entrenador activado ✓' : 'Entrenador desactivado', 'ok')
@@ -42,14 +43,14 @@ export function SuperAdminPanel({ onLogout }: Props) {
 
   const deleteEntrenador = async (id: string) => {
     if (!confirm('¿Eliminar este entrenador? Esta acción no se puede deshacer.')) return
-    const { error } = await supabase.from('entrenadores').delete().eq('id', id)
+    const { error } = await supabase.from('entrenadores').delete().eq('uid', id)
     if (error) { toast('Error al eliminar', 'warn'); return }
     setEntrenadores(prev => prev.filter(e => e.id !== id))
     toast('Entrenador eliminado', 'ok')
   }
 
-  const pendientes = entrenadores.filter(e => !e.activo)
-  const activos = entrenadores.filter(e => e.activo)
+  const pendientes = entrenadores.filter(e => !e.approved)
+  const activos = entrenadores.filter(e => e.approved)
   const filtered = tab === 'pendientes' ? pendientes : tab === 'activos' ? activos : entrenadores
 
   return (
@@ -129,29 +130,29 @@ export function SuperAdminPanel({ onLogout }: Props) {
               <div key={e.id} className="flex items-center gap-4 px-5 py-4">
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-sm font-bold flex-shrink-0 ${
-                  e.activo ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
+                  e.approved ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
                 }`}>
-                  {e.nombre?.[0]?.toUpperCase() || '?'}
+                  {e.displayName?.[0]?.toUpperCase() || '?'}
                 </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold truncate">{e.nombre || 'Sin nombre'}</p>
+                    <p className="text-sm font-semibold truncate">{e.displayName || 'Sin nombre'}</p>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      e.activo ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
+                      e.approved ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
                     }`}>
-                      {e.activo ? 'Activo' : 'Pendiente'}
+                      {e.approved ? 'Activo' : 'Pendiente'}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-0.5">
                     <p className="text-xs text-muted flex items-center gap-1">
                       <Mail className="w-3 h-3" />{e.email}
                     </p>
-                    {e.created_at && (
+                    {e.createdAt && (
                       <p className="text-xs text-muted flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {new Date(e.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(e.createdAt!).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     )}
                   </div>
@@ -159,7 +160,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
 
                 {/* Acciones */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {!e.activo ? (
+                  {!e.approved ? (
                     <button onClick={() => setActivo(e.id, true)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-ok text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
                       <Check className="w-3.5 h-3.5" /> Aprobar
