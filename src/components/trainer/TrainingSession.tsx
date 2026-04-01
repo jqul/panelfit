@@ -238,7 +238,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           {/* Vídeos */}
           {allVideos.length > 0 && (
             <div className={`grid gap-2 ${allVideos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {allVideos.slice(0, 2).map((url: string, vi: number) => {
+             {allVideos.slice(0, 2).filter((url): url is string => !!url).map((url, vi) => {
                 const ytId = getYTId(url)
                 return ytId ? (
                   <a key={vi} href={url} target="_blank" rel="noreferrer"
