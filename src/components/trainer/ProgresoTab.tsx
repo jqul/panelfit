@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Camera, Plus, Trash2, TrendingUp, Scale, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { Camera, Plus, Trash2, Scale, ChevronDown, ChevronUp, X, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
@@ -17,7 +17,7 @@ interface PhotoSession {
 interface Props { client: ClientData }
 
 export function ProgresoTab({ client }: Props) {
-  const [subtab, setSubtab] = useState<'peso' | 'fotos'>('peso')
+  const [subtab, setSubtab] = useState<'peso' | 'fotos' | 'encuesta'>('peso')
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
@@ -78,6 +78,19 @@ export function ProgresoTab({ client }: Props) {
 
   const deleteSession = (id: string) => savePhotos(photos.filter(s => s.id !== id))
 
+  // Encuesta
+  const LS_ENC = `pf_encuesta_${client.id}`
+  const [preguntas, setPreguntas] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_ENC) || 'null') || [
+      '¿Cómo te has sentido esta semana en los entrenamientos?',
+      '¿Has tenido alguna molestia o dolor?',
+      '¿Estás descansando bien?',
+      '¿Cómo ha ido la dieta?',
+    ]} catch { return [] }
+  })
+  const [nuevaPregunta, setNuevaPregunta] = useState('')
+  const savePreguntas = (p: string[]) => { setPreguntas(p); localStorage.setItem(LS_ENC, JSON.stringify(p)) }
+
   // Calcular cambio de peso
   const lastTwo = weights.slice(0, 2)
   const weightDiff = lastTwo.length === 2 ? (lastTwo[0].weight - lastTwo[1].weight) : null
@@ -95,6 +108,10 @@ export function ProgresoTab({ client }: Props) {
         <button onClick={() => setSubtab('fotos')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'fotos' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
           <Camera className="w-4 h-4" /> Fotos
+        </button>
+        <button onClick={() => setSubtab('encuesta')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'encuesta' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          <MessageSquare className="w-4 h-4" /> Encuesta
         </button>
       </div>
 
@@ -260,6 +277,49 @@ export function ProgresoTab({ client }: Props) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ENCUESTA */}
+      {subtab === 'encuesta' && (
+        <div className="space-y-4">
+          <p className="text-xs text-muted">Configura las preguntas y envía el enlace al cliente cuando quieras.</p>
+          <div className="space-y-2">
+            {preguntas.map((p, i) => (
+              <div key={i} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
+                <span className="text-xs font-bold text-muted w-5 flex-shrink-0">{i + 1}.</span>
+                <p className="text-sm flex-1">{p}</p>
+                <button onClick={() => savePreguntas(preguntas.filter((_, idx) => idx !== i))}
+                  className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="text" placeholder="Nueva pregunta..." value={nuevaPregunta}
+              onChange={e => setNuevaPregunta(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && nuevaPregunta.trim()) { savePreguntas([...preguntas, nuevaPregunta.trim()]); setNuevaPregunta('') }}}
+              className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <button onClick={() => { if (nuevaPregunta.trim()) { savePreguntas([...preguntas, nuevaPregunta.trim()]); setNuevaPregunta('') }}}
+              className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0">
+              + Añadir
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}&encuesta=1`); toast('Enlace copiado ✓', 'ok') }}
+              className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
+              🔗 Copiar enlace
+            </button>
+            <button onClick={() => {
+              const url = `${window.location.origin}?c=${client.token}&encuesta=1`
+              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe mando la encuesta de seguimiento:\n\n${url}\n\nTarda menos de 2 minutos 🙏`)
+              window.open(`https://wa.me/?text=${msg}`, '_blank')
+            }} className="flex-1 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+              📱 Enviar por WhatsApp
+            </button>
+          </div>
         </div>
       )}
     </div>
