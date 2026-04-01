@@ -75,7 +75,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
     setAdding(true)
-    const token = Math.random().toString(36).slice(2, 14)
+    const token = crypto.randomUUID().replace(/-/g, '')
     const { error } = await supabase.from('clientes').insert({
       trainerId: userProfile.uid,
       name: newClient.name.trim(),
