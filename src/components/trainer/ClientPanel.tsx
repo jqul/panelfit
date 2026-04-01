@@ -48,12 +48,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setLoading(true)
 
     const { data: planData } = await supabase
-      .from('planes').select('plan').eq('clientId', client.id).single()
+  .from('planes').select('plan').eq('clientId', client.id).maybeSingle()
     if (planData?.plan?.P) setPlan(planData.plan.P as TrainingPlan)
     else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
 
     const { data: regData } = await supabase
-      .from('registros').select('logs').eq('clientId', client.id).single()
+  .from('registros').select('logs').eq('clientId', client.id).maybeSingle()
     if (regData?.logs) setLogs(regData.logs as TrainingLogs)
 
     setLoading(false)
@@ -73,8 +73,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setSaveMsg('Guardando...')
     const { error } = await supabase
       .from('planes')
-      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: new Date().toISOString() },
-               { onConflict: 'clientId' })
+      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: new Date().toISOString() })
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaveMsg('Error') }
     else { setSaveMsg('✓ Guardado'); setTimeout(() => setSaveMsg(''), 2000) }
     setSaving(false)
