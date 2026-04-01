@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings,
@@ -545,5 +544,3 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
     </div>
   )
 }
-ENDOFFILE
-echo "OK"
