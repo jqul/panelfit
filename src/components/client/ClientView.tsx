@@ -6,7 +6,7 @@ import { ClientDashboard } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
 import { DietEditor } from '../shared/DietEditor'
-import { PlanRow, RegistroRow } from '../../lib/supabase-types'
+import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
 interface ClientViewProps { token: string }
@@ -15,7 +15,7 @@ type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas'
 export function ClientView({ token }: ClientViewProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [client, setClient] = useState<any>(null)
+  const [client, setClient] = useState<ClienteRow | null>(null)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState(false)
   const [pinVerified, setPinVerified] = useState(false)
@@ -95,7 +95,7 @@ export function ClientView({ token }: ClientViewProps) {
   )
 
   // Verificar PIN si el plan lo requiere
-  const planPin = (plan as any)?.pin
+  const planPin = (plan as unknown as { pin?: string })?.pin
   if (!loading && !error && planPin && !pinVerified) {
     const checkPin = () => {
       if (pinInput === planPin) { setPinVerified(true); setPinError(false) }
@@ -217,7 +217,7 @@ function NoPlanView() {
   )
 }
 
-function MasTab({ client, plan }: { client: any; plan: TrainingPlan | null }) {
+function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
   return (
     <div className="px-4 py-6 space-y-4 max-w-xl mx-auto">
       <h3 className="font-serif font-bold text-xl">Más opciones</h3>
@@ -228,13 +228,14 @@ function MasTab({ client, plan }: { client: any; plan: TrainingPlan | null }) {
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu entrenador</p>
         </div>
         <div className="p-4 space-y-3">
-          <a href="https://wa.me/" target="_blank" rel="noreferrer"
+          <a href={`https://wa.me/?text=${encodeURIComponent('Hola, soy ' + client.name + '. Te escribo desde mi panel de PanelFit.')}`}
+            target="_blank" rel="noreferrer"
             className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl hover:bg-[#25D366]/20 transition-colors"
             style={{ minHeight: '56px' }}>
             <MessageSquare className="w-5 h-5 text-[#25D366] flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold">Enviar mensaje por WhatsApp</p>
-              <p className="text-xs text-muted">Contacta con tu entrenador</p>
+              <p className="text-sm font-semibold">Contactar con mi entrenador</p>
+              <p className="text-xs text-muted">Abre WhatsApp con mensaje preparado</p>
             </div>
           </a>
         </div>
