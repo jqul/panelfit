@@ -11,6 +11,7 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { DietEditor } from '../shared/DietEditor'
+import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
 type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
@@ -76,7 +77,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     if (!p) return
     setSaving(true); setSaveMsg('Guardando...')
     const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() }, { onConflict: 'clientId' })
+      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: new Date().toISOString() })
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaveMsg('Error') }
     else { setSaveMsg('✓ Guardado'); setTimeout(() => setSaveMsg(''), 2000) }
     setSaving(false)
@@ -202,8 +203,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                 {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={true} />}
                 {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
                 {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
-                {activeTab === 'progreso' && <ProgresoTab client={client} />}
-                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
+                {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
                 {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
               </>
             )}
@@ -367,107 +367,6 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
           </div>
         )
       })}
-    </div>
-  )
-}
-
-// ── Progreso (encuestas + fotos) ──────────────────────────
-function ProgresoTab({ client }: { client: ClientData }) {
-  const [subtab, setSubtab] = useState<'encuesta' | 'fotos'>('encuesta')
-  const LS_KEY = `pf_encuesta_${client.id}`
-  const [preguntas, setPreguntas] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || [
-      '¿Cómo te has sentido esta semana en los entrenamientos?',
-      '¿Has tenido alguna molestia o dolor?',
-      '¿Estás descansando bien?',
-      '¿Cómo ha ido la dieta?',
-    ]} catch { return [] }
-  })
-  const [nueva, setNueva] = useState('')
-
-  const savePreguntas = (p: string[]) => {
-    setPreguntas(p)
-    localStorage.setItem(LS_KEY, JSON.stringify(p))
-  }
-
-  const addPregunta = () => {
-    const t = nueva.trim(); if (!t) return
-    savePreguntas([...preguntas, t]); setNueva('')
-  }
-
-  const sendEncuestaWhatsApp = () => {
-    const url = `${window.location.origin}?c=${client.token}&encuesta=1`
-    const msg = encodeURIComponent(
-      `Hola ${client.name} 👋\n\nTe mando la encuesta de seguimiento semanal:\n\n${url}\n\nTarda menos de 2 minutos 🙏`
-    )
-    window.open(`https://wa.me/?text=${msg}`, '_blank')
-  }
-
-  return (
-    <div className="space-y-5 max-w-lg">
-      <h3 className="font-serif font-bold text-lg">Progreso</h3>
-
-      {/* Subtabs */}
-      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
-        <button onClick={() => setSubtab('encuesta')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'encuesta' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          <MessageSquare className="w-4 h-4" /> Encuestas
-        </button>
-        <button onClick={() => setSubtab('fotos')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'fotos' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          <Camera className="w-4 h-4" /> Fotos
-        </button>
-      </div>
-
-      {subtab === 'encuesta' && (
-        <div className="space-y-4">
-          <p className="text-xs text-muted">Configura las preguntas y envía el enlace al cliente cuando quieras — cada 15 días, al inicio, cuando consideres.</p>
-
-          <div className="space-y-2">
-            {preguntas.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <span className="text-xs font-bold text-muted w-5 flex-shrink-0">{i + 1}.</span>
-                <p className="text-sm flex-1">{p}</p>
-                <button onClick={() => savePreguntas(preguntas.filter((_, idx) => idx !== i))}
-                  className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <input type="text" placeholder="Nueva pregunta..." value={nueva}
-              onChange={e => setNueva(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addPregunta()}
-              className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-            />
-            <button onClick={addPregunta}
-              className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0">
-              + Añadir
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}&encuesta=1`); toast('Enlace copiado ✓', 'ok') }}
-              className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
-              🔗 Copiar enlace
-            </button>
-            <button onClick={sendEncuestaWhatsApp}
-              className="flex-1 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
-              📱 Enviar por WhatsApp
-            </button>
-          </div>
-        </div>
-      )}
-
-      {subtab === 'fotos' && (
-        <div className="text-center py-12 text-muted">
-          <Camera className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-serif text-lg">Fotos de progreso</p>
-          <p className="text-sm mt-1">El cliente podrá subir fotos desde su panel. Próximamente.</p>
-        </div>
-      )}
     </div>
   )
 }
