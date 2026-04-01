@@ -6,6 +6,8 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { mapClientes } from '../../lib/mappers'
+import { RegistroRow } from '../../lib/supabase-types'
+import { logError } from '../../lib/errors'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
@@ -52,9 +54,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       const { data: regs } = await supabase
         .from('registros').select('clientId,logs').in('clientId', ids)
       const active: Record<string, boolean> = {}
-      ;(regs || []).forEach((r: any) => {
+      ;(regs as RegistroRow[] || []).forEach((r) => {
         const logs = r.logs || {}
-        const entrenóHoy = Object.values(logs).some((l: any) => l.done && l.dateDone === hoy)
+        const entrenóHoy = Object.values(logs).some(l => l.done && l.dateDone === hoy)
         if (entrenóHoy) active[r.clientId] = true
       })
       setTodayActive(active)
@@ -89,7 +91,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   }
 
   const handleDelete = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
+    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    if (error) { logError('handleDelete', error); toast('Error al eliminar', 'warn'); return }
     setDeletingId(null)
     toast('Cliente eliminado', 'ok')
   }
