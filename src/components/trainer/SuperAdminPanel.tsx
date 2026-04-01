@@ -37,7 +37,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
   const setActivo = async (id: string, activo: boolean) => {
     const { error } = await supabase.from('entrenadores').update({ approved: activo }).eq('uid', id)
     if (error) { toast('Error al actualizar', 'warn'); return }
-    setEntrenadores(prev => prev.map(e => e.id === id ? { ...e, activo } : e))
+    setEntrenadores(prev => prev.map(e => e.uid === id ? { ...e, activo } : e))
     toast(activo ? 'Entrenador activado ✓' : 'Entrenador desactivado', 'ok')
   }
 
@@ -45,7 +45,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
     if (!confirm('¿Eliminar este entrenador? Esta acción no se puede deshacer.')) return
     const { error } = await supabase.from('entrenadores').delete().eq('uid', id)
     if (error) { toast('Error al eliminar', 'warn'); return }
-    setEntrenadores(prev => prev.filter(e => e.id !== id))
+    setEntrenadores(prev => prev.filter(e => e.uid !== id))
     toast('Entrenador eliminado', 'ok')
   }
 
@@ -127,7 +127,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
         ) : (
           <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
             {filtered.map(e => (
-              <div key={e.id} className="flex items-center gap-4 px-5 py-4">
+              <div key={e.uid} className="flex items-center gap-4 px-5 py-4">
                 {/* Avatar */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-sm font-bold flex-shrink-0 ${
                   e.approved ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
@@ -161,17 +161,17 @@ export function SuperAdminPanel({ onLogout }: Props) {
                 {/* Acciones */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!e.approved ? (
-                    <button onClick={() => setActivo(e.id, true)}
+                    <button onClick={() => setActivo(e.uid, true)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-ok text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
                       <Check className="w-3.5 h-3.5" /> Aprobar
                     </button>
                   ) : (
-                    <button onClick={() => setActivo(e.id, false)}
+                    <button onClick={() => setActivo(e.uid, false)}
                       className="flex items-center gap-1.5 px-3 py-2 bg-warn/10 text-warn border border-warn/20 rounded-lg text-xs font-bold hover:bg-warn hover:text-white transition-all">
                       <X className="w-3.5 h-3.5" /> Desactivar
                     </button>
                   )}
-                  <button onClick={() => deleteEntrenador(e.id)}
+                  <button onClick={() => deleteEntrenador(e.uid)}
                     className="p-2 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors"
                     aria-label="Eliminar entrenador">
                     <X className="w-4 h-4" />
