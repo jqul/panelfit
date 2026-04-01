@@ -5,6 +5,8 @@ import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { DietEditor } from '../shared/DietEditor'
+import { PlanRow, RegistroRow } from '../../lib/supabase-types'
+import { logError } from '../../lib/errors'
 
 interface ClientViewProps { token: string }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas'
@@ -27,13 +29,17 @@ export function ClientView({ token }: ClientViewProps) {
     if (cErr || !clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
 
-    const { data: planData } = await supabase
-      .from('planes').select('plan').eq('clientId', clientData.id).single()
-    if ((planData as any)?.plan?.P) setPlan((planData as any).plan.P as TrainingPlan)
+    const { data: planData, error: planErr } = await supabase
+      .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
+    if (planErr) logError('ClientView:loadPlan', planErr)
+    const planRow = planData as PlanRow | null
+    if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
 
-    const { data: regData } = await supabase
-      .from('registros').select('logs').eq('clientId', clientData.id).single()
-    if ((regData as any)?.logs) setLogs((regData as any).logs as TrainingLogs)
+    const { data: regData, error: regErr } = await supabase
+      .from('registros').select('logs').eq('clientId', clientData.id).maybeSingle()
+    if (regErr) logError('ClientView:loadRegistros', regErr)
+    const regRow = regData as RegistroRow | null
+    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
 
     setLoading(false)
   }
@@ -43,7 +49,7 @@ export function ClientView({ token }: ClientViewProps) {
     await supabase.from('registros').upsert({
       clientId: client.id,
       logs: newLogs,
-      updatedAt: Date.now(),
+      updatedAt: new Date().toISOString(),
     }, { onConflict: 'clientId' })
   }
 
@@ -97,7 +103,7 @@ export function ClientView({ token }: ClientViewProps) {
       <main className="flex-1 pb-20 max-w-2xl mx-auto w-full">
         {activeTab === 'hoy' && plan && (
           <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-            weightHistory={weightHistory} clientName={clientName} />
+            weightHistory={weightHistory} clientName={clientName} clientId={client.id} />
         )}
         {activeTab === 'entreno' && plan && (
           <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} />
