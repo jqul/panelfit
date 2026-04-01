@@ -56,7 +56,7 @@ export function ProgresoClienteTab({ clientId, logs }: Props) {
     const m = key.match(/ex_w\d+_d\d+_r(\d+)/)
     if (!m) return
     const exName = key.split('_r')[0]
-    Object.values(log.sets || {}).forEach((s: any) => {
+    Object.values(log.sets || {}).forEach((s) => {
       const w = parseFloat(s.weight) || 0
       if (!records[exName] || w > records[exName]) records[exName] = w
     })
