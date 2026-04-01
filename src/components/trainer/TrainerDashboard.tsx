@@ -195,14 +195,15 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { label: 'Clientes', value: clients.length, color: 'text-ink' },
-                  { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok' },
-                  { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent' },
-                  { label: 'Sin entrenar +7d', value: Math.max(0, clients.length - hoyCount), color: 'text-warn' },
+                  { label: 'Clientes totales', value: clients.length, color: 'text-ink', sub: 'alumnos activos' },
+                  { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok', sub: clients.length ? `${Math.round(hoyCount/clients.length*100)}% adherencia` : '—' },
+                  { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent', sub: 'nuevos alumnos' },
+                  { label: 'Inactivos +7d', value: Math.max(0, clients.length - hoyCount), color: Math.max(0, clients.length - hoyCount) > 0 ? 'text-warn' : 'text-ok', sub: 'necesitan atención' },
                 ].map(s => (
                   <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
                     <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
                     <p className="text-[10px] text-muted uppercase tracking-widest font-semibold mt-1">{s.label}</p>
+                    <p className="text-[10px] text-muted mt-0.5">{s.sub}</p>
                   </div>
                 ))}
               </div>
@@ -262,6 +263,43 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   )}
                 </div>
               </div>
+
+              {/* Clientes que necesitan atención */}
+              {clients.filter(c => !todayActive[c.id]).length > 0 && (
+                <div className="bg-card border border-warn/20 rounded-2xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                    <div>
+                      <h3 className="font-serif font-bold text-base">Clientes inactivos hoy</h3>
+                      <p className="text-xs text-muted mt-0.5">No han entrenado hoy</p>
+                    </div>
+                    <span className="text-xs font-bold text-warn bg-warn/10 px-2 py-1 rounded-full border border-warn/20">
+                      {clients.filter(c => !todayActive[c.id]).length}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {clients.filter(c => !todayActive[c.id]).slice(0, 4).map(c => (
+                      <button key={c.id} onClick={() => onSelectClient(c)}
+                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group">
+                        <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-muted flex-shrink-0">
+                          {(c.name?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
+                        </div>
+                        <button onClick={e => {
+                          e.stopPropagation()
+                          const url = `${window.location.origin}?c=${c.token}`
+                          const msg = encodeURIComponent(`Hola ${c.name} 👋 ¿Todo bien? No te hemos visto entrenar hoy. ¡Ánimo! 💪\n\n${url}`)
+                          window.open(`https://wa.me/?text=${msg}`, '_blank')
+                        }} aria-label={`Enviar WhatsApp a ${c.name}`}
+                          className="text-[#25D366] text-xs font-semibold hover:underline flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          WhatsApp
+                        </button>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
