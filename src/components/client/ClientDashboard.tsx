@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Flame, Dumbbell, Trophy, TrendingUp, Play, CheckCircle2, MessageSquare, Scale, Clock, ChevronRight, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
+import { Exercise } from '../../types'
 import { TrainingSession } from '../trainer/TrainingSession'
 
 interface Props {
@@ -63,7 +64,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
     const w = parseFloat(newWeight)
     if (!w || w < 20 || w > 300) return
     const date = new Date().toISOString().split('T')[0]
-    const updated = [{ date, weight: w }, ...weights.filter(x => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date))
+    const updated = [{ date, weight: w }, ...weights.filter((x: { date: string; weight: number }) => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date))
     setWeights(updated)
     localStorage.setItem(`pf_weight_${clientId}`, JSON.stringify(updated))
     setNewWeight(''); setShowWeightInput(false)
@@ -75,7 +76,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const pesoActual = weights[0]?.weight || null
 
   const todayLogs = todaySession
-    ? todaySession.day.exercises.map((_: any, ri: number) => logs[`ex_${todaySession.dayKey}_r${ri}`])
+    ? todaySession.day.exercises.map((_: Exercise, ri: number) => logs[`ex_${todaySession.dayKey}_r${ri}`])
     : []
   const todayDone = todayLogs.filter(l => l?.done).length
   const todayTotal = todaySession?.day.exercises.length || 0
