@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight, Save,
+  LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight, Save, BarChart2,
   MessageCircle, Link, Copy
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -13,10 +13,11 @@ import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
+import { AdherenciaTab } from './AdherenciaTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'settings'
 
 interface Props {
   userProfile: UserProfile
@@ -35,6 +36,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [todayActive, setTodayActive] = useState<Record<string, boolean>>({})
   const [linkModal, setLinkModal] = useState<{ client: ClientData } | null>(null)
+  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
 
   const fetchClients = async () => {
     setLoading(true)
@@ -60,6 +62,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
         if (entrenóHoy) active[r.clientId] = true
       })
       setTodayActive(active)
+      const map: Record<string, any> = {}
+      ;(regs as any[] || []).forEach((r: any) => { map[r.clientId] = r.logs || {} })
+      setLogsMap(map)
     }
     setLoading(false)
   }
@@ -137,6 +142,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
     { id: 'exercises' as Tab, icon: Dumbbell,        label: 'Ejercicios' },
     { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
+    { id: 'adherencia' as Tab, icon: TrendingUp,      label: 'Adherencia' },
     { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
   ]
 
@@ -385,6 +391,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
           )}
 
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
+          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} plansMap={{}} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
