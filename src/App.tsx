@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { UserProfile, ClientData } from './types'
 import { Auth } from './components/shared/Auth'
-import { TrainerDashboard } from './components/trainer/TrainerDashboard'
-import { ClientPanel } from './components/trainer/ClientPanel'
-import { ClientView } from './components/client/ClientView'
 import { useToast, ToastContainer } from './components/shared/Toast'
+
+// Lazy load — solo se carga cuando se necesita
+const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
+const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
+const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 
 type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
 
@@ -16,6 +18,22 @@ const DEMO_PROFILE: UserProfile = {
   role: 'trainer',
   approved: true,
   createdAt: Date.now(),
+}
+
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="text-center space-y-3">
+        <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+        <div className="flex gap-1 justify-center">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 bg-accent rounded-full animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function App() {
@@ -64,24 +82,26 @@ export default function App() {
     setView('trainer')
   }
 
-  if (view === 'loading') return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
-      <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-    </div>
-  )
+  if (view === 'loading') return <LoadingScreen />
 
   if (view === 'client-token' && clientToken) return (
-    <><ClientView token={clientToken} /><ToastContainer toasts={toasts} /></>
+    <Suspense fallback={<LoadingScreen />}>
+      <ClientView token={clientToken} />
+      <ToastContainer toasts={toasts} />
+    </Suspense>
   )
 
   if (view === 'auth') return (
-    <><Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
-    })} onDemo={handleDemo} /><ToastContainer toasts={toasts} /></>
+    <>
+      <Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
+      })} onDemo={handleDemo} />
+      <ToastContainer toasts={toasts} />
+    </>
   )
 
   if (view === 'trainer' && userProfile) return (
-    <>
+    <Suspense fallback={<LoadingScreen />}>
       {selectedClient ? (
         <ClientPanel client={selectedClient} userProfile={userProfile}
           allClients={allClients} onClose={() => setSelectedClient(null)} />
@@ -93,7 +113,7 @@ export default function App() {
           }} />
       )}
       <ToastContainer toasts={toasts} />
-    </>
+    </Suspense>
   )
 
   return null
