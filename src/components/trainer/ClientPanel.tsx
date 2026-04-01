@@ -39,15 +39,17 @@ function loadTemplates(trainerId: string): TrainingTemplate[] {
   try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
 }
 
+type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+
 export function ClientPanel({ client, userProfile, allClients, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('plan')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saveMsg, setSaveMsg] = useState('')
+  const [saveState, setSaveState] = useState<SaveState>('idle')
   const [showTemplates, setShowTemplates] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
   const otherClients = allClients.filter(c => c.id !== client.id)
   const templates = loadTemplates(userProfile.uid)
@@ -73,20 +75,34 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
 
   const handlePlanChange = (newPlan: TrainingPlan) => {
     setPlan(newPlan)
+    pendingPlan.current = newPlan
     clearTimeout(saveTimer.current)
-    setSaveMsg('Escribiendo...')
+    setSaveState('pending')
     saveTimer.current = setTimeout(() => savePlan(newPlan), 1500)
   }
 
   const savePlan = async (planToSave?: TrainingPlan) => {
-    const p = planToSave || plan
+    const p = planToSave || pendingPlan.current || plan
     if (!p) return
-    setSaving(true); setSaveMsg('Guardando...')
-    const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan: { P: p }, updatedAt: new Date().toISOString() })
-    if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaveMsg('Error') }
-    else { setSaveMsg('✓ Guardado'); setTimeout(() => setSaveMsg(''), 2000) }
-    setSaving(false)
+    setSaveState('saving')
+    const { error: updateError } = await supabase
+      .from('planes')
+      .update({ plan: { P: p }, updatedAt: Date.now() })
+      .eq('clientId', client.id)
+    if (updateError) {
+      const { error: insertError } = await supabase
+        .from('planes')
+        .insert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
+      if (insertError) {
+        logError('savePlan', insertError)
+        setSaveState('error')
+        toast('Error al guardar. Reintentando...', 'warn')
+        setTimeout(() => savePlan(p), 3000)
+        return
+      }
+    }
+    setSaveState('saved')
+    setTimeout(() => setSaveState('idle'), 2000)
   }
 
   const applyTemplate = (template: TrainingTemplate) => {
@@ -137,8 +153,18 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
             ))}
           </nav>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {saveMsg && <span className="text-xs text-muted hidden sm:block">{saveMsg}</span>}
-            <Button size="sm" onClick={() => savePlan()} disabled={saving} className="gap-1.5">
+            <span className={`text-xs hidden sm:block transition-all ${
+              saveState === 'pending' ? 'text-muted' :
+              saveState === 'saving'  ? 'text-accent animate-pulse' :
+              saveState === 'saved'   ? 'text-ok' :
+              saveState === 'error'   ? 'text-warn' : 'opacity-0'
+            }`}>
+              {saveState === 'pending' ? '...' :
+               saveState === 'saving'  ? 'Guardando...' :
+               saveState === 'saved'   ? '✓ Guardado' :
+               saveState === 'error'   ? '✗ Error' : ''}
+            </span>
+            <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
               <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
             </Button>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
@@ -184,7 +210,15 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto">
             {loading ? (
-              <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />)}</div>
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  {[1,2,3].map(i => <div key={i} className="h-8 w-24 bg-card border border-border rounded-lg animate-pulse" />)}
+                </div>
+                <div className="h-48 bg-card border border-border rounded-2xl animate-pulse" />
+                <div className="space-y-2">
+                  {[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />)}
+                </div>
+              </div>
             ) : (
               <>
                 {activeTab === 'plan' && plan && (
