@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { toast } from './Toast'
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export function DietEditor({ clientId, isTrainer }: Props) {
       .from('dietas')
       .select('datos')
       .eq('cliente_id', clientId)
-      .single()
+      .maybeSingle()
 
     if (data?.datos) {
       setDiet(data.datos as DietPlan)
@@ -195,12 +195,18 @@ export function DietEditor({ clientId, isTrainer }: Props) {
     if (!diet) return
     setSaving(true)
     const toSave = { ...diet, updatedAt: new Date().toISOString() }
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('dietas')
-      .upsert({ cliente_id: clientId, datos: toSave })
+      .update({ datos: toSave })
+      .eq('cliente_id', clientId)
 
-    if (error) toast('Error al guardar: ' + error.message, 'warn')
-    else { setDiet(toSave); toast('Dieta guardada ✓', 'ok') }
+    if (updateError) {
+      const { error: insertError } = await supabase
+        .from('dietas')
+        .insert({ cliente_id: clientId, datos: toSave })
+      if (insertError) { toast('Error al guardar: ' + insertError.message, 'warn'); setSaving(false); return }
+    }
+    setDiet(toSave); toast('Dieta guardada ✓', 'ok')
     setSaving(false)
   }
 
