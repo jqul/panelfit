@@ -65,19 +65,18 @@ export default function App() {
   const loadProfile = async (uid: string, email: string) => {
     const { data } = await supabase
       .from('entrenadores')
-      .select('nombre, activo, rol')
-      .eq('id', uid)
+      .select('"displayName", approved, rol')
+      .eq('uid', uid)
       .maybeSingle()
 
-    // Si no existe en la tabla entrenadores, denegar acceso
-    if (!data || data.activo === false) {
+    if (!data || data.approved === false) {
       await supabase.auth.signOut(); setView('auth'); return
     }
 
     const role = data.rol === 'super_admin' ? 'super_admin' : 'trainer'
     setUserProfile({
       uid, email,
-      displayName: data.nombre || email.split('@')[0],
+      displayName: data.displayName || email.split('@')[0],
       role,
       approved: true,
       createdAt: Date.now()
