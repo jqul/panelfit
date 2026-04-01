@@ -63,14 +63,25 @@ export default function App() {
   }, [])
 
   const loadProfile = async (uid: string, email: string) => {
-    const isSuperAdmin = email === 'javi_ql@hotmail.com' || email === 'javier.quinones.lopez@gmail.com'
-    if (isSuperAdmin) {
-      setUserProfile({ uid, email, displayName: 'Javi', role: 'super_admin', createdAt: Date.now() })
-    } else {
-      const { data } = await supabase.from('entrenadores').select('nombre,activo').eq('id', uid).single()
-      if (!data || data.activo === false) { await supabase.auth.signOut(); setView('auth'); return }
-      setUserProfile({ uid, email, displayName: data.nombre || email.split('@')[0], role: 'trainer', approved: true, createdAt: Date.now() })
+    const { data } = await supabase
+      .from('entrenadores')
+      .select('nombre, activo, rol')
+      .eq('id', uid)
+      .maybeSingle()
+
+    // Si no existe en la tabla entrenadores, denegar acceso
+    if (!data || data.activo === false) {
+      await supabase.auth.signOut(); setView('auth'); return
     }
+
+    const role = data.rol === 'super_admin' ? 'super_admin' : 'trainer'
+    setUserProfile({
+      uid, email,
+      displayName: data.nombre || email.split('@')[0],
+      role,
+      approved: true,
+      createdAt: Date.now()
+    })
     setView('trainer')
   }
 
