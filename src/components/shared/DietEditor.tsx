@@ -197,7 +197,7 @@ export function DietEditor({ clientId, isTrainer }: Props) {
     const toSave = { ...diet, updatedAt: new Date().toISOString() }
     const { error } = await supabase
       .from('dietas')
-      .upsert({ cliente_id: clientId, datos: toSave }, { onConflict: 'cliente_id' })
+      .upsert({ cliente_id: clientId, datos: toSave })
 
     if (error) toast('Error al guardar: ' + error.message, 'warn')
     else { setDiet(toSave); toast('Dieta guardada ✓', 'ok') }
