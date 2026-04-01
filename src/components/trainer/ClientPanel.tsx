@@ -13,6 +13,8 @@ import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { PlanRow, RegistroRow } from '../../lib/supabase-types'
+import { logError } from '../../lib/errors'
 
 type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
 
@@ -54,14 +56,18 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
 
   const loadData = async () => {
     setLoading(true)
-    const { data: planData } = await supabase
+    const { data: planData, error: planErr } = await supabase
       .from('planes').select('plan').eq('clientId', client.id).maybeSingle()
-    if ((planData as any)?.plan?.P) setPlan((planData as any).plan.P as TrainingPlan)
+    if (planErr) logError('loadPlan', planErr)
+    const planRow = planData as PlanRow | null
+    if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
     else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
 
-    const { data: regData } = await supabase
+    const { data: regData, error: regErr } = await supabase
       .from('registros').select('logs').eq('clientId', client.id).maybeSingle()
-    if ((regData as any)?.logs) setLogs((regData as any).logs as TrainingLogs)
+    if (regErr) logError('loadRegistros', regErr)
+    const regRow = regData as RegistroRow | null
+    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
     setLoading(false)
   }
 
