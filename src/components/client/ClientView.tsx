@@ -96,6 +96,7 @@ export function ClientView({ token }: ClientViewProps) {
 
   // Verificar PIN si el plan lo requiere
   const planPin = (plan as unknown as { pin?: string })?.pin
+  if (!client) return null
   if (!loading && !error && planPin && !pinVerified) {
     const checkPin = () => {
       if (pinInput === planPin) { setPinVerified(true); setPinError(false) }
