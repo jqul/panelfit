@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, Phone } from 'lucide-react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard } from './ClientDashboard'
@@ -9,10 +9,10 @@ import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
-interface ClientViewProps { token: string }
-type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas'
+interface ClientViewProps { token: string; showEncuesta?: boolean }
+type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
 
-export function ClientView({ token }: ClientViewProps) {
+export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [client, setClient] = useState<ClienteRow | null>(null)
@@ -22,7 +22,7 @@ export function ClientView({ token }: ClientViewProps) {
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
-  const [activeTab, setActiveTab] = useState<Tab>('hoy')
+  const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
 
   useEffect(() => { loadData() }, [token])
 
@@ -96,7 +96,6 @@ export function ClientView({ token }: ClientViewProps) {
 
   // Verificar PIN si el plan lo requiere
   const planPin = (plan as unknown as { pin?: string })?.pin
-  if (!client) return null
   if (!loading && !error && planPin && !pinVerified) {
     const checkPin = () => {
       if (pinInput === planPin) { setPinVerified(true); setPinError(false) }
@@ -181,15 +180,16 @@ export function ClientView({ token }: ClientViewProps) {
             )}
             {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} />}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
+            {activeTab === 'encuesta' && <EncuestaClienteTab client={client} plan={plan} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} />}
           </>
         )}
       </main>
 
-      {/* Tab bar inferior */}
+      {/* Tab bar inferior — ocultar encuesta si no viene del enlace */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10 safe-area-pb">
         <div className="flex max-w-2xl mx-auto">
-          {TABS.map(({ id, icon: Icon, label }) => (
+          {TABS.filter(t => t.id !== 'encuesta').map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors`}
               style={{ minHeight: '56px' }}
@@ -218,7 +218,71 @@ function NoPlanView() {
   )
 }
 
+function EncuestaClienteTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
+  const LS_KEY = `pf_encuesta_${client.id}`
+  const preguntas: string[] = (() => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || [
+      '¿Cómo te has sentido esta semana en los entrenamientos?',
+      '¿Has tenido alguna molestia o dolor?',
+      '¿Estás descansando bien?',
+      '¿Cómo ha ido la dieta?',
+    ]} catch { return [] }
+  })()
+
+  const [respuestas, setRespuestas] = useState<Record<number, string>>({})
+  const [enviado, setEnviado] = useState(false)
+
+  const enviarWhatsApp = () => {
+    const texto = preguntas.map((p, i) => `${i+1}. ${p}\nRespuesta: ${respuestas[i] || '—'}`).join('\n\n')
+    const msg = encodeURIComponent(`📋 Encuesta de seguimiento — ${client.name}\n\n${texto}`)
+    window.open(`https://wa.me/?text=${msg}`, '_blank')
+    setEnviado(true)
+  }
+
+  if (enviado) return (
+    <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+      <div className="w-16 h-16 bg-ok/10 rounded-full flex items-center justify-center mx-auto">
+        <MessageSquare className="w-8 h-8 text-ok" />
+      </div>
+      <h3 className="font-serif font-bold text-xl">¡Encuesta enviada!</h3>
+      <p className="text-sm text-muted">Tus respuestas han sido enviadas a tu entrenador por WhatsApp.</p>
+    </div>
+  )
+
+  return (
+    <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-5">
+      <div>
+        <h3 className="font-serif font-bold text-xl">Encuesta de seguimiento</h3>
+        <p className="text-sm text-muted mt-1">Responde las preguntas de tu entrenador. Se enviarán por WhatsApp.</p>
+      </div>
+      <div className="space-y-4">
+        {preguntas.map((p, i) => (
+          <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-2">
+            <p className="text-sm font-semibold">{i+1}. {p}</p>
+            <textarea rows={3} value={respuestas[i] || ''}
+              onChange={e => setRespuestas(r => ({ ...r, [i]: e.target.value }))}
+              placeholder="Tu respuesta..."
+              style={{ fontSize: '16px' }}
+              className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+            />
+          </div>
+        ))}
+      </div>
+      <button onClick={enviarWhatsApp} style={{ minHeight: '52px' }}
+        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-2xl font-bold text-base hover:opacity-90">
+        📱 Enviar respuestas por WhatsApp
+      </button>
+    </div>
+  )
+}
+
 function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
+  // Número del entrenador guardado en localStorage (el entrenador lo configura en su perfil)
+  const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
+  const waUrl = trainerPhone
+    ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
+    : `https://wa.me/?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
+
   return (
     <div className="px-4 py-6 space-y-4 max-w-xl mx-auto">
       <h3 className="font-serif font-bold text-xl">Más opciones</h3>
@@ -229,13 +293,12 @@ function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | nul
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu entrenador</p>
         </div>
         <div className="p-4 space-y-3">
-          <a href={`https://wa.me/?text=${encodeURIComponent('Hola, soy ' + client.name + '. Te escribo desde mi panel de PanelFit.')}`}
-            target="_blank" rel="noreferrer"
+          <a href={waUrl} target="_blank" rel="noreferrer"
             className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl hover:bg-[#25D366]/20 transition-colors"
             style={{ minHeight: '56px' }}>
             <MessageSquare className="w-5 h-5 text-[#25D366] flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold">Contactar con mi entrenador</p>
+              <p className="text-sm font-semibold">Contactar por WhatsApp</p>
               <p className="text-xs text-muted">Abre WhatsApp con mensaje preparado</p>
             </div>
           </a>
