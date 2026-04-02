@@ -128,7 +128,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </div>
     )
   }
-
+if (!client) return null
   const clientName = `${client?.name || ''} ${client?.surname || ''}`.trim()
   const brandName = plan?.brandName || 'PanelFit'
   const brandLogo = plan?.brandLogo
