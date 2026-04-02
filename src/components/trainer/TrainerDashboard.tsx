@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight, Save, BarChart2,
-  MessageCircle, Link, Copy
+  MessageCircle, Link, Copy, Menu, X
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { mapClientes } from '../../lib/mappers'
@@ -137,20 +137,42 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 
   const hoyCount = Object.values(todayActive).filter(Boolean).length
 
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   const navItems = [
     { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
     { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
     { id: 'exercises' as Tab, icon: Dumbbell,        label: 'Ejercicios' },
     { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
-    { id: 'adherencia' as Tab, icon: TrendingUp,      label: 'Adherencia' },
+    { id: 'adherencia' as Tab, icon: TrendingUp,     label: 'Adherencia' },
     { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
   ]
 
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab)
+    setSidebarOpen(false)
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
-      <aside className="w-64 flex-shrink-0 bg-card border-r border-border flex flex-col">
-        <div className="px-6 py-5 border-b border-border">
+
+      {/* Overlay móvil */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-ink/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar — fijo en PC, drawer en móvil */}
+      <aside className={`
+        fixed lg:relative inset-y-0 left-0 z-40
+        w-64 flex-shrink-0 bg-card border-r border-border flex flex-col
+        transition-transform duration-200
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
           <h1 className="text-2xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted hover:text-ink">
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <div className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -165,7 +187,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
         </div>
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
           {navItems.map(({ id, icon: Icon, label, badge }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
+            <button key={id} onClick={() => handleTabChange(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
               }`}
@@ -184,14 +206,27 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
           <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={onLogout}>
             <LogOut className="w-4 h-4" /> Cerrar sesión
           </Button>
-          <Button className="w-full gap-2 text-sm" onClick={() => setShowAdd(true)}>
+          <Button className="w-full gap-2 text-sm" onClick={() => { setShowAdd(true); setSidebarOpen(false) }}>
             <UserPlus className="w-4 h-4" /> Nuevo cliente
           </Button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-8 py-8">
+      <main className="flex-1 overflow-y-auto min-w-0">
+        {/* Header móvil */}
+        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"
+            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <Menu className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+          <button onClick={() => setShowAdd(true)}
+            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <UserPlus className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
 
           {activeTab === 'dashboard' && (
             <div className="space-y-8 animate-fade-in">
