@@ -38,6 +38,21 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   const [linkModal, setLinkModal] = useState<{ client: ClientData } | null>(null)
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
 
+
+  // Semáforo de riesgo por cliente
+  const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' => {
+    const reg = (logsMap[clientId] || {}) as Record<string, { done?: boolean; dateDone?: string }>
+    const dates = new Set(Object.values(reg).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
+    const hoy = new Date()
+    const diasUltimos7 = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(hoy); d.setDate(d.getDate() - i)
+      return d.toISOString().split('T')[0]
+    }).filter(d => dates.has(d)).length
+    if (diasUltimos7 >= 3) return 'verde'
+    if (diasUltimos7 >= 1) return 'amarillo'
+    return 'rojo'
+  }
+
   const fetchClients = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -305,6 +320,22 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                 </div>
               </div>
 
+              {/* Semáforo leyenda */}
+              {clients.length > 0 && (
+                <div className="flex items-center gap-4 px-1">
+                  {[
+                    { color: 'bg-ok', label: 'Buena adherencia (+3 días/sem)' },
+                    { color: 'bg-accent', label: 'Actividad baja (1-2 días/sem)' },
+                    { color: 'bg-warn', label: 'Riesgo de abandono (0 días/sem)' },
+                  ].map(s => (
+                    <div key={s.label} className="flex items-center gap-1.5">
+                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
+                      <p className="text-[10px] text-muted">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Clientes que necesitan atención */}
               {clients.filter(c => !todayActive[c.id]).length > 0 && (
                 <div className="bg-card border border-warn/20 rounded-2xl overflow-hidden">
@@ -385,14 +416,24 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                       <div className="flex items-center gap-3 mb-4">
                         <div className="relative w-11 h-11 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors flex-shrink-0">
                           {(client.name?.[0] || '?').toUpperCase()}
-                          {todayActive[client.id] && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" />}
+                          {(() => {
+                            const r = getRiesgo(client.id)
+                            return <span className={`absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card ${
+                              todayActive[client.id] ? 'bg-ok' : r === 'rojo' ? 'bg-warn' : r === 'amarillo' ? 'bg-accent' : 'bg-bg-alt'
+                            }`} title={todayActive[client.id] ? 'Entrenó hoy' : r === 'rojo' ? 'Riesgo de abandono' : r === 'amarillo' ? 'Actividad baja' : 'Sin datos'} />
+                          })()}
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-serif font-bold text-base leading-tight truncate">{client.name} {client.surname}</h3>
                           <p className="text-[11px] mt-0.5">
-                            {todayActive[client.id]
-                              ? <span className="text-ok font-semibold">✓ Entrenó hoy</span>
-                              : <span className="text-muted">{new Date(client.createdAt).toLocaleDateString('es-ES')}</span>}
+                            {(() => {
+                                const r = getRiesgo(client.id)
+                                return todayActive[client.id]
+                                  ? <span className="text-ok font-semibold">✓ Entrenó hoy</span>
+                                  : <span className={r === 'rojo' ? 'text-warn font-semibold' : r === 'amarillo' ? 'text-accent' : 'text-muted'}>
+                                      {r === 'rojo' ? '⚠ Riesgo de abandono' : r === 'amarillo' ? '~ Actividad baja' : new Date(client.createdAt).toLocaleDateString('es-ES')}
+                                    </span>
+                              })()}
                           </p>
                         </div>
                       </div>
@@ -507,8 +548,10 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     setSaving(true)
     const profile = { displayName, brandName, brandLogo, phone, bio }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
-    // Actualizar nombre en tabla entrenadores
-    await supabase.from('entrenadores').update({ nombre: displayName }).eq('id', userProfile.uid)
+    // Guardar teléfono en clave accesible para el cliente
+    if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
+    // Actualizar displayName en tabla entrenadores
+    await supabase.from('entrenadores').update({ "displayName": displayName }).eq('uid', userProfile.uid)
     toast('Perfil guardado ✓', 'ok')
     setSaving(false)
   }
