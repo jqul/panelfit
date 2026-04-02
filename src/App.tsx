@@ -50,6 +50,7 @@ export default function App() {
     const token = params.get('c')
     if (token) { setClientToken(token); setView('client-token'); return }
 
+
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
       else setView('auth')
@@ -96,9 +97,11 @@ export default function App() {
 
   if (view === 'loading') return <LoadingScreen />
 
+  const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
+
   if (view === 'client-token' && clientToken) return (
     <Suspense fallback={<LoadingScreen />}>
-      <ClientView token={clientToken} />
+      <ClientView token={clientToken} showEncuesta={encuestaParam} />
       <ToastContainer toasts={toasts} />
     </Suspense>
   )
