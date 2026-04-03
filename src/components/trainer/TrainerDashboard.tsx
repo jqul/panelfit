@@ -14,10 +14,11 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { AdherenciaTab } from './AdherenciaTab'
+import { InsightsTab } from './InsightsTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'settings'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'insights' | 'settings'
 
 interface Props {
   userProfile: UserProfile
@@ -160,6 +161,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     { id: 'exercises' as Tab, icon: Dumbbell,        label: 'Ejercicios' },
     { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
     { id: 'adherencia' as Tab, icon: TrendingUp,     label: 'Adherencia' },
+    { id: 'insights'  as Tab, icon: BarChart2,       label: 'Insights' },
     { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
   ]
 
@@ -468,6 +470,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} plansMap={{}} />}
+          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} plansMap={{}} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
