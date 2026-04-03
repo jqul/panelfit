@@ -128,7 +128,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </div>
     )
   }
-
+if (!client) return null
   const clientName = `${client?.name || ''} ${client?.surname || ''}`.trim()
   // Leer branding del entrenador desde localStorage
   const trainerProfile = (() => {
