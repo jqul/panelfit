@@ -128,10 +128,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </div>
     )
   }
-if (!client) return null
+
   const clientName = `${client?.name || ''} ${client?.surname || ''}`.trim()
-  const brandName = plan?.brandName || 'PanelFit'
-  const brandLogo = plan?.brandLogo
+  // Leer branding del entrenador desde localStorage
+  const trainerProfile = (() => {
+    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client?.trainerId}`) || '{}') } catch { return {} }
+  })()
+  const brandName = trainerProfile.brandName || 'PanelFit'
+  const brandLogo = trainerProfile.brandLogo || null
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
