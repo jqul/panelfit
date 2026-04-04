@@ -14,6 +14,7 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { AdherenciaTab } from './AdherenciaTab'
+import { OBJETIVOS, Objetivo, getNudge, getConsejo } from '../../lib/nudges'
 import { InsightsTab } from './InsightsTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -32,7 +33,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '' })
+  const [newClient, setNewClient] = useState({ name: '', surname: '', objetivo: 'general' as Objetivo })
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [todayActive, setTodayActive] = useState<Record<string, boolean>>({})
@@ -103,11 +104,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       trainerId: userProfile.uid,
       name: newClient.name.trim(),
       surname: newClient.surname.trim(),
+      objetivo: newClient.objetivo,
       token,
       createdAt: Date.now(),
     })
     if (error) toast('Error al crear cliente: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '' }) }
+    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', objetivo: 'general' }) }
     setAdding(false)
   }
 
@@ -515,6 +517,19 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               placeholder="Apellido"
               className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
+            <div className="flex flex-wrap gap-2">
+              {OBJETIVOS.map(o => (
+                <button key={o.value} onClick={() => setNewClient(p => ({ ...p, objetivo: o.value }))}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-all ${
+                    newClient.objetivo === o.value ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
+                  }`}>
+                  {o.emoji} {o.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
