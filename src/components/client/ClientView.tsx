@@ -149,6 +149,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   })()
   const brandName = trainerProfile.brandName || 'PanelFit'
   const brandLogo = trainerProfile.brandLogo || null
+  const brandColor = trainerProfile.brandColor || '#6e5438'
+  const welcomeMsg = trainerProfile.welcomeMsg || ''
+  const motivMsg = trainerProfile.motivMsg || ''
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
@@ -182,9 +185,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2.5">
-            {brandLogo && (
-              <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border flex-shrink-0" alt="Logo" />
-            )}
+            {brandLogo
+              ? <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border flex-shrink-0" alt={brandName} />
+              : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                  style={{ backgroundColor: brandColor }}>{brandName[0]}</div>
+            }
             <span className="font-serif font-bold text-base">{brandName}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -216,7 +221,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={(client as any).objetivo} />
+                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={(client as any).objetivo}
+                    welcomeMsg={welcomeMsg} motivMsg={motivMsg} brandColor={brandColor} />
                 : <NoPlanView />
             )}
             {activeTab === 'entreno' && (
