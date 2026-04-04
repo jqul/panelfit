@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  X, Save, ChevronLeft, FileText, Dumbbell, Settings,
+  X, Save, ChevronLeft, ChevronRight, FileText, Dumbbell, Settings,
   ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
   CheckCircle2, ClipboardCheck, Camera
 } from 'lucide-react'
