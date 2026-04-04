@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, Wifi, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard } from './ClientDashboard'
@@ -11,6 +11,7 @@ import { logError } from '../../lib/errors'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
+type SyncState = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
 
 export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [loading, setLoading] = useState(true)
@@ -21,18 +22,33 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [pinVerified, setPinVerified] = useState(false)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
-  const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([])
+  const [weightHistory] = useState<WeightEntry[]>([])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
+  const [syncState, setSyncState] = useState<SyncState>('idle')
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
 
-  useEffect(() => { loadData() }, [token])
+  useEffect(() => {
+    loadData()
+    const online = () => { setIsOnline(true); setSyncState('idle') }
+    const offline = () => { setIsOnline(false); setSyncState('offline') }
+    window.addEventListener('online', online)
+    window.addEventListener('offline', offline)
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
+  }, [token])
 
   const loadData = async () => {
     setLoading(true)
     const { data: clientData, error: cErr } = await supabase
       .from('clientes').select('*').eq('token', token).maybeSingle()
-    if (cErr) { logError('ClientView:loadClient', cErr) }
+    if (cErr) logError('ClientView:loadClient', cErr)
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
+
+    // Cargar logs desde localStorage primero (offline-first)
+    const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
+    if (localLogs) {
+      try { setLogs(JSON.parse(localLogs)) } catch {}
+    }
 
     const { data: planData, error: planErr } = await supabase
       .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
@@ -49,24 +65,25 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     setLoading(false)
   }
 
-  const handleLogsChange = async (newLogs: TrainingLogs) => {
+  const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
-    // Guardar en localStorage primero (offline-first)
+    setSyncState('saving')
+    if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+
+    if (!navigator.onLine) { setSyncState('offline'); return }
+
     if (client?.id) {
-      localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-    }
-    // Luego sincronizar con Supabase
-    if (navigator.onLine && client?.id) {
       const { error: updateErr } = await supabase.from('registros')
-        .update({ logs: newLogs, updatedAt: Date.now() })
-        .eq('clientId', client.id)
+        .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
       if (updateErr) {
         const { error: insertErr } = await supabase.from('registros')
           .insert({ clientId: client.id, logs: newLogs, updatedAt: Date.now() })
-        if (insertErr) logError('ClientView:saveLogs', insertErr)
+        if (insertErr) { logError('ClientView:saveLogs', insertErr); setSyncState('error'); return }
       }
+      setSyncState('saved')
+      setTimeout(() => setSyncState('idle'), 2000)
     }
-  }
+  }, [client?.id])
 
   if (loading) return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
@@ -85,16 +102,17 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="text-center max-w-sm">
         <h1 className="text-3xl font-serif font-bold mb-6">Panel<span className="text-accent italic">Fit</span></h1>
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <p className="text-warn font-semibold mb-2">Enlace no válido</p>
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
+          <AlertCircle className="w-10 h-10 text-warn mx-auto" />
+          <p className="text-warn font-semibold">Enlace no válido</p>
           <p className="text-muted text-sm">{error}</p>
-          <p className="text-muted text-sm mt-2">Pide a tu entrenador que te envíe el enlace correcto.</p>
+          <p className="text-muted text-sm">Pide a tu entrenador que te envíe el enlace correcto.</p>
         </div>
       </div>
     </div>
   )
 
-  // Verificar PIN si el plan lo requiere
+  // PIN
   const planPin = (plan as unknown as { pin?: string })?.pin
   if (!loading && !error && planPin && !pinVerified) {
     const checkPin = () => {
@@ -104,22 +122,16 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center p-4">
         <div className="w-full max-w-xs text-center space-y-6">
-          <div>
-            <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-            <p className="text-muted text-sm mt-2">Introduce tu PIN para acceder</p>
-          </div>
+          <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
           <div className="space-y-3">
             <input type="number" value={pinInput} onChange={e => { setPinInput(e.target.value); setPinError(false) }}
               onKeyDown={e => e.key === 'Enter' && checkPin()}
               placeholder="PIN de acceso"
-              className={`w-full px-4 py-4 bg-card border rounded-2xl text-center text-2xl font-serif outline-none tracking-widest ${pinError ? 'border-warn' : 'border-border focus:border-accent'}`}
-              style={{ fontSize: '24px' }}
-              autoFocus
-            />
-            {pinError && <p className="text-sm text-warn">PIN incorrecto. Inténtalo de nuevo.</p>}
-            <button onClick={checkPin}
-              className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90"
-              style={{ minHeight: '52px' }}>
+              className={`w-full px-4 py-4 bg-card border rounded-2xl text-center font-serif outline-none tracking-widest ${pinError ? 'border-warn' : 'border-border focus:border-accent'}`}
+              style={{ fontSize: '24px' }} autoFocus />
+            {pinError && <p className="text-sm text-warn">PIN incorrecto.</p>}
+            <button onClick={checkPin} style={{ minHeight: '52px' }}
+              className="w-full py-4 bg-ink text-white rounded-2xl font-bold hover:opacity-90">
               Entrar
             </button>
           </div>
@@ -128,11 +140,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </div>
     )
   }
-if (!client) return null
-  const clientName = `${client?.name || ''} ${client?.surname || ''}`.trim()
-  // Leer branding del entrenador desde localStorage
+
+  if (!client) return null
+
+  const clientName = `${client.name || ''} ${client.surname || ''}`.trim()
   const trainerProfile = (() => {
-    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client?.trainerId}`) || '{}') } catch { return {} }
+    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
   })()
   const brandName = trainerProfile.brandName || 'PanelFit'
   const brandLogo = trainerProfile.brandLogo || null
@@ -145,6 +158,24 @@ if (!client) return null
     { id: 'mas' as Tab,      icon: MoreHorizontal, label: 'Más' },
   ]
 
+  // Indicador de sync
+  const SyncIndicator = () => {
+    if (syncState === 'idle') return null
+    return (
+      <div className={`fixed top-16 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold transition-all ${
+        syncState === 'saving' ? 'bg-accent/10 text-accent' :
+        syncState === 'saved' ? 'bg-ok/10 text-ok' :
+        syncState === 'offline' ? 'bg-warn/10 text-warn' :
+        'bg-warn/10 text-warn'
+      }`}>
+        {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
+        {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
+        {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />Sin conexión — guardado localmente</>}
+        {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />Error al guardar</>}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-bg flex flex-col">
       {/* Header */}
@@ -152,16 +183,27 @@ if (!client) return null
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2.5">
             {brandLogo && (
-              <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border flex-shrink-0" alt="Logo entrenador" />
+              <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border flex-shrink-0" alt="Logo" />
             )}
             <span className="font-serif font-bold text-base">{brandName}</span>
           </div>
-          <div className="text-right">
-            <p className="text-xs font-semibold">{clientName}</p>
-            {plan?.type && <p className="text-[10px] text-muted capitalize">{plan.type}</p>}
+          <div className="flex items-center gap-2">
+            {/* Indicador online/offline compacto */}
+            {!isOnline && (
+              <div className="flex items-center gap-1 text-warn">
+                <WifiOff className="w-4 h-4" />
+              </div>
+            )}
+            <div className="text-right">
+              <p className="text-xs font-semibold">{clientName}</p>
+              {plan?.type && <p className="text-[10px] text-muted capitalize">{plan.type}</p>}
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Sync banner */}
+      <SyncIndicator />
 
       {/* Contenido */}
       <main className="flex-1 pb-20 max-w-2xl mx-auto w-full">
@@ -190,18 +232,17 @@ if (!client) return null
         )}
       </main>
 
-      {/* Tab bar inferior — ocultar encuesta si no viene del enlace */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10 safe-area-pb">
+      {/* Tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10">
         <div className="flex max-w-2xl mx-auto">
-          {TABS.filter(t => t.id !== 'encuesta').map(({ id, icon: Icon, label }) => (
+          {TABS.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors`}
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
               style={{ minHeight: '56px' }}
               aria-label={label}
-              aria-current={activeTab === id ? 'page' : undefined}
-            >
+              aria-current={activeTab === id ? 'page' : undefined}>
               <Icon className={`w-5 h-5 transition-colors ${activeTab === id ? 'text-ink' : 'text-muted'}`} />
-              <span className={`text-[10px] font-medium transition-colors ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>
+              <span className={`text-[10px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>
                 {label}
               </span>
             </button>
@@ -232,48 +273,45 @@ function EncuestaClienteTab({ client, plan }: { client: ClienteRow; plan: Traini
       '¿Cómo ha ido la dieta?',
     ]} catch { return [] }
   })()
-
   const [respuestas, setRespuestas] = useState<Record<number, string>>({})
   const [enviado, setEnviado] = useState(false)
 
   const enviarWhatsApp = () => {
     const texto = preguntas.map((p, i) => `${i+1}. ${p}\nRespuesta: ${respuestas[i] || '—'}`).join('\n\n')
-    const msg = encodeURIComponent(`📋 Encuesta de seguimiento — ${client.name}\n\n${texto}`)
+    const msg = encodeURIComponent(`📋 Encuesta — ${client.name}\n\n${texto}`)
     window.open(`https://wa.me/?text=${msg}`, '_blank')
     setEnviado(true)
   }
 
   if (enviado) return (
     <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-      <div className="w-16 h-16 bg-ok/10 rounded-full flex items-center justify-center mx-auto">
-        <MessageSquare className="w-8 h-8 text-ok" />
-      </div>
+      <CheckCircle2 className="w-12 h-12 text-ok mx-auto" />
       <h3 className="font-serif font-bold text-xl">¡Encuesta enviada!</h3>
-      <p className="text-sm text-muted">Tus respuestas han sido enviadas a tu entrenador por WhatsApp.</p>
+      <p className="text-sm text-muted">Tus respuestas han sido enviadas a tu entrenador.</p>
     </div>
   )
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-5">
+    <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
       <div>
         <h3 className="font-serif font-bold text-xl">Encuesta de seguimiento</h3>
-        <p className="text-sm text-muted mt-1">Responde las preguntas de tu entrenador. Se enviarán por WhatsApp.</p>
+        <p className="text-sm text-muted mt-1">Responde y envía por WhatsApp a tu entrenador.</p>
       </div>
       <div className="space-y-4">
         {preguntas.map((p, i) => (
           <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-2">
             <p className="text-sm font-semibold">{i+1}. {p}</p>
-            <textarea rows={3} value={respuestas[i] || ''}
+            <textarea rows={2} value={respuestas[i] || ''}
               onChange={e => setRespuestas(r => ({ ...r, [i]: e.target.value }))}
               placeholder="Tu respuesta..."
               style={{ fontSize: '16px' }}
-              className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+              className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none"
             />
           </div>
         ))}
       </div>
       <button onClick={enviarWhatsApp} style={{ minHeight: '52px' }}
-        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-2xl font-bold text-base hover:opacity-90">
+        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-2xl font-bold">
         📱 Enviar respuestas por WhatsApp
       </button>
     </div>
@@ -281,24 +319,22 @@ function EncuestaClienteTab({ client, plan }: { client: ClienteRow; plan: Traini
 }
 
 function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
-  // Número del entrenador guardado en localStorage (el entrenador lo configura en su perfil)
   const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
   const waUrl = trainerPhone
     ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
     : `https://wa.me/?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
 
   return (
-    <div className="px-4 py-6 space-y-4 max-w-xl mx-auto">
+    <div className="px-4 py-6 space-y-4 max-w-xl mx-auto pb-24">
       <h3 className="font-serif font-bold text-xl">Más opciones</h3>
 
-      {/* Contactar entrenador */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border">
+        <div className="px-5 py-3 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu entrenador</p>
         </div>
-        <div className="p-4 space-y-3">
+        <div className="p-4">
           <a href={waUrl} target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl hover:bg-[#25D366]/20 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl"
             style={{ minHeight: '56px' }}>
             <MessageSquare className="w-5 h-5 text-[#25D366] flex-shrink-0" />
             <div>
@@ -309,7 +345,6 @@ function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | nul
         </div>
       </div>
 
-      {/* Info del plan */}
       {plan && (
         <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu programa</p>
@@ -330,7 +365,6 @@ function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | nul
         </div>
       )}
 
-      {/* Info cliente */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu cuenta</p>
         <p className="text-sm"><span className="text-muted">Nombre:</span> <span className="font-semibold">{client.name} {client.surname}</span></p>
