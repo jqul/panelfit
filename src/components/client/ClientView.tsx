@@ -217,7 +217,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} />
+                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={(client as any).objetivo} />
                 : <NoPlanView />
             )}
             {activeTab === 'entreno' && (
