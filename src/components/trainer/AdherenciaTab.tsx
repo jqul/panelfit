@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ClientData, TrainingLogs, TrainingPlan } from '../../types'
+import { getNudge, getConsejo, OBJETIVOS, Objetivo } from '../../lib/nudges'
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
 
 interface ClientStats {
@@ -55,17 +56,11 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
 
 function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin'): string {
   const url = `${window.location.origin}?c=${client.token}`
-  if (tipo === 'recordatorio') {
-    const msgs = [
-      `Hola ${client.name} 💪 Llevas ${stats.diasSinEntrenar} días sin entrenar. ¿Todo bien? Cuando quieras retomamos. Tu plan sigue aquí:\n\n${url}`,
-      `Hey ${client.name} 👋 ¿Cómo va todo? Te echamos de menos en los entrenos. Un pequeño empujón hoy puede marcar la diferencia 🔥\n\n${url}`,
-      `${client.name}, no te olvides de tu objetivo 🎯 Llevas ${stats.diasSinEntrenar} días sin entrenar, pero nunca es tarde para retomar. ¡Ánimo!\n\n${url}`,
-    ]
-    return msgs[Math.floor(Math.random() * msgs.length)]
-  } else {
-    const encuestaUrl = `${window.location.origin}?c=${client.token}&encuesta=1`
-    return `Hola ${client.name} 👋 Es hora del check-in semanal. Solo te lleva 2 minutos — cuéntame cómo ha ido la semana:\n\n${encuestaUrl}`
-  }
+  const encuestaUrl = `${window.location.origin}?c=${client.token}&encuesta=1`
+  const objetivo = ((client as any).objetivo || 'general') as Objetivo
+  const ctx = { clientName: client.name, diasSinEntrenar: stats.diasSinEntrenar, racha: stats.racha, adherencia: stats.adherencia, url }
+  if (tipo === 'recordatorio') return getNudge('recordatorio', objetivo, ctx)
+  return getNudge('checkin', objetivo, { ...ctx, url: encuestaUrl })
 }
 
 export function AdherenciaTab({ clients, logsMap, plansMap }: Props) {
