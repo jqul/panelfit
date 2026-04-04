@@ -624,23 +624,25 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
   const [brandName, setBrandName] = useState(saved.brandName || '')
   const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
+  const [brandColor, setBrandColor] = useState(saved.brandColor || '#6e5438')
   const [phone, setPhone] = useState(saved.phone || '')
   const [bio, setBio] = useState(saved.bio || '')
+  const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
+  const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
   const [saving, setSaving] = useState(false)
+  const [preview, setPreview] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, phone, bio }
+    const profile = { displayName, brandName, brandLogo, brandColor, phone, bio, welcomeMsg, motivMsg }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
-    // Guardar teléfono en clave accesible para el cliente
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
-    // Actualizar displayName en tabla entrenadores
-    await supabase.from('entrenadores').update({ "displayName": displayName }).eq('uid', userProfile.uid)
+    await supabase.from('entrenadores').update({ displayName }).eq('uid', userProfile.uid)
     toast('Perfil guardado ✓', 'ok')
     setSaving(false)
   }
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 2 * 1024 * 1024) { toast('Máximo 2MB', 'warn'); return }
@@ -649,9 +651,40 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     reader.readAsDataURL(file)
   }
 
+  const nombre = brandName || displayName || 'Tu marca'
+
   return (
     <div className="animate-fade-in space-y-6 max-w-lg">
-      <h2 className="text-3xl font-serif font-bold">Configuración</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-serif font-bold">Configuración</h2>
+        <button onClick={() => setPreview(v => !v)}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${preview ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
+          {preview ? '← Editar' : '👁 Preview cliente'}
+        </button>
+      </div>
+
+      {/* Preview del panel del cliente */}
+      {preview && (
+        <div className="bg-bg border-2 border-dashed border-border rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 flex items-center justify-between border-b border-border" style={{ backgroundColor: 'var(--color-card)' }}>
+            <div className="flex items-center gap-2.5">
+              {brandLogo
+                ? <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border" alt="Logo" />
+                : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: brandColor }}>{nombre[0]}</div>
+              }
+              <span className="font-serif font-bold text-base">{nombre}</span>
+            </div>
+            <p className="text-xs text-muted">Tu cliente</p>
+          </div>
+          {welcomeMsg && (
+            <div className="mx-4 my-3 flex gap-2 rounded-xl p-3" style={{ backgroundColor: `${brandColor}15`, border: `1px solid ${brandColor}30` }}>
+              <span className="text-base flex-shrink-0">💬</span>
+              <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg}"</p>
+            </div>
+          )}
+          <div className="px-4 pb-3 text-xs text-muted text-center">Así verá tu cliente el panel</div>
+        </div>
+      )}
 
       {/* Perfil personal */}
       <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
@@ -671,7 +704,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio / Especialidad</label>
-          <textarea rows={3} value={bio} onChange={e => setBio(e.target.value)}
+          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)}
             placeholder="Entrenador personal especializado en fuerza e hipertrofia..."
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
           />
@@ -682,10 +715,13 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
       </div>
 
-      {/* Marca / Branding */}
+      {/* Marca / White-label */}
       <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
-        <p className="text-xs text-muted">Aparecerá en el panel de tus clientes en lugar de "PanelFit".</p>
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
+          <p className="text-xs text-muted mt-1">El cliente verá tu marca en vez de "PanelFit".</p>
+        </div>
+
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
           <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
@@ -693,6 +729,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           />
         </div>
+
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo</label>
           <div className="flex items-center gap-4">
@@ -700,11 +737,11 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
               <div className="relative">
                 <img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="Logo" />
                 <button onClick={() => setBrandLogo('')}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full flex items-center justify-center text-xs">×</button>
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full flex items-center justify-center text-xs font-bold">×</button>
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs">
-                Logo
+              <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs text-center leading-tight p-1">
+                Tu logo
               </div>
             )}
             <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-all cursor-pointer">
@@ -712,7 +749,53 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
               <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
             </label>
           </div>
-          <p className="text-[10px] text-muted mt-1">PNG, JPG · Máx 2MB · Recomendado cuadrado</p>
+          <p className="text-[10px] text-muted mt-1">PNG, JPG · Máx 2MB · Cuadrado recomendado</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color de marca</label>
+          <div className="flex items-center gap-3">
+            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)}
+              className="w-10 h-10 rounded-xl border border-border cursor-pointer bg-bg"
+            />
+            <span className="text-sm text-muted font-mono">{brandColor}</span>
+            <div className="flex gap-2 ml-2">
+              {['#6e5438', '#1a1a2e', '#0f4c75', '#1b4332', '#7b2d8b', '#c0392b'].map(c => (
+                <button key={c} onClick={() => setBrandColor(c)}
+                  className="w-6 h-6 rounded-full border-2 transition-all"
+                  style={{ backgroundColor: c, borderColor: brandColor === c ? 'var(--color-ink)' : 'transparent' }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mensajes personalizados */}
+      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Mensajes y tono</h3>
+          <p className="text-xs text-muted mt-1">Personaliza lo que ven tus clientes.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+            Mensaje de bienvenida / motivación
+          </label>
+          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
+            placeholder="Ej: Cada entreno te acerca a tu mejor versión. ¡Vamos! 💪"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+          />
+          <p className="text-[10px] text-muted mt-1">Se muestra en la pantalla principal del cliente.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+            Mensaje de descanso (días sin plan)
+          </label>
+          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
+            placeholder="Ej: Hoy es día de descanso. Recupera bien para rendir al máximo. 🧘"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+          />
+          <p className="text-[10px] text-muted mt-1">Se muestra cuando no hay sesión programada.</p>
         </div>
       </div>
 
