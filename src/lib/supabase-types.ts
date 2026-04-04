@@ -1,18 +1,18 @@
-// Tipos de filas de Supabase — elimina los `any` en queries críticas
+// Tipos de filas de Supabase
 
 export interface ClienteRow {
   id: string
   trainerId: string
   name: string
   surname: string
-  weight: number
-  fatPercentage: number
-  muscleMass: number
-  totalLifted: number
-  planDescription: string
+  weight?: number
+  fatPercentage?: number
+  muscleMass?: number
+  totalLifted?: number
+  planDescription?: string
   token: string
+  objetivo?: string
   createdAt: number
-  isActive?: boolean
 }
 
 export interface PlanRow {
@@ -54,8 +54,17 @@ export interface DietaRow {
 }
 
 export interface EntrenadorRow {
-  id: string
-  nombre: string
+  uid: string
   email: string
-  activo: boolean
+  displayName: string
+  approved: boolean
+  rol: string
+  createdAt?: number
+}
+
+export interface CheckinRow {
+  id: string
+  clientId: string
+  respuestas: Array<{ pregunta: string; respuesta: string }>
+  createdAt: number
 }
