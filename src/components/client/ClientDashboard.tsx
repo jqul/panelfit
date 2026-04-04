@@ -13,6 +13,9 @@ interface Props {
   clientName: string
   clientId: string
   objetivo?: string
+  welcomeMsg?: string
+  motivMsg?: string
+  brandColor?: string
 }
 
 function calcStreak(logs: TrainingLogs): number {
@@ -46,7 +49,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
@@ -112,10 +115,11 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
         {/* Saludo + mensaje */}
         <div>
           <h2 className="text-2xl font-serif font-bold">{saludo}, {clientName.split(' ')[0]} 👋</h2>
-          {plan.message && (
-            <div className="mt-3 flex gap-2 bg-accent/5 border border-accent/20 rounded-xl p-3">
-              <MessageSquare className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-accent italic">"{plan.message}"</p>
+          {(welcomeMsg || plan.message) && (
+            <div className="mt-3 flex gap-2 rounded-xl p-3"
+              style={{ backgroundColor: `${brandColor}12`, border: `1px solid ${brandColor}30` }}>
+              <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: brandColor }} />
+              <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg || plan.message}"</p>
             </div>
           )}
         </div>
@@ -221,7 +225,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
               <Dumbbell className="w-7 h-7 text-muted opacity-40" />
             </div>
             <h3 className="font-serif font-bold text-lg">Día de descanso</h3>
-            <p className="text-sm text-muted mt-1">Tu entrenador no ha programado sesión para hoy. ¡Recupera!</p>
+            <p className="text-sm text-muted mt-1">{motivMsg || "Tu entrenador no ha programado sesión para hoy. ¡Descansa y recupera!"}</p>
           </div>
         )}
 
