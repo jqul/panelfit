@@ -7,6 +7,7 @@ import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
 import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
+import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
@@ -226,7 +227,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} />}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
-            {activeTab === 'encuesta' && <EncuestaClienteTab client={client} plan={plan} />}
+            {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} />}
           </>
         )}
@@ -259,61 +260,6 @@ function NoPlanView() {
       <Dumbbell className="w-12 h-12 mx-auto mb-4 opacity-20" />
       <p className="font-serif text-xl font-bold mb-2">Sin plan asignado</p>
       <p className="text-sm">Tu entrenador aún no ha creado tu programa. ¡Pronto lo tendrás!</p>
-    </div>
-  )
-}
-
-function EncuestaClienteTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
-  const LS_KEY = `pf_encuesta_${client.id}`
-  const preguntas: string[] = (() => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || [
-      '¿Cómo te has sentido esta semana en los entrenamientos?',
-      '¿Has tenido alguna molestia o dolor?',
-      '¿Estás descansando bien?',
-      '¿Cómo ha ido la dieta?',
-    ]} catch { return [] }
-  })()
-  const [respuestas, setRespuestas] = useState<Record<number, string>>({})
-  const [enviado, setEnviado] = useState(false)
-
-  const enviarWhatsApp = () => {
-    const texto = preguntas.map((p, i) => `${i+1}. ${p}\nRespuesta: ${respuestas[i] || '—'}`).join('\n\n')
-    const msg = encodeURIComponent(`📋 Encuesta — ${client.name}\n\n${texto}`)
-    window.open(`https://wa.me/?text=${msg}`, '_blank')
-    setEnviado(true)
-  }
-
-  if (enviado) return (
-    <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
-      <CheckCircle2 className="w-12 h-12 text-ok mx-auto" />
-      <h3 className="font-serif font-bold text-xl">¡Encuesta enviada!</h3>
-      <p className="text-sm text-muted">Tus respuestas han sido enviadas a tu entrenador.</p>
-    </div>
-  )
-
-  return (
-    <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
-      <div>
-        <h3 className="font-serif font-bold text-xl">Encuesta de seguimiento</h3>
-        <p className="text-sm text-muted mt-1">Responde y envía por WhatsApp a tu entrenador.</p>
-      </div>
-      <div className="space-y-4">
-        {preguntas.map((p, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-4 space-y-2">
-            <p className="text-sm font-semibold">{i+1}. {p}</p>
-            <textarea rows={2} value={respuestas[i] || ''}
-              onChange={e => setRespuestas(r => ({ ...r, [i]: e.target.value }))}
-              placeholder="Tu respuesta..."
-              style={{ fontSize: '16px' }}
-              className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none"
-            />
-          </div>
-        ))}
-      </div>
-      <button onClick={enviarWhatsApp} style={{ minHeight: '52px' }}
-        className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-2xl font-bold">
-        📱 Enviar respuestas por WhatsApp
-      </button>
     </div>
   )
 }
