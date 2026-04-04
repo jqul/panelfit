@@ -359,8 +359,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           )}
         </footer>
       )}
-    </div>
-
       {/* Calculadora de discos */}
       {showCalc !== null && (
         <CalculadoraDiscos
@@ -368,5 +366,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           onClose={() => setShowCalc(null)}
         />
       )}
+    </div>
   )
 }
