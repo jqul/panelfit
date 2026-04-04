@@ -246,59 +246,137 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
         <div className="max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
 
           {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-fade-in">
-              <div>
-                <h2 className="text-3xl font-serif font-bold">Resumen</h2>
-                <p className="text-muted text-sm mt-1">Bienvenido, {userProfile.displayName.split(' ')[0]}</p>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: 'Clientes totales', value: clients.length, color: 'text-ink', sub: 'alumnos activos' },
-                  { label: 'Entrenaron hoy', value: hoyCount, color: 'text-ok', sub: clients.length ? `${Math.round(hoyCount/clients.length*100)}% adherencia` : '—' },
-                  { label: 'Este mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent', sub: 'nuevos alumnos' },
-                  { label: 'Inactivos +7d', value: Math.max(0, clients.length - hoyCount), color: Math.max(0, clients.length - hoyCount) > 0 ? 'text-warn' : 'text-ok', sub: 'necesitan atención' },
-                ].map(s => (
-                  <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
-                    <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-[10px] text-muted uppercase tracking-widest font-semibold mt-1">{s.label}</p>
-                    <p className="text-[10px] text-muted mt-0.5">{s.sub}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-serif font-bold text-lg">Crecimiento de alumnos</h3>
-                    <TrendingUp className="w-4 h-4 text-muted" />
-                  </div>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
-                        <defs>
-                          <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6e5438" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#6e5438" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d8d4ca" />
-                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                        <Tooltip contentStyle={{ background: '#faf8f5', border: '1px solid #d8d4ca', borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="total" stroke="#6e5438" strokeWidth={2} fill="url(#grad)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+            <div className="space-y-6 animate-fade-in">
+              {/* Saludo + fecha */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-3xl font-serif font-bold">
+                    {new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 20 ? 'Buenas tardes' : 'Buenas noches'}, {userProfile.displayName.split(' ')[0]}
+                  </h2>
+                  <p className="text-muted text-sm mt-1 capitalize">
+                    {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </p>
                 </div>
+                <div className="text-right">
+                  <p className="text-3xl font-serif font-bold text-ok">{hoyCount}</p>
+                  <p className="text-[10px] text-muted uppercase tracking-widest">entrenaron hoy</p>
+                </div>
+              </div>
+
+              {/* Acciones prioritarias del día */}
+              <div className="space-y-3">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Acciones de hoy</p>
+
+                {/* Clientes que entrenaron hoy — celebrar */}
+                {hoyCount > 0 && (
+                  <div className="bg-ok/5 border border-ok/20 rounded-2xl p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-ok/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <span className="text-xl">🎉</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{hoyCount} cliente{hoyCount > 1 ? 's' : ''} {hoyCount > 1 ? 'han' : 'ha'} entrenado hoy</p>
+                      <p className="text-xs text-muted">{clients.length ? `${Math.round(hoyCount/clients.length*100)}% adherencia diaria` : ''}</p>
+                    </div>
+                    <button onClick={() => setActiveTab('clients')}
+                      className="text-xs text-ok font-semibold hover:underline flex-shrink-0">
+                      Ver →
+                    </button>
+                  </div>
+                )}
+
+                {/* Clientes inactivos — actuar */}
+                {clients.filter(c => !todayActive[c.id]).length > 0 && (
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-warn text-sm">⚠️</span>
+                        <p className="text-sm font-semibold">{clients.filter(c => !todayActive[c.id]).length} sin entrenar hoy — contactar</p>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {clients.filter(c => !todayActive[c.id]).slice(0, 3).map(c => {
+                        const riesgo = getRiesgo(c.id)
+                        return (
+                          <div key={c.id} className="flex items-center gap-3 px-4 py-3">
+                            <div className="relative flex-shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-muted">
+                                {(c.name?.[0] || '?').toUpperCase()}
+                              </div>
+                              <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
+                                riesgo === 'rojo' ? 'bg-warn' : riesgo === 'amarillo' ? 'bg-accent' : 'bg-ok'
+                              }`} />
+                            </div>
+                            <p className="text-sm flex-1 truncate font-medium">{c.name} {c.surname}</p>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <button onClick={() => onSelectClient(c)}
+                                className="text-xs text-muted border border-border px-2 py-1 rounded-lg hover:border-accent hover:text-accent transition-all">
+                                Plan
+                              </button>
+                              <button onClick={() => {
+                                const url = `${window.location.origin}?c=${c.token}`
+                                const msg = encodeURIComponent(`Hola ${c.name} 👋 ¿Todo bien? ¡Te echamos de menos! Tu plan sigue aquí:\n\n${url}`)
+                                window.open(`https://wa.me/?text=${msg}`, '_blank')
+                              }} className="text-xs text-[#25D366] border border-[#25D366]/30 px-2 py-1 rounded-lg hover:bg-[#25D366]/10 transition-all">
+                                WA
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {clients.filter(c => !todayActive[c.id]).length > 3 && (
+                      <div className="px-4 py-2.5 border-t border-border">
+                        <button onClick={() => setActiveTab('adherencia')} className="text-xs text-accent font-semibold hover:underline">
+                          Ver todos en Adherencia →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sin clientes */}
+                {!clients.length && (
+                  <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center">
+                    <Users className="w-10 h-10 text-muted/30 mx-auto mb-3" />
+                    <p className="font-serif font-bold">Empieza añadiendo tu primer cliente</p>
+                    <p className="text-xs text-muted mt-1 mb-4">Crea su perfil y comparte el enlace de acceso</p>
+                    <Button className="gap-2 mx-auto" onClick={() => setShowAdd(true)}>
+                      <UserPlus className="w-4 h-4" /> Añadir primer cliente
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats rápidos */}
+              {clients.length > 0 && (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Clientes', value: clients.length, color: 'text-ink', action: () => setActiveTab('clients') },
+                    { label: 'Adherencia', value: clients.length ? `${Math.round(hoyCount/clients.length*100)}%` : '—', color: 'text-ok', action: () => setActiveTab('adherencia') },
+                    { label: 'Nuevos mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent', action: () => setActiveTab('clients') },
+                  ].map(s => (
+                    <button key={s.label} onClick={s.action}
+                      className="bg-card border border-border rounded-2xl p-4 text-center hover:border-accent transition-colors">
+                      <p className={`text-2xl font-serif font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-[10px] text-muted uppercase tracking-wider mt-1">{s.label}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Últimas altas */}
+              {clients.length > 0 && (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                    <h3 className="font-serif font-bold">Altas recientes</h3>
-                    <Calendar className="w-4 h-4 text-muted" />
+                  <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Últimas altas</h3>
+                    <button onClick={() => setActiveTab('clients')} className="text-xs text-accent font-semibold hover:underline">
+                      Ver todos →
+                    </button>
                   </div>
                   <div className="divide-y divide-border">
-                    {clients.slice(0, 5).map(c => (
+                    {clients.slice(0, 4).map(c => (
                       <button key={c.id} onClick={() => onSelectClient(c)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group"
-                      >
+                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group">
                         <div className="relative w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
                           {(c.name?.[0] || '?').toUpperCase()}
                           {todayActive[c.id] && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card" />}
@@ -308,67 +386,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                           <p className="text-[10px] text-muted">{new Date(c.createdAt).toLocaleDateString('es-ES')}</p>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                    {!clients.length && <p className="px-5 py-8 text-sm text-muted text-center">Sin clientes aún</p>}
-                  </div>
-                  {clients.length > 0 && (
-                    <div className="px-5 py-3 bg-bg-alt/50 border-t border-border">
-                      <button onClick={() => setActiveTab('clients')} className="text-[10px] uppercase tracking-widest font-bold text-accent hover:underline w-full text-center">
-                        Ver todos →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Semáforo leyenda */}
-              {clients.length > 0 && (
-                <div className="flex items-center gap-4 px-1">
-                  {[
-                    { color: 'bg-ok', label: 'Buena adherencia (+3 días/sem)' },
-                    { color: 'bg-accent', label: 'Actividad baja (1-2 días/sem)' },
-                    { color: 'bg-warn', label: 'Riesgo de abandono (0 días/sem)' },
-                  ].map(s => (
-                    <div key={s.label} className="flex items-center gap-1.5">
-                      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${s.color}`} />
-                      <p className="text-[10px] text-muted">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Clientes que necesitan atención */}
-              {clients.filter(c => !todayActive[c.id]).length > 0 && (
-                <div className="bg-card border border-warn/20 rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                    <div>
-                      <h3 className="font-serif font-bold text-base">Clientes inactivos hoy</h3>
-                      <p className="text-xs text-muted mt-0.5">No han entrenado hoy</p>
-                    </div>
-                    <span className="text-xs font-bold text-warn bg-warn/10 px-2 py-1 rounded-full border border-warn/20">
-                      {clients.filter(c => !todayActive[c.id]).length}
-                    </span>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {clients.filter(c => !todayActive[c.id]).slice(0, 4).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group">
-                        <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-muted flex-shrink-0">
-                          {(c.name?.[0] || '?').toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                        </div>
-                        <button onClick={e => {
-                          e.stopPropagation()
-                          const url = `${window.location.origin}?c=${c.token}`
-                          const msg = encodeURIComponent(`Hola ${c.name} 👋 ¿Todo bien? No te hemos visto entrenar hoy. ¡Ánimo! 💪\n\n${url}`)
-                          window.open(`https://wa.me/?text=${msg}`, '_blank')
-                        }} aria-label={`Enviar WhatsApp a ${c.name}`}
-                          className="text-[#25D366] text-xs font-semibold hover:underline flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          WhatsApp
-                        </button>
                       </button>
                     ))}
                   </div>
