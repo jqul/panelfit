@@ -17,7 +17,9 @@ interface PhotoSession {
 interface Props { client: ClientData }
 
 export function ProgresoTab({ client }: Props) {
-  const [subtab, setSubtab] = useState<'peso' | 'fotos' | 'encuesta'>('peso')
+  const [subtab, setSubtab] = useState<'peso' | 'fotos' | 'encuesta' | 'checkins'>('peso')
+  const [checkins, setCheckins] = useState<any[]>([])
+  const [loadingCheckins, setLoadingCheckins] = useState(false)
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
@@ -31,7 +33,17 @@ export function ProgresoTab({ client }: Props) {
   useEffect(() => {
     try { setWeights(JSON.parse(localStorage.getItem(LS_W) || '[]')) } catch {}
     try { setPhotos(JSON.parse(localStorage.getItem(LS_P) || '[]')) } catch {}
+    loadCheckins()
   }, [client.id])
+
+  const loadCheckins = async () => {
+    setLoadingCheckins(true)
+    const { data } = await supabase.from('checkins')
+      .select('*').eq('clientId', client.id)
+      .order('createdAt', { ascending: false }).limit(10)
+    setCheckins(data || [])
+    setLoadingCheckins(false)
+  }
 
   const saveWeights = (w: WeightEntry[]) => {
     setWeights(w); localStorage.setItem(LS_W, JSON.stringify(w))
@@ -100,18 +112,22 @@ export function ProgresoTab({ client }: Props) {
       <h3 className="font-serif font-bold text-lg">Progreso</h3>
 
       {/* Subtabs */}
-      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
+      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit flex-wrap">
         <button onClick={() => setSubtab('peso')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'peso' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'peso' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
           <Scale className="w-4 h-4" /> Peso
         </button>
         <button onClick={() => setSubtab('fotos')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'fotos' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'fotos' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
           <Camera className="w-4 h-4" /> Fotos
         </button>
         <button onClick={() => setSubtab('encuesta')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'encuesta' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'encuesta' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
           <MessageSquare className="w-4 h-4" /> Encuesta
+        </button>
+        <button onClick={() => { setSubtab('checkins'); loadCheckins() }}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'checkins' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          📋 Check-ins {checkins.length > 0 && <span className="bg-accent text-white text-[10px] px-1.5 py-0.5 rounded-full">{checkins.length}</span>}
         </button>
       </div>
 
@@ -275,6 +291,39 @@ export function ProgresoTab({ client }: Props) {
                   )}
                 </div>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* CHECK-INS */}
+      {subtab === 'checkins' && (
+        <div className="space-y-3">
+          {loadingCheckins ? (
+            <div className="space-y-2">
+              {[1,2].map(i => <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />)}
+            </div>
+          ) : checkins.length === 0 ? (
+            <div className="text-center py-10 text-muted">
+              <p className="text-sm">El cliente aún no ha enviado ningún check-in.</p>
+              <p className="text-xs mt-1">Envíale el enlace de encuesta desde la pestaña Encuesta.</p>
+            </div>
+          ) : checkins.map((c, i) => (
+            <div key={c.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <p className="text-sm font-semibold">
+                  {new Date(c.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                {i === 0 && <span className="text-[10px] bg-ok/10 text-ok font-bold px-2 py-0.5 rounded-full">Último</span>}
+              </div>
+              <div className="divide-y divide-border">
+                {(c.respuestas || []).map((r: any, ri: number) => (
+                  <div key={ri} className="px-4 py-3">
+                    <p className="text-xs text-muted font-semibold mb-1">{r.pregunta}</p>
+                    <p className="text-sm">{r.respuesta || <span className="text-muted italic">Sin respuesta</span>}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
