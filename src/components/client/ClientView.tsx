@@ -9,6 +9,7 @@ import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
+import { NotFound } from '../shared/NotFound'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -109,19 +110,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     </div>
   )
 
-  if (error) return (
-    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      <div className="text-center max-w-sm">
-        <h1 className="text-3xl font-serif font-bold mb-6">Panel<span className="text-accent italic">Fit</span></h1>
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
-          <AlertCircle className="w-10 h-10 text-warn mx-auto" />
-          <p className="text-warn font-semibold">Enlace no válido</p>
-          <p className="text-muted text-sm">{error}</p>
-          <p className="text-muted text-sm">Pide a tu entrenador que te envíe el enlace correcto.</p>
-        </div>
-      </div>
-    </div>
-  )
+  if (error) return <NotFound />
 
   // PIN
   const planPin = (plan as unknown as { pin?: string })?.pin
