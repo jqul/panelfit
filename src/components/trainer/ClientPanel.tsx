@@ -48,6 +48,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [showTemplates, setShowTemplates] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
+  const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
+  const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -105,16 +110,41 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     setTimeout(() => setSaveState('idle'), 2000)
   }
 
-  const applyTemplate = (template: TrainingTemplate) => {
+  const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
     if (!plan) return
+
+    // Calcular qué semana es la actual basándose en la fecha de inicio
+    const inicio = new Date(fechaInicio + 'T00:00:00')
+    const hoy = new Date()
+    const diasDesdeInicio = Math.max(0, Math.floor((hoy.getTime() - inicio.getTime()) / 86400000))
+    const semanaActual = Math.min(Math.floor(diasDesdeInicio / 7), template.weeks.length - 1)
+
+    const weeks = JSON.parse(JSON.stringify(template.weeks))
+    weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
+
     const newPlan: TrainingPlan = {
       ...plan,
       type: template.type,
-      weeks: JSON.parse(JSON.stringify(template.weeks)), // deep copy
-    }
+      weeks,
+      fechaInicio,
+      autoCheckin,
+    } as any
+
     setPlan(newPlan)
     savePlan(newPlan)
+
+    // Regla A: mensaje de bienvenida automático
+    if (autoWelcome) {
+      const url = `${window.location.origin}?c=${client.token}`
+      const msg = encodeURIComponent(
+        `Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa de entrenamiento. ¡Ya puedes verlo en tu panel!\n\n${url}\n\n💪 ¡Vamos a por ello!`
+      )
+      setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
+    }
+
     setShowTemplates(false)
+    setWizardStep(1)
+    setWizardTemplate(null)
     toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
   }
 
@@ -251,23 +281,92 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
         </main>
       </div>
 
-      {/* Modal elegir plantilla */}
-      <Modal open={showTemplates} onClose={() => setShowTemplates(false)} title="Elegir plantilla">
-        <div className="space-y-3">
-          <p className="text-sm text-muted mb-2">Selecciona una plantilla. <span className="text-warn font-medium">Reemplazará el plan actual.</span></p>
-          {templates.map(t => (
-            <button key={t.id} onClick={() => applyTemplate(t)}
-              className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent hover:bg-bg-alt transition-all text-left">
-              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                <ClipboardList className="w-4 h-4 text-accent" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">{t.name}</p>
-                <p className="text-xs text-muted">{t.weeks.length} sem · {t.weeks.reduce((a, w) => a + w.days.length, 0)} días · {t.type}</p>
-              </div>
-            </button>
+      {/* Wizard de plantilla — 3 pasos */}
+      <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
+        title={wizardStep === 1 ? 'Paso 1 — Elegir plantilla' : wizardStep === 2 ? 'Paso 2 — Calendario' : 'Paso 3 — Automatizaciones'}>
+        
+        {/* Indicador de pasos */}
+        <div className="flex items-center gap-2 mb-4">
+          {[1,2,3].map(s => (
+            <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />
           ))}
         </div>
+
+        {wizardStep === 1 && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">Selecciona la plantilla base para este cliente.</p>
+            {templates.map(t => (
+              <button key={t.id} onClick={() => { setWizardTemplate(t); setWizardStep(2) }}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent hover:bg-bg-alt transition-all text-left">
+                <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <ClipboardList className="w-4 h-4 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-muted">{t.weeks.length} sem · {t.weeks.reduce((a, w) => a + w.days.length, 0)} días · {t.type}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {wizardStep === 2 && wizardTemplate && (
+          <div className="space-y-4">
+            <div className="bg-bg border border-border rounded-xl p-3 flex items-center gap-3">
+              <ClipboardList className="w-4 h-4 text-accent flex-shrink-0" />
+              <p className="text-sm font-semibold">{wizardTemplate.name}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fecha de inicio</label>
+              <input type="date" value={wizardFechaInicio} onChange={e => setWizardFechaInicio(e.target.value)}
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              />
+              <p className="text-xs text-muted mt-1.5">
+                El sistema activará automáticamente la semana correcta según esta fecha.
+                {(() => {
+                  const inicio = new Date(wizardFechaInicio + 'T00:00:00')
+                  const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+                  const sem = Math.min(Math.floor(dias / 7) + 1, wizardTemplate.weeks.length)
+                  return ` Hoy sería la semana ${sem} de ${wizardTemplate.weeks.length}.`
+                })()}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => setWizardStep(3)} className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Siguiente →</button>
+            </div>
+          </div>
+        )}
+
+        {wizardStep === 3 && wizardTemplate && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">Activa las automatizaciones para este cliente.</p>
+            <div className="space-y-3">
+              {[
+                { key: 'welcome', label: 'Mensaje de bienvenida', desc: 'Abre WhatsApp con mensaje al asignar el plan', val: wizardAutoWelcome, set: setWizardAutoWelcome, emoji: '👋' },
+                { key: 'checkin', label: 'Check-in semanal', desc: 'Recuérdame enviar encuesta al cerrar cada semana', val: wizardAutoCheckin, set: setWizardAutoCheckin, emoji: '📋' },
+              ].map(a => (
+                <div key={a.key} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${a.val ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+                  onClick={() => a.set(!a.val)}>
+                  <span className="text-xl">{a.emoji}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{a.label}</p>
+                    <p className="text-xs text-muted">{a.desc}</p>
+                  </div>
+                  <div className={`w-10 h-6 rounded-full transition-all flex items-center ${a.val ? 'bg-ok' : 'bg-border'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setWizardStep(2)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin)}
+                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )
