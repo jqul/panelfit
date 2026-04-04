@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy, Flame } from 'lucide-react'
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
+import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
@@ -21,6 +22,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [timerRunning, setTimerRunning] = useState(false)
   const [timerDone, setTimerDone] = useState(false)
   const [sessionStart] = useState(Date.now())
+  const [showCalc, setShowCalc] = useState<number | null>(null)
   const exercises = day.exercises
 
   useEffect(() => {
@@ -166,7 +168,14 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           {/* Nombre y datos */}
           <div>
             {ex.isMain && <p className="text-[10px] uppercase tracking-widest text-accent font-bold mb-0.5">Principal</p>}
-            <h2 className="text-3xl font-serif font-bold leading-tight">{ex.name}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-3xl font-serif font-bold leading-tight flex-1">{ex.name}</h2>
+              <button onClick={() => setShowCalc(activeIdx)}
+                className="flex-shrink-0 mt-1 px-3 py-1.5 bg-card border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-all"
+                title="Calculadora de discos">
+                🏋️ Discos
+              </button>
+            </div>
             <p className="text-accent font-semibold mt-1 text-base">
               {ex.weight && <span>{ex.weight} · </span>}{ex.sets}
             </p>
@@ -351,5 +360,13 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
         </footer>
       )}
     </div>
+
+      {/* Calculadora de discos */}
+      {showCalc !== null && (
+        <CalculadoraDiscos
+          pesoObjetivo={parseFloat(exercises[showCalc]?.weight || '0') || undefined}
+          onClose={() => setShowCalc(null)}
+        />
+      )}
   )
 }
