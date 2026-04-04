@@ -568,9 +568,56 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
   const currentUrl = `${window.location.origin}?c=${newToken}`
 
   if (!plan) return null
+  const planAny = plan as any
+  const toggleAuto = (key: string, val: boolean) => onChange({ ...plan, [key]: val } as any)
+
   return (
     <div className="space-y-5 max-w-lg">
       <h3 className="font-serif font-bold text-lg">Configuración</h3>
+
+      {/* AUTOMATIZACIONES */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">Automatizaciones</h4>
+          <p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p>
+        </div>
+        {[
+          { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
+          { key: 'autoCheckin', label: 'Check-in semanal', desc: 'Recordatorio de encuesta al cerrar semana', emoji: '📋' },
+          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: 'WhatsApp si lleva +3 días sin entrenar', emoji: '⚠️' },
+        ].map(a => (
+          <div key={a.key}
+            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${planAny[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+            onClick={() => toggleAuto(a.key, !planAny[a.key])}>
+            <span className="text-lg flex-shrink-0">{a.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">{a.label}</p>
+              <p className="text-xs text-muted">{a.desc}</p>
+            </div>
+            <div className={`w-10 h-6 rounded-full transition-all flex-shrink-0 flex items-center px-0.5 ${planAny[a.key] ? 'bg-ok' : 'bg-border'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${planAny[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+          </div>
+        ))}
+
+        {/* Próxima acción automática */}
+        {planAny.fechaInicio && (
+          <div className="pt-2 border-t border-border">
+            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Próxima acción</p>
+            {(() => {
+              const inicio = new Date(planAny.fechaInicio + 'T00:00:00')
+              const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+              const diasParaCheckin = 7 - (dias % 7)
+              return (
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <span>📋</span>
+                  <span>Check-in en <strong className="text-ink">{diasParaCheckin === 7 ? 'hoy' : `${diasParaCheckin} días`}</strong> — cierre de semana {Math.floor(dias / 7) + 1}</span>
+                </div>
+              )
+            })()}
+          </div>
+        )}
+      </div>
 
       {/* Tiempos descanso */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
