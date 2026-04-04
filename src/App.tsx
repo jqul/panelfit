@@ -7,7 +7,7 @@ import { useToast, ToastContainer } from './components/shared/Toast'
 // Lazy load — solo se carga cuando se necesita
 const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
 const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
-const ClientView = lazy(() => import('./components/client/ClientView'))
+const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 
 type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
