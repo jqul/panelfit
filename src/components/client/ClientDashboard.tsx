@@ -3,6 +3,7 @@ import { Flame, Dumbbell, Trophy, TrendingUp, Play, CheckCircle2, MessageSquare,
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { Exercise } from '../../types'
 import { TrainingSession } from '../trainer/TrainingSession'
+import { getConsejo, Objetivo } from '../../lib/nudges'
 
 interface Props {
   plan: TrainingPlan
@@ -11,6 +12,7 @@ interface Props {
   weightHistory: WeightEntry[]
   clientName: string
   clientId: string
+  objetivo?: string
 }
 
 function calcStreak(logs: TrainingLogs): number {
@@ -44,7 +46,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
