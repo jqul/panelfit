@@ -366,6 +366,55 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                 </div>
               )}
 
+              {/* Próximas acciones automáticas */}
+              {clients.length > 0 && (() => {
+                const acciones: { cliente: string; accion: string; dias: number; tipo: string }[] = []
+                clients.forEach(c => {
+                  const logs = logsMap[c.id] || {}
+                  const fechas = Object.values(logs as Record<string, any>)
+                    .filter(l => l.done && l.dateDone).map(l => l.dateDone as string)
+                    .filter((v, i, a) => a.indexOf(v) === i).sort()
+                  const ultimoEntreno = fechas[fechas.length - 1]
+                  const diasSin = ultimoEntreno
+                    ? Math.floor((new Date().getTime() - new Date(ultimoEntreno + 'T00:00:00').getTime()) / 86400000)
+                    : 999
+                  if (diasSin >= 3) {
+                    acciones.push({ cliente: `${c.name} ${c.surname}`, accion: `${diasSin} días sin entrenar`, dias: diasSin, tipo: 'inactividad' })
+                  }
+                })
+                if (!acciones.length) return null
+                return (
+                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">⚡ Acciones pendientes</h3>
+                      <span className="text-xs bg-warn/10 text-warn font-bold px-2 py-0.5 rounded-full">{acciones.length}</span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {acciones.slice(0, 3).map((a, i) => (
+                        <div key={i} className="flex items-center gap-3 px-5 py-3">
+                          <span className="text-base flex-shrink-0">{a.tipo === 'inactividad' ? '⚠️' : '📋'}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{a.cliente}</p>
+                            <p className="text-xs text-muted">{a.accion}</p>
+                          </div>
+                          <button onClick={() => {
+                            const c = clients.find(cl => `${cl.name} ${cl.surname}` === a.cliente)
+                            if (!c) return
+                            const url = `${window.location.origin}?c=${c.token}`
+                            const msg = encodeURIComponent(`Hola ${c.name} 👋 Te echamos de menos. ¡Tu plan sigue aquí!
+
+${url}`)
+                            window.open(`https://wa.me/?text=${msg}`, '_blank')
+                          }} className="text-xs text-[#25D366] font-semibold hover:underline flex-shrink-0">
+                            WA
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Últimas altas */}
               {clients.length > 0 && (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
