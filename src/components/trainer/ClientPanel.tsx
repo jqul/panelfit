@@ -601,11 +601,11 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
         ))}
 
         {/* Próxima acción automática */}
-        {planAny.fechaInicio && (
+        {plan.fechaInicio && (
           <div className="pt-2 border-t border-border">
             <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Próxima acción</p>
             {(() => {
-              const inicio = new Date(planAny.fechaInicio + 'T00:00:00')
+              const inicio = new Date(plan.fechaInicio + 'T00:00:00')
               const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
               const diasParaCheckin = 7 - (dias % 7)
               return (
