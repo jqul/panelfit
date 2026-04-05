@@ -57,15 +57,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (planErr) logError('ClientView:loadPlan', planErr)
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) {
-      const p = planRow.plan.P as any
+      const p = planRow.plan.P as TrainingPlan
       // Avance automático de semana según fecha de inicio
       if (p.fechaInicio && p.weeks?.length) {
         const inicio = new Date(p.fechaInicio + 'T00:00:00')
         const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
         const semActual = Math.min(Math.floor(dias / 7), p.weeks.length - 1)
-        p.weeks = p.weeks.map((w: any, i: number) => ({ ...w, isCurrent: i === semActual }))
+        p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
-      setPlan(p as TrainingPlan)
+      setPlan(p)
     }
 
     const { data: regData, error: regErr } = await supabase
@@ -221,7 +221,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={(client as any).objetivo}
+                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
                     welcomeMsg={welcomeMsg} motivMsg={motivMsg} brandColor={brandColor} />
                 : <NoPlanView />
             )}
