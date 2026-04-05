@@ -537,8 +537,8 @@ ${url}`)
           )}
 
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
-          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} plansMap={{}} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} plansMap={{}} />}
+          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
