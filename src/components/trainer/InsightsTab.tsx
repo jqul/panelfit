@@ -5,7 +5,6 @@ import { TrendingUp, TrendingDown, Award, Users, Zap, AlertTriangle, BarChart2 }
 interface Props {
   clients: ClientData[]
   logsMap: Record<string, TrainingLogs>
-  plansMap: Record<string, TrainingPlan>
 }
 
 function calcClientStats(client: ClientData, logs: TrainingLogs) {
@@ -57,7 +56,7 @@ function calcClientStats(client: ClientData, logs: TrainingLogs) {
   }
 }
 
-export function InsightsTab({ clients, logsMap, plansMap }: Props) {
+export function InsightsTab({ clients, logsMap }: Props) {
   const stats = useMemo(() =>
     clients.map(c => calcClientStats(c, logsMap[c.id] || {})),
     [clients, logsMap]
