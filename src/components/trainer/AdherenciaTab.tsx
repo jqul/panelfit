@@ -16,7 +16,6 @@ interface ClientStats {
 interface Props {
   clients: ClientData[]
   logsMap: Record<string, TrainingLogs>
-  plansMap: Record<string, TrainingPlan>
 }
 
 function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
@@ -63,7 +62,7 @@ function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordato
   return getNudge('checkin', objetivo, { ...ctx, url: encuestaUrl })
 }
 
-export function AdherenciaTab({ clients, logsMap, plansMap }: Props) {
+export function AdherenciaTab({ clients, logsMap }: Props) {
   const [enviados, setEnviados] = useState<Set<string>>(new Set())
   const [filtro, setFiltro] = useState<'todos' | 'riesgo' | 'ok'>('todos')
 
