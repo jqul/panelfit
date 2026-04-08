@@ -13,6 +13,7 @@ import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
@@ -58,6 +59,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
   const library = useExerciseLibrary(userProfile.uid)
   const otherClients = allClients.filter(c => c.id !== client.id)
   const templates = loadTemplates(userProfile.uid)
+  const trainerEsp: Especialidad[] = (() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}')
+      return p.especialidades || []
+    } catch { return [] }
+  })()
 
   useEffect(() => { loadData() }, [client.id])
 
@@ -332,6 +339,16 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                 })()}
               </p>
             </div>
+            {trainerEsp.length > 0 && (
+              <div className="bg-bg border border-border rounded-xl p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Bloques sugeridos para tu especialidad</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {BLOQUES_POR_ESPECIALIDAD[trainerEsp[0]]?.map(b => (
+                    <span key={b} className="text-xs bg-card border border-border px-2 py-1 rounded-lg text-muted">{b}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
               <button onClick={() => setWizardStep(3)} className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Siguiente →</button>
