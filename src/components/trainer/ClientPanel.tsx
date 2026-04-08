@@ -24,6 +24,8 @@ interface Props {
   userProfile: UserProfile
   allClients: ClientData[]
   onClose: () => void
+  demoPlan?: any
+  demoLogs?: any
 }
 
 const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
@@ -42,7 +44,7 @@ function loadTemplates(trainerId: string): TrainingTemplate[] {
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
-export function ClientPanel({ client, userProfile, allClients, onClose }: Props) {
+export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan, demoLogs }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('plan')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
@@ -70,6 +72,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
 
   const loadData = async () => {
     setLoading(true)
+    // Modo demo: usar datos mock directamente
+    if (demoPlan) {
+      setPlan(demoPlan)
+      if (demoLogs) setLogs(demoLogs)
+      setLoading(false)
+      return
+    }
     const { data: planData, error: planErr } = await supabase
       .from('planes').select('plan').eq('clientId', client.id).maybeSingle()
     if (planErr) logError('loadPlan', planErr)
@@ -97,6 +106,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
     const p = planToSave || pendingPlan.current || plan
     if (!p) return
     setSaveState('saving')
+    // Modo demo: simular guardado sin Supabase
+    if (demoPlan !== undefined) {
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2000)
+      return
+    }
     const { error: updateError } = await supabase
       .from('planes')
       .update({ plan: { P: p }, updatedAt: Date.now() })
