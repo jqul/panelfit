@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { ClientData, TrainingLogs, TrainingPlan } from '../../types'
+import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 import { TrendingUp, TrendingDown, Award, Users, Zap, AlertTriangle, BarChart2 } from 'lucide-react'
 
 interface Props {
   clients: ClientData[]
   logsMap: Record<string, TrainingLogs>
+  especialidades?: Especialidad[]
 }
 
 function calcClientStats(client: ClientData, logs: TrainingLogs) {
@@ -56,7 +58,7 @@ function calcClientStats(client: ClientData, logs: TrainingLogs) {
   }
 }
 
-export function InsightsTab({ clients, logsMap }: Props) {
+export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
   const stats = useMemo(() =>
     clients.map(c => calcClientStats(c, logsMap[c.id] || {})),
     [clients, logsMap]
@@ -205,6 +207,32 @@ export function InsightsTab({ clients, logsMap }: Props) {
           <p className="text-xs text-muted mt-3">
             El <span className="font-semibold text-ink capitalize">{diaMasActivo[0]}</span> es el día con más entrenamientos completados ({diaMasActivo[1]} sesiones).
           </p>
+        </div>
+      )}
+
+      {/* KPIs por especialidad */}
+      {especialidades.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+          <h3 className="font-serif font-bold">Métricas relevantes para tu especialidad</h3>
+          <div className="flex flex-wrap gap-2">
+            {especialidades.map(esp => {
+              const info = ESPECIALIDADES.find(e => e.value === esp)
+              if (!info) return null
+              return (
+                <div key={esp} className="flex-1 min-w-[140px] bg-bg border border-border rounded-xl p-3">
+                  <p className="text-sm font-semibold mb-2">{info.emoji} {info.label}</p>
+                  <div className="space-y-1">
+                    {info.kpis.map(kpi => (
+                      <p key={kpi} className="text-xs text-muted flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+                        {kpi}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
