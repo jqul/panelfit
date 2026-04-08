@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy, Flame } from 'lucide-react'
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
+import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 
 interface Props {
@@ -34,6 +35,21 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   }, [timerRunning, timer])
 
   const startTimer = (s: number) => { setTimer(s); setTimerRunning(true); setTimerDone(false) }
+
+  const uploadVideo = async (exerciseKey: string, file: File) => {
+    if (file.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
+    setUploading(exerciseKey)
+    const ext = file.name.split('.').pop()
+    const path = `${dayKey}/${exerciseKey}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
+    if (error) { alert('Error al subir vídeo'); setUploading(null); return }
+    const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
+    setUploadedVideos(prev => ({ ...prev, [exerciseKey]: data.publicUrl }))
+    // Guardar URL en el log del ejercicio
+    const log = getLog(parseInt(exerciseKey.split('_r')[1]))
+    updateLog(parseInt(exerciseKey.split('_r')[1]), { ...log, videoEjecucion: data.publicUrl } as any)
+    setUploading(null)
+  }
   const skipTimer = () => { setTimer(0); setTimerRunning(false); setTimerDone(false) }
   const getLog = (ri: number): ExerciseLog => logs[`ex_${dayKey}_r${ri}`] || { sets: {}, done: false }
 
@@ -290,6 +306,33 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
               })}
             </div>
           </div>
+
+          {/* Upload vídeo si el ejercicio lo requiere */}
+          {exercises[activeIdx]?.requiresVideo && (
+            <div className={`border-2 rounded-2xl p-4 space-y-2 ${uploadedVideos[`r${activeIdx}`] ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-base">📹</span>
+                <div>
+                  <p className="text-sm font-semibold">Tu entrenador pide vídeo de este ejercicio</p>
+                  <p className="text-xs text-muted">Graba la ejecución y súbela aquí</p>
+                </div>
+              </div>
+              {uploadedVideos[`r${activeIdx}`] ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
+                  <video src={uploadedVideos[`r${activeIdx}`]} className="h-16 rounded-lg" controls />
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
+                  {uploading === `r${activeIdx}` ? 'Subiendo...' : '📹 Grabar / subir vídeo'}
+                  <input type="file" accept="video/*" capture="environment" className="hidden"
+                    disabled={!!uploading}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(`r${activeIdx}`, f) }}
+                  />
+                </label>
+              )}
+            </div>
+          )}
 
           {/* Botón */}
           {!timerRunning && (
