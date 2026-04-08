@@ -16,6 +16,13 @@ export interface ClientData {
 export interface Exercise {
   name: string; sets: string; weight: string; isMain: boolean
   comment: string; videoUrl?: string; videoUrls?: string[]
+  requiresVideo?: boolean  // el entrenador pide vídeo de ejecución
+}
+
+export interface ExerciseVideoUpload {
+  exerciseKey: string  // ex_w0_d0_r0
+  videoUrl: string
+  uploadedAt: number
 }
 export interface DayPlan { title: string; focus: string; exercises: Exercise[] }
 export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
