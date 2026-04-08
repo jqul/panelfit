@@ -60,6 +60,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}') } catch { return {} }
   })()
   const trainerEspecialidades: string[] = trainerProfile.especialidades || []
+  const templates: any[] = (() => {
+    try { return JSON.parse(localStorage.getItem(`pf_templates_${userProfile.uid}`) || '[]') } catch { return [] }
+  })()
 
   const fetchClients = async () => {
     setLoading(true)
