@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, Wifi, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
-import { ClientDashboard } from './ClientDashboard'
+import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
 import { DietEditor } from '../shared/DietEditor'
@@ -76,6 +76,18 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
     setLoading(false)
   }
+
+  const handleDiasUpdate = useCallback(async (dias: number[]) => {
+    if (!plan) return
+    const newPlan = { ...plan, diasElegidos: dias }
+    setPlan(newPlan)
+    // Guardar en Supabase
+    if (client?.id) {
+      await supabase.from('planes')
+        .update({ plan: { P: newPlan }, updatedAt: Date.now() })
+        .eq('clientId', client.id)
+    }
+  }, [plan, client?.id])
 
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
@@ -220,9 +232,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           <>
             {activeTab === 'hoy' && (
               plan
-                ? <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                    weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
-                    welcomeMsg={welcomeMsg} motivMsg={motivMsg} brandColor={brandColor} />
+                ? <>
+                    <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
+                    <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
+                      weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
+                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} brandColor={brandColor} />
+                  </>
                 : <NoPlanView />
             )}
             {activeTab === 'entreno' && (
