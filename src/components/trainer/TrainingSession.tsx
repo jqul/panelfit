@@ -24,6 +24,8 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [timerDone, setTimerDone] = useState(false)
   const [sessionStart] = useState(Date.now())
   const [showCalc, setShowCalc] = useState<number | null>(null)
+  const [uploadedVideos, setUploadedVideos] = useState<Record<string, string>>({})
+  const [uploading, setUploading] = useState<string | null>(null)
   const exercises = day.exercises
 
   useEffect(() => {
@@ -36,6 +38,14 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
 
   const startTimer = (s: number) => { setTimer(s); setTimerRunning(true); setTimerDone(false) }
 
+  const skipTimer = () => { setTimer(0); setTimerRunning(false); setTimerDone(false) }
+  const getLog = (ri: number): ExerciseLog => logs[`ex_${dayKey}_r${ri}`] || { sets: {}, done: false }
+
+  const updateLog = (ri: number, updates: Partial<ExerciseLog>) => {
+    const key = `ex_${dayKey}_r${ri}`
+    onLogsChange({ ...logs, [key]: { ...getLog(ri), ...updates } })
+  }
+
   const uploadVideo = async (exerciseKey: string, file: File) => {
     if (file.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
     setUploading(exerciseKey)
@@ -44,18 +54,11 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
     if (error) { alert('Error al subir vídeo'); setUploading(null); return }
     const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
-    setUploadedVideos(prev => ({ ...prev, [exerciseKey]: data.publicUrl }))
-    // Guardar URL en el log del ejercicio
-    const log = getLog(parseInt(exerciseKey.split('_r')[1]))
-    updateLog(parseInt(exerciseKey.split('_r')[1]), { ...log, videoEjecucion: data.publicUrl } as any)
+    setUploadedVideos((prev: Record<string, string>) => ({ ...prev, [exerciseKey]: data.publicUrl }))
+    const idx = parseInt(exerciseKey.replace('r', ''))
+    const currentLog = getLog(idx)
+    updateLog(idx, { ...currentLog, videoEjecucion: data.publicUrl } as any)
     setUploading(null)
-  }
-  const skipTimer = () => { setTimer(0); setTimerRunning(false); setTimerDone(false) }
-  const getLog = (ri: number): ExerciseLog => logs[`ex_${dayKey}_r${ri}`] || { sets: {}, done: false }
-
-  const updateLog = (ri: number, updates: Partial<ExerciseLog>) => {
-    const key = `ex_${dayKey}_r${ri}`
-    onLogsChange({ ...logs, [key]: { ...getLog(ri), ...updates } })
   }
 
   const updateSet = (ri: number, si: number, field: 'weight' | 'reps', value: string) => {
