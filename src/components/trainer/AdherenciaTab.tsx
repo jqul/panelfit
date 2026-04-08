@@ -48,7 +48,9 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
   const ultimoEntreno = fechas[fechas.length - 1] || null
   const diasSinEntrenar = ultimoEntreno
     ? Math.floor((hoy.getTime() - new Date(ultimoEntreno + 'T00:00:00').getTime()) / 86400000)
-    : 999
+    : client.createdAt
+      ? Math.floor((hoy.getTime() - client.createdAt) / 86400000)
+      : 0  // cliente nuevo sin entrenos: contar desde creación
 
   return { client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100), racha, ultimoEntreno, diasSinEntrenar, tendencia }
 }
@@ -72,7 +74,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
     [clients, logsMap]
   )
 
-  const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 3)
+  const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 3 && s.client.createdAt < Date.now() - 3 * 86400000)
   const conRacha = stats.filter(s => s.racha >= 3)
   const mediaAdherencia = stats.length
     ? Math.round(stats.reduce((a, s) => a + s.adherencia, 0) / stats.length) : 0
