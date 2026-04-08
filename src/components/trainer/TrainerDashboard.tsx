@@ -99,12 +99,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
   useEffect(() => {
     fetchClients()
-    const channel = supabase
-      .channel('clientes-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes',
-        filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Polling cada 30 segundos en vez de realtime (más fiable en móvil)
+    const interval = setInterval(fetchClients, 30000)
+    return () => clearInterval(interval)
   }, [userProfile.uid])
 
   const handleAdd = async () => {
@@ -135,6 +132,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (error) { logError('handleDelete', error); toast('Error al eliminar', 'warn'); return }
     setDeletingId(null)
     toast('Cliente eliminado', 'ok')
+    await fetchClients()
   }
 
   const getClientUrl = (client: ClientData) => `${window.location.origin}?c=${client.token}`
