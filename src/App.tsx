@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import { UserProfile, ClientData } from './types'
 import { Auth } from './components/shared/Auth'
 import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID } from './lib/demo-data'
+import { DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
 
 // Lazy load — solo se carga cuando se necesita
@@ -106,10 +107,17 @@ export default function App() {
     setView('demo')
   }
 
-  // Guardar perfil demo en localStorage para que el cliente lo vea
+  // Pre-cargar datos demo en localStorage
   if (view === 'demo') {
     localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
     localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
+    // Pesos de María para ver evolución
+    localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify([
+      { date: new Date(Date.now() - 0).toISOString().split('T')[0], weight: 62.0 },
+      { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 62.8 },
+      { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 63.5 },
+      { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 64.1 },
+    ]))
   }
 
   if (view === 'loading') return <LoadingScreen />
