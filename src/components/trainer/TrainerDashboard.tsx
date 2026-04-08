@@ -17,10 +17,11 @@ import { AdherenciaTab } from './AdherenciaTab'
 import { OBJETIVOS, Objetivo, getNudge, getConsejo } from '../../lib/nudges'
 import { ESPECIALIDADES, Especialidad, PLANTILLAS_SUGERIDAS } from '../../lib/especialidades'
 import { InsightsTab } from './InsightsTab'
+import { MensajesTab } from './MensajesTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'insights' | 'settings'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'insights' | 'mensajes' | 'settings'
 
 interface Props {
   userProfile: UserProfile
@@ -181,6 +182,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
     { id: 'adherencia' as Tab, icon: TrendingUp,     label: 'Adherencia' },
     { id: 'insights'  as Tab, icon: BarChart2,       label: 'Insights' },
+    { id: 'mensajes'  as Tab, icon: MessageCircle,    label: 'Mensajes' },
     { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
   ]
 
@@ -586,6 +588,7 @@ ${url}`)
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} especialidades={trainerEspecialidades as Especialidad[]} />}
+          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
