@@ -14,6 +14,7 @@ import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
+import { supabase as _supabase } from '../../lib/supabase'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
@@ -692,6 +693,21 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
       {/* Mensaje */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
         <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
+        <p className="text-xs text-muted">Se muestra en la pantalla principal del cliente. Puedes usar una plantilla global o escribir uno personalizado.</p>
+        {(() => {
+          const LS_KEY = `pf_msg_plantillas_${userProfile.uid}`
+          const plantillas = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] } })()
+          if (!plantillas.length) return null
+          return (
+            <select onChange={e => { if (e.target.value) onChange({ ...plan, message: e.target.value }) }}
+              className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none text-muted">
+              <option value="">Usar plantilla global...</option>
+              {plantillas.filter((p: any) => p.tipo === 'bienvenida' || p.tipo === 'personalizado').map((p: any) => (
+                <option key={p.id} value={p.texto}>{p.nombre}</option>
+              ))}
+            </select>
+          )
+        })()}
         <textarea rows={3} value={plan.message || ''}
           onChange={e => onChange({ ...plan, message: e.target.value })}
           placeholder="Mensaje motivacional que verá el cliente..."
