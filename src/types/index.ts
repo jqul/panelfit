@@ -29,6 +29,9 @@ export interface TrainingPlan {
   autoWelcome?: boolean
   autoCheckin?: boolean
   autoInactividad?: boolean
+  diasSemana?: number  // cuántos días entrena por semana
+  diasElegidos?: number[]  // 0=lun,1=mar...6=dom (elegidos por cliente)
+  macros?: { kcal: number; protein: number; carbs: number; fats: number; notaMacros?: string }
   weeks: WeekPlan[]
 }
 
