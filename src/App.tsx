@@ -165,15 +165,30 @@ export default function App() {
     const DemoTrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
     return (
       <Suspense fallback={<LoadingScreen />}>
-        <DemoTrainerDashboard
-          userProfile={DEMO_PROFILE_TRAINER}
-          onLogout={() => { window.location.href = '/' }}
-          demoClients={DEMO_CLIENTS as any}
-          onSelectClient={(client) => {
-            setSelectedClient(client)
-            setAllClients(DEMO_CLIENTS as any)
-          }}
-        />
+        {selectedClient ? (
+          <ClientPanel
+            client={selectedClient}
+            userProfile={DEMO_PROFILE_TRAINER}
+            allClients={DEMO_CLIENTS as any}
+            onClose={() => setSelectedClient(null)}
+            demoPlan={
+              selectedClient.id === 'demo-client-001' ? DEMO_PLAN_MARIA :
+              selectedClient.id === 'demo-client-002' ? DEMO_PLAN_CARLOS :
+              DEMO_PLAN_LAURA
+            }
+            demoLogs={selectedClient.id === 'demo-client-001' ? DEMO_LOGS_MARIA : undefined}
+          />
+        ) : (
+          <DemoTrainerDashboard
+            userProfile={DEMO_PROFILE_TRAINER}
+            onLogout={() => { window.location.href = '/' }}
+            demoClients={DEMO_CLIENTS as any}
+            onSelectClient={(client) => {
+              setSelectedClient(client)
+              setAllClients(DEMO_CLIENTS as any)
+            }}
+          />
+        )}
         <ToastContainer toasts={toasts} />
       </Suspense>
     )
