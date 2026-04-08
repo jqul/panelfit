@@ -297,7 +297,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
                 {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
                 {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
-                {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
+                {activeTab === 'config' && <ConfigTab client={client} userProfile={userProfile} plan={plan} onChange={handlePlanChange} />}
               </>
             )}
           </div>
@@ -569,7 +569,7 @@ function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p:
 }
 
 // ── Config ────────────────────────────────────────────────
-function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+function ConfigTab({ client, userProfile, plan, onChange }: { client: ClientData; userProfile: UserProfile; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
