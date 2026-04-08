@@ -701,7 +701,7 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
         <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
         <p className="text-xs text-muted">Se muestra en la pantalla principal del cliente. Puedes usar una plantilla global o escribir uno personalizado.</p>
         {(() => {
-          const LS_KEY = `pf_msg_plantillas_${userProfile.uid}`
+          const LS_KEY = `pf_msg_plantillas_${client.trainerId}`
           const plantillas = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] } })()
           if (!plantillas.length) return null
           return (
