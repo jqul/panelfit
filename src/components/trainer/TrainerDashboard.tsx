@@ -26,9 +26,10 @@ interface Props {
   userProfile: UserProfile
   onLogout: () => void
   onSelectClient: (client: ClientData) => void
+  demoClients?: ClientData[]
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Props) {
+export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
   const [clients, setClients] = useState<ClientData[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
@@ -66,6 +67,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
 
   const fetchClients = async () => {
     setLoading(true)
+    if (demoClients) { setClients(demoClients); setLoading(false); return }
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
@@ -118,7 +120,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
       createdAt: Date.now(),
     })
     if (error) toast('Error al crear cliente: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', objetivo: 'general' }) }
+    else {
+      toast('Cliente creado ✓', 'ok')
+      setShowAdd(false)
+      setNewClient({ name: '', surname: '', objetivo: 'general' })
+      // Refrescar lista inmediatamente sin esperar realtime
+      await fetchClients()
+    }
     setAdding(false)
   }
 
@@ -379,6 +387,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
               {clients.length > 0 && (() => {
                 const acciones: { cliente: string; accion: string; dias: number; tipo: string }[] = []
                 clients.forEach(c => {
+                  // Ignorar clientes creados hace menos de 3 días
+                  if (Date.now() - c.createdAt < 3 * 86400000) return
                   const logs = logsMap[c.id] || {}
                   const fechas = Object.values(logs as Record<string, any>)
                     .filter(l => l.done && l.dateDone).map(l => l.dateDone as string)
@@ -386,9 +396,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
                   const ultimoEntreno = fechas[fechas.length - 1]
                   const diasSin = ultimoEntreno
                     ? Math.floor((new Date().getTime() - new Date(ultimoEntreno + 'T00:00:00').getTime()) / 86400000)
-                    : 999
+                    : Math.floor((new Date().getTime() - c.createdAt) / 86400000)
                   if (diasSin >= 3) {
-                    acciones.push({ cliente: `${c.name} ${c.surname}`, accion: `${diasSin} días sin entrenar`, dias: diasSin, tipo: 'inactividad' })
+                    acciones.push({ cliente: `${c.name} ${c.surname}`, accion: `${diasSin} día${diasSin !== 1 ? 's' : ''} sin entrenar`, dias: diasSin, tipo: 'inactividad' })
                   }
                 })
                 if (!acciones.length) return null
