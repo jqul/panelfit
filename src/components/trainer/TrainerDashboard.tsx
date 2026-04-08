@@ -44,7 +44,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
 
   // Semáforo de riesgo por cliente
-  const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' => {
+  const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' | 'nuevo' => {
+    const client = clients.find(c => c.id === clientId)
+    if (client && Date.now() - client.createdAt < 3 * 86400000) return 'nuevo'
     const reg = (logsMap[clientId] || {}) as Record<string, { done?: boolean; dateDone?: string }>
     const dates = new Set(Object.values(reg).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
     const hoy = new Date()
