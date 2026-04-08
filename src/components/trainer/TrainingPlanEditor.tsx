@@ -212,8 +212,15 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                               <button
                                 onClick={() => updateExercise(activeWeek, di, ri, { isMain: !ex.isMain })}
                                 title="Principal"
+                                aria-label="Marcar como ejercicio principal"
                                 className={`p-1.5 rounded-lg transition-colors ${ex.isMain ? 'text-accent bg-accent/10' : 'text-muted hover:text-accent'}`}
                               ><Star className="w-3.5 h-3.5" /></button>
+                              <button
+                                onClick={() => updateExercise(activeWeek, di, ri, { requiresVideo: !ex.requiresVideo })}
+                                title={ex.requiresVideo ? 'Quitar requisito de vídeo' : 'Pedir vídeo de ejecución al cliente'}
+                                aria-label="Pedir vídeo al cliente"
+                                className={`p-1.5 rounded-lg transition-colors text-xs font-bold ${ex.requiresVideo ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn'}`}
+                              >📹</button>
                               <button onClick={() => copyExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-accent transition-colors"><Copy className="w-3.5 h-3.5" /></button>
                               <button onClick={() => deleteExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-warn transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
