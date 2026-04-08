@@ -103,8 +103,7 @@ export default function App() {
   }
 
   const handleDemo = () => {
-    setUserProfile(DEMO_PROFILE)
-    setView('trainer')
+    setView('demo')
   }
 
   // Guardar perfil demo en localStorage para que el cliente lo vea
