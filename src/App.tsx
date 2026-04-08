@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { UserProfile, ClientData } from './types'
 import { Auth } from './components/shared/Auth'
+import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
 
 // Lazy load — solo se carga cuando se necesita
@@ -10,7 +11,16 @@ const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m
 const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 
-type AppView = 'loading' | 'auth' | 'trainer' | 'client-token'
+type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo'
+
+const DEMO_PROFILE_TRAINER: UserProfile = {
+  uid: DEMO_TRAINER_ID,
+  email: 'demo@panelfit.app',
+  displayName: 'Alex Trainer',
+  role: 'trainer',
+  approved: true,
+  createdAt: Date.now(),
+}
 
 const DEMO_PROFILE: UserProfile = {
   uid: 'demo-uid',
@@ -49,6 +59,8 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('c')
     if (token) { setClientToken(token); setView('client-token'); return }
+    const isDemo = params.get('demo') === '1'
+    if (isDemo) { setView('demo'); return }
 
 
     supabase.auth.getSession().then(({ data }) => {
@@ -95,6 +107,12 @@ export default function App() {
     setView('trainer')
   }
 
+  // Guardar perfil demo en localStorage para que el cliente lo vea
+  if (view === 'demo') {
+    localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
+    localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
+  }
+
   if (view === 'loading') return <LoadingScreen />
 
   const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
@@ -135,6 +153,24 @@ export default function App() {
       <ToastContainer toasts={toasts} />
     </Suspense>
   )
+
+  if (view === 'demo') {
+    const DemoTrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <DemoTrainerDashboard
+          userProfile={DEMO_PROFILE_TRAINER}
+          onLogout={() => { window.location.href = '/' }}
+          demoClients={DEMO_CLIENTS as any}
+          onSelectClient={(client) => {
+            setSelectedClient(client)
+            setAllClients(DEMO_CLIENTS as any)
+          }}
+        />
+        <ToastContainer toasts={toasts} />
+      </Suspense>
+    )
+  }
 
   return null
 }
