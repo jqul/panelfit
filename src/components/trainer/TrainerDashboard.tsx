@@ -15,6 +15,7 @@ import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { AdherenciaTab } from './AdherenciaTab'
 import { OBJETIVOS, Objetivo, getNudge, getConsejo } from '../../lib/nudges'
+import { ESPECIALIDADES, Especialidad, PLANTILLAS_SUGERIDAS } from '../../lib/especialidades'
 import { InsightsTab } from './InsightsTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -54,6 +55,11 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
     if (diasUltimos7 >= 1) return 'amarillo'
     return 'rojo'
   }
+
+  const trainerProfile = (() => {
+    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}') } catch { return {} }
+  })()
+  const trainerEspecialidades: string[] = trainerProfile.especialidades || []
 
   const fetchClients = async () => {
     setLoading(true)
@@ -415,6 +421,34 @@ ${url}`)
                 )
               })()}
 
+              {/* Sugerencias por especialidad */}
+              {trainerEspecialidades.length > 0 && templates.length === 0 && (
+                <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-base">{ESPECIALIDADES.find(e => e.value === trainerEspecialidades[0])?.emoji}</span>
+                    <p className="text-sm font-semibold">Plantillas sugeridas para {ESPECIALIDADES.find(e => e.value === trainerEspecialidades[0])?.label}</p>
+                  </div>
+                  <div className="space-y-2">
+                    {PLANTILLAS_SUGERIDAS[trainerEspecialidades[0] as Especialidad]?.slice(0, 2).map((p, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-2.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold">{p.nombre}</p>
+                          <p className="text-xs text-muted">{p.desc} · {p.semanas} semanas</p>
+                        </div>
+                        <button onClick={() => setActiveTab('templates')}
+                          className="text-xs text-accent font-semibold hover:underline flex-shrink-0">
+                          Crear →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setActiveTab('templates')}
+                    className="mt-3 text-xs text-accent font-semibold hover:underline">
+                    Ver todas las sugerencias →
+                  </button>
+                </div>
+              )}
+
               {/* Últimas altas */}
               {clients.length > 0 && (
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -538,7 +572,7 @@ ${url}`)
 
           {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} especialidades={trainerEspecialidades as Especialidad[]} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
@@ -629,15 +663,16 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [bio, setBio] = useState(saved.bio || '')
   const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
   const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
+  const [especialidades, setEspecialidades] = useState<Especialidad[]>(saved.especialidades || [])
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandColor, phone, bio, welcomeMsg, motivMsg }
+    const profile = { displayName, brandName, brandLogo, brandColor, phone, bio, welcomeMsg, motivMsg, especialidades }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
-    await supabase.from('entrenadores').update({ displayName }).eq('uid', userProfile.uid)
+    await supabase.from('entrenadores').update({ displayName, especialidades }).eq('uid', userProfile.uid)
     toast('Perfil guardado ✓', 'ok')
     setSaving(false)
   }
@@ -712,6 +747,30 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</label>
           <p className="text-sm text-muted px-1">{userProfile.email}</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Especialidades</label>
+          <div className="flex flex-wrap gap-2">
+            {ESPECIALIDADES.map(e => {
+              const active = especialidades.includes(e.value)
+              return (
+                <button key={e.value} type="button"
+                  onClick={() => setEspecialidades(prev =>
+                    active ? prev.filter(x => x !== e.value) : [...prev, e.value]
+                  )}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-all ${
+                    active ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
+                  }`}>
+                  {e.emoji} {e.label}
+                </button>
+              )
+            })}
+          </div>
+          {especialidades.length > 0 && (
+            <p className="text-xs text-muted mt-2">
+              {especialidades.map(e => ESPECIALIDADES.find(x => x.value === e)?.desc).join(' · ')}
+            </p>
+          )}
         </div>
       </div>
 
