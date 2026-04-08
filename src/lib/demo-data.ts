@@ -178,3 +178,105 @@ export const DEMO_TRAINER_PROFILE = {
   motivMsg: 'Hoy es día de descanso. Recupera bien para dar el 100% mañana. 🧘',
   especialidades: ['hipertrofia', 'fuerza'],
 }
+
+export const DEMO_PLAN_CARLOS: TrainingPlan = {
+  clientId: 'demo-client-002',
+  type: 'fuerza',
+  restMain: 240, restAcc: 120, restWarn: 45,
+  message: 'La fuerza se construye con paciencia y progresión. ¡A por los récords! 🏋️',
+  fechaInicio: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true,
+  diasSemana: 3,
+  macros: { kcal: 3200, protein: 200, carbs: 380, fats: 90, notaMacros: 'Surplus calórico moderado. Come bien antes y después de entrenar.' },
+  weeks: [
+    {
+      label: 'Semana 3 — Intensidad',
+      rpe: '@8-9',
+      isCurrent: true,
+      days: [
+        {
+          title: 'DÍA 1 — Sentadilla',
+          focus: 'Fuerza máxima tren inferior',
+          exercises: [
+            { name: 'Sentadilla barra alta', sets: '5×3', weight: '120kg', isMain: true, comment: 'RPE 8. Si va bien, añade 2.5kg', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8' },
+            { name: 'Sentadilla pausa', sets: '3×3', weight: '95kg', isMain: false, comment: '3 segundos abajo', videoUrl: '' },
+            { name: 'Prensa 45°', sets: '3×8', weight: '180kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Extensión cuádriceps', sets: '3×12', weight: '60kg', isMain: false, comment: '', videoUrl: '' },
+          ]
+        },
+        {
+          title: 'DÍA 2 — Press banca',
+          focus: 'Fuerza máxima tren superior',
+          exercises: [
+            { name: 'Press banca', sets: '5×3', weight: '100kg', isMain: true, comment: 'RPE 8. Arco controlado, pies en el suelo', videoUrl: 'https://www.youtube.com/watch?v=rT7DgCr-3pg' },
+            { name: 'Press banca agarre cerrado', sets: '3×5', weight: '80kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Press inclinado', sets: '3×8', weight: '70kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Triceps polea', sets: '3×12', weight: '35kg', isMain: false, comment: '', videoUrl: '' },
+          ]
+        },
+        {
+          title: 'DÍA 3 — Peso muerto',
+          focus: 'Fuerza máxima cadena posterior',
+          exercises: [
+            { name: 'Peso muerto convencional', sets: '4×3', weight: '160kg', isMain: true, comment: 'RPE 8-9. Espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q' },
+            { name: 'Peso muerto rumano', sets: '3×6', weight: '120kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Remo barra', sets: '4×6', weight: '90kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Jalón al pecho', sets: '3×10', weight: '70kg', isMain: false, comment: '', videoUrl: '' },
+          ]
+        },
+      ]
+    }
+  ]
+}
+
+export const DEMO_PLAN_LAURA: TrainingPlan = {
+  clientId: 'demo-client-003',
+  type: 'perdida_grasa',
+  restMain: 90, restAcc: 60, restWarn: 20,
+  message: 'Cada entreno es un paso hacia tu mejor versión. ¡Tú puedes! 🔥',
+  fechaInicio: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true,
+  autoInactividad: true,
+  diasSemana: 3,
+  macros: { kcal: 1700, protein: 140, carbs: 160, fats: 55, notaMacros: 'Déficit moderado. No pases hambre — si tienes hambre, añade proteína o verduras.' },
+  weeks: [
+    {
+      label: 'Semana 1 — Adaptación',
+      rpe: '@6-7',
+      isCurrent: true,
+      days: [
+        {
+          title: 'DÍA A — Full body',
+          focus: 'Activación y base',
+          exercises: [
+            { name: 'Sentadilla goblet', sets: '3×12', weight: '16kg', isMain: true, comment: 'Técnica primero, peso después', videoUrl: '' },
+            { name: 'Press mancuernas', sets: '3×12', weight: '12kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Remo mancuerna', sets: '3×12', weight: '14kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Hip thrust', sets: '3×15', weight: '40kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Plancha', sets: '3×30s', weight: '-', isMain: false, comment: '', videoUrl: '' },
+          ]
+        },
+        {
+          title: 'DÍA B — Pierna + Glúteo',
+          focus: 'Tren inferior y quema',
+          exercises: [
+            { name: 'Sentadilla búlgara', sets: '3×10', weight: '20kg', isMain: true, comment: '', videoUrl: '' },
+            { name: 'Peso muerto pierna rígida', sets: '3×12', weight: '30kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Abducción cadera máquina', sets: '3×15', weight: '40kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Step up con mancuernas', sets: '3×12', weight: '8kg', isMain: false, comment: '', videoUrl: '' },
+          ]
+        },
+        {
+          title: 'DÍA C — Tren superior + Cardio',
+          focus: 'Brazos, espalda y finisher',
+          exercises: [
+            { name: 'Jalón al pecho', sets: '3×12', weight: '40kg', isMain: true, comment: '', videoUrl: '' },
+            { name: 'Press hombro mancuernas', sets: '3×12', weight: '10kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Curl bíceps', sets: '3×12', weight: '10kg', isMain: false, comment: '', videoUrl: '' },
+            { name: 'HIIT bici 15min', sets: '1×15min', weight: '-', isMain: false, comment: '30s sprint / 30s descanso', videoUrl: '' },
+          ]
+        },
+      ]
+    }
+  ]
+}
