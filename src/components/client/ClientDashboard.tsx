@@ -250,6 +250,36 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           </div>
         </div>
 
+        {/* Macros del día */}
+        {(() => {
+          const macros = (plan as any)?.macros
+          if (!macros?.kcal) return null
+          return (
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-serif font-bold text-sm">Macros de hoy</h4>
+                <span className="text-[10px] text-muted uppercase tracking-wider">objetivos diarios</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[
+                  { label: 'Kcal', value: macros.kcal, color: 'text-warn' },
+                  { label: 'Prot', value: `${macros.protein}g`, color: 'text-ok' },
+                  { label: 'Carbs', value: `${macros.carbs}g`, color: 'text-accent' },
+                  { label: 'Grasas', value: `${macros.fats}g`, color: 'text-muted' },
+                ].map(m => (
+                  <div key={m.label} className="bg-bg border border-border rounded-xl p-2.5 text-center">
+                    <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
+                    <p className="text-[10px] text-muted">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+              {macros.notaMacros && (
+                <p className="text-xs text-muted leading-relaxed border-t border-border pt-3">{macros.notaMacros}</p>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Mensaje motivacional si hay racha */}
         {streak >= 3 && (
           <div className="bg-warn/5 border border-warn/20 rounded-2xl p-4 flex items-center gap-3">
@@ -265,6 +295,56 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Selector de días del cliente ──────────────────────
+export function SelectorDias({ plan, clientId, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
+  const diasSemana = plan?.diasSemana || 0
+  const diasElegidos: number[] = plan?.diasElegidos || []
+  const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  if (!diasSemana) return null
+
+  const toggle = (d: number) => {
+    let nuevos: number[]
+    if (diasElegidos.includes(d)) {
+      nuevos = diasElegidos.filter(x => x !== d)
+    } else if (diasElegidos.length < diasSemana) {
+      nuevos = [...diasElegidos, d].sort()
+    } else return
+    onUpdate(nuevos)
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="font-serif font-bold text-sm">Mis días de entreno</h4>
+        <span className="text-xs text-muted">{diasElegidos.length}/{diasSemana} seleccionados</span>
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {DIAS.map((d, i) => {
+          const selected = diasElegidos.includes(i)
+          const disabled = !selected && diasElegidos.length >= diasSemana
+          return (
+            <button key={i} onClick={() => toggle(i)} disabled={disabled}
+              className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                selected ? 'bg-ink text-white' :
+                disabled ? 'bg-bg-alt text-muted/40 cursor-not-allowed' :
+                'bg-bg border border-border text-muted hover:border-accent'
+              }`}>
+              {d}
+            </button>
+          )
+        })}
+      </div>
+      {diasElegidos.length === diasSemana && (
+        <p className="text-xs text-ok font-semibold text-center">✓ Días confirmados</p>
+      )}
+      {diasElegidos.length < diasSemana && (
+        <p className="text-xs text-muted text-center">Elige {diasSemana - diasElegidos.length} día{diasSemana - diasElegidos.length > 1 ? 's' : ''} más</p>
+      )}
     </div>
   )
 }
