@@ -297,7 +297,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
                 {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
                 {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
-                {activeTab === 'config' && <ConfigTab client={client} userProfile={userProfile} plan={plan} onChange={handlePlanChange} />}
+                {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
               </>
             )}
           </div>
@@ -526,6 +526,12 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
                         ))}
                       </div>
                     </div>
+                    {(log as any)?.videoEjecucion && (
+                      <a href={(log as any).videoEjecucion} target="_blank" rel="noreferrer"
+                        className="flex-shrink-0 w-12 h-9 rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
+                        <video src={(log as any).videoEjecucion} className="w-full h-full object-cover" />
+                      </a>
+                    )}
                     {mejor > 0 && (
                       <div className="text-right flex-shrink-0">
                         <p className="text-xs font-bold text-accent">{mejor} kg</p>
@@ -569,7 +575,7 @@ function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p:
 }
 
 // ── Config ────────────────────────────────────────────────
-function ConfigTab({ client, userProfile, plan, onChange }: { client: ClientData; userProfile: UserProfile; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
