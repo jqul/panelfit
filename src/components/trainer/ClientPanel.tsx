@@ -277,7 +277,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose }: Props)
                       allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient} />
                   </div>
                 )}
-                {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={true} />}
+                {activeTab === 'dieta' && <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />}
                 {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
                 {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
                 {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
@@ -650,6 +650,30 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
         ))}
       </div>
 
+      {/* Días de entrenamiento */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <div>
+          <h4 className="text-sm font-semibold">Días de entrenamiento</h4>
+          <p className="text-xs text-muted mt-0.5">El cliente podrá elegir qué días entrena según su disponibilidad.</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Días por semana</label>
+          <div className="flex gap-2">
+            {[2, 3, 4, 5, 6].map(n => (
+              <button key={n} onClick={() => onChange({ ...plan, diasSemana: n } as any)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${(plan as any).diasSemana === n ? 'bg-ink text-white' : 'bg-bg border border-border text-muted'}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+          {(plan as any).diasSemana && (
+            <p className="text-xs text-muted mt-1.5">
+              El cliente verá un selector para elegir {(plan as any).diasSemana} días de los 7.
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Mensaje */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
         <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
@@ -731,6 +755,93 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Dieta: macros rápidos + plan completo ────────────────
+function DietaTabEntrenador({ clientId, plan, onChange }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
+  const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
+
+  const updateMacros = (updates: any) => {
+    if (!plan) return
+    onChange({ ...plan, macros: { ...macros, ...updates } } as any)
+  }
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
+        <button onClick={() => setSubtab('macros')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'macros' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          📊 Macros
+        </button>
+        <button onClick={() => setSubtab('plan')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'plan' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          🍽️ Plan completo
+        </button>
+      </div>
+
+      {subtab === 'macros' && (
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold">Objetivos nutricionales diarios</h4>
+              <p className="text-xs text-muted mt-0.5">El cliente verá estos macros en su panel aunque no tengas plan de comidas detallado.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'kcal', label: 'Calorías', unit: 'kcal', color: 'text-warn' },
+                { key: 'protein', label: 'Proteína', unit: 'g', color: 'text-ok' },
+                { key: 'carbs', label: 'Carbohidratos', unit: 'g', color: 'text-accent' },
+                { key: 'fats', label: 'Grasas', unit: 'g', color: 'text-muted' },
+              ].map(({ key, label, unit, color }) => (
+                <div key={key} className="bg-bg border border-border rounded-xl p-3">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{label}</label>
+                  <div className="flex items-baseline gap-1">
+                    <input type="number" value={macros[key] || ''}
+                      onChange={e => updateMacros({ [key]: Number(e.target.value) })}
+                      placeholder="0"
+                      className={`w-full text-xl font-serif font-bold bg-transparent outline-none ${color}`}
+                    />
+                    <span className="text-xs text-muted">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nota nutricional</label>
+              <textarea rows={3} value={macros.notaMacros || ''}
+                onChange={e => updateMacros({ notaMacros: e.target.value })}
+                placeholder="Ej: Come en ventana de 8h, prioriza proteína en desayuno y post-entreno..."
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Preview */}
+          {macros.kcal > 0 && (
+            <div className="bg-ok/5 border border-ok/20 rounded-2xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Así lo verá el cliente</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Kcal', value: macros.kcal, color: 'text-warn' },
+                  { label: 'Prot', value: `${macros.protein}g`, color: 'text-ok' },
+                  { label: 'Carbs', value: `${macros.carbs}g`, color: 'text-accent' },
+                  { label: 'Grasas', value: `${macros.fats}g`, color: 'text-muted' },
+                ].map(m => (
+                  <div key={m.label} className="text-center">
+                    <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
+                    <p className="text-[10px] text-muted">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
     </div>
   )
 }
