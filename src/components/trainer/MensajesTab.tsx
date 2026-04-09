@@ -71,7 +71,33 @@ export function MensajesTab({ userProfile, clients }: Props) {
     tipo: 'recordatorio', fechaEnvio: new Date().toISOString().split('T')[0], enviado: false
   })
 
-  useEffect(() => { loadProgramacion() }, [])
+  useEffect(() => {
+    loadProgramacion()
+    loadFromDB()
+  }, [])
+
+  const loadFromDB = async () => {
+    // Cargar plantillas desde BD (override localStorage si hay datos más recientes)
+    const { data: pData } = await supabase.from('plantillas_mensajes')
+      .select('*').eq('trainerId', userProfile.uid)
+    if (pData && pData.length > 0) {
+      const dbPlantillas: MensajePlantilla[] = pData.map((p: any) => ({
+        id: p.id, tipo: p.tipo, nombre: p.nombre, texto: p.texto
+      }))
+      setPlantillas(dbPlantillas)
+      localStorage.setItem(LS_PLANTILLAS(userProfile.uid), JSON.stringify(dbPlantillas))
+    }
+    // Cargar encuestas desde BD
+    const { data: eData } = await supabase.from('encuestas_biblioteca')
+      .select('*').eq('trainerId', userProfile.uid)
+    if (eData && eData.length > 0) {
+      const dbEncuestas: Encuesta[] = eData.map((e: any) => ({
+        id: e.id, nombre: e.nombre, preguntas: e.preguntas || []
+      }))
+      setEncuestas(dbEncuestas)
+      localStorage.setItem(LS_ENCUESTAS(userProfile.uid), JSON.stringify(dbEncuestas))
+    }
+  }
 
   const loadProgramacion = async () => {
     const { data } = await supabase.from('programacion_mensajes')
@@ -86,14 +112,36 @@ export function MensajesTab({ userProfile, clients }: Props) {
     }
   }
 
-  const savePlantillas = (p: MensajePlantilla[]) => {
+  const savePlantillas = async (p: MensajePlantilla[]) => {
     setPlantillas(p)
     localStorage.setItem(LS_PLANTILLAS(userProfile.uid), JSON.stringify(p))
+    // Sync a Supabase — upsert cada plantilla
+    for (const pl of p) {
+      await supabase.from('plantillas_mensajes').upsert({
+        id: pl.id, trainerId: userProfile.uid,
+        tipo: pl.tipo, nombre: pl.nombre, texto: pl.texto
+      })
+    }
+    // Eliminar las que ya no están
+    const ids = p.map(pl => pl.id)
+    await supabase.from('plantillas_mensajes')
+      .delete().eq('trainerId', userProfile.uid).not('id', 'in', `(${ids.map(i => `'${i}'`).join(',')})`)
   }
 
-  const saveEncuestas = (e: Encuesta[]) => {
+  const saveEncuestas = async (e: Encuesta[]) => {
     setEncuestas(e)
     localStorage.setItem(LS_ENCUESTAS(userProfile.uid), JSON.stringify(e))
+    for (const enc of e) {
+      await supabase.from('encuestas_biblioteca').upsert({
+        id: enc.id, trainerId: userProfile.uid,
+        nombre: enc.nombre, preguntas: enc.preguntas
+      })
+    }
+    const ids = e.map(enc => enc.id)
+    if (ids.length > 0) {
+      await supabase.from('encuestas_biblioteca')
+        .delete().eq('trainerId', userProfile.uid).not('id', 'in', `(${ids.map(i => `'${i}'`).join(',')})`)
+    }
   }
 
   const fillVars = (texto: string, client: ClientData, dias = 0) => {
@@ -233,9 +281,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
                   const updated = existe
                     ? plantillas.map(p => p.id === editandoPlantilla.id ? editandoPlantilla : p)
                     : [...plantillas, editandoPlantilla]
-                  savePlantillas(updated)
+                  savePlantillas(updated).then(() => toast('Plantilla guardada ✓', 'ok'))
                   setEditandoPlantilla(null); setNuevaPlantilla(false)
-                  toast('Plantilla guardada ✓', 'ok')
                 }} className="flex-1 py-2 bg-ink text-white rounded-xl text-sm font-semibold">Guardar</button>
               </div>
             </div>
@@ -260,7 +307,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             {!PLANTILLAS_DEFAULT.find(d => d.id === p.id) && (
-                              <button onClick={() => savePlantillas(plantillas.filter(x => x.id !== p.id))}
+                              <button onClick={() => savePlantillas(plantillas.filter(x => x.id !== p.id)).then(() => toast('Plantilla eliminada', 'ok'))}
                                 className="p-1.5 text-muted hover:text-warn transition-colors">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -334,9 +381,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
                   const updated = existe
                     ? encuestas.map(e => e.id === editandoEncuesta.id ? editandoEncuesta : e)
                     : [...encuestas, editandoEncuesta]
-                  saveEncuestas(updated)
+                  saveEncuestas(updated).then(() => toast('Encuesta guardada ✓', 'ok'))
                   setEditandoEncuesta(null); setNuevaEncuesta(false)
-                  toast('Encuesta guardada ✓', 'ok')
                 }} className="flex-1 py-2 bg-ink text-white rounded-xl text-sm font-semibold">Guardar</button>
               </div>
             </div>
@@ -358,7 +404,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                         className="p-1.5 text-muted hover:text-accent transition-colors">
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => saveEncuestas(encuestas.filter(e => e.id !== enc.id))}
+                      <button onClick={() => saveEncuestas(encuestas.filter(e => e.id !== enc.id)).then(() => toast('Encuesta eliminada', 'ok'))}
                         className="p-1.5 text-muted hover:text-warn transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
