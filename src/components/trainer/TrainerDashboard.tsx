@@ -48,7 +48,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' | 'nuevo' => {
     const client = clients.find(c => c.id === clientId)
     if (client && Date.now() - client.createdAt < 3 * 86400000) return 'nuevo'
-    const reg = logsMap[clientId] || {} as Record<string, { done?: boolean; dateDone?: string; sets?: Record<number, { weight: string; reps: string }> }>
+    const reg = (logsMap[clientId] || {}) as Record<string, { done?: boolean; dateDone?: string; sets?: Record<number, { weight: string; reps: string }> }>
     const dates = new Set(Object.values(reg).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
     const hoy = new Date()
     const diasUltimos7 = Array.from({ length: 7 }, (_, i) => {
