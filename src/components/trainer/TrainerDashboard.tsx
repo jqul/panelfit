@@ -48,7 +48,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' | 'nuevo' => {
     const client = clients.find(c => c.id === clientId)
     if (client && Date.now() - client.createdAt < 3 * 86400000) return 'nuevo'
-    const reg = (logsMap[clientId] || {}) as Record<string, { done?: boolean; dateDone?: string }>
+    const reg = logsMap[clientId] || {} as Record<string, { done?: boolean; dateDone?: string; sets?: Record<number, { weight: string; reps: string }> }>
     const dates = new Set(Object.values(reg).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
     const hoy = new Date()
     const diasUltimos7 = Array.from({ length: 7 }, (_, i) => {
@@ -387,12 +387,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
               {/* Próximas acciones automáticas */}
               {clients.length > 0 && (() => {
-                const acciones: { cliente: string; accion: string; dias: number; tipo: string }[] = []
+                const acciones: { clientId: string; cliente: string; accion: string; dias: number; tipo: string }[] = []
                 clients.forEach(c => {
                   // Ignorar clientes creados hace menos de 3 días
                   if (Date.now() - c.createdAt < 3 * 86400000) return
                   const logs = logsMap[c.id] || {}
-                  const fechas = Object.values(logs as Record<string, any>)
+                  const fechas = Object.values(logs as Record<string, { done?: boolean; dateDone?: string }>)
                     .filter(l => l.done && l.dateDone).map(l => l.dateDone as string)
                     .filter((v, i, a) => a.indexOf(v) === i).sort()
                   const ultimoEntreno = fechas[fechas.length - 1]
@@ -400,7 +400,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     ? Math.floor((new Date().getTime() - new Date(ultimoEntreno + 'T00:00:00').getTime()) / 86400000)
                     : Math.floor((new Date().getTime() - c.createdAt) / 86400000)
                   if (diasSin >= 3) {
-                    acciones.push({ cliente: `${c.name} ${c.surname}`, accion: `${diasSin} día${diasSin !== 1 ? 's' : ''} sin entrenar`, dias: diasSin, tipo: 'inactividad' })
+                    acciones.push({ clientId: c.id, cliente: `${c.name} ${c.surname}`, accion: `${diasSin} día${diasSin !== 1 ? 's' : ''} sin entrenar`, dias: diasSin, tipo: 'inactividad' })
                   }
                 })
                 if (!acciones.length) return null
@@ -419,7 +419,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                             <p className="text-xs text-muted">{a.accion}</p>
                           </div>
                           <button onClick={() => {
-                            const c = clients.find(cl => `${cl.name} ${cl.surname}` === a.cliente)
+                            const c = clients.find(cl => cl.id === a.clientId)
                             if (!c) return
                             const url = `${window.location.origin}?c=${c.token}`
                             const msg = encodeURIComponent(`Hola ${c.name} 👋 Te echamos de menos. ¡Tu plan sigue aquí!
