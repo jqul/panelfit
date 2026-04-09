@@ -192,37 +192,39 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                       return (
                         <div key={ri} className="bg-card border border-border rounded-xl p-4 space-y-3">
                           {/* Fila 1: nombre + series + peso + acciones */}
-                          <div className="grid grid-cols-[1fr_80px_120px_auto] gap-2 items-center">
-                            <input value={ex.name}
-                              onChange={e => updateExercise(activeWeek, di, ri, { name: e.target.value })}
-                              placeholder="Nombre del ejercicio"
-                              className="text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-accent outline-none transition-colors py-0.5"
-                            />
-                            <input value={ex.sets}
-                              onChange={e => updateExercise(activeWeek, di, ri, { sets: e.target.value })}
-                              placeholder="3×10"
-                              className="text-sm text-center bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20"
-                            />
-                            <input value={ex.weight}
-                              onChange={e => updateExercise(activeWeek, di, ri, { weight: e.target.value })}
-                              placeholder="Peso / Intensidad"
-                              className="text-sm bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20"
-                            />
+                          <div className="space-y-1.5">
+                            {/* Fila 1: nombre + botones acción */}
                             <div className="flex items-center gap-1">
+                              <input value={ex.name}
+                                onChange={e => updateExercise(activeWeek, di, ri, { name: e.target.value })}
+                                placeholder="Nombre del ejercicio"
+                                className="flex-1 text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-accent outline-none transition-colors py-0.5 min-w-0"
+                              />
                               <button
                                 onClick={() => updateExercise(activeWeek, di, ri, { isMain: !ex.isMain })}
                                 title="Principal"
-                                aria-label="Marcar como ejercicio principal"
-                                className={`p-1.5 rounded-lg transition-colors ${ex.isMain ? 'text-accent bg-accent/10' : 'text-muted hover:text-accent'}`}
+                                className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${ex.isMain ? 'text-accent bg-accent/10' : 'text-muted hover:text-accent'}`}
                               ><Star className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => updateExercise(activeWeek, di, ri, { requiresVideo: !ex.requiresVideo })}
-                                title={ex.requiresVideo ? 'Quitar requisito de vídeo' : 'Pedir vídeo de ejecución al cliente'}
-                                aria-label="Pedir vídeo al cliente"
-                                className={`p-1.5 rounded-lg transition-colors text-xs font-bold ${ex.requiresVideo ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn'}`}
+                                title={ex.requiresVideo ? 'Quitar vídeo' : 'Pedir vídeo al cliente'}
+                                className={`p-1.5 rounded-lg transition-colors text-xs font-bold flex-shrink-0 ${ex.requiresVideo ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn'}`}
                               >📹</button>
-                              <button onClick={() => copyExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-accent transition-colors"><Copy className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => deleteExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-warn transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => copyExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-accent transition-colors flex-shrink-0"><Copy className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => deleteExercise(activeWeek, di, ri)} className="p-1.5 rounded-lg text-muted hover:text-warn transition-colors flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                            {/* Fila 2: series + peso */}
+                            <div className="flex gap-2">
+                              <input value={ex.sets}
+                                onChange={e => updateExercise(activeWeek, di, ri, { sets: e.target.value })}
+                                placeholder="3×10"
+                                className="w-20 text-sm text-center bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 flex-shrink-0"
+                              />
+                              <input value={ex.weight}
+                                onChange={e => updateExercise(activeWeek, di, ri, { weight: e.target.value })}
+                                placeholder="Peso / Intensidad"
+                                className="flex-1 text-sm bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 min-w-0"
+                              />
                             </div>
                           </div>
 
