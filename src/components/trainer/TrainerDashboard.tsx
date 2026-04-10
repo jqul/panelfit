@@ -587,7 +587,7 @@ ${url}`)
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} especialidades={trainerEspecialidades as Especialidad[]} />}
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
