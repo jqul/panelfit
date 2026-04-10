@@ -16,7 +16,9 @@ import { ExercisesTab } from './ExercisesTab'
 import { AdherenciaTab } from './AdherenciaTab'
 import { OBJETIVOS, Objetivo, getNudge, getConsejo } from '../../lib/nudges'
 import { ESPECIALIDADES, Especialidad, PLANTILLAS_SUGERIDAS } from '../../lib/especialidades'
+import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { InsightsTab } from './InsightsTab'
+import { ExercisesTab } from './ExercisesTab'
 import { MensajesTab } from './MensajesTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
@@ -38,6 +40,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', objetivo: 'general' as Objetivo })
   const [adding, setAdding] = useState(false)
+  const library = useExerciseLibrary(userProfile.uid)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [todayActive, setTodayActive] = useState<Record<string, boolean>>({})
   const [linkModal, setLinkModal] = useState<{ client: ClientData } | null>(null)
@@ -585,7 +588,7 @@ ${url}`)
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
+          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} especialidades={trainerEspecialidades as Especialidad[]} />}
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
