@@ -1,890 +1,885 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, TrendingUp, Calendar, ChevronRight, Save, BarChart2,
-  MessageCircle, Link, Copy, Menu, X
+  X, Save, ChevronLeft, ChevronRight, FileText, Dumbbell, Settings,
+  ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
+  CheckCircle2, ClipboardCheck, Camera
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { mapClientes } from '../../lib/mappers'
-import { RegistroRow } from '../../lib/supabase-types'
-import { logError } from '../../lib/errors'
-import { ClientData, UserProfile } from '../../types'
+import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { ExercisesTab } from './ExercisesTab'
-import { AdherenciaTab } from './AdherenciaTab'
-import { OBJETIVOS, Objetivo, getNudge, getConsejo } from '../../lib/nudges'
-import { ESPECIALIDADES, Especialidad, PLANTILLAS_SUGERIDAS } from '../../lib/especialidades'
+import { TrainingPlanEditor } from './TrainingPlanEditor'
+import { DietEditor } from '../shared/DietEditor'
+import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
-import { InsightsTab } from './InsightsTab'
-import { MensajesTab } from './MensajesTab'
-import { TemplatesTab } from './TemplatesTab'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
+import { supabase as _supabase } from '../../lib/supabase'
+import { PlanRow, RegistroRow } from '../../lib/supabase-types'
+import { logError } from '../../lib/errors'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'adherencia' | 'insights' | 'mensajes' | 'settings'
+type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
 
 interface Props {
+  client: ClientData
   userProfile: UserProfile
-  onLogout: () => void
-  onSelectClient: (client: ClientData) => void
-  demoClients?: ClientData[]
+  allClients: ClientData[]
+  onClose: () => void
+  demoPlan?: any
+  demoLogs?: any
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
-  const [clients, setClients] = useState<ClientData[]>([])
+const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
+  { id: 'plan',     icon: Dumbbell,       label: 'Plan' },
+  { id: 'dieta',    icon: FileText,       label: 'Dieta' },
+  { id: 'vista',    icon: Eye,            label: 'Vista' },
+  { id: 'entrenos', icon: ClipboardList,  label: 'Entrenos' },
+  { id: 'progreso', icon: TrendingUp,     label: 'Progreso' },
+  { id: 'notas',    icon: StickyNote,     label: 'Notas' },
+  { id: 'config',   icon: Settings,       label: 'Config' },
+]
+
+function loadTemplates(trainerId: string): TrainingTemplate[] {
+  try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
+}
+
+type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+
+export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan, demoLogs }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('plan')
+  const [plan, setPlan] = useState<TrainingPlan | null>(null)
+  const [logs, setLogs] = useState<TrainingLogs>({})
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [search, setSearch] = useState('')
-  const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '', objetivo: 'general' as Objetivo })
-  const [adding, setAdding] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
+  const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
+  const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [todayActive, setTodayActive] = useState<Record<string, boolean>>({})
-  const [linkModal, setLinkModal] = useState<{ client: ClientData } | null>(null)
-  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
-
-
-  // Semáforo de riesgo por cliente
-  const getRiesgo = (clientId: string): 'verde' | 'amarillo' | 'rojo' | 'nuevo' => {
-    const client = clients.find(c => c.id === clientId)
-    if (client && Date.now() - client.createdAt < 3 * 86400000) return 'nuevo'
-    const reg = (logsMap[clientId] || {}) as Record<string, { done?: boolean; dateDone?: string; sets?: Record<number, { weight: string; reps: string }> }>
-    const dates = new Set(Object.values(reg).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
-    const hoy = new Date()
-    const diasUltimos7 = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(hoy); d.setDate(d.getDate() - i)
-      return d.toISOString().split('T')[0]
-    }).filter(d => dates.has(d)).length
-    if (diasUltimos7 >= 3) return 'verde'
-    if (diasUltimos7 >= 1) return 'amarillo'
-    return 'rojo'
-  }
-
-  const trainerProfile = (() => {
-    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}') } catch { return {} }
-  })()
-  const trainerEspecialidades: string[] = trainerProfile.especialidades || []
-  const templates: any[] = (() => {
-    try { return JSON.parse(localStorage.getItem(`pf_templates_${userProfile.uid}`) || '[]') } catch { return [] }
+  const otherClients = allClients.filter(c => c.id !== client.id)
+  const templates = loadTemplates(userProfile.uid)
+  const trainerEsp: Especialidad[] = (() => {
+    try {
+      const p = JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}')
+      return p.especialidades || []
+    } catch { return [] }
   })()
 
-  const fetchClients = async () => {
+  useEffect(() => { loadData() }, [client.id])
+
+  const loadData = async () => {
     setLoading(true)
-    if (demoClients) { setClients(demoClients); setLoading(false); return }
-    const { data, error } = await supabase
-      .from('clientes')
-      .select('*')
-      .filter('trainerId', 'eq', userProfile.uid)
-
-    if (error) { console.error('Error cargando clientes:', error); setLoading(false); return }
-
-    const mapped = mapClientes(data || [])
-    setClients(mapped)
-
-    if (mapped.length) {
-      const hoy = new Date().toISOString().split('T')[0]
-      const ids = mapped.map(c => c.id)
-      const { data: regs } = await supabase
-        .from('registros').select('clientId,logs').in('clientId', ids)
-      const active: Record<string, boolean> = {}
-      ;(regs as RegistroRow[] || []).forEach((r) => {
-        const logs = r.logs || {}
-        const entrenóHoy = Object.values(logs).some(l => l.done && l.dateDone === hoy)
-        if (entrenóHoy) active[r.clientId] = true
-      })
-      setTodayActive(active)
-      const map: Record<string, any> = {}
-      ;(regs as any[] || []).forEach((r: any) => { map[r.clientId] = r.logs || {} })
-      setLogsMap(map)
+    // Modo demo: usar datos mock directamente
+    if (demoPlan) {
+      setPlan(demoPlan)
+      if (demoLogs) setLogs(demoLogs)
+      setLoading(false)
+      return
     }
+    const { data: planData, error: planErr } = await supabase
+      .from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+    if (planErr) logError('loadPlan', planErr)
+    const planRow = planData as PlanRow | null
+    if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
+    else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
+
+    const { data: regData, error: regErr } = await supabase
+      .from('registros').select('logs').eq('clientId', client.id).maybeSingle()
+    if (regErr) logError('loadRegistros', regErr)
+    const regRow = regData as RegistroRow | null
+    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
     setLoading(false)
   }
 
-  useEffect(() => {
-    fetchClients()
-    // Polling cada 30 segundos en vez de realtime (más fiable en móvil)
-    const interval = setInterval(fetchClients, 30000)
-    return () => clearInterval(interval)
-  }, [userProfile.uid])
+  const handlePlanChange = (newPlan: TrainingPlan) => {
+    setPlan(newPlan)
+    pendingPlan.current = newPlan
+    clearTimeout(saveTimer.current)
+    setSaveState('pending')
+    saveTimer.current = setTimeout(() => savePlan(newPlan), 1500)
+  }
 
-  const handleAdd = async () => {
-    if (!newClient.name.trim()) return
-    setAdding(true)
-    const token = crypto.randomUUID().replace(/-/g, '')
-    const { error } = await supabase.from('clientes').insert({
-      trainerId: userProfile.uid,
-      name: newClient.name.trim(),
-      surname: newClient.surname.trim(),
-      objetivo: newClient.objetivo,
-      token,
-      createdAt: Date.now(),
-    })
-    if (error) toast('Error al crear cliente: ' + error.message, 'warn')
-    else {
-      toast('Cliente creado ✓', 'ok')
-      setShowAdd(false)
-      setNewClient({ name: '', surname: '', objetivo: 'general' })
-      // Refrescar lista inmediatamente sin esperar realtime
-      await fetchClients()
+  const savePlan = async (planToSave?: TrainingPlan) => {
+    const p = planToSave || pendingPlan.current || plan
+    if (!p) return
+    setSaveState('saving')
+    // Modo demo: simular guardado sin Supabase
+    if (demoPlan !== undefined) {
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2000)
+      return
     }
-    setAdding(false)
+    const { error: updateError } = await supabase
+      .from('planes')
+      .update({ plan: { P: p }, updatedAt: Date.now() })
+      .eq('clientId', client.id)
+    if (updateError) {
+      const { error: insertError } = await supabase
+        .from('planes')
+        .insert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
+      if (insertError) {
+        logError('savePlan', insertError)
+        setSaveState('error')
+        toast('Error al guardar. Reintentando...', 'warn')
+        setTimeout(() => savePlan(p), 3000)
+        return
+      }
+    }
+    setSaveState('saved')
+    setTimeout(() => setSaveState('idle'), 2000)
   }
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('clientes').delete().eq('id', id)
-    if (error) { logError('handleDelete', error); toast('Error al eliminar', 'warn'); return }
-    setDeletingId(null)
-    toast('Cliente eliminado', 'ok')
-    await fetchClients()
+  const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
+    if (!plan) return
+
+    // Calcular qué semana es la actual basándose en la fecha de inicio
+    const inicio = new Date(fechaInicio + 'T00:00:00')
+    const hoy = new Date()
+    const diasDesdeInicio = Math.max(0, Math.floor((hoy.getTime() - inicio.getTime()) / 86400000))
+    const semanaActual = Math.min(Math.floor(diasDesdeInicio / 7), template.weeks.length - 1)
+
+    const weeks = JSON.parse(JSON.stringify(template.weeks))
+    weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
+
+    const newPlan: TrainingPlan = {
+      ...plan,
+      type: template.type,
+      weeks,
+      fechaInicio,
+      autoCheckin,
+    } as any
+
+    setPlan(newPlan)
+    savePlan(newPlan)
+
+    // Regla A: mensaje de bienvenida automático
+    if (autoWelcome) {
+      const url = `${window.location.origin}?c=${client.token}`
+      const msg = encodeURIComponent(
+        `Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa de entrenamiento. ¡Ya puedes verlo en tu panel!\n\n${url}\n\n💪 ¡Vamos a por ello!`
+      )
+      setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
+    }
+
+    setShowTemplates(false)
+    setWizardStep(1)
+    setWizardTemplate(null)
+    toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
   }
 
-  const getClientUrl = (client: ClientData) => `${window.location.origin}?c=${client.token}`
-
-  const copyLink = (client: ClientData) => {
-    navigator.clipboard.writeText(getClientUrl(client))
-    toast('Enlace copiado ✓', 'ok')
-  }
-
-  const sendWhatsApp = (client: ClientData) => {
-    const url = getClientUrl(client)
-    const msg = encodeURIComponent(
-      `Hola ${client.name} 👋\n\nTe comparto el enlace a tu panel de entrenamiento personalizado:\n\n${url}\n\n¡Ahí tienes tu rutina, progreso y todo lo que necesitas! 💪`
-    )
-    window.open(`https://wa.me/?text=${msg}`, '_blank')
-  }
-
-  const filteredClients = clients.filter(c =>
-    `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const chartData = useMemo(() => {
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(); d.setMonth(d.getMonth() - (5 - i))
-      return { month: d.toLocaleString('es-ES', { month: 'short' }), count: 0 }
-    })
-    clients.forEach(c => {
-      const m = new Date(c.createdAt).toLocaleString('es-ES', { month: 'short' })
-      const found = months.find(x => x.month === m)
-      if (found) found.count++
-    })
-    let total = 0
-    return months.map(m => { total += m.count; return { ...m, total } })
-  }, [clients])
-
-  const hoyCount = Object.values(todayActive).filter(Boolean).length
-
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const navItems = [
-    { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-    { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
-    { id: 'exercises' as Tab, icon: Dumbbell,        label: 'Ejercicios' },
-    { id: 'templates' as Tab, icon: ClipboardList,   label: 'Plantillas' },
-    { id: 'adherencia' as Tab, icon: TrendingUp,     label: 'Adherencia' },
-    { id: 'insights'  as Tab, icon: BarChart2,       label: 'Insights' },
-    { id: 'mensajes'  as Tab, icon: MessageCircle,    label: 'Mensajes' },
-    { id: 'settings'  as Tab, icon: SettingsIcon,    label: 'Configuración' },
-  ]
-
-  const handleTabChange = (tab: Tab) => {
-    setActiveTab(tab)
-    setSidebarOpen(false)
+  const importFromClient = async (clientId: string): Promise<TrainingPlan | null> => {
+    const { data } = await supabase.from('planes').select('plan').eq('clientId', clientId).maybeSingle()
+    if ((data as any)?.plan?.P?.weeks?.length) return (data as any).plan.P as TrainingPlan
+    return null
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
-
-      {/* Overlay móvil */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-ink/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar — fijo en PC, drawer en móvil */}
-      <aside className={`
-        fixed lg:relative inset-y-0 left-0 z-40
-        w-64 flex-shrink-0 bg-card border-r border-border flex flex-col
-        transition-transform duration-200
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-          <h1 className="text-2xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted hover:text-ink">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-in">
+      <header className="bg-card border-b border-border flex-shrink-0">
+        <div className="flex items-center h-14 px-4 gap-3">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <ChevronLeft className="w-5 h-5" />
           </button>
-        </div>
-        <div className="px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-accent text-sm font-bold">
-              {userProfile.displayName?.[0]?.toUpperCase() || '?'}
+          <div className="flex items-center gap-2.5 mr-2">
+            <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
+              {client.name?.[0]?.toUpperCase()}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-              <p className="text-[11px] text-muted truncate">{userProfile.email}</p>
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold leading-tight">{client.name} {client.surname}</p>
+              <p className="text-[10px] text-muted capitalize">{plan?.type || 'Sin tipo'}</p>
             </div>
           </div>
-        </div>
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ id, icon: Icon, label, badge }) => (
-            <button key={id} onClick={() => handleTabChange(id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1 text-left">{label}</span>
-              {badge !== undefined && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  activeTab === id ? 'bg-white/20 text-white' : 'bg-bg-alt text-muted'
-                }`}>{badge}</span>
-              )}
+          <nav className="flex-1 flex items-stretch overflow-x-auto scrollbar-hide">
+            {TABS.map(({ id, icon: Icon, label }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-3 h-14 text-xs font-medium whitespace-nowrap border-b-2 transition-all ${
+                  activeTab === id ? 'border-ink text-ink font-semibold' : 'border-transparent text-muted hover:text-ink'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-xs hidden sm:block transition-all ${
+              saveState === 'pending' ? 'text-muted' :
+              saveState === 'saving'  ? 'text-accent animate-pulse' :
+              saveState === 'saved'   ? 'text-ok' :
+              saveState === 'error'   ? 'text-warn' : 'opacity-0'
+            }`}>
+              {saveState === 'pending' ? '...' :
+               saveState === 'saving'  ? 'Guardando...' :
+               saveState === 'saved'   ? '✓ Guardado' :
+               saveState === 'error'   ? '✗ Error' : ''}
+            </span>
+            <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
+              <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
+            </Button>
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+              <X className="w-4 h-4" />
             </button>
-          ))}
-        </nav>
-        <div className="p-4 border-t border-border space-y-2">
-          <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={onLogout}>
-            <LogOut className="w-4 h-4" /> Cerrar sesión
-          </Button>
-          <Button className="w-full gap-2 text-sm" onClick={() => { setShowAdd(true); setSidebarOpen(false) }}>
-            <UserPlus className="w-4 h-4" /> Nuevo cliente
-          </Button>
+          </div>
         </div>
-      </aside>
+      </header>
 
-      <main className="flex-1 overflow-y-auto min-w-0">
-        {/* Header móvil */}
-        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
-          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"
-            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
-            <Menu className="w-5 h-5" />
-          </button>
-          <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => setShowAdd(true)}
-            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
-            <UserPlus className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="flex flex-1 overflow-hidden">
+        <aside className="hidden lg:flex flex-col w-48 flex-shrink-0 bg-card border-r border-border overflow-y-auto">
+          <div className="p-5 text-center border-b border-border">
+            <div className="w-14 h-14 rounded-full bg-bg-alt border-2 border-border flex items-center justify-center font-serif text-2xl text-accent mx-auto mb-2">
+              {client.name?.[0]?.toUpperCase()}
+            </div>
+            <h3 className="font-serif font-bold text-sm">{client.name} {client.surname}</h3>
+            <p className="text-[10px] text-muted mt-0.5 capitalize">{plan?.type || '—'}</p>
+          </div>
+          <div className="p-4 space-y-2 border-b border-border text-xs">
+            <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan?.weeks?.length || 0}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Ejercicios</span>
+              <span className="font-semibold">{plan?.weeks?.reduce((a, w) => a + w.days.reduce((b, d) => b + d.exercises.length, 0), 0) || 0}</span>
+            </div>
+            <div className="flex justify-between"><span className="text-muted">Completados</span>
+              <span className="font-semibold text-ok">{Object.values(logs).filter(l => l.done).length}</span>
+            </div>
+          </div>
+          <div className="p-3 mt-auto space-y-2">
+            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}`); toast('Enlace copiado ✓', 'ok') }}
+              className="w-full text-[11px] font-semibold text-accent border border-accent/30 rounded-lg py-2 hover:bg-accent/5 transition-colors">
+              🔗 Copiar enlace
+            </button>
+            <button onClick={() => {
+              const url = `${window.location.origin}?c=${client.token}`
+              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)
+              window.open(`https://wa.me/?text=${msg}`, '_blank')
+            }} className="w-full text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-lg py-2 hover:bg-[#25D366]/5 transition-colors">
+              📱 WhatsApp
+            </button>
+          </div>
+        </aside>
 
-        <div className="max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
-
-          {activeTab === 'dashboard' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Saludo + fecha */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-3xl font-serif font-bold">
-                    {new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 20 ? 'Buenas tardes' : 'Buenas noches'}, {userProfile.displayName.split(' ')[0]}
-                  </h2>
-                  <p className="text-muted text-sm mt-1 capitalize">
-                    {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </p>
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto">
+            {loading ? (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  {[1,2,3].map(i => <div key={i} className="h-8 w-24 bg-card border border-border rounded-lg animate-pulse" />)}
                 </div>
-                <div className="text-right">
-                  <p className="text-3xl font-serif font-bold text-ok">{hoyCount}</p>
-                  <p className="text-[10px] text-muted uppercase tracking-widest">entrenaron hoy</p>
+                <div className="h-48 bg-card border border-border rounded-2xl animate-pulse" />
+                <div className="space-y-2">
+                  {[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />)}
                 </div>
               </div>
-
-              {/* Acciones prioritarias del día */}
-              <div className="space-y-3">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Acciones de hoy</p>
-
-                {/* Clientes que entrenaron hoy — celebrar */}
-                {hoyCount > 0 && (
-                  <div className="bg-ok/5 border border-ok/20 rounded-2xl p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 bg-ok/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">🎉</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{hoyCount} cliente{hoyCount > 1 ? 's' : ''} {hoyCount > 1 ? 'han' : 'ha'} entrenado hoy</p>
-                      <p className="text-xs text-muted">{clients.length ? `${Math.round(hoyCount/clients.length*100)}% adherencia diaria` : ''}</p>
-                    </div>
-                    <button onClick={() => setActiveTab('clients')}
-                      className="text-xs text-ok font-semibold hover:underline flex-shrink-0">
-                      Ver →
-                    </button>
-                  </div>
-                )}
-
-                {/* Clientes inactivos — actuar */}
-                {clients.filter(c => !todayActive[c.id]).length > 0 && (
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-warn text-sm">⚠️</span>
-                        <p className="text-sm font-semibold">{clients.filter(c => !todayActive[c.id]).length} sin entrenar hoy — contactar</p>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {clients.filter(c => !todayActive[c.id]).slice(0, 3).map(c => {
-                        const riesgo = getRiesgo(c.id)
-                        return (
-                          <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="relative flex-shrink-0">
-                              <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-muted">
-                                {(c.name?.[0] || '?').toUpperCase()}
-                              </div>
-                              <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
-                                riesgo === 'rojo' ? 'bg-warn' : riesgo === 'amarillo' ? 'bg-accent' : 'bg-ok'
-                              }`} />
-                            </div>
-                            <p className="text-sm flex-1 truncate font-medium">{c.name} {c.surname}</p>
-                            <div className="flex gap-2 flex-shrink-0">
-                              <button onClick={() => onSelectClient(c)}
-                                className="text-xs text-muted border border-border px-2 py-1 rounded-lg hover:border-accent hover:text-accent transition-all">
-                                Plan
-                              </button>
-                              <button onClick={() => {
-                                const url = `${window.location.origin}?c=${c.token}`
-                                const msg = encodeURIComponent(`Hola ${c.name} 👋 ¿Todo bien? ¡Te echamos de menos! Tu plan sigue aquí:\n\n${url}`)
-                                window.open(`https://wa.me/?text=${msg}`, '_blank')
-                              }} className="text-xs text-[#25D366] border border-[#25D366]/30 px-2 py-1 rounded-lg hover:bg-[#25D366]/10 transition-all">
-                                WA
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {clients.filter(c => !todayActive[c.id]).length > 3 && (
-                      <div className="px-4 py-2.5 border-t border-border">
-                        <button onClick={() => setActiveTab('adherencia')} className="text-xs text-accent font-semibold hover:underline">
-                          Ver todos en Adherencia →
+            ) : (
+              <>
+                {activeTab === 'plan' && plan && (
+                  <div className="space-y-4">
+                    {/* Botón aplicar plantilla */}
+                    {templates.length > 0 && (
+                      <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold">Aplicar plantilla</p>
+                          <p className="text-xs text-muted">{templates.length} plantilla{templates.length !== 1 ? 's' : ''} disponible{templates.length !== 1 ? 's' : ''}</p>
+                        </div>
+                        <button onClick={() => setShowTemplates(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
+                          <ClipboardCheck className="w-4 h-4" /> Elegir plantilla
                         </button>
                       </div>
                     )}
+                    <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
+                      allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient}
+                      clienteEspecialidad={client.objetivo} />
                   </div>
                 )}
+                {activeTab === 'dieta' && <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />}
+                {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
+                {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
+                {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
+                {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
+              </>
+            )}
+          </div>
+        </main>
+      </div>
 
-                {/* Sin clientes */}
-                {!clients.length && (
-                  <div className="bg-card border border-dashed border-border rounded-2xl p-8 text-center">
-                    <Users className="w-10 h-10 text-muted/30 mx-auto mb-3" />
-                    <p className="font-serif font-bold">Empieza añadiendo tu primer cliente</p>
-                    <p className="text-xs text-muted mt-1 mb-4">Crea su perfil y comparte el enlace de acceso</p>
-                    <Button className="gap-2 mx-auto" onClick={() => setShowAdd(true)}>
-                      <UserPlus className="w-4 h-4" /> Añadir primer cliente
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Stats rápidos */}
-              {clients.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Clientes', value: clients.length, color: 'text-ink', action: () => setActiveTab('clients') },
-                    { label: 'Adherencia', value: clients.length ? `${Math.round(hoyCount/clients.length*100)}%` : '—', color: 'text-ok', action: () => setActiveTab('adherencia') },
-                    { label: 'Nuevos mes', value: chartData[chartData.length - 1]?.count || 0, color: 'text-accent', action: () => setActiveTab('clients') },
-                  ].map(s => (
-                    <button key={s.label} onClick={s.action}
-                      className="bg-card border border-border rounded-2xl p-4 text-center hover:border-accent transition-colors">
-                      <p className={`text-2xl font-serif font-bold ${s.color}`}>{s.value}</p>
-                      <p className="text-[10px] text-muted uppercase tracking-wider mt-1">{s.label}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Próximas acciones automáticas */}
-              {clients.length > 0 && (() => {
-                const acciones: { clientId: string; cliente: string; accion: string; dias: number; tipo: string }[] = []
-                clients.forEach(c => {
-                  // Ignorar clientes creados hace menos de 3 días
-                  if (Date.now() - c.createdAt < 3 * 86400000) return
-                  const logs = logsMap[c.id] || {}
-                  const fechas = Object.values(logs as Record<string, { done?: boolean; dateDone?: string }>)
-                    .filter(l => l.done && l.dateDone).map(l => l.dateDone as string)
-                    .filter((v, i, a) => a.indexOf(v) === i).sort()
-                  const ultimoEntreno = fechas[fechas.length - 1]
-                  const diasSin = ultimoEntreno
-                    ? Math.floor((new Date().getTime() - new Date(ultimoEntreno + 'T00:00:00').getTime()) / 86400000)
-                    : Math.floor((new Date().getTime() - c.createdAt) / 86400000)
-                  if (diasSin >= 3) {
-                    acciones.push({ clientId: c.id, cliente: `${c.name} ${c.surname}`, accion: `${diasSin} día${diasSin !== 1 ? 's' : ''} sin entrenar`, dias: diasSin, tipo: 'inactividad' })
-                  }
-                })
-                if (!acciones.length) return null
-                return (
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">⚡ Acciones pendientes</h3>
-                      <span className="text-xs bg-warn/10 text-warn font-bold px-2 py-0.5 rounded-full">{acciones.length}</span>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {acciones.slice(0, 3).map((a, i) => (
-                        <div key={i} className="flex items-center gap-3 px-5 py-3">
-                          <span className="text-base flex-shrink-0">{a.tipo === 'inactividad' ? '⚠️' : '📋'}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate">{a.cliente}</p>
-                            <p className="text-xs text-muted">{a.accion}</p>
-                          </div>
-                          <button onClick={() => {
-                            const c = clients.find(cl => cl.id === a.clientId)
-                            if (!c) return
-                            const url = `${window.location.origin}?c=${c.token}`
-                            const msg = encodeURIComponent(`Hola ${c.name} 👋 Te echamos de menos. ¡Tu plan sigue aquí!
-
-${url}`)
-                            window.open(`https://wa.me/?text=${msg}`, '_blank')
-                          }} className="text-xs text-[#25D366] font-semibold hover:underline flex-shrink-0">
-                            WA
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Sugerencias por especialidad */}
-              {trainerEspecialidades.length > 0 && templates.length === 0 && (
-                <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-base">{ESPECIALIDADES.find(e => e.value === trainerEspecialidades[0])?.emoji}</span>
-                    <p className="text-sm font-semibold">Plantillas sugeridas para {ESPECIALIDADES.find(e => e.value === trainerEspecialidades[0])?.label}</p>
-                  </div>
-                  <div className="space-y-2">
-                    {PLANTILLAS_SUGERIDAS[trainerEspecialidades[0] as Especialidad]?.slice(0, 2).map((p, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-card border border-border rounded-xl px-3 py-2.5">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold">{p.nombre}</p>
-                          <p className="text-xs text-muted">{p.desc} · {p.semanas} semanas</p>
-                        </div>
-                        <button onClick={() => setActiveTab('templates')}
-                          className="text-xs text-accent font-semibold hover:underline flex-shrink-0">
-                          Crear →
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => setActiveTab('templates')}
-                    className="mt-3 text-xs text-accent font-semibold hover:underline">
-                    Ver todas las sugerencias →
-                  </button>
-                </div>
-              )}
-
-              {/* Últimas altas */}
-              {clients.length > 0 && (
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-border flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">Últimas altas</h3>
-                    <button onClick={() => setActiveTab('clients')} className="text-xs text-accent font-semibold hover:underline">
-                      Ver todos →
-                    </button>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {clients.slice(0, 4).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)}
-                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt transition-colors text-left group">
-                        <div className="relative w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
-                          {(c.name?.[0] || '?').toUpperCase()}
-                          {todayActive[c.id] && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                          <p className="text-[10px] text-muted">{new Date(c.createdAt).toLocaleDateString('es-ES')}</p>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'clients' && (
-            <div className="animate-fade-in">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-3xl font-serif font-bold">Clientes</h2>
-                  <p className="text-muted text-sm mt-1">{clients.length} alumnos registrados</p>
-                </div>
-                <Button className="gap-2" onClick={() => setShowAdd(true)}>
-                  <UserPlus className="w-4 h-4" /> Nuevo cliente
-                </Button>
-              </div>
-              <div className="relative mb-5">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input type="text" placeholder="Buscar cliente..." value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full max-w-sm pl-9 pr-4 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-                />
-              </div>
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1,2,3].map(i => <div key={i} className="h-36 bg-card border border-border rounded-xl animate-pulse" />)}
-                </div>
-              ) : filteredClients.length === 0 && !search ? (
-                <div className="text-center py-20 bg-card border border-dashed border-border rounded-2xl">
-                  <Users className="w-12 h-12 text-muted/30 mx-auto mb-4" />
-                  <h3 className="font-serif font-bold text-lg">Sin clientes aún</h3>
-                  <p className="text-muted text-sm mt-1">Añade tu primer alumno para empezar</p>
-                  <Button className="mt-6 gap-2" onClick={() => setShowAdd(true)}>
-                    <UserPlus className="w-4 h-4" /> Añadir primer cliente
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => (
-                    <div key={client.id}
-                      className="bg-card border border-border rounded-xl p-5 hover:border-accent hover:shadow-sm transition-all cursor-pointer group"
-                      onClick={() => onSelectClient(client)}
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="relative w-11 h-11 rounded-full bg-bg-alt border border-border flex items-center justify-center font-serif text-lg text-accent group-hover:bg-accent group-hover:text-white transition-colors flex-shrink-0">
-                          {(client.name?.[0] || '?').toUpperCase()}
-                          {(() => {
-                            const r = getRiesgo(client.id)
-                            return <span className={`absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card ${
-                              todayActive[client.id] ? 'bg-ok' : r === 'rojo' ? 'bg-warn' : r === 'amarillo' ? 'bg-accent' : 'bg-bg-alt'
-                            }`} title={todayActive[client.id] ? 'Entrenó hoy' : r === 'rojo' ? 'Riesgo de abandono' : r === 'amarillo' ? 'Actividad baja' : 'Sin datos'} />
-                          })()}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-serif font-bold text-base leading-tight truncate">{client.name} {client.surname}</h3>
-                          <p className="text-[11px] mt-0.5">
-                            {(() => {
-                                const r = getRiesgo(client.id)
-                                return todayActive[client.id]
-                                  ? <span className="text-ok font-semibold">✓ Entrenó hoy</span>
-                                  : <span className={r === 'rojo' ? 'text-warn font-semibold' : r === 'amarillo' ? 'text-accent' : 'text-muted'}>
-                                      {r === 'rojo' ? '⚠ Riesgo de abandono' : r === 'amarillo' ? '~ Actividad baja' : new Date(client.createdAt).toLocaleDateString('es-ES')}
-                                    </span>
-                              })()}
-                          </p>
-                        </div>
-                      </div>
-                      {deletingId === client.id ? (
-                        <div className="flex gap-2">
-                          <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal({ client }) }}>
-                            <Link className="w-3.5 h-3.5 mr-1" /> Enlace
-                          </Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
-                            <Trash2 className="w-3.5 h-3.5 text-warn" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <button onClick={() => setShowAdd(true)}
-                    className="border-2 border-dashed border-border rounded-xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[140px]"
-                  >
-                    <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">Añadir cliente</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} especialidades={trainerEspecialidades as Especialidad[]} />}
-          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
-
-          {activeTab === 'settings' && (
-            <SettingsTab userProfile={userProfile} onLogout={onLogout} />
-          )}
+      {/* Wizard de plantilla — 3 pasos */}
+      <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
+        title={wizardStep === 1 ? 'Paso 1 — Elegir plantilla' : wizardStep === 2 ? 'Paso 2 — Calendario' : 'Paso 3 — Automatizaciones'}>
+        
+        {/* Indicador de pasos */}
+        <div className="flex items-center gap-2 mb-4">
+          {[1,2,3].map(s => (
+            <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />
+          ))}
         </div>
-      </main>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-            <input type="text" autoFocus value={newClient.name}
-              onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Nombre"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-            />
+        {wizardStep === 1 && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">Selecciona la plantilla base para este cliente.</p>
+            {templates.map(t => (
+              <button key={t.id} onClick={() => { setWizardTemplate(t); setWizardStep(2) }}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent hover:bg-bg-alt transition-all text-left">
+                <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <ClipboardList className="w-4 h-4 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{t.name}</p>
+                  <p className="text-xs text-muted">{t.weeks.length} sem · {t.weeks.reduce((a, w) => a + w.days.length, 0)} días · {t.type}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-            <input type="text" value={newClient.surname}
-              onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="Apellido"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
-            />
+        )}
+
+        {wizardStep === 2 && wizardTemplate && (
+          <div className="space-y-4">
+            <div className="bg-bg border border-border rounded-xl p-3 flex items-center gap-3">
+              <ClipboardList className="w-4 h-4 text-accent flex-shrink-0" />
+              <p className="text-sm font-semibold">{wizardTemplate.name}</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fecha de inicio</label>
+              <input type="date" value={wizardFechaInicio} onChange={e => setWizardFechaInicio(e.target.value)}
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              />
+              <p className="text-xs text-muted mt-1.5">
+                El sistema activará automáticamente la semana correcta según esta fecha.
+                {(() => {
+                  const inicio = new Date(wizardFechaInicio + 'T00:00:00')
+                  const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+                  const sem = Math.min(Math.floor(dias / 7) + 1, wizardTemplate.weeks.length)
+                  return ` Hoy sería la semana ${sem} de ${wizardTemplate.weeks.length}.`
+                })()}
+              </p>
+            </div>
+            {trainerEsp.length > 0 && (
+              <div className="bg-bg border border-border rounded-xl p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Bloques sugeridos para tu especialidad</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {BLOQUES_POR_ESPECIALIDAD[trainerEsp[0]]?.map(b => (
+                    <span key={b} className="text-xs bg-card border border-border px-2 py-1 rounded-lg text-muted">{b}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => setWizardStep(3)} className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Siguiente →</button>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-            <div className="flex flex-wrap gap-2">
-              {OBJETIVOS.map(o => (
-                <button key={o.value} onClick={() => setNewClient(p => ({ ...p, objetivo: o.value }))}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-all ${
-                    newClient.objetivo === o.value ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
-                  }`}>
-                  {o.emoji} {o.label}
-                </button>
+        )}
+
+        {wizardStep === 3 && wizardTemplate && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">Activa las automatizaciones para este cliente.</p>
+            <div className="space-y-3">
+              {[
+                { key: 'welcome', label: 'Mensaje de bienvenida', desc: 'Abre WhatsApp con mensaje al asignar el plan', val: wizardAutoWelcome, set: setWizardAutoWelcome, emoji: '👋' },
+                { key: 'checkin', label: 'Check-in semanal', desc: 'Recuérdame enviar encuesta al cerrar cada semana', val: wizardAutoCheckin, set: setWizardAutoCheckin, emoji: '📋' },
+              ].map(a => (
+                <div key={a.key} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${a.val ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+                  onClick={() => a.set(!a.val)}>
+                  <span className="text-xl">{a.emoji}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{a.label}</p>
+                    <p className="text-xs text-muted">{a.desc}</p>
+                  </div>
+                  <div className={`w-10 h-6 rounded-full transition-all flex items-center ${a.val ? 'bg-ok' : 'bg-border'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding}>
-              {adding ? 'Creando...' : 'Crear cliente'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {linkModal && (
-        <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.client.name}`}>
-          <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace con tu cliente. No necesita contraseña ni registrarse.</p>
             <div className="flex gap-2">
-              <input readOnly value={getClientUrl(linkModal.client)}
-                className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted outline-none font-mono"
-              />
-              <button onClick={() => copyLink(linkModal.client)}
-                className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
-              >
-                <Copy className="w-3.5 h-3.5" /> Copiar
-              </button>
+              <button onClick={() => setWizardStep(2)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin)}
+                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
             </div>
-            <button
-              onClick={() => { sendWhatsApp(linkModal.client); setLinkModal(null) }}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              <MessageCircle className="w-5 h-5" /> Enviar por WhatsApp
-            </button>
           </div>
-        </Modal>
-      )}
+        )}
+      </Modal>
     </div>
   )
 }
 
-// ── Configuración del entrenador ──────────────────────────
-function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
-  const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
+// ── Vista previa ──────────────────────────────────────────
+function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
+  if (!plan?.weeks?.length) return (
+    <div className="text-center py-16 text-muted">
+      <Eye className="w-10 h-10 mx-auto mb-3 opacity-30" />
+      <p className="font-serif text-lg">Sin plan asignado</p>
+      <p className="text-sm mt-1">Crea semanas y días en el tab Plan primero.</p>
+    </div>
+  )
+  const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
+  const weekIdx = plan.weeks.indexOf(currentWeek)
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div>
+        <h3 className="font-serif font-bold text-lg mb-1">Vista previa — lo que ve el cliente</h3>
+        <p className="text-xs text-muted">Semana: <span className="font-semibold text-ink">{currentWeek.label}</span></p>
+      </div>
+      {currentWeek.days.map((day, di) => {
+        const dayKey = `w${weekIdx}_d${di}`
+        const done = day.exercises.filter((_, ri) => logs[`ex_${dayKey}_r${ri}`]?.done).length
+        const total = day.exercises.length
+        const pct = total ? Math.round(done / total * 100) : 0
+        return (
+          <div key={di} className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                pct === 100 ? 'bg-ok text-white' : pct > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+              }`}>{pct === 100 ? '✓' : `${pct}%`}</div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm">{day.title}</p>
+                {day.focus && <p className="text-xs text-muted">{day.focus}</p>}
+              </div>
+              <span className="text-xs text-muted">{done}/{total}</span>
+            </div>
+            <div className="divide-y divide-border">
+              {day.exercises.map((ex, ri) => {
+                const log = logs[`ex_${dayKey}_r${ri}`]
+                return (
+                  <div key={ri} className={`flex items-center gap-3 px-4 py-2.5 ${log?.done ? 'opacity-50' : ''}`}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>
+                      {log?.done ? '✓' : ri + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{ex.name}</p>
+                      <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>
+                    </div>
+                    {log?.sets && Object.keys(log.sets).length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {Object.values(log.sets).slice(0, 4).map((s, si) => (
+                          <span key={si} className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">
+                            {s.weight}×{s.reps}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
-  const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
-  const [brandName, setBrandName] = useState(saved.brandName || '')
-  const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
-  const [brandColor, setBrandColor] = useState(saved.brandColor || '#6e5438')
-  const [phone, setPhone] = useState(saved.phone || '')
-  const [bio, setBio] = useState(saved.bio || '')
-  const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
-  const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
-  const [especialidades, setEspecialidades] = useState<Especialidad[]>(saved.especialidades || [])
-  const [saving, setSaving] = useState(false)
-  const [preview, setPreview] = useState(false)
+// ── Historial entrenos ────────────────────────────────────
+function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | null }) {
+  const byDate: Record<string, { exName: string; sets: any; key: string }[]> = {}
+  Object.entries(logs).forEach(([key, log]) => {
+    if (!log.dateDone) return
+    const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
+    if (!m) return
+    const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
+    const exName = plan?.weeks?.[wi]?.days?.[di]?.exercises?.[ri]?.name || key
+    if (!byDate[log.dateDone]) byDate[log.dateDone] = []
+    byDate[log.dateDone].push({ exName, sets: log.sets, key })
+  })
+  const dates = Object.keys(byDate).sort().reverse()
+  if (!dates.length) return (
+    <div className="text-center py-16 text-muted">
+      <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+      <p className="font-serif text-lg">Sin entrenamientos registrados</p>
+      <p className="text-sm mt-1">El cliente aún no ha completado ningún ejercicio.</p>
+    </div>
+  )
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-serif font-bold text-lg">Historial de entrenos</h3>
+        <p className="text-xs text-muted mt-0.5">{dates.length} días con actividad</p>
+      </div>
+      {dates.map(fecha => {
+        const items = byDate[fecha]
+        const fmtFecha = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+        return (
+          <div key={fecha} className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-bg-alt/30">
+              <CheckCircle2 className="w-4 h-4 text-ok flex-shrink-0" />
+              <p className="text-sm font-semibold capitalize flex-1">{fmtFecha}</p>
+              <span className="text-xs text-muted">{items.length} ejercicios</span>
+            </div>
+            <div className="divide-y divide-border">
+              {items.map(({ exName, sets, key }) => {
+                const setsArr = Object.values(sets || {}) as any[]
+                const mejor = setsArr.reduce((max: number, s: any) => Math.max(max, parseFloat(s.weight) || 0), 0)
+                return (
+                  <div key={key} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0">
+                      <Dumbbell className="w-3.5 h-3.5 text-muted" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{exName}</p>
+                      <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                        {setsArr.map((s: any, si: number) => (
+                          <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded font-medium">
+                            {s.weight}kg × {s.reps}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {(log as any)?.videoEjecucion && (
+                      <a href={(log as any).videoEjecucion} target="_blank" rel="noreferrer"
+                        className="flex-shrink-0 w-12 h-9 rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
+                        <video src={(log as any).videoEjecucion} className="w-full h-full object-cover" />
+                      </a>
+                    )}
+                    {mejor > 0 && (
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs font-bold text-accent">{mejor} kg</p>
+                        <p className="text-[9px] text-muted">mejor</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
-  const handleSave = async () => {
-    setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandColor, phone, bio, welcomeMsg, motivMsg, especialidades }
-    localStorage.setItem(LS_KEY, JSON.stringify(profile))
-    if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
-    await supabase.from('entrenadores').update({ displayName, especialidades }).eq('uid', userProfile.uid)
-    toast('Perfil guardado ✓', 'ok')
-    setSaving(false)
+// ── Notas ─────────────────────────────────────────────────
+function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  if (!plan) return null
+  const TAGS = ['⚠️ Lesión', '🔥 Alta intensidad', '🐢 Progreso lento', '⭐ Cliente VIP', '📞 Llamar esta semana']
+  return (
+    <div className="space-y-4 max-w-lg">
+      <h3 className="font-serif font-bold text-lg mb-1">Notas privadas</h3>
+      <p className="text-xs text-muted mb-3">Solo las ves tú.</p>
+      <textarea rows={8} value={plan.coachNotes || ''}
+        onChange={e => onChange({ ...plan, coachNotes: e.target.value })}
+        placeholder="Ej: Cuidado con la rodilla izquierda..."
+        className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none leading-relaxed"
+      />
+      <div className="flex flex-wrap gap-2">
+        {TAGS.map(tag => (
+          <button key={tag} onClick={() => onChange({ ...plan, coachNotes: (plan.coachNotes || '') + '\n[' + tag + '] ' })}
+            className="px-3 py-1.5 text-xs border border-border rounded-lg hover:border-accent hover:text-accent transition-colors">
+            {tag}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Config ────────────────────────────────────────────────
+function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  const [revoking, setRevoking] = useState(false)
+  const [newToken, setNewToken] = useState(client.token)
+  const [showRevoke, setShowRevoke] = useState(false)
+  const [pin, setPin] = useState(plan?.pin || '')
+  const [savingPin, setSavingPin] = useState(false)
+
+  const revokeToken = async () => {
+    setRevoking(true)
+    const token = crypto.randomUUID().replace(/-/g, '')
+    const { error } = await supabase.from('clientes').update({ token }).eq('id', client.id)
+    if (error) { toast('Error al regenerar enlace', 'warn') }
+    else {
+      setNewToken(token)
+      toast('Enlace regenerado ✓ El enlace anterior ya no funciona.', 'ok')
+      setShowRevoke(false)
+    }
+    setRevoking(false)
   }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 2 * 1024 * 1024) { toast('Máximo 2MB', 'warn'); return }
-    const reader = new FileReader()
-    reader.onload = () => setBrandLogo(reader.result as string)
-    reader.readAsDataURL(file)
+  const savePin = () => {
+    if (pin && (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin))) {
+      toast('El PIN debe ser 4-6 dígitos numéricos', 'warn'); return
+    }
+    if (!plan) return
+    onChange({ ...plan, pin: pin || undefined } as any)
+    toast(pin ? 'PIN guardado ✓' : 'PIN eliminado ✓', 'ok')
   }
 
-  const nombre = brandName || displayName || 'Tu marca'
+  const currentUrl = `${window.location.origin}?c=${newToken}`
+
+  if (!plan) return null
+  
+  const toggleAuto = (key: string, val: boolean) => onChange({ ...plan, [key]: val } as TrainingPlan)
 
   return (
-    <div className="animate-fade-in space-y-6 max-w-lg">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-serif font-bold">Configuración</h2>
-        <button onClick={() => setPreview(v => !v)}
-          className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${preview ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
-          {preview ? '← Editar' : '👁 Preview cliente'}
-        </button>
+    <div className="space-y-5 max-w-lg">
+      <h3 className="font-serif font-bold text-lg">Configuración</h3>
+
+      {/* AUTOMATIZACIONES */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">Automatizaciones</h4>
+          <p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p>
+        </div>
+        {[
+          { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
+          { key: 'autoCheckin', label: 'Check-in semanal', desc: 'Recordatorio de encuesta al cerrar semana', emoji: '📋' },
+          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: 'WhatsApp si lleva +3 días sin entrenar', emoji: '⚠️' },
+        ].map(a => (
+          <div key={a.key}
+            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(plan as any)[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+            onClick={() => toggleAuto(a.key, !(plan as any)[a.key])}>
+            <span className="text-lg flex-shrink-0">{a.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">{a.label}</p>
+              <p className="text-xs text-muted">{a.desc}</p>
+            </div>
+            <div className={`w-10 h-6 rounded-full transition-all flex-shrink-0 flex items-center px-0.5 ${(plan as any)[a.key] ? 'bg-ok' : 'bg-border'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${(plan as any)[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+          </div>
+        ))}
+
+        {/* Próxima acción automática */}
+        {plan.fechaInicio && (
+          <div className="pt-2 border-t border-border">
+            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Próxima acción</p>
+            {(() => {
+              const inicio = new Date(plan.fechaInicio + 'T00:00:00')
+              const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+              const diasParaCheckin = 7 - (dias % 7)
+              return (
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <span>📋</span>
+                  <span>Check-in en <strong className="text-ink">{diasParaCheckin === 7 ? 'hoy' : `${diasParaCheckin} días`}</strong> — cierre de semana {Math.floor(dias / 7) + 1}</span>
+                </div>
+              )
+            })()}
+          </div>
+        )}
       </div>
 
-      {/* Preview del panel del cliente */}
-      {preview && (
-        <div className="bg-bg border-2 border-dashed border-border rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 flex items-center justify-between border-b border-border" style={{ backgroundColor: 'var(--color-card)' }}>
-            <div className="flex items-center gap-2.5">
-              {brandLogo
-                ? <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border border-border" alt="Logo" />
-                : <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: brandColor }}>{nombre[0]}</div>
-              }
-              <span className="font-serif font-bold text-base">{nombre}</span>
-            </div>
-            <p className="text-xs text-muted">Tu cliente</p>
+      {/* Tiempos descanso */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h4 className="text-sm font-semibold">Tiempos de descanso</h4>
+        {([['restMain', 'Principal (seg)'], ['restAcc', 'Accesorio (seg)'], ['restWarn', 'Aviso (seg)']] as const).map(([key, label]) => (
+          <div key={key} className="flex items-center justify-between gap-4">
+            <label className="text-sm text-muted">{label}</label>
+            <input type="number" value={plan[key]}
+              onChange={e => onChange({ ...plan, [key]: Number(e.target.value) })}
+              className="w-24 text-center px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+            />
           </div>
-          {welcomeMsg && (
-            <div className="mx-4 my-3 flex gap-2 rounded-xl p-3" style={{ backgroundColor: `${brandColor}15`, border: `1px solid ${brandColor}30` }}>
-              <span className="text-base flex-shrink-0">💬</span>
-              <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg}"</p>
-            </div>
-          )}
-          <div className="px-4 pb-3 text-xs text-muted text-center">Así verá tu cliente el panel</div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Perfil personal */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Perfil personal</h3>
+      {/* Días de entrenamiento */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
-          <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          />
+          <h4 className="text-sm font-semibold">Días de entrenamiento</h4>
+          <p className="text-xs text-muted mt-0.5">El cliente podrá elegir qué días entrena según su disponibilidad.</p>
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
-          <input type="text" value={phone} onChange={e => setPhone(e.target.value)}
-            placeholder="+34 600 000 000"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio / Especialidad</label>
-          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)}
-            placeholder="Entrenador personal especializado en fuerza e hipertrofia..."
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</label>
-          <p className="text-sm text-muted px-1">{userProfile.email}</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Especialidades</label>
-          <div className="flex flex-wrap gap-2">
-            {ESPECIALIDADES.map(e => {
-              const active = especialidades.includes(e.value)
-              return (
-                <button key={e.value} type="button"
-                  onClick={() => setEspecialidades(prev =>
-                    active ? prev.filter(x => x !== e.value) : [...prev, e.value]
-                  )}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border transition-all ${
-                    active ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
-                  }`}>
-                  {e.emoji} {e.label}
-                </button>
-              )
-            })}
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Días por semana</label>
+          <div className="flex gap-2">
+            {[2, 3, 4, 5, 6].map(n => (
+              <button key={n} onClick={() => onChange({ ...plan, diasSemana: n } as any)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${(plan as any).diasSemana === n ? 'bg-ink text-white' : 'bg-bg border border-border text-muted'}`}>
+                {n}
+              </button>
+            ))}
           </div>
-          {especialidades.length > 0 && (
-            <p className="text-xs text-muted mt-2">
-              {especialidades.map(e => ESPECIALIDADES.find(x => x.value === e)?.desc).join(' · ')}
+          {(plan as any).diasSemana && (
+            <p className="text-xs text-muted mt-1.5">
+              El cliente verá un selector para elegir {(plan as any).diasSemana} días de los 7.
             </p>
           )}
         </div>
       </div>
 
-      {/* Marca / White-label */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
-          <p className="text-xs text-muted mt-1">El cliente verá tu marca en vez de "PanelFit".</p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
-          <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
-            placeholder="Ej: Carlos Training · FitPro · Tu nombre"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo</label>
-          <div className="flex items-center gap-4">
-            {brandLogo ? (
-              <div className="relative">
-                <img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="Logo" />
-                <button onClick={() => setBrandLogo('')}
-                  className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full flex items-center justify-center text-xs font-bold">×</button>
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs text-center leading-tight p-1">
-                Tu logo
-              </div>
-            )}
-            <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-all cursor-pointer">
-              Subir imagen
-              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-            </label>
-          </div>
-          <p className="text-[10px] text-muted mt-1">PNG, JPG · Máx 2MB · Cuadrado recomendado</p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color de marca</label>
-          <div className="flex items-center gap-3">
-            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)}
-              className="w-10 h-10 rounded-xl border border-border cursor-pointer bg-bg"
-            />
-            <span className="text-sm text-muted font-mono">{brandColor}</span>
-            <div className="flex gap-2 ml-2">
-              {['#6e5438', '#1a1a2e', '#0f4c75', '#1b4332', '#7b2d8b', '#c0392b'].map(c => (
-                <button key={c} onClick={() => setBrandColor(c)}
-                  className="w-6 h-6 rounded-full border-2 transition-all"
-                  style={{ backgroundColor: c, borderColor: brandColor === c ? 'var(--color-ink)' : 'transparent' }}
-                />
+      {/* Mensaje */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
+        <p className="text-xs text-muted">Se muestra en la pantalla principal del cliente. Puedes usar una plantilla global o escribir uno personalizado.</p>
+        {(() => {
+          const LS_KEY = `pf_msg_plantillas_${client.trainerId}`
+          const plantillas = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] } })()
+          if (!plantillas.length) return null
+          return (
+            <select onChange={e => { if (e.target.value) onChange({ ...plan, message: e.target.value }) }}
+              className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none text-muted">
+              <option value="">Usar plantilla global...</option>
+              {plantillas.filter((p: any) => p.tipo === 'bienvenida' || p.tipo === 'personalizado').map((p: any) => (
+                <option key={p.id} value={p.texto}>{p.nombre}</option>
               ))}
+            </select>
+          )
+        })()}
+        <textarea rows={3} value={plan.message || ''}
+          onChange={e => onChange({ ...plan, message: e.target.value })}
+          placeholder="Mensaje motivacional que verá el cliente..."
+          className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+        />
+      </div>
+
+      {/* Acceso y seguridad */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h4 className="text-sm font-semibold">Acceso del cliente</h4>
+
+        {/* URL actual */}
+        <div className="flex gap-2">
+          <input readOnly value={currentUrl}
+            className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs text-muted outline-none font-mono"
+          />
+          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(currentUrl); toast('Copiado ✓', 'ok') }}>
+            Copiar
+          </Button>
+        </div>
+
+        {/* WhatsApp */}
+        <button onClick={() => {
+          const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${currentUrl}\n\n💪`)
+          window.open(`https://wa.me/?text=${msg}`, '_blank')
+        }} className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+          📱 Enviar por WhatsApp
+        </button>
+
+        {/* PIN opcional */}
+        <div className="border-t border-border pt-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">PIN de acceso</p>
+              <p className="text-xs text-muted">4-6 dígitos. El cliente lo necesitará para entrar.</p>
             </div>
           </div>
+          <div className="flex gap-2">
+            <input type="number" value={pin} onChange={e => setPin(e.target.value)}
+              placeholder="Sin PIN (acceso libre)"
+              maxLength={6}
+              className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <Button variant="outline" size="sm" onClick={savePin}>
+              {pin ? 'Guardar PIN' : 'Sin PIN'}
+            </Button>
+          </div>
         </div>
+
+        {/* Revocar enlace */}
+        <div className="border-t border-border pt-4 space-y-2">
+          <div>
+            <p className="text-sm font-semibold text-warn">Revocar enlace actual</p>
+            <p className="text-xs text-muted">Genera un nuevo enlace. El anterior dejará de funcionar inmediatamente.</p>
+          </div>
+          {!showRevoke ? (
+            <button onClick={() => setShowRevoke(true)}
+              className="w-full py-2.5 border border-warn/30 text-warn rounded-xl text-sm font-semibold hover:bg-warn/5 transition-colors">
+              🔒 Regenerar enlace de acceso
+            </button>
+          ) : (
+            <div className="bg-warn/5 border border-warn/20 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-warn">⚠️ ¿Estás seguro?</p>
+              <p className="text-xs text-muted">El enlace actual dejará de funcionar. Tendrás que enviar el nuevo al cliente.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowRevoke(false)}
+                  className="flex-1 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={revokeToken} disabled={revoking}
+                  className="flex-1 py-2 bg-warn text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+                  {revoking ? 'Regenerando...' : 'Sí, revocar'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Dieta: macros rápidos + plan completo ────────────────
+function DietaTabEntrenador({ clientId, plan, onChange }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
+  const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
+
+  const updateMacros = (updates: any) => {
+    if (!plan) return
+    onChange({ ...plan, macros: { ...macros, ...updates } } as any)
+  }
+
+  return (
+    <div className="space-y-4 max-w-lg">
+      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
+        <button onClick={() => setSubtab('macros')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'macros' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          📊 Macros
+        </button>
+        <button onClick={() => setSubtab('plan')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'plan' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+          🍽️ Plan completo
+        </button>
       </div>
 
-      {/* Mensajes personalizados */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Mensajes y tono</h3>
-          <p className="text-xs text-muted mt-1">Personaliza lo que ven tus clientes.</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-            Mensaje de bienvenida / motivación
-          </label>
-          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
-            placeholder="Ej: Cada entreno te acerca a tu mejor versión. ¡Vamos! 💪"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-          />
-          <p className="text-[10px] text-muted mt-1">Se muestra en la pantalla principal del cliente.</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-            Mensaje de descanso (días sin plan)
-          </label>
-          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
-            placeholder="Ej: Hoy es día de descanso. Recupera bien para rendir al máximo. 🧘"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-          />
-          <p className="text-[10px] text-muted mt-1">Se muestra cuando no hay sesión programada.</p>
-        </div>
-      </div>
+      {subtab === 'macros' && (
+        <div className="space-y-4">
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold">Objetivos nutricionales diarios</h4>
+              <p className="text-xs text-muted mt-0.5">El cliente verá estos macros en su panel aunque no tengas plan de comidas detallado.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'kcal', label: 'Calorías', unit: 'kcal', color: 'text-warn' },
+                { key: 'protein', label: 'Proteína', unit: 'g', color: 'text-ok' },
+                { key: 'carbs', label: 'Carbohidratos', unit: 'g', color: 'text-accent' },
+                { key: 'fats', label: 'Grasas', unit: 'g', color: 'text-muted' },
+              ].map(({ key, label, unit, color }) => (
+                <div key={key} className="bg-bg border border-border rounded-xl p-3">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{label}</label>
+                  <div className="flex items-baseline gap-1">
+                    <input type="number" value={macros[key] || ''}
+                      onChange={e => updateMacros({ [key]: Number(e.target.value) })}
+                      placeholder="0"
+                      className={`w-full text-xl font-serif font-bold bg-transparent outline-none ${color}`}
+                    />
+                    <span className="text-xs text-muted">{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nota nutricional</label>
+              <textarea rows={3} value={macros.notaMacros || ''}
+                onChange={e => updateMacros({ notaMacros: e.target.value })}
+                placeholder="Ej: Come en ventana de 8h, prioriza proteína en desayuno y post-entreno..."
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+              />
+            </div>
+          </div>
 
-      {/* Botones */}
-      <div className="flex gap-3">
-        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
-          <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar cambios'}
-        </Button>
-        <Button variant="outline" className="gap-2" onClick={onLogout}>
-          <LogOut className="w-4 h-4" /> Salir
-        </Button>
-      </div>
+          {/* Preview */}
+          {macros.kcal > 0 && (
+            <div className="bg-ok/5 border border-ok/20 rounded-2xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Así lo verá el cliente</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Kcal', value: macros.kcal, color: 'text-warn' },
+                  { label: 'Prot', value: `${macros.protein}g`, color: 'text-ok' },
+                  { label: 'Carbs', value: `${macros.carbs}g`, color: 'text-accent' },
+                  { label: 'Grasas', value: `${macros.fats}g`, color: 'text-muted' },
+                ].map(m => (
+                  <div key={m.label} className="text-center">
+                    <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
+                    <p className="text-[10px] text-muted">{m.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
     </div>
   )
 }
