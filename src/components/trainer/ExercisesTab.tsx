@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
+import { supabase } from '../../lib/supabase'
 
 interface Props {
   exercises: LibraryExercise[]
+  trainerId: string
   onAdd: (name: string, desc: string, category: string, videos: LibraryVideo[], especialidades: string[]) => void
   onUpdate: (id: string, updates: Partial<LibraryExercise>) => void
   onDelete: (id: string) => void
@@ -22,7 +25,7 @@ function EspBadge({ esp }: { esp: string }) {
   )
 }
 
-export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
+export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }: Props) {
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('')
   const [filterEsp, setFilterEsp] = useState('')
@@ -37,6 +40,11 @@ export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
   const [newVideoUrl, setNewVideoUrl] = useState('')
   const [newVideoLabel, setNewVideoLabel] = useState('')
   const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string>('')
+  const [videoMode, setVideoMode] = useState<'url' | 'file'>('url')
+  const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
 
   const filtered = exercises.filter(ex => {
     const matchSearch = !search || ex.name.toLowerCase().includes(search.toLowerCase())
@@ -70,6 +78,20 @@ export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
     if (!form.name.trim()) return
     onAdd(form.name, form.description, form.category, form.videos, form.especialidades)
     setShowNew(false); resetForm()
+  }
+
+  const uploadVideo = async (file: File, trainerId: string) => {
+    if (file.size > 500 * 1024 * 1024) { alert('Máximo 500MB'); return }
+    setUploading(true)
+    setUploadProgress('Subiendo...')
+    const ext = file.name.split('.').pop()
+    const path = `${trainerId}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('trainer-videos').upload(path, file, { upsert: true })
+    if (error) { alert('Error al subir vídeo: ' + error.message); setUploading(false); setUploadProgress(''); return }
+    const { data } = supabase.storage.from('trainer-videos').getPublicUrl(path)
+    setNewVideoUrl(data.publicUrl)
+    setUploadProgress('✓ Vídeo subido')
+    setUploading(false)
   }
 
   const addVideo = () => {
@@ -169,9 +191,54 @@ export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
         {/* Añadir vídeo */}
         <div className="bg-bg-alt border border-border rounded-xl p-3 space-y-2">
           <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
-          <input type="text" value={newVideoUrl} onChange={e => setNewVideoUrl(e.target.value)}
-            placeholder="URL YouTube..."
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
+
+          {/* Tabs URL / Subir archivo */}
+          <div className="flex gap-1 bg-bg p-0.5 rounded-lg border border-border w-fit">
+            <button type="button" onClick={() => setVideoMode('url')}
+              className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${videoMode === 'url' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+              🔗 YouTube URL
+            </button>
+            <button type="button" onClick={() => setVideoMode('file')}
+              className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${videoMode === 'file' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+              📁 Subir archivo
+            </button>
+          </div>
+
+          {videoMode === 'url' ? (
+            <input type="text" value={newVideoUrl} onChange={e => setNewVideoUrl(e.target.value)}
+              placeholder="URL YouTube (https://youtube.com/...)"
+              className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
+          ) : (
+            <div className="space-y-2">
+              <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+                uploading ? 'border-accent text-accent bg-accent/5' : 'border-border text-muted hover:border-accent hover:text-accent'
+              }`}>
+                {uploading ? `Subiendo... ${uploadPct}%` : '📁 Seleccionar vídeo (MP4, MOV, max 500MB)'}
+                <input type="file" accept="video/*" className="hidden" disabled={uploading}
+                  onChange={async e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    if (file.size > 500 * 1024 * 1024) { alert('Máximo 500MB'); return }
+                    setUploading(true); setUploadPct(0)
+                    const ext = file.name.split('.').pop()
+                    const path = `${trainerId}/${Date.now()}.${ext}`
+                    const { error } = await supabase.storage.from('trainer-videos').upload(path, file, { upsert: true })
+                    if (error) { alert('Error al subir'); setUploading(false); return }
+                    const { data } = supabase.storage.from('trainer-videos').getPublicUrl(path)
+                    setNewVideoUrl(data.publicUrl)
+                    setUploading(false); setUploadPct(100)
+                  }}
+                />
+              </label>
+              {newVideoUrl && !newVideoUrl.includes('youtube') && (
+                <div className="flex items-center gap-2 bg-ok/5 border border-ok/20 rounded-lg p-2">
+                  <span className="text-ok text-xs font-semibold">✓ Vídeo subido</span>
+                  <video src={newVideoUrl} className="h-10 rounded" controls />
+                </div>
+              )}
+            </div>
+          )}
+
           <input type="text" value={newVideoLabel} onChange={e => setNewVideoLabel(e.target.value)}
             placeholder="Etiqueta (ej: Técnica powerlifting)"
             className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
@@ -189,7 +256,7 @@ export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
             </div>
             <p className="text-[10px] text-muted mt-1">Sin selección = válido para todas</p>
           </div>
-          <button onClick={addVideo} disabled={!newVideoUrl.trim()}
+          <button onClick={addVideo} disabled={!newVideoUrl.trim() || uploading}
             className="w-full py-2 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
             + Añadir vídeo
           </button>
