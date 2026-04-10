@@ -1,120 +1,164 @@
-import { useState, useMemo } from 'react'
-import {
-  Plus, Search, Dumbbell, Video, Trash2, Edit2,
-  Check, X, ChevronDown, ChevronUp, ExternalLink, Youtube, Upload
-} from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Trash2, Edit2, X, Video, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
-import { useExerciseLibrary, uploadVideoToStorage } from '../../hooks/useExerciseLibrary'
-import { toast } from '../shared/Toast'
-import { EXERCISE_CATEGORIES } from '../../lib/constants'
+import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 
-function getYTId(url: string) {
-  const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
-  return m ? m[1] : null
+interface Props {
+  exercises: LibraryExercise[]
+  onAdd: (name: string, desc: string, category: string, videos: LibraryVideo[], especialidades: string[]) => void
+  onUpdate: (id: string, updates: Partial<LibraryExercise>) => void
+  onDelete: (id: string) => void
 }
 
-interface Props { trainerId: string }
+const CATEGORIAS = ['Piernas', 'Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Core', 'Cardio', 'General']
 
-// ── Formulario de ejercicio ───────────────────────────
-interface ExForm {
-  name: string; description: string; category: string
-  videos: LibraryVideo[]
+function EspBadge({ esp }: { esp: string }) {
+  const info = ESPECIALIDADES.find(e => e.value === esp)
+  if (!info) return null
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] bg-bg-alt border border-border px-1.5 py-0.5 rounded-full">
+      {info.emoji} {info.label}
+    </span>
+  )
 }
-const emptyForm = (): ExForm => ({ name: '', description: '', category: 'General', videos: [] })
 
-function ExerciseForm({
-  initial, onSave, onCancel, isNew, trainerId
-}: {
-  initial: ExForm
-  onSave: (f: ExForm) => void
-  onCancel: () => void
-  isNew: boolean
-  trainerId: string
-}) {
-  const [form, setForm] = useState<ExForm>(initial)
+export function ExercisesTab({ exercises, onAdd, onUpdate, onDelete }: Props) {
+  const [search, setSearch] = useState('')
+  const [filterCat, setFilterCat] = useState('')
+  const [filterEsp, setFilterEsp] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
+  const [showNew, setShowNew] = useState(false)
+
+  // Form estado
+  const [form, setForm] = useState({
+    name: '', description: '', category: '',
+    especialidades: [] as string[], videos: [] as LibraryVideo[]
+  })
   const [newVideoUrl, setNewVideoUrl] = useState('')
   const [newVideoLabel, setNewVideoLabel] = useState('')
+  const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])
+
+  const filtered = exercises.filter(ex => {
+    const matchSearch = !search || ex.name.toLowerCase().includes(search.toLowerCase())
+    const matchCat = !filterCat || ex.category === filterCat
+    const matchEsp = !filterEsp || ex.especialidades?.includes(filterEsp)
+    return matchSearch && matchCat && matchEsp
+  })
+
+  const resetForm = () => {
+    setForm({ name: '', description: '', category: '', especialidades: [], videos: [] })
+    setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
+  }
+
+  const startEdit = (ex: LibraryExercise) => {
+    setEditId(ex.id)
+    setForm({
+      name: ex.name, description: ex.description || '',
+      category: ex.category || '', especialidades: ex.especialidades || [],
+      videos: ex.videos || []
+    })
+    setShowNew(false)
+  }
+
+  const saveEdit = () => {
+    if (!editId) return
+    onUpdate(editId, { ...form })
+    setEditId(null); resetForm()
+  }
+
+  const saveNew = () => {
+    if (!form.name.trim()) return
+    onAdd(form.name, form.description, form.category, form.videos, form.especialidades)
+    setShowNew(false); resetForm()
+  }
 
   const addVideo = () => {
-    const url = newVideoUrl.trim()
-    if (!url) return
-    if (!getYTId(url) && !url.startsWith('http')) { toast('URL no válida. Usa un enlace de YouTube.', 'warn'); return }
-    setForm(f => ({ ...f, videos: [...f.videos, { url, label: newVideoLabel.trim() || undefined }] }))
-    setNewVideoUrl(''); setNewVideoLabel('')
+    if (!newVideoUrl.trim()) return
+    const v: LibraryVideo = { url: newVideoUrl.trim(), label: newVideoLabel.trim() || undefined, especialidades: newVideoEsps }
+    setForm(f => ({ ...f, videos: [...f.videos, v] }))
+    setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
   }
 
   const removeVideo = (i: number) => setForm(f => ({ ...f, videos: f.videos.filter((_, idx) => idx !== i) }))
 
-  return (
-    <div className="bg-card border-2 border-accent/30 rounded-2xl p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-serif font-bold text-lg">{isNew ? 'Nuevo ejercicio' : 'Editar ejercicio'}</h3>
-        <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted transition-colors"><X className="w-4 h-4" /></button>
-      </div>
+  const toggleEsp = (esp: string) => setForm(f => ({
+    ...f, especialidades: f.especialidades.includes(esp)
+      ? f.especialidades.filter(e => e !== esp)
+      : [...f.especialidades, esp]
+  }))
 
-      {/* Nombre */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-        <input autoFocus type="text" placeholder="Ej: Sentadilla búlgara"
-          className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-        />
-      </div>
+  const toggleVideoEsp = (esp: string) => setNewVideoEsps(prev =>
+    prev.includes(esp) ? prev.filter(e => e !== esp) : [...prev, esp]
+  )
 
-      {/* Categoría */}
-      <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Categoría</label>
-        <div className="flex flex-wrap gap-2">
-          {EXERCISE_CATEGORIES.map(cat => (
-            <button key={cat} type="button"
-              onClick={() => setForm(f => ({ ...f, category: cat }))}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                form.category === cat ? 'bg-ink text-white border-ink' : 'bg-bg border-border text-muted hover:border-muted'
-              }`}
-            >{cat}</button>
-          ))}
+  const getYTId = (url: string) => {
+    const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
+    return m ? m[1] : null
+  }
+
+  const FormContent = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-muted mb-1">Nombre *</label>
+          <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            placeholder="Ej: Sentadilla barra"
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-muted mb-1">Grupo muscular</label>
+          <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none">
+            <option value="">Sin categoría</option>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </div>
 
-      {/* Descripción */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Descripción / Indicaciones técnicas</label>
-        <textarea rows={4} placeholder="Describe la técnica, puntos clave, errores comunes... Esta descripción se mostrará al cliente durante el entrenamiento."
-          className="w-full px-4 py-3 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none leading-relaxed"
-          value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-        />
+        <label className="block text-xs font-semibold text-muted mb-1">Descripción / notas</label>
+        <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+          placeholder="Indicaciones técnicas, variantes..."
+          className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none resize-none" />
+      </div>
+
+      {/* Especialidades del ejercicio */}
+      <div>
+        <label className="block text-xs font-semibold text-muted mb-2">Especialidades del ejercicio</label>
+        <div className="flex flex-wrap gap-2">
+          {ESPECIALIDADES.map(e => (
+            <button key={e.value} type="button"
+              onClick={() => toggleEsp(e.value)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs border transition-all ${
+                form.especialidades.includes(e.value) ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
+              }`}>
+              {e.emoji} {e.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted mt-1">Si no marcas ninguna, el ejercicio aparece para todas las especialidades.</p>
       </div>
 
       {/* Vídeos */}
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-          Vídeos de referencia ({form.videos.length})
-        </label>
+        <label className="block text-xs font-semibold text-muted mb-2">Vídeos de referencia</label>
 
-        {/* Vídeos añadidos */}
         {form.videos.length > 0 && (
           <div className="space-y-2 mb-3">
             {form.videos.map((v, i) => {
               const ytId = getYTId(v.url)
               return (
-                <div key={i} className="flex items-center gap-3 p-3 bg-bg border border-border rounded-xl">
-                  {ytId ? (
-                    <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`}
-                      className="w-16 h-10 object-cover rounded border border-border flex-shrink-0" alt="" />
-                  ) : (
-                    <div className="w-16 h-10 bg-bg-alt rounded border border-border flex items-center justify-center flex-shrink-0">
-                      <Video className="w-4 h-4 text-muted" />
-                    </div>
-                  )}
+                <div key={i} className="flex items-center gap-2 bg-bg border border-border rounded-lg p-2">
+                  {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-12 h-9 object-cover rounded" alt="" />}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{v.label || 'Vídeo ' + (i + 1)}</p>
-                    <p className="text-[10px] text-muted truncate">{v.url}</p>
+                    <p className="text-xs font-medium truncate">{v.label || v.url}</p>
+                    <div className="flex gap-1 mt-1 flex-wrap">
+                      {v.especialidades?.map(esp => <EspBadge key={esp} esp={esp} />)}
+                      {!v.especialidades?.length && <span className="text-[10px] text-muted">Todas las especialidades</span>}
+                    </div>
                   </div>
-                  <a href={v.url} target="_blank" rel="noreferrer" className="p-1.5 text-muted hover:text-accent transition-colors">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <button onClick={() => removeVideo(i)} className="p-1.5 text-muted hover:text-warn transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
+                  <button onClick={() => removeVideo(i)} className="p-1 text-muted hover:text-warn flex-shrink-0">
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )
@@ -122,296 +166,149 @@ function ExerciseForm({
           </div>
         )}
 
-        {/* Añadir vídeo YouTube */}
-        <div className="flex flex-col gap-2 p-4 bg-bg border border-dashed border-border rounded-xl">
-          <p className="text-[10px] text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5">
-            <Youtube className="w-3.5 h-3.5" /> Añadir vídeo de YouTube
-          </p>
-          <input type="text" placeholder="https://youtube.com/watch?v=..."
-            className="w-full px-3 py-2.5 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-            value={newVideoUrl} onChange={e => setNewVideoUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addVideo()}
-          />
-          <div className="flex gap-2">
-            <input type="text" placeholder="Etiqueta opcional (ej: Vista frontal)"
-              className="flex-1 px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-              value={newVideoLabel} onChange={e => setNewVideoLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addVideo()}
-            />
-            <button onClick={addVideo}
-              className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex-shrink-0"
-            >+ Añadir</button>
+        {/* Añadir vídeo */}
+        <div className="bg-bg-alt border border-border rounded-xl p-3 space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
+          <input type="text" value={newVideoUrl} onChange={e => setNewVideoUrl(e.target.value)}
+            placeholder="URL YouTube..."
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
+          <input type="text" value={newVideoLabel} onChange={e => setNewVideoLabel(e.target.value)}
+            placeholder="Etiqueta (ej: Técnica powerlifting)"
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
+          <div>
+            <p className="text-[10px] text-muted mb-1.5">¿Para qué especialidad es este vídeo?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ESPECIALIDADES.map(e => (
+                <button key={e.value} type="button" onClick={() => toggleVideoEsp(e.value)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${
+                    newVideoEsps.includes(e.value) ? 'bg-accent text-white border-accent' : 'border-border text-muted'
+                  }`}>
+                  {e.emoji} {e.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted mt-1">Sin selección = válido para todas</p>
           </div>
+          <button onClick={addVideo} disabled={!newVideoUrl.trim()}
+            className="w-full py-2 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
+            + Añadir vídeo
+          </button>
         </div>
-
-        {/* Subir vídeo propio */}
-        <UploadVideoSection onUploaded={(url, label) => {
-          setForm(f => ({ ...f, videos: [...f.videos, { url, label }] }))
-          toast('Vídeo subido ✓', 'ok')
-        }} trainerId={trainerId} />
-      </div>
-
-      {/* Acciones */}
-      <div className="flex gap-3 pt-2">
-        <button onClick={onCancel} className="flex-1 px-4 py-2.5 border border-border rounded-lg text-sm font-medium hover:bg-bg-alt transition-colors">Cancelar</button>
-        <button
-          onClick={() => { if (!form.name.trim()) { toast('El nombre es obligatorio', 'warn'); return }; onSave(form) }}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Check className="w-4 h-4" /> {isNew ? 'Crear ejercicio' : 'Guardar cambios'}
-        </button>
       </div>
     </div>
   )
-}
-
-// ── Subir vídeo propio ─────────────────────────────────
-function UploadVideoSection({ onUploaded, trainerId }: {
-  onUploaded: (url: string, label: string) => void
-  trainerId: string
-}) {
-  const [uploading, setUploading] = useState(false)
-  const [label, setLabel] = useState('')
-  const [progress, setProgress] = useState(0)
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 100 * 1024 * 1024) { toast('Máximo 100MB por vídeo', 'warn'); return }
-    setUploading(true); setProgress(10)
-    const url = await uploadVideoToStorage(trainerId, file)
-    setProgress(100)
-    if (url) onUploaded(url, label || file.name.replace(/\.[^.]+$/, ''))
-    else toast('Error al subir el vídeo', 'warn')
-    setUploading(false); setProgress(0); setLabel('')
-    e.target.value = ''
-  }
 
   return (
-    <div className="flex flex-col gap-2 p-4 bg-bg border border-dashed border-border rounded-xl">
-      <p className="text-[10px] text-muted uppercase tracking-wider font-semibold flex items-center gap-1.5">
-        <Upload className="w-3.5 h-3.5" /> Subir vídeo propio (MP4, MOV...)
-      </p>
-      <input type="text" placeholder="Etiqueta del vídeo (ej: Técnica sentadilla)"
-        className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-        value={label} onChange={e => setLabel(e.target.value)}
-      />
-      <label className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border text-sm font-medium cursor-pointer transition-all ${
-        uploading ? 'bg-bg-alt border-border text-muted cursor-wait' : 'border-border text-muted hover:border-accent hover:text-accent'
-      }`}>
-        <Upload className="w-4 h-4" />
-        {uploading ? `Subiendo... ${progress}%` : 'Seleccionar archivo'}
-        <input type="file" accept="video/*" className="hidden" onChange={handleFile} disabled={uploading} />
-      </label>
-      {uploading && (
-        <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
-          <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress}%` }} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Tab principal ─────────────────────────────────────
-export function ExercisesTab({ trainerId }: Props) {
-  const { exercises, addExercise, updateExercise, deleteExercise } = useExerciseLibrary(trainerId)
-  const [search, setSearch] = useState('')
-  const [catFilter, setCatFilter] = useState('Todos')
-  const [forming, setForming] = useState<{ mode: 'new' | 'edit'; id?: string } | null>(null)
-  const [editForm, setEditForm] = useState<ExForm>(emptyForm())
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-
-  const filtered = useMemo(() => {
-    return exercises
-      .filter(e => catFilter === 'Todos' || e.category === catFilter)
-      .filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
-  }, [exercises, search, catFilter])
-
-  const openNew = () => { setEditForm(emptyForm()); setForming({ mode: 'new' }) }
-  const openEdit = (ex: LibraryExercise) => {
-    setEditForm({ name: ex.name, description: ex.description || '', category: ex.category || 'General', videos: ex.videos || [] })
-    setForming({ mode: 'edit', id: ex.id })
-    setExpandedId(null)
-  }
-
-  const handleSave = (form: ExForm) => {
-    if (forming?.mode === 'new') {
-      addExercise(form.name, form.description, form.category, form.videos)
-      toast('Ejercicio creado ✓', 'ok')
-    } else if (forming?.id) {
-      updateExercise(forming.id, { name: form.name, description: form.description, category: form.category, videos: form.videos })
-      toast('Guardado ✓', 'ok')
-    }
-    setForming(null)
-  }
-
-  const handleDelete = (id: string) => {
-    deleteExercise(id)
-    setDeletingId(null)
-    toast('Ejercicio eliminado', 'ok')
-  }
-
-  const cats = ['Todos', ...EXERCISE_CATEGORIES]
-
-  return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+    <div className="space-y-5 animate-fade-in">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-serif font-bold">Biblioteca de ejercicios</h2>
-          <p className="text-muted text-sm mt-1">{exercises.length} ejercicios · con vídeos y descripciones</p>
+          <h2 className="text-3xl font-serif font-bold">Ejercicios</h2>
+          <p className="text-muted text-sm mt-1">{exercises.length} ejercicios en tu biblioteca</p>
         </div>
-        <button onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity flex-shrink-0"
-        >
+        <button onClick={() => { setShowNew(true); setEditId(null); resetForm() }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
           <Plus className="w-4 h-4" /> Nuevo ejercicio
         </button>
       </div>
 
-      {/* Formulario inline */}
-      {forming && (
-        <ExerciseForm
-          initial={editForm}
-          isNew={forming.mode === 'new'}
-          onSave={handleSave}
-          onCancel={() => setForming(null)}
-          trainerId={trainerId}
-        />
+      {/* Formulario nuevo */}
+      {showNew && (
+        <div className="bg-card border border-accent/20 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Nuevo ejercicio</h3>
+            <button onClick={() => { setShowNew(false); resetForm() }}><X className="w-4 h-4 text-muted" /></button>
+          </div>
+          <FormContent />
+          <div className="flex gap-2">
+            <button onClick={() => { setShowNew(false); resetForm() }}
+              className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">Cancelar</button>
+            <button onClick={saveNew} disabled={!form.name.trim()}
+              className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+              Guardar ejercicio
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Búsqueda */}
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input type="text" placeholder="Buscar ejercicio..."
-          className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-          value={search} onChange={e => setSearch(e.target.value)}
-        />
-      </div>
-
-      {/* Filtros categoría */}
+      {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
-        {cats.map(cat => (
-          <button key={cat} onClick={() => setCatFilter(cat)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-              catFilter === cat ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted hover:border-muted'
-            }`}
-          >{cat}</button>
-        ))}
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+          <input type="text" placeholder="Buscar ejercicio..." value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-lg text-sm outline-none" />
+        </div>
+        <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
+          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+          <option value="">Todos los grupos</option>
+          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterEsp} onChange={e => setFilterEsp(e.target.value)}
+          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+          <option value="">Todas las especialidades</option>
+          {ESPECIALIDADES.map(e => <option key={e.value} value={e.value}>{e.emoji} {e.label}</option>)}
+        </select>
       </div>
 
       {/* Lista */}
-      <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
-        {filtered.length === 0 && (
-          <div className="p-10 text-center text-muted">
-            <Dumbbell className="w-8 h-8 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Sin resultados para "{search}"</p>
-          </div>
-        )}
-        {filtered.map(ex => {
-          const isExpanded = expandedId === ex.id
-          const hasVideos = (ex.videos?.length || 0) > 0
-          const hasDesc = !!ex.description
-
-          return (
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
+          <p className="font-serif text-lg">Sin ejercicios</p>
+          <p className="text-sm mt-1">Añade ejercicios a tu biblioteca para reutilizarlos en los planes.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(ex => (
             <div key={ex.id}>
-              {/* Fila principal */}
-              <div className="flex items-center gap-3 px-4 py-3 hover:bg-bg-alt/40 transition-colors group">
-                <div className="w-9 h-9 rounded-xl bg-bg flex items-center justify-center text-muted flex-shrink-0">
-                  <Dumbbell className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : ex.id)}>
-                  <p className="text-sm font-semibold">{ex.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {ex.category && (
-                      <span className="text-[10px] text-muted bg-bg px-2 py-0.5 rounded-full border border-border">{ex.category}</span>
-                    )}
-                    {hasVideos && (
-                      <span className="text-[10px] text-accent flex items-center gap-1">
-                        <Video className="w-3 h-3" />{ex.videos!.length} vídeo{ex.videos!.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {hasDesc && <span className="text-[10px] text-muted">📝 descripción</span>}
+              {editId === ex.id ? (
+                <div className="bg-card border border-accent/20 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Editar: {ex.name}</h3>
+                    <button onClick={() => { setEditId(null); resetForm() }}><X className="w-4 h-4 text-muted" /></button>
+                  </div>
+                  <FormContent />
+                  <div className="flex gap-2">
+                    <button onClick={() => { setEditId(null); resetForm() }}
+                      className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">Cancelar</button>
+                    <button onClick={saveEdit}
+                      className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
+                      Guardar cambios
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => setExpandedId(isExpanded ? null : ex.id)}
-                    className="p-1.5 rounded-lg text-muted hover:bg-bg transition-colors"
-                  >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </button>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(ex)} className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors">
+              ) : (
+                <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold">{ex.name}</p>
+                      {ex.category && (
+                        <span className="text-[10px] bg-bg-alt border border-border px-1.5 py-0.5 rounded-full text-muted">
+                          {ex.category}
+                        </span>
+                      )}
+                      {ex.especialidades?.map(esp => <EspBadge key={esp} esp={esp} />)}
+                    </div>
+                    {ex.description && <p className="text-xs text-muted mt-0.5 truncate">{ex.description}</p>}
+                    {ex.videos && ex.videos.length > 0 && (
+                      <p className="text-[10px] text-muted mt-1">
+                        <Video className="w-3 h-3 inline mr-1" />{ex.videos.length} vídeo{ex.videos.length > 1 ? 's' : ''}
+                        {ex.videos.some(v => v.especialidades?.length) && ' · clasificados por especialidad'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <button onClick={() => startEdit(ex)} className="p-1.5 text-muted hover:text-accent transition-colors">
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
-                    {deletingId === ex.id ? (
-                      <>
-                        <button onClick={() => handleDelete(ex.id)} className="px-2 py-1 bg-warn/10 text-warn border border-warn/30 rounded text-[10px] font-bold">Borrar</button>
-                        <button onClick={() => setDeletingId(null)} className="px-2 py-1 bg-bg border border-border rounded text-[10px] font-bold text-muted">No</button>
-                      </>
-                    ) : (
-                      <button onClick={() => setDeletingId(ex.id)} className="p-1.5 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button onClick={() => onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Detalle expandido */}
-              {isExpanded && (
-                <div className="px-4 pb-4 bg-bg/30 space-y-3 border-t border-border">
-                  {hasDesc && (
-                    <div className="pt-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1.5">Descripción técnica</p>
-                      <p className="text-sm text-ink/80 leading-relaxed whitespace-pre-wrap">{ex.description}</p>
-                    </div>
-                  )}
-                  {hasVideos && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Vídeos</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {ex.videos!.map((v, i) => {
-                          const ytId = getYTId(v.url)
-                          return (
-                            <a key={i} href={v.url} target="_blank" rel="noreferrer"
-                              className="group relative rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"
-                            >
-                              {ytId ? (
-                                <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`}
-                                  className="w-full aspect-video object-cover" alt="" />
-                              ) : (
-                                <div className="w-full aspect-video bg-bg-alt flex items-center justify-center">
-                                  <Video className="w-6 h-6 text-muted" />
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/30 transition-colors flex items-center justify-center">
-                                <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                              {v.label && (
-                                <div className="absolute bottom-1.5 left-1.5 bg-ink/70 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">
-                                  {v.label}
-                                </div>
-                              )}
-                            </a>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {!hasDesc && !hasVideos && (
-                    <div className="pt-3 flex items-center gap-2 text-muted">
-                      <p className="text-sm">Sin descripción ni vídeos aún.</p>
-                      <button onClick={() => openEdit(ex)} className="text-sm text-accent hover:underline">Añadir →</button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
