@@ -49,10 +49,10 @@ export interface TrainingTemplate {
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
-export interface LibraryVideo { url: string; label?: string }
+export interface LibraryVideo { url: string; label?: string; especialidades?: string[] }
 export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
-  category?: string; videos?: LibraryVideo[]; createdAt: number
+  category?: string; especialidades?: string[]; videos?: LibraryVideo[]; createdAt: number
 }
 
 // ── REGISTROS ─────────────────────────────────────────
