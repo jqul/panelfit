@@ -290,8 +290,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                       </div>
                     )}
                     <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
-                      allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient}
-                      clienteEspecialidad={client.objetivo} />
+                      allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient} />
                   </div>
                 )}
                 {activeTab === 'dieta' && <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />}
@@ -527,10 +526,10 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
                         ))}
                       </div>
                     </div>
-                    {(log as any)?.videoEjecucion && (
-                      <a href={(log as any).videoEjecucion} target="_blank" rel="noreferrer"
+                    {(logs[key] as any)?.videoEjecucion && (
+                      <a href={(logs[key] as any).videoEjecucion} target="_blank" rel="noreferrer"
                         className="flex-shrink-0 w-12 h-9 rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
-                        <video src={(log as any).videoEjecucion} className="w-full h-full object-cover" />
+                        <video src={(logs[key] as any).videoEjecucion} className="w-full h-full object-cover" />
                       </a>
                     )}
                     {mejor > 0 && (
