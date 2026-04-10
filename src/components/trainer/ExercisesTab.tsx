@@ -3,7 +3,6 @@ import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
-import { supabase } from '../../lib/supabase'
 
 interface Props {
   exercises: LibraryExercise[]
@@ -43,8 +42,6 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<string>('')
   const [videoMode, setVideoMode] = useState<'url' | 'file'>('url')
-  const [uploading, setUploading] = useState(false)
-  const [uploadPct, setUploadPct] = useState(0)
 
   const filtered = exercises.filter(ex => {
     const matchSearch = !search || ex.name.toLowerCase().includes(search.toLowerCase())
