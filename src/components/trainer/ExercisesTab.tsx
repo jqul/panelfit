@@ -40,6 +40,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [newVideoLabel, setNewVideoLabel] = useState('')
   const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
+  const [uploadPct, setUploadPct] = useState(0)
   const [uploadProgress, setUploadProgress] = useState<string>('')
   const [videoMode, setVideoMode] = useState<'url' | 'file'>('url')
 
