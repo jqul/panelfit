@@ -512,8 +512,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab trainerId={userProfile.uid} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} />}
+         {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+{activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
             <div className="animate-fade-in max-w-lg space-y-5">
