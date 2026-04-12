@@ -89,25 +89,26 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }, [plan, client?.id])
 
-  const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
-    setLogs(newLogs)
-    setSyncState('saving')
-    if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-
-    if (!navigator.onLine) { setSyncState('offline'); return }
-
-    if (client?.id) {
-      const { error: updateErr } = await supabase.from('registros')
-        .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
-      if (updateErr) {
-        const { error: insertErr } = await supabase.from('registros')
-          .insert({ clientId: client.id, logs: newLogs, updatedAt: Date.now() })
-        if (insertErr) { logError('ClientView:saveLogs', insertErr); setSyncState('error'); return }
-      }
-      setSyncState('saved')
-      setTimeout(() => setSyncState('idle'), 2000)
+ const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
+  setLogs(newLogs)
+  setSyncState('saving')
+  if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+  if (!navigator.onLine) { setSyncState('offline'); return }
+  if (client?.id) {
+    const { error } = await supabase.from('registros')
+      .upsert(
+        { clientId: client.id, logs: newLogs, updatedAt: Date.now() },
+        { onConflict: 'clientId' }
+      )
+    if (error) { 
+      console.error('Error guardando logs:', error)
+      setSyncState('error')
+      return 
     }
-  }, [client?.id])
+    setSyncState('saved')
+    setTimeout(() => setSyncState('idle'), 2000)
+  }
+}, [client?.id])
 
   if (loading) return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
