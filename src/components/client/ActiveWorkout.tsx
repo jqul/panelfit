@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  X, ChevronDown, ChevronUp, Check, Clock, Trophy,
-  Play, Pause, SkipForward, Video, ExternalLink, ChevronLeft,
-  Plus, Minus, Dumbbell, Flame
+  ChevronDown, Check, Clock, Trophy,
+  Play, Pause, SkipForward, ChevronLeft,
+  Plus, Dumbbell, Flame, Timer
 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 
@@ -25,14 +25,12 @@ function parseSet(sets: string) {
   return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
 }
 
-// ── Timer de descanso ─────────────────────────────────────
 function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
   const [remaining, setRemaining] = useState(seconds)
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {
-    if (paused) return
-    if (remaining <= 0) { onDone(); return }
+    if (paused || remaining <= 0) { if (remaining <= 0) onDone(); return }
     const t = setInterval(() => setRemaining(r => r - 1), 1000)
     return () => clearInterval(t)
   }, [remaining, paused])
@@ -42,40 +40,23 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   const sec = remaining % 60
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/90 backdrop-blur-sm flex flex-col items-center justify-center gap-6 p-8">
-      <p className="text-white/60 text-sm font-semibold uppercase tracking-widest">Descanso</p>
-
-      {/* Círculo timer */}
-      <div className="relative w-40 h-40">
+    <div className="fixed inset-0 z-50 bg-ink/95 backdrop-blur-sm flex flex-col items-center justify-center gap-8 p-8">
+      <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Descanso</p>
+      <div className="relative w-44 h-44">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8" />
-          <circle cx="50" cy="50" r="44" fill="none" stroke="white" strokeWidth="8"
+          <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle cx="50" cy="50" r="44" fill="none" stroke="white" strokeWidth="6"
             strokeDasharray={`${2 * Math.PI * 44}`}
             strokeDashoffset={`${2 * Math.PI * 44 * (1 - pct / 100)}`}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dashoffset 1s linear' }}
-          />
+            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-white font-serif font-bold text-4xl">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="text-white font-serif font-bold text-5xl tabular-nums">
             {min > 0 ? `${min}:${sec.toString().padStart(2, '0')}` : sec}
           </p>
         </div>
       </div>
-
-      <div className="flex gap-4">
-        <button onClick={() => setPaused(p => !p)}
-          className="flex items-center gap-2 px-5 py-3 bg-white/10 text-white rounded-2xl text-sm font-semibold hover:bg-white/20 transition-colors">
-          {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          {paused ? 'Reanudar' : 'Pausar'}
-        </button>
-        <button onClick={onSkip}
-          className="flex items-center gap-2 px-5 py-3 bg-white text-ink rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
-          <SkipForward className="w-4 h-4" /> Saltar
-        </button>
-      </div>
-
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         {[-30, -15, +15, +30].map(d => (
           <button key={d} onClick={() => setRemaining(r => Math.max(0, r + d))}
             className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs font-semibold hover:bg-white/20">
@@ -83,103 +64,50 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
           </button>
         ))}
       </div>
+      <div className="flex gap-3">
+        <button onClick={() => setPaused(p => !p)}
+          className="flex items-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl text-sm font-semibold">
+          {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+          {paused ? 'Reanudar' : 'Pausar'}
+        </button>
+        <button onClick={onSkip}
+          className="flex items-center gap-2 px-6 py-3.5 bg-white text-ink rounded-2xl text-sm font-bold">
+          <SkipForward className="w-4 h-4" /> Saltar
+        </button>
+      </div>
     </div>
   )
 }
 
-// ── Fila de serie estilo Hevy ─────────────────────────────
-function SetRow({
-  setNum, weight, reps, done, prevWeight, prevReps, isMain,
-  onWeightChange, onRepsChange, onToggle
-}: {
-  setNum: number
-  weight: string
-  reps: string
-  done: boolean
-  prevWeight?: string
-  prevReps?: string
-  isMain: boolean
-  onWeightChange: (v: string) => void
-  onRepsChange: (v: string) => void
-  onToggle: () => void
-}) {
-  return (
-    <div className={`flex items-center gap-2 px-4 py-2.5 transition-colors ${done ? 'bg-ok/5' : ''}`}>
-      {/* Nº serie */}
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-        done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-      }`}>{setNum}</div>
-
-      {/* Anterior */}
-      <div className="w-16 text-center flex-shrink-0">
-        {prevWeight ? (
-          <p className="text-xs text-muted leading-tight">{prevWeight}<br /><span className="text-[9px]">× {prevReps}</span></p>
-        ) : (
-          <p className="text-xs text-muted">—</p>
-        )}
-      </div>
-
-      {/* Kg */}
-      <div className="flex-1">
-        <div className="flex items-center gap-1 bg-bg border border-border rounded-xl overflow-hidden">
-          <button onClick={() => onWeightChange(String(Math.max(0, parseFloat(weight || '0') - 1.25)))}
-            className="px-2 py-2.5 text-muted hover:text-ink active:bg-bg-alt transition-colors flex-shrink-0">
-            <Minus className="w-3 h-3" />
-          </button>
-          <input type="number" value={weight} onChange={e => onWeightChange(e.target.value)}
-            inputMode="decimal" placeholder="0"
-            className="flex-1 text-center text-sm font-semibold bg-transparent outline-none min-w-0 py-2"
-          />
-          <button onClick={() => onWeightChange(String(parseFloat(weight || '0') + 1.25))}
-            className="px-2 py-2.5 text-muted hover:text-ink active:bg-bg-alt transition-colors flex-shrink-0">
-            <Plus className="w-3 h-3" />
-          </button>
-        </div>
-        <p className="text-[9px] text-muted text-center mt-0.5">kg</p>
-      </div>
-
-      {/* Reps */}
-      <div className="flex-1">
-        <div className="flex items-center gap-1 bg-bg border border-border rounded-xl overflow-hidden">
-          <button onClick={() => onRepsChange(String(Math.max(1, parseInt(reps || '1') - 1)))}
-            className="px-2 py-2.5 text-muted hover:text-ink active:bg-bg-alt transition-colors flex-shrink-0">
-            <Minus className="w-3 h-3" />
-          </button>
-          <input type="number" value={reps} onChange={e => onRepsChange(e.target.value)}
-            inputMode="numeric" placeholder="0"
-            className="flex-1 text-center text-sm font-semibold bg-transparent outline-none min-w-0 py-2"
-          />
-          <button onClick={() => onRepsChange(String(parseInt(reps || '0') + 1))}
-            className="px-2 py-2.5 text-muted hover:text-ink active:bg-bg-alt transition-colors flex-shrink-0">
-            <Plus className="w-3 h-3" />
-          </button>
-        </div>
-        <p className="text-[9px] text-muted text-center mt-0.5">reps</p>
-      </div>
-
-      {/* Check */}
-      <button onClick={onToggle}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
-          done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok hover:text-ok'
-        }`}>
-        <Check className="w-5 h-5" />
-      </button>
-    </div>
-  )
-}
-
-// ── Componente principal ──────────────────────────────────
 export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish }: Props) {
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
-  const [localLogs, setLocalLogs] = useState<TrainingLogs>({ ...logs })
-  const [openEx, setOpenEx] = useState<number>(0) // ejercicio expandido
-  const [restTimer, setRestTimer] = useState<{ active: boolean; secs: number } | null>(null)
+
+  const [sets, setSets] = useState<Record<number, Record<number, { weight: string; reps: string; done: boolean }>>>(() => {
+    const initial: Record<number, Record<number, { weight: string; reps: string; done: boolean }>> = {}
+    day?.exercises.forEach((ex, ri) => {
+      const key = `ex_${dayKey}_r${ri}`
+      const log = logs[key]
+      const { numSets, numReps } = parseSet(ex.sets)
+      initial[ri] = {}
+      for (let si = 0; si < numSets; si++) {
+        initial[ri][si] = {
+          weight: log?.sets?.[si]?.weight || '',
+          reps: log?.sets?.[si]?.reps || String(numReps),
+          done: false,
+        }
+      }
+    })
+    return initial
+  })
+
+  const [restTimer, setRestTimer] = useState<{ secs: number } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
+  const [totalVolume, setTotalVolume] = useState(0)
+  const [totalSets, setTotalSets] = useState(0)
   const startTime = useRef(Date.now())
 
-  // Temporizador general del entreno
   useEffect(() => {
     const t = setInterval(() => setElapsedSecs(Math.floor((Date.now() - startTime.current) / 1000)), 1000)
     return () => clearInterval(t)
@@ -191,118 +119,126 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  const getExKey = (ri: number) => `ex_${dayKey}_r${ri}`
+  useEffect(() => {
+    let vol = 0, setsCount = 0
+    Object.values(sets).forEach(exSets => {
+      Object.values(exSets).forEach(s => {
+        if (s.done) { vol += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0); setsCount++ }
+      })
+    })
+    setTotalVolume(vol); setTotalSets(setsCount)
+  }, [sets])
 
-  const updateSet = (ri: number, si: number, field: 'weight' | 'reps', value: string) => {
-    const key = getExKey(ri)
+  const updateSet = useCallback((ri: number, si: number, field: 'weight' | 'reps', value: string) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], [field]: value } } }))
+    const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
-    const updated: TrainingLogs = {
-      ...localLogs,
+    const newLogs = {
+      ...logs,
       [key]: {
-        ...localLogs[key],
-        sets: { ...(localLogs[key]?.sets || {}), [si]: { weight: field === 'weight' ? value : (localLogs[key]?.sets?.[si]?.weight || ''), reps: field === 'reps' ? value : (localLogs[key]?.sets?.[si]?.reps || '') } },
-        done: localLogs[key]?.done || false,
+        ...logs[key],
+        sets: {
+          ...(logs[key]?.sets || {}),
+          [si]: {
+            weight: field === 'weight' ? value : (logs[key]?.sets?.[si]?.weight || ''),
+            reps: field === 'reps' ? value : (logs[key]?.sets?.[si]?.reps || ''),
+          }
+        },
+        done: logs[key]?.done || false,
         dateDone: today,
       }
     }
-    setLocalLogs(updated)
-    onLogsChange(updated)
-  }
+    onLogsChange(newLogs)
+  }, [logs, dayKey, onLogsChange])
 
-  const toggleSet = (ri: number, si: number) => {
-    const key = getExKey(ri)
-    const today = new Date().toISOString().split('T')[0]
+  const toggleSetDone = useCallback((ri: number, si: number) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
-    const currentSets = localLogs[key]?.sets || {}
-    const allSetsChecked = Array.from({ length: numSets }, (_, i) => currentSets[i])
-      .filter(Boolean).length === numSets
+    const today = new Date().toISOString().split('T')[0]
 
-    // Si es el último set que falta, marcar ejercicio como done
-    const setsFilledCount = Object.values(currentSets).filter(s => s.weight || s.reps).length
-    const isDone = si === numSets - 1 || setsFilledCount >= numSets - 1
-
-    const updated: TrainingLogs = {
-      ...localLogs,
-      [key]: {
-        ...localLogs[key],
-        sets: { ...currentSets, [si]: { weight: currentSets[si]?.weight || '', reps: currentSets[si]?.reps || '' } },
-        done: isDone,
-        dateDone: today,
+    setSets(prev => {
+      const newDone = !prev[ri]?.[si]?.done
+      const newSets = { ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], done: newDone } } }
+      const allDone = Array.from({ length: numSets }, (_, i) => newSets[ri][i]?.done).every(Boolean)
+      const key = `ex_${dayKey}_r${ri}`
+      const setsData: Record<number, { weight: string; reps: string }> = {}
+      for (let i = 0; i < Math.max(numSets, Object.keys(newSets[ri]).length); i++) {
+        setsData[i] = { weight: newSets[ri][i]?.weight || '', reps: newSets[ri][i]?.reps || '' }
       }
-    }
-    setLocalLogs(updated)
-    onLogsChange(updated)
+      onLogsChange({ ...logs, [key]: { sets: setsData, done: allDone, dateDone: today } })
+      return newSets
+    })
 
-    // Arrancar timer de descanso
-    const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
-    setRestTimer({ active: true, secs: restSecs })
-
-    // Auto-pasar al siguiente ejercicio
-    if (isDone && ri < day.exercises.length - 1) {
-      setTimeout(() => setOpenEx(ri + 1), 300)
+    if (!sets[ri]?.[si]?.done) {
+      const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
+      setRestTimer({ secs: restSecs })
     }
+  }, [day, dayKey, logs, onLogsChange, plan, sets])
+
+  const addSet = (ri: number) => {
+    setSets(prev => {
+      const exSets = prev[ri] || {}
+      const nextIdx = Object.keys(exSets).length
+      const lastSet = exSets[nextIdx - 1]
+      return { ...prev, [ri]: { ...exSets, [nextIdx]: { weight: lastSet?.weight || '', reps: lastSet?.reps || '10', done: false } } }
+    })
   }
 
-  const totalExs = day.exercises.length
-  const doneExs = day.exercises.filter((_, ri) => localLogs[getExKey(ri)]?.done).length
-  const pct = Math.round((doneExs / totalExs) * 100)
+  const totalExs = day?.exercises.length || 0
+  const doneExs = day?.exercises.filter((ex, ri) => {
+    const { numSets } = parseSet(ex.sets)
+    return Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).every(Boolean)
+  }).length || 0
+  const pct = totalExs ? Math.round((doneExs / totalExs) * 100) : 0
 
-  // Records personales
   const isNewRecord = (ri: number) => {
-    const key = getExKey(ri)
-    const sets = Object.values(localLogs[key]?.sets || {})
-    const currentBest = Math.max(...sets.map(s => parseFloat(s.weight || '0')))
-    // Comparar con logs de días anteriores
+    const key = `ex_${dayKey}_r${ri}`
+    const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
     const allPrevBest = Object.entries(logs)
       .filter(([k]) => k.includes(`_r${ri}`) && k !== key)
       .flatMap(([, log]) => Object.values(log.sets || {}).map(s => parseFloat(s.weight || '0')))
-    const prevBest = Math.max(0, ...allPrevBest)
-    return currentBest > 0 && currentBest > prevBest
+    return currentBest > 0 && currentBest > Math.max(0, ...allPrevBest)
+  }
+
+  const getPrevSets = (ri: number) => {
+    const key = `ex_${dayKey}_r${ri}`
+    const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
+    return prev?.[1]?.sets || {}
   }
 
   if (!day) return null
 
   return (
     <div className="fixed inset-0 z-40 bg-bg flex flex-col">
-      {/* Timer de descanso overlay */}
-      {restTimer?.active && (
-        <RestTimer
-          seconds={restTimer.secs}
-          onDone={() => setRestTimer(null)}
-          onSkip={() => setRestTimer(null)}
-        />
-      )}
+      {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
 
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <button onClick={() => setShowFinish(true)}
-            className="p-2 rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+        <div className="flex items-center gap-2 px-4 py-3">
+          <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm truncate">{day.title}</p>
-            {day.focus && <p className="text-xs text-muted truncate">{day.focus}</p>}
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted">
+          <div className="flex-1 font-semibold text-sm truncate">{day.title}</div>
+          <div className="flex items-center gap-1 text-xs text-muted mr-2">
             <Clock className="w-3.5 h-3.5" />
-            <span className="font-mono font-semibold">{formatElapsed()}</span>
+            <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
           </div>
           <button onClick={() => setShowFinish(true)}
-            className="px-3 py-2 bg-ok text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity">
+            className="px-4 py-2 bg-accent text-white rounded-xl text-xs font-bold hover:opacity-90">
             Terminar
           </button>
         </div>
 
-        {/* Barra progreso */}
-        <div className="px-4 pb-3">
-          <div className="flex justify-between text-[10px] text-muted mb-1.5">
-            <span>{doneExs}/{totalExs} ejercicios</span>
-            <span className="font-bold text-ok">{pct}%</span>
-          </div>
-          <div className="h-2 bg-bg-alt rounded-full overflow-hidden">
-            <div className="h-full bg-ok rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+        {/* Stats */}
+        <div className="flex items-center px-4 pb-3 gap-4 text-xs">
+          <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
+          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${totalVolume.toLocaleString()} kg` : '0 kg'}</p></div>
+          <div><p className="text-muted">Series</p><p className="font-bold">{totalSets}</p></div>
+          <div className="flex-1 text-right">
+            <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
+            <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
+              <div className="h-full bg-ok rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
           </div>
         </div>
       </div>
@@ -310,142 +246,144 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       {/* Lista ejercicios */}
       <div className="flex-1 overflow-y-auto">
         {day.exercises.map((ex, ri) => {
-          const key = getExKey(ri)
-          const log = localLogs[key]
           const { numSets, numReps } = parseSet(ex.sets)
-          const isDone = log?.done
-          const isOpen = openEx === ri
+          const exSets = sets[ri] || {}
+          const totalExSets = Math.max(numSets, Object.keys(exSets).length)
+          const allDone = Array.from({ length: totalExSets }, (_, si) => exSets[si]?.done).every(Boolean)
           const record = isNewRecord(ri)
+          const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
-
-          // Sets previos (del último entreno con este ejercicio)
-          const prevLog = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
-          const prevSets = prevLog?.[1]?.sets || {}
+          const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
+          const restMin = Math.floor(restSecs / 60)
+          const restSecR = restSecs % 60
 
           return (
-            <div key={ri} className={`border-b border-border transition-colors ${isDone ? 'bg-ok/3' : ''}`}>
+            <div key={ri} className="border-b border-border">
               {/* Header ejercicio */}
-              <div
-                className="flex items-center gap-3 px-4 py-3.5 cursor-pointer active:bg-bg-alt transition-colors"
-                onClick={() => setOpenEx(isOpen ? -1 : ri)}
-              >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                  isDone ? 'bg-ok text-white' : ex.isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-                }`}>
-                  {isDone ? <Check className="w-4 h-4" /> : ri + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-sm truncate">{ex.name}</p>
-                    {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />}
-                    {ex.isMain && <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0">Principal</span>}
-                  </div>
-                  <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>
-                </div>
-
-                {/* Miniatura vídeo */}
-                {ytId && (
+              <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+                {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-border">
+                    className="w-10 h-10 rounded-xl overflow-hidden border border-border flex-shrink-0">
                     <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
                   </a>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl bg-bg-alt flex items-center justify-center flex-shrink-0">
+                    <Dumbbell className="w-5 h-5 text-muted" />
+                  </div>
                 )}
-
-                {isOpen ? <ChevronUp className="w-4 h-4 text-muted flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`font-bold text-base ${allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
+                    {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
+                  </div>
+                  {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
               </div>
 
-              {/* Sets expandidos */}
-              {isOpen && (
-                <div className="pb-2">
-                  {/* Descripción */}
-                  {ex.comment && (
-                    <div className="mx-4 mb-2 p-3 bg-accent/5 border border-accent/20 rounded-xl">
-                      <p className="text-xs text-ink/70 leading-relaxed">{ex.comment}</p>
-                    </div>
-                  )}
+              {ex.comment && <p className="mx-4 mb-2 text-xs text-muted leading-relaxed">{ex.comment}</p>}
 
-                  {/* Cabecera columnas */}
-                  <div className="flex items-center gap-2 px-4 pb-1">
-                    <div className="w-7 flex-shrink-0" />
-                    <div className="w-16 text-center flex-shrink-0">
-                      <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Anterior</p>
-                    </div>
-                    <div className="flex-1 text-center">
-                      <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Kg</p>
-                    </div>
-                    <div className="flex-1 text-center">
-                      <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Reps</p>
-                    </div>
-                    <div className="w-10 flex-shrink-0" />
+              {/* Timer descanso */}
+              <div className="flex items-center gap-1.5 px-4 mb-3">
+                <Timer className="w-3.5 h-3.5 text-accent" />
+                <span className="text-xs text-accent font-semibold">
+                  Descanso: {restMin > 0 ? `${restMin}min ` : ''}{restSecR > 0 ? `${restSecR}s` : ''}
+                </span>
+              </div>
+
+              {/* Cabecera columnas — compacta para móvil */}
+              <div className="grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 px-3 pb-1">
+                <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">KG</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">Reps</p>
+                <div />
+              </div>
+
+              {/* Filas series */}
+              {Array.from({ length: totalExSets }, (_, si) => {
+                const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
+                const prev = prevSets[si]
+
+                return (
+                  <div key={si}
+                    className={`grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${s.done ? 'bg-ok/8' : ''}`}>
+
+                    {/* N serie */}
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
+                      s.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'
+                    }`}>{si + 1}</div>
+
+                    {/* Anterior */}
+                    <p className="text-xs text-muted text-center leading-tight">
+                      {prev ? `${prev.weight}kg\n×${prev.reps}` : '—'}
+                    </p>
+
+                    {/* KG */}
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={s.weight}
+                      onChange={e => updateSet(ri, si, 'weight', e.target.value)}
+                      placeholder={prev?.weight || '0'}
+                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
+                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+                      }`}
+                    />
+
+                    {/* Reps */}
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={s.reps}
+                      onChange={e => updateSet(ri, si, 'reps', e.target.value)}
+                      placeholder={prev?.reps || String(numReps)}
+                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
+                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+                      }`}
+                    />
+
+                    {/* Check */}
+                    <button onClick={() => toggleSetDone(ri, si)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
+                        s.done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
+                      }`}>
+                      <Check className="w-4 h-4" />
+                    </button>
                   </div>
+                )
+              })}
 
-                  {/* Filas de series */}
-                  {Array.from({ length: numSets }, (_, si) => {
-                    const s = log?.sets?.[si] || {}
-                    const prev = prevSets[si]
-                    return (
-                      <SetRow
-                        key={si}
-                        setNum={si + 1}
-                        weight={s.weight || ''}
-                        reps={s.reps || String(numReps)}
-                        done={!!(log?.done && si <= numSets - 1)}
-                        prevWeight={prev?.weight}
-                        prevReps={prev?.reps}
-                        isMain={ex.isMain}
-                        onWeightChange={v => updateSet(ri, si, 'weight', v)}
-                        onRepsChange={v => updateSet(ri, si, 'reps', v)}
-                        onToggle={() => toggleSet(ri, si)}
-                      />
-                    )
-                  })}
-
-                  {/* Vídeos adicionales */}
-                  {(ex.videoUrls || []).filter(u => u !== ex.videoUrl).length > 0 && (
-                    <div className="px-4 pt-2 flex gap-2 flex-wrap">
-                      {(ex.videoUrls || []).filter(u => u !== ex.videoUrl).map((url, vi) => {
-                        const id = getYTId(url)
-                        return id ? (
-                          <a key={vi} href={url} target="_blank" rel="noreferrer"
-                            className="w-16 h-10 rounded-lg overflow-hidden border border-border">
-                            <img src={`https://img.youtube.com/vi/${id}/default.jpg`} className="w-full h-full object-cover" alt="" />
-                          </a>
-                        ) : null
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Añadir serie */}
+              <button onClick={() => addSet(ri)}
+                className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
+                <Plus className="w-4 h-4" /> Agregar Serie
+              </button>
             </div>
           )
         })}
-
         <div className="h-32" />
       </div>
 
-      {/* Modal finalizar */}
+      {/* Modal terminar */}
       {showFinish && (
         <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
           <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
-            <div className="w-10 h-1 bg-border rounded-full mx-auto mb-2" />
+            <div className="w-10 h-1 bg-border rounded-full mx-auto" />
             <h3 className="font-serif font-bold text-xl text-center">¿Terminar entrenamiento?</h3>
-
-            {/* Resumen */}
             <div className="grid grid-cols-3 gap-3">
               {[
                 { icon: <Clock className="w-4 h-4 text-accent" />, value: formatElapsed(), label: 'Duración' },
                 { icon: <Dumbbell className="w-4 h-4 text-ok" />, value: `${doneExs}/${totalExs}`, label: 'Ejercicios' },
-                { icon: <Flame className="w-4 h-4 text-warn" />, value: `${pct}%`, label: 'Completado' },
+                { icon: <Flame className="w-4 h-4 text-warn" />, value: `${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg`, label: 'Volumen' },
               ].map((s, i) => (
                 <div key={i} className="bg-bg rounded-2xl p-3 text-center">
                   <div className="flex justify-center mb-1">{s.icon}</div>
-                  <p className="font-serif font-bold text-lg">{s.value}</p>
+                  <p className="font-serif font-bold text-base">{s.value}</p>
                   <p className="text-[10px] text-muted">{s.label}</p>
                 </div>
               ))}
             </div>
-
             <button onClick={onFinish}
               className="w-full py-4 bg-ok text-white rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
               ✓ Terminar y guardar
