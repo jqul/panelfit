@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ChevronDown, Check, Clock, Trophy,
   Play, Pause, SkipForward, ChevronLeft,
-  Plus, Minus, Dumbbell, Flame, Timer, X
+  Plus, Dumbbell, Flame, Timer
 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 
@@ -25,16 +25,12 @@ function parseSet(sets: string) {
   return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
 }
 
-// ── Timer de descanso ─────────────────────────────────────
 function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
   const [remaining, setRemaining] = useState(seconds)
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {
-    if (paused || remaining <= 0) {
-      if (remaining <= 0) onDone()
-      return
-    }
+    if (paused || remaining <= 0) { if (remaining <= 0) onDone(); return }
     const t = setInterval(() => setRemaining(r => r - 1), 1000)
     return () => clearInterval(t)
   }, [remaining, paused])
@@ -46,43 +42,36 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   return (
     <div className="fixed inset-0 z-50 bg-ink/95 backdrop-blur-sm flex flex-col items-center justify-center gap-8 p-8">
       <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Descanso</p>
-
       <div className="relative w-44 h-44">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
           <circle cx="50" cy="50" r="44" fill="none" stroke="white" strokeWidth="6"
             strokeDasharray={`${2 * Math.PI * 44}`}
             strokeDashoffset={`${2 * Math.PI * 44 * (1 - pct / 100)}`}
-            strokeLinecap="round"
-            style={{ transition: 'stroke-dashoffset 1s linear' }}
-          />
+            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <p className="text-white font-serif font-bold text-5xl tabular-nums">
             {min > 0 ? `${min}:${sec.toString().padStart(2, '0')}` : sec}
           </p>
-          {min > 0 && <p className="text-white/40 text-xs mt-1">seg</p>}
         </div>
       </div>
-
-      {/* Ajustes rápidos */}
       <div className="flex gap-2">
         {[-30, -15, +15, +30].map(d => (
           <button key={d} onClick={() => setRemaining(r => Math.max(0, r + d))}
-            className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs font-semibold hover:bg-white/20 active:bg-white/30 transition-colors">
+            className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs font-semibold hover:bg-white/20">
             {d > 0 ? `+${d}s` : `${d}s`}
           </button>
         ))}
       </div>
-
       <div className="flex gap-3">
         <button onClick={() => setPaused(p => !p)}
-          className="flex items-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl text-sm font-semibold hover:bg-white/20 transition-colors">
+          className="flex items-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl text-sm font-semibold">
           {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           {paused ? 'Reanudar' : 'Pausar'}
         </button>
         <button onClick={onSkip}
-          className="flex items-center gap-2 px-6 py-3.5 bg-white text-ink rounded-2xl text-sm font-bold hover:opacity-90 active:scale-95 transition-all">
+          className="flex items-center gap-2 px-6 py-3.5 bg-white text-ink rounded-2xl text-sm font-bold">
           <SkipForward className="w-4 h-4" /> Saltar
         </button>
       </div>
@@ -90,12 +79,10 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   )
 }
 
-// ── Componente principal ──────────────────────────────────
 export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish }: Props) {
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
 
-  // Estado de series: { [exIdx]: { [setIdx]: { weight, reps, done } } }
   const [sets, setSets] = useState<Record<number, Record<number, { weight: string; reps: string; done: boolean }>>>(() => {
     const initial: Record<number, Record<number, { weight: string; reps: string; done: boolean }>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -120,9 +107,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [totalVolume, setTotalVolume] = useState(0)
   const [totalSets, setTotalSets] = useState(0)
   const startTime = useRef(Date.now())
-  const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Temporizador general
   useEffect(() => {
     const t = setInterval(() => setElapsedSecs(Math.floor((Date.now() - startTime.current) / 1000)), 1000)
     return () => clearInterval(t)
@@ -134,28 +119,18 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  // Actualizar volumen y series totales
   useEffect(() => {
     let vol = 0, setsCount = 0
     Object.values(sets).forEach(exSets => {
       Object.values(exSets).forEach(s => {
-        if (s.done) {
-          vol += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)
-          setsCount++
-        }
+        if (s.done) { vol += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0); setsCount++ }
       })
     })
-    setTotalVolume(vol)
-    setTotalSets(setsCount)
+    setTotalVolume(vol); setTotalSets(setsCount)
   }, [sets])
 
-  // Actualizar logs sin cerrar teclado
   const updateSet = useCallback((ri: number, si: number, field: 'weight' | 'reps', value: string) => {
-    setSets(prev => ({
-      ...prev,
-      [ri]: { ...prev[ri], [si]: { ...prev[ri][si], [field]: value } }
-    }))
-    // Sync a logs sin tocar el foco
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], [field]: value } } }))
     const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
     const newLogs = {
@@ -182,28 +157,19 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     const today = new Date().toISOString().split('T')[0]
 
     setSets(prev => {
-      const newSets = { ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], done: !prev[ri][si]?.done } } }
-
-      // Ver si el ejercicio está completado (todos los sets marcados)
+      const newDone = !prev[ri]?.[si]?.done
+      const newSets = { ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], done: newDone } } }
       const allDone = Array.from({ length: numSets }, (_, i) => newSets[ri][i]?.done).every(Boolean)
-
-      // Sync logs
       const key = `ex_${dayKey}_r${ri}`
       const setsData: Record<number, { weight: string; reps: string }> = {}
-      for (let i = 0; i < numSets; i++) {
+      for (let i = 0; i < Math.max(numSets, Object.keys(newSets[ri]).length); i++) {
         setsData[i] = { weight: newSets[ri][i]?.weight || '', reps: newSets[ri][i]?.reps || '' }
       }
-      const newLogs = {
-        ...logs,
-        [key]: { sets: setsData, done: allDone, dateDone: today }
-      }
-      onLogsChange(newLogs)
-
+      onLogsChange({ ...logs, [key]: { sets: setsData, done: allDone, dateDone: today } })
       return newSets
     })
 
-    // Timer de descanso solo al marcar (no desmarcar)
-    if (!sets[ri][si]?.done) {
+    if (!sets[ri]?.[si]?.done) {
       const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
       setRestTimer({ secs: restSecs })
     }
@@ -213,14 +179,14 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     setSets(prev => {
       const exSets = prev[ri] || {}
       const nextIdx = Object.keys(exSets).length
-      return { ...prev, [ri]: { ...exSets, [nextIdx]: { weight: '', reps: '10', done: false } } }
+      const lastSet = exSets[nextIdx - 1]
+      return { ...prev, [ri]: { ...exSets, [nextIdx]: { weight: lastSet?.weight || '', reps: lastSet?.reps || '10', done: false } } }
     })
   }
 
-  // Stats
   const totalExs = day?.exercises.length || 0
-  const doneExs = day?.exercises.filter((_, ri) => {
-    const { numSets } = parseSet(day.exercises[ri].sets)
+  const doneExs = day?.exercises.filter((ex, ri) => {
+    const { numSets } = parseSet(ex.sets)
     return Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).every(Boolean)
   }).length || 0
   const pct = totalExs ? Math.round((doneExs / totalExs) * 100) : 0
@@ -234,7 +200,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return currentBest > 0 && currentBest > Math.max(0, ...allPrevBest)
   }
 
-  // Logs del entreno anterior para referencia
   const getPrevSets = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
     const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
@@ -245,15 +210,12 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
   return (
     <div className="fixed inset-0 z-40 bg-bg flex flex-col">
-      {restTimer && (
-        <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />
-      )}
+      {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
 
-      {/* Header estilo Hevy */}
+      {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => setShowFinish(true)}
-            className="p-2 rounded-xl hover:bg-bg-alt text-muted transition-colors">
+          <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 font-semibold text-sm truncate">{day.title}</div>
@@ -262,52 +224,42 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
           </div>
           <button onClick={() => setShowFinish(true)}
-            className="px-4 py-2 bg-accent text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity">
+            className="px-4 py-2 bg-accent text-white rounded-xl text-xs font-bold hover:opacity-90">
             Terminar
           </button>
         </div>
 
-        {/* Stats fila — igual que Hevy */}
-        <div className="flex items-center px-4 pb-3 gap-6">
-          <div>
-            <p className="text-[10px] text-muted">Duración</p>
-            <p className="text-sm font-bold text-accent tabular-nums">{formatElapsed()}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted">Volumen</p>
-            <p className="text-sm font-bold">{totalVolume > 0 ? `${totalVolume.toLocaleString()} kg` : '0 kg'}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted">Series</p>
-            <p className="text-sm font-bold">{totalSets}</p>
-          </div>
-          <div className="flex-1" />
-          {/* Barra progreso */}
-          <div className="text-right">
-            <p className="text-[10px] text-muted">{doneExs}/{totalExs} ejercicios</p>
-            <div className="w-24 h-1.5 bg-bg-alt rounded-full mt-1">
+        {/* Stats */}
+        <div className="flex items-center px-4 pb-3 gap-4 text-xs">
+          <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
+          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${totalVolume.toLocaleString()} kg` : '0 kg'}</p></div>
+          <div><p className="text-muted">Series</p><p className="font-bold">{totalSets}</p></div>
+          <div className="flex-1 text-right">
+            <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
+            <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
               <div className="h-full bg-ok rounded-full transition-all" style={{ width: `${pct}%` }} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Contenido — scroll */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      {/* Lista ejercicios */}
+      <div className="flex-1 overflow-y-auto">
         {day.exercises.map((ex, ri) => {
           const { numSets, numReps } = parseSet(ex.sets)
           const exSets = sets[ri] || {}
-          const allDone = Array.from({ length: Object.keys(exSets).length || numSets }, (_, si) => exSets[si]?.done).every(Boolean)
+          const totalExSets = Math.max(numSets, Object.keys(exSets).length)
+          const allDone = Array.from({ length: totalExSets }, (_, si) => exSets[si]?.done).every(Boolean)
           const record = isNewRecord(ri)
           const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
           const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
           const restMin = Math.floor(restSecs / 60)
-          const restSecRem = restSecs % 60
+          const restSecR = restSecs % 60
 
           return (
             <div key={ri} className="border-b border-border">
-              {/* Nombre ejercicio — estilo Hevy con imagen */}
+              {/* Header ejercicio */}
               <div className="flex items-center gap-3 px-4 pt-4 pb-2">
                 {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
@@ -326,93 +278,74 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                   </div>
                   {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                 </div>
-                <button className="p-1.5 text-muted">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+                <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
               </div>
 
-              {/* Indicaciones */}
-              {ex.comment && (
-                <p className="mx-4 mb-2 text-xs text-muted leading-relaxed">{ex.comment}</p>
-              )}
+              {ex.comment && <p className="mx-4 mb-2 text-xs text-muted leading-relaxed">{ex.comment}</p>}
 
               {/* Timer descanso */}
               <div className="flex items-center gap-1.5 px-4 mb-3">
                 <Timer className="w-3.5 h-3.5 text-accent" />
                 <span className="text-xs text-accent font-semibold">
-                  Descanso: {restMin > 0 ? `${restMin}min ` : ''}{restSecRem > 0 ? `${restSecRem}s` : ''}
+                  Descanso: {restMin > 0 ? `${restMin}min ` : ''}{restSecR > 0 ? `${restSecR}s` : ''}
                 </span>
               </div>
 
-              {/* Cabecera tabla series */}
-              <div className="flex items-center gap-2 px-4 pb-1">
-                <div className="w-8 text-center">
-                  <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Serie</p>
-                </div>
-                <div className="flex-1 text-center">
-                  <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Anterior</p>
-                </div>
-                <div className="w-20 text-center flex-shrink-0">
-                  <p className="text-[9px] uppercase tracking-wider text-muted font-bold">⊕ KG</p>
-                </div>
-                <div className="w-20 text-center flex-shrink-0">
-                  <p className="text-[9px] uppercase tracking-wider text-muted font-bold">Reps</p>
-                </div>
-                <div className="w-8 flex-shrink-0" />
+              {/* Cabecera columnas — compacta para móvil */}
+              <div className="grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 px-3 pb-1">
+                <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">KG</p>
+                <p className="text-[9px] uppercase text-muted font-bold text-center">Reps</p>
+                <div />
               </div>
 
-              {/* Filas de series */}
-              {Array.from({ length: Math.max(numSets, Object.keys(exSets).length) }, (_, si) => {
+              {/* Filas series */}
+              {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
                 const prev = prevSets[si]
 
                 return (
                   <div key={si}
-                    className={`flex items-center gap-2 px-4 py-2 transition-colors ${s.done ? 'bg-ok/8' : ''}`}>
+                    className={`grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${s.done ? 'bg-ok/8' : ''}`}>
 
-                    {/* Número serie */}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    {/* N serie */}
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
                       s.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'
                     }`}>{si + 1}</div>
 
                     {/* Anterior */}
-                    <div className="flex-1 text-center">
-                      <p className="text-xs text-muted">
-                        {prev ? `${prev.weight}kg x ${prev.reps}` : '—'}
-                      </p>
-                    </div>
+                    <p className="text-xs text-muted text-center leading-tight">
+                      {prev ? `${prev.weight}kg\n×${prev.reps}` : '—'}
+                    </p>
 
-                    {/* KG — input directo sin botones para no cerrar teclado */}
-                    <div className="w-20 flex-shrink-0">
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        value={s.weight}
-                        onChange={e => updateSet(ri, si, 'weight', e.target.value)}
-                        placeholder={prev?.weight || '0'}
-                        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
-                          s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-                        }`}
-                      />
-                    </div>
+                    {/* KG */}
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={s.weight}
+                      onChange={e => updateSet(ri, si, 'weight', e.target.value)}
+                      placeholder={prev?.weight || '0'}
+                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
+                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+                      }`}
+                    />
 
                     {/* Reps */}
-                    <div className="w-20 flex-shrink-0">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={s.reps}
-                        onChange={e => updateSet(ri, si, 'reps', e.target.value)}
-                        placeholder={prev?.reps || String(numReps)}
-                        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
-                          s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-                        }`}
-                      />
-                    </div>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={s.reps}
+                      onChange={e => updateSet(ri, si, 'reps', e.target.value)}
+                      placeholder={prev?.reps || String(numReps)}
+                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
+                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+                      }`}
+                    />
 
                     {/* Check */}
                     <button onClick={() => toggleSetDone(ri, si)}
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all active:scale-90 ${
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
                         s.done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
                       }`}>
                       <Check className="w-4 h-4" />
@@ -423,13 +356,12 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
               {/* Añadir serie */}
               <button onClick={() => addSet(ri)}
-                className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:text-ink hover:bg-bg-alt transition-colors text-sm font-medium">
+                className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Agregar Serie
               </button>
             </div>
           )
         })}
-
         <div className="h-32" />
       </div>
 
