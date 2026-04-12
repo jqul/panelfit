@@ -25,6 +25,7 @@ function parseSet(sets: string) {
   return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
 }
 
+// ── Timer descanso ────────────────────────────────────────
 function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
   const [remaining, setRemaining] = useState(seconds)
   const [paused, setPaused] = useState(false)
@@ -79,6 +80,7 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   )
 }
 
+// ── Fila de serie — componente aislado para evitar re-renders ─
 interface SetRowProps {
   setNum: number
   initWeight: string
@@ -97,14 +99,17 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps,
 
   return (
     <div className={`grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
+      {/* N serie */}
       <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
         done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
       }`}>{setNum}</div>
 
+      {/* Anterior */}
       <p className="text-xs text-muted text-center leading-tight">
-        {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
+        {prevWeight ? `${prevWeight}kg\n×${prevReps}` : '—'}
       </p>
 
+      {/* KG — estado local, no sube al padre hasta blur */}
       <input
         type="number"
         inputMode="decimal"
@@ -112,11 +117,12 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps,
         onChange={e => setWeight(e.target.value)}
         onBlur={() => onCommit(weight, reps)}
         placeholder={prevWeight || '0'}
-        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
+        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
           done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
         }`}
       />
 
+      {/* Reps — estado local */}
       <input
         type="number"
         inputMode="numeric"
@@ -124,11 +130,12 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps,
         onChange={e => setReps(e.target.value)}
         onBlur={() => onCommit(weight, reps)}
         placeholder={prevReps || '10'}
-        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
+        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
           done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
         }`}
       />
 
+      {/* Check */}
       <button
         onClick={() => onToggle(weight, reps)}
         className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
@@ -140,10 +147,12 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps,
   )
 })
 
+// ── Componente principal ──────────────────────────────────
 export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish }: Props) {
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
 
+  // Estado de sets — solo done y valores commiteados
   type SetState = { weight: string; reps: string; done: boolean }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
@@ -179,11 +188,15 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  // Guardar en logs cuando el usuario sale del input (onBlur)
   const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
-    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
+    setSets(prev => ({
+      ...prev,
+      [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } }
+    }))
     const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
-    onLogsChange({
+    const newLogs = {
       ...logs,
       [key]: {
         ...logs[key],
@@ -191,9 +204,11 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         done: logs[key]?.done || false,
         dateDone: today,
       }
-    })
+    }
+    onLogsChange(newLogs)
   }, [logs, dayKey, onLogsChange])
 
+  // Marcar/desmarcar serie como hecha
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
@@ -201,7 +216,10 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } } }
+      const updated = {
+        ...prev,
+        [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } }
+      }
       const allDone = Array.from({ length: numSets }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
       const setsData: Record<number, { weight: string; reps: string }> = {}
@@ -213,12 +231,14 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
 
     if (!sets[ri]?.[si]?.done) {
-      setRestTimer({ secs: ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90) })
+      const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
+      setRestTimer({ secs: restSecs })
     }
   }, [day, dayKey, logs, onLogsChange, plan, sets])
 
   const addSet = (ri: number) => {
-    const { numReps } = parseSet(day.exercises[ri].sets)
+    const ex = day.exercises[ri]
+    const { numReps } = parseSet(ex.sets)
     setSets(prev => {
       const exSets = prev[ri] || {}
       const nextIdx = Object.keys(exSets).length
@@ -233,9 +253,13 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).every(Boolean)
   }).length || 0
   const pct = totalExs ? Math.round((doneExs / totalExs) * 100) : 0
+
   const totalVolume = Object.values(sets).reduce((acc, exSets) =>
-    acc + Object.values(exSets).reduce((a, s) => a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
-  const totalSetsDone = Object.values(sets).reduce((acc, exSets) => acc + Object.values(exSets).filter(s => s.done).length, 0)
+    acc + Object.values(exSets).reduce((a, s) =>
+      a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
+
+  const totalSetsDone = Object.values(sets).reduce((acc, exSets) =>
+    acc + Object.values(exSets).filter(s => s.done).length, 0)
 
   const isNewRecord = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
@@ -258,6 +282,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     <div className="fixed inset-0 z-40 bg-bg flex flex-col">
       {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
 
+      {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
           <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
@@ -286,6 +311,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         </div>
       </div>
 
+      {/* Lista ejercicios */}
       <div className="flex-1 overflow-y-auto">
         {day.exercises.map((ex, ri) => {
           const { numSets, numReps } = parseSet(ex.sets)
@@ -301,6 +327,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
           return (
             <div key={ri} className="border-b border-border">
+              {/* Header ejercicio */}
               <div className="flex items-center gap-3 px-4 pt-4 pb-2">
                 {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
@@ -331,6 +358,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </span>
               </div>
 
+              {/* Cabecera columnas */}
               <div className="grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 px-3 pb-1">
                 <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
@@ -339,6 +367,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 <div />
               </div>
 
+              {/* Filas de series — cada una es un componente memo independiente */}
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
                 const prev = prevSets[si] as any
@@ -368,6 +397,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         <div className="h-32" />
       </div>
 
+      {/* Modal terminar */}
       {showFinish && (
         <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
           <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
