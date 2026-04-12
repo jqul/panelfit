@@ -337,7 +337,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-sm truncate">{ex.name}</p>
-                    {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" title="¡Nuevo récord!" />}
+                    {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />}
                     {ex.isMain && <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-bold uppercase flex-shrink-0">Principal</span>}
                   </div>
                   <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>
