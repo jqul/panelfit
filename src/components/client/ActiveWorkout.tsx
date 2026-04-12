@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import {
   ChevronDown, Check, Clock, Trophy,
   Play, Pause, SkipForward, ChevronLeft,
@@ -79,12 +79,74 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   )
 }
 
+interface SetRowProps {
+  setNum: number
+  initWeight: string
+  initReps: string
+  done: boolean
+  prevWeight?: string
+  prevReps?: string
+  isMain: boolean
+  onCommit: (weight: string, reps: string) => void
+  onToggle: (weight: string, reps: string) => void
+}
+
+const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps, isMain, onCommit, onToggle }: SetRowProps) => {
+  const [weight, setWeight] = useState(initWeight)
+  const [reps, setReps] = useState(initReps)
+
+  return (
+    <div className={`grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
+        done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+      }`}>{setNum}</div>
+
+      <p className="text-xs text-muted text-center leading-tight">
+        {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
+      </p>
+
+      <input
+        type="number"
+        inputMode="decimal"
+        value={weight}
+        onChange={e => setWeight(e.target.value)}
+        onBlur={() => onCommit(weight, reps)}
+        placeholder={prevWeight || '0'}
+        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
+          done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+        }`}
+      />
+
+      <input
+        type="number"
+        inputMode="numeric"
+        value={reps}
+        onChange={e => setReps(e.target.value)}
+        onBlur={() => onCommit(weight, reps)}
+        placeholder={prevReps || '10'}
+        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
+          done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+        }`}
+      />
+
+      <button
+        onClick={() => onToggle(weight, reps)}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
+          done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
+        }`}>
+        <Check className="w-4 h-4" />
+      </button>
+    </div>
+  )
+})
+
 export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish }: Props) {
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
 
-  const [sets, setSets] = useState<Record<number, Record<number, { weight: string; reps: string; done: boolean }>>>(() => {
-    const initial: Record<number, Record<number, { weight: string; reps: string; done: boolean }>> = {}
+  type SetState = { weight: string; reps: string; done: boolean }
+  const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
+    const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
       const key = `ex_${dayKey}_r${ri}`
       const log = logs[key]
@@ -104,8 +166,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [restTimer, setRestTimer] = useState<{ secs: number } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
-  const [totalVolume, setTotalVolume] = useState(0)
-  const [totalSets, setTotalSets] = useState(0)
   const startTime = useRef(Date.now())
 
   useEffect(() => {
@@ -119,68 +179,51 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  useEffect(() => {
-    let vol = 0, setsCount = 0
-    Object.values(sets).forEach(exSets => {
-      Object.values(exSets).forEach(s => {
-        if (s.done) { vol += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0); setsCount++ }
-      })
-    })
-    setTotalVolume(vol); setTotalSets(setsCount)
-  }, [sets])
-
-  const updateSet = useCallback((ri: number, si: number, field: 'weight' | 'reps', value: string) => {
-    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], [field]: value } } }))
+  const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
     const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
-    const newLogs = {
+    onLogsChange({
       ...logs,
       [key]: {
         ...logs[key],
-        sets: {
-          ...(logs[key]?.sets || {}),
-          [si]: {
-            weight: field === 'weight' ? value : (logs[key]?.sets?.[si]?.weight || ''),
-            reps: field === 'reps' ? value : (logs[key]?.sets?.[si]?.reps || ''),
-          }
-        },
+        sets: { ...(logs[key]?.sets || {}), [si]: { weight, reps } },
         done: logs[key]?.done || false,
         dateDone: today,
       }
-    }
-    onLogsChange(newLogs)
+    })
   }, [logs, dayKey, onLogsChange])
 
-  const toggleSetDone = useCallback((ri: number, si: number) => {
+  const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
     const today = new Date().toISOString().split('T')[0]
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const newSets = { ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], done: newDone } } }
-      const allDone = Array.from({ length: numSets }, (_, i) => newSets[ri][i]?.done).every(Boolean)
+      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } } }
+      const allDone = Array.from({ length: numSets }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
       const setsData: Record<number, { weight: string; reps: string }> = {}
-      for (let i = 0; i < Math.max(numSets, Object.keys(newSets[ri]).length); i++) {
-        setsData[i] = { weight: newSets[ri][i]?.weight || '', reps: newSets[ri][i]?.reps || '' }
+      for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
+        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '' }
       }
       onLogsChange({ ...logs, [key]: { sets: setsData, done: allDone, dateDone: today } })
-      return newSets
+      return updated
     })
 
     if (!sets[ri]?.[si]?.done) {
-      const restSecs = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
-      setRestTimer({ secs: restSecs })
+      setRestTimer({ secs: ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90) })
     }
   }, [day, dayKey, logs, onLogsChange, plan, sets])
 
   const addSet = (ri: number) => {
+    const { numReps } = parseSet(day.exercises[ri].sets)
     setSets(prev => {
       const exSets = prev[ri] || {}
       const nextIdx = Object.keys(exSets).length
-      const lastSet = exSets[nextIdx - 1]
-      return { ...prev, [ri]: { ...exSets, [nextIdx]: { weight: lastSet?.weight || '', reps: lastSet?.reps || '10', done: false } } }
+      const last = exSets[nextIdx - 1]
+      return { ...prev, [ri]: { ...exSets, [nextIdx]: { weight: last?.weight || '', reps: last?.reps || String(numReps), done: false } } }
     })
   }
 
@@ -190,13 +233,16 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).every(Boolean)
   }).length || 0
   const pct = totalExs ? Math.round((doneExs / totalExs) * 100) : 0
+  const totalVolume = Object.values(sets).reduce((acc, exSets) =>
+    acc + Object.values(exSets).reduce((a, s) => a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
+  const totalSetsDone = Object.values(sets).reduce((acc, exSets) => acc + Object.values(exSets).filter(s => s.done).length, 0)
 
   const isNewRecord = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
     const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
     const allPrevBest = Object.entries(logs)
       .filter(([k]) => k.includes(`_r${ri}`) && k !== key)
-      .flatMap(([, log]) => Object.values(log.sets || {}).map(s => parseFloat(s.weight || '0')))
+      .flatMap(([, log]) => Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight || '0')))
     return currentBest > 0 && currentBest > Math.max(0, ...allPrevBest)
   }
 
@@ -212,7 +258,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     <div className="fixed inset-0 z-40 bg-bg flex flex-col">
       {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
 
-      {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
           <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
@@ -228,12 +273,10 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             Terminar
           </button>
         </div>
-
-        {/* Stats */}
         <div className="flex items-center px-4 pb-3 gap-4 text-xs">
           <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
-          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${totalVolume.toLocaleString()} kg` : '0 kg'}</p></div>
-          <div><p className="text-muted">Series</p><p className="font-bold">{totalSets}</p></div>
+          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
+          <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
           <div className="flex-1 text-right">
             <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
             <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
@@ -243,7 +286,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         </div>
       </div>
 
-      {/* Lista ejercicios */}
       <div className="flex-1 overflow-y-auto">
         {day.exercises.map((ex, ri) => {
           const { numSets, numReps } = parseSet(ex.sets)
@@ -259,7 +301,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
           return (
             <div key={ri} className="border-b border-border">
-              {/* Header ejercicio */}
               <div className="flex items-center gap-3 px-4 pt-4 pb-2">
                 {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
@@ -283,7 +324,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted leading-relaxed">{ex.comment}</p>}
 
-              {/* Timer descanso */}
               <div className="flex items-center gap-1.5 px-4 mb-3">
                 <Timer className="w-3.5 h-3.5 text-accent" />
                 <span className="text-xs text-accent font-semibold">
@@ -291,7 +331,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </span>
               </div>
 
-              {/* Cabecera columnas — compacta para móvil */}
               <div className="grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 px-3 pb-1">
                 <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
@@ -300,61 +339,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 <div />
               </div>
 
-              {/* Filas series */}
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
-                const prev = prevSets[si]
-
+                const prev = prevSets[si] as any
                 return (
-                  <div key={si}
-                    className={`grid grid-cols-[32px_1fr_72px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${s.done ? 'bg-ok/8' : ''}`}>
-
-                    {/* N serie */}
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
-                      s.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'
-                    }`}>{si + 1}</div>
-
-                    {/* Anterior */}
-                    <p className="text-xs text-muted text-center leading-tight">
-                      {prev ? `${prev.weight}kg\n×${prev.reps}` : '—'}
-                    </p>
-
-                    {/* KG */}
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={s.weight}
-                      onChange={e => updateSet(ri, si, 'weight', e.target.value)}
-                      placeholder={prev?.weight || '0'}
-                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
-                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-                      }`}
-                    />
-
-                    {/* Reps */}
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={s.reps}
-                      onChange={e => updateSet(ri, si, 'reps', e.target.value)}
-                      placeholder={prev?.reps || String(numReps)}
-                      className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none transition-colors ${
-                        s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-                      }`}
-                    />
-
-                    {/* Check */}
-                    <button onClick={() => toggleSetDone(ri, si)}
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
-                        s.done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
-                      }`}>
-                      <Check className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <SetRow
+                    key={`${ri}-${si}`}
+                    setNum={si + 1}
+                    initWeight={s.weight}
+                    initReps={s.reps}
+                    done={s.done}
+                    prevWeight={prev?.weight}
+                    prevReps={prev?.reps}
+                    isMain={ex.isMain}
+                    onCommit={(w, r) => commitSet(ri, si, w, r)}
+                    onToggle={(w, r) => toggleSet(ri, si, w, r)}
+                  />
                 )
               })}
 
-              {/* Añadir serie */}
               <button onClick={() => addSet(ri)}
                 className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Agregar Serie
@@ -365,7 +368,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         <div className="h-32" />
       </div>
 
-      {/* Modal terminar */}
       {showFinish && (
         <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
           <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
