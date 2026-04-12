@@ -6,6 +6,7 @@ import {
   Clock, Filter, X, Calendar, BarChart2
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { mapClientes } from '../../lib/mappers'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
@@ -29,9 +30,10 @@ interface Props {
   userProfile: UserProfile
   onLogout: () => void
   onSelectClient: (client: ClientData) => void
+  demoClients?: ClientData[]
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Props) {
+export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
   const [clients, setClients] = useState<ClientWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
@@ -42,9 +44,11 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
+  const library = useExerciseLibrary(userProfile.uid)
 
   const fetchClients = async () => {
     setLoading(true)
+    if (demoClients) { setClients(demoClients as ClientWithStats[]); setLoading(false); return }
     const { data, error } = await supabase
       .from('clientes')
       .select('*')
@@ -512,8 +516,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient }: Prop
             </div>
           )}
 
-         {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-{activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
 
           {activeTab === 'settings' && (
             <div className="animate-fade-in max-w-lg space-y-5">
