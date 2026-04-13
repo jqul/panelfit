@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  X, Save, ChevronLeft, ChevronRight, FileText, Dumbbell, Settings,
+  X, Save, ChevronLeft, FileText, Dumbbell, Settings,
   ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
-  CheckCircle2, ClipboardCheck, Camera
+  CheckCircle2, ClipboardCheck, Link, MessageCircle,
+  LayoutDashboard
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
@@ -14,7 +15,6 @@ import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
-import { supabase as _supabase } from '../../lib/supabase'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
@@ -29,14 +29,14 @@ interface Props {
   demoLogs?: any
 }
 
-const TABS: { id: Tab; icon: React.ElementType; label: string }[] = [
-  { id: 'plan',     icon: Dumbbell,       label: 'Plan' },
-  { id: 'dieta',    icon: FileText,       label: 'Dieta' },
-  { id: 'vista',    icon: Eye,            label: 'Vista' },
-  { id: 'entrenos', icon: ClipboardList,  label: 'Entrenos' },
-  { id: 'progreso', icon: TrendingUp,     label: 'Progreso' },
-  { id: 'notas',    icon: StickyNote,     label: 'Notas' },
-  { id: 'config',   icon: Settings,       label: 'Config' },
+const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] = [
+  { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
+  { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
+  { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
+  { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
+  { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
+  { id: 'notas',    icon: StickyNote,    label: 'Notas',     desc: 'Notas privadas' },
+  { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
 ]
 
 function loadTemplates(trainerId: string): TrainingTemplate[] {
@@ -73,22 +73,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
   const loadData = async () => {
     setLoading(true)
-    // Modo demo: usar datos mock directamente
-    if (demoPlan) {
-      setPlan(demoPlan)
-      if (demoLogs) setLogs(demoLogs)
-      setLoading(false)
-      return
-    }
-    const { data: planData, error: planErr } = await supabase
-      .from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+    if (demoPlan) { setPlan(demoPlan); if (demoLogs) setLogs(demoLogs); setLoading(false); return }
+    const { data: planData, error: planErr } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
     if (planErr) logError('loadPlan', planErr)
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
     else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
-
-    const { data: regData, error: regErr } = await supabase
-      .from('registros').select('logs').eq('clientId', client.id).maybeSingle()
+    const { data: regData, error: regErr } = await supabase.from('registros').select('logs').eq('clientId', client.id).maybeSingle()
     if (regErr) logError('loadRegistros', regErr)
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
@@ -96,78 +87,38 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   }
 
   const handlePlanChange = (newPlan: TrainingPlan) => {
-    setPlan(newPlan)
-    pendingPlan.current = newPlan
-    clearTimeout(saveTimer.current)
-    setSaveState('pending')
+    setPlan(newPlan); pendingPlan.current = newPlan
+    clearTimeout(saveTimer.current); setSaveState('pending')
     saveTimer.current = setTimeout(() => savePlan(newPlan), 1500)
   }
 
   const savePlan = async (planToSave?: TrainingPlan) => {
-    const p = planToSave || pendingPlan.current || plan
-    if (!p) return
+    const p = planToSave || pendingPlan.current || plan; if (!p) return
     setSaveState('saving')
-    // Modo demo: simular guardado sin Supabase
-    if (demoPlan !== undefined) {
-      setSaveState('saved')
-      setTimeout(() => setSaveState('idle'), 2000)
-      return
-    }
-    const { error: updateError } = await supabase
-      .from('planes')
-      .update({ plan: { P: p }, updatedAt: Date.now() })
-      .eq('clientId', client.id)
+    if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
+    const { error: updateError } = await supabase.from('planes').update({ plan: { P: p }, updatedAt: Date.now() }).eq('clientId', client.id)
     if (updateError) {
-      const { error: insertError } = await supabase
-        .from('planes')
-        .insert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
-      if (insertError) {
-        logError('savePlan', insertError)
-        setSaveState('error')
-        toast('Error al guardar. Reintentando...', 'warn')
-        setTimeout(() => savePlan(p), 3000)
-        return
-      }
+      const { error: insertError } = await supabase.from('planes').insert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
+      if (insertError) { logError('savePlan', insertError); setSaveState('error'); return }
     }
-    setSaveState('saved')
-    setTimeout(() => setSaveState('idle'), 2000)
+    setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
   }
 
   const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
     if (!plan) return
-
-    // Calcular qué semana es la actual basándose en la fecha de inicio
     const inicio = new Date(fechaInicio + 'T00:00:00')
-    const hoy = new Date()
-    const diasDesdeInicio = Math.max(0, Math.floor((hoy.getTime() - inicio.getTime()) / 86400000))
-    const semanaActual = Math.min(Math.floor(diasDesdeInicio / 7), template.weeks.length - 1)
-
+    const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+    const semanaActual = Math.min(Math.floor(dias / 7), template.weeks.length - 1)
     const weeks = JSON.parse(JSON.stringify(template.weeks))
     weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
-
-    const newPlan: TrainingPlan = {
-      ...plan,
-      type: template.type,
-      weeks,
-      fechaInicio,
-      autoCheckin,
-    } as any
-
-    setPlan(newPlan)
-    savePlan(newPlan)
-
-    // Regla A: mensaje de bienvenida automático
+    const newPlan: TrainingPlan = { ...plan, type: template.type, weeks, fechaInicio, autoCheckin } as any
+    setPlan(newPlan); savePlan(newPlan)
     if (autoWelcome) {
       const url = `${window.location.origin}?c=${client.token}`
-      const msg = encodeURIComponent(
-        `Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa de entrenamiento. ¡Ya puedes verlo en tu panel!\n\n${url}\n\n💪 ¡Vamos a por ello!`
-      )
+      const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa. Ya puedes verlo:\n\n${url}\n\n💪`)
       setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
     }
-
-    setShowTemplates(false)
-    setWizardStep(1)
-    setWizardTemplate(null)
+    setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
     toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
   }
 
@@ -177,158 +128,160 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     return null
   }
 
+  const clientUrl = `${window.location.origin}?c=${client.token}`
+  const totalExs = plan?.weeks?.reduce((a, w) => a + w.days.reduce((b, d) => b + d.exercises.length, 0), 0) || 0
+  const completedExs = Object.values(logs).filter(l => l.done).length
+  const activeWeek = plan?.weeks?.find(w => w.isCurrent) || plan?.weeks?.[0]
+  const adherencia = plan?.weeks?.length
+    ? Math.round(completedExs / Math.max(totalExs, 1) * 100)
+    : 0
+
   return (
-    <div className="fixed inset-0 z-50 bg-bg flex flex-col animate-fade-in">
-      <header className="bg-card border-b border-border flex-shrink-0">
-        <div className="flex items-center h-14 px-4 gap-3">
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
-            <ChevronLeft className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden">
+
+      {/* ── SIDEBAR IZQUIERDO ── */}
+      <aside className="w-56 flex-shrink-0 bg-card border-r border-border flex flex-col">
+        {/* Back + nombre */}
+        <div className="px-4 py-4 border-b border-border">
+          <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm">
+            <ChevronLeft className="w-4 h-4" /> Volver
           </button>
-          <div className="flex items-center gap-2.5 mr-2">
-            <div className="w-8 h-8 rounded-full bg-bg-alt border border-border flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent font-bold flex-shrink-0">
               {client.name?.[0]?.toUpperCase()}
             </div>
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold leading-tight">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted capitalize">{plan?.type || 'Sin tipo'}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
+              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || 'Sin tipo'}</p>
             </div>
           </div>
-          <nav className="flex-1 flex items-stretch overflow-x-auto scrollbar-hide">
-            {TABS.map(({ id, icon: Icon, label }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-3 h-14 text-xs font-medium whitespace-nowrap border-b-2 transition-all ${
-                  activeTab === id ? 'border-ink text-ink font-semibold' : 'border-transparent text-muted hover:text-ink'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className={`text-xs hidden sm:block transition-all ${
-              saveState === 'pending' ? 'text-muted' :
-              saveState === 'saving'  ? 'text-accent animate-pulse' :
-              saveState === 'saved'   ? 'text-ok' :
-              saveState === 'error'   ? 'text-warn' : 'opacity-0'
+        </div>
+
+        {/* Stats cliente */}
+        <div className="px-4 py-3 border-b border-border grid grid-cols-2 gap-2">
+          {[
+            { label: 'Semanas', value: plan?.weeks?.length || 0 },
+            { label: 'Ejercicios', value: totalExs },
+            { label: 'Completados', value: completedExs },
+            { label: 'Adherencia', value: `${adherencia}%` },
+          ].map(s => (
+            <div key={s.label} className="bg-bg rounded-xl p-2 text-center">
+              <p className="font-serif font-bold text-base text-ink">{s.value}</p>
+              <p className="text-[9px] text-muted uppercase tracking-wider">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Nav tabs vertical */}
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          {TABS.map(({ id, icon: Icon, label, desc }) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${
+                activeTab === id
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:bg-bg-alt hover:text-ink'
+              }`}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-tight">{label}</p>
+                <p className={`text-[10px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
+              </div>
+            </button>
+          ))}
+        </nav>
+
+        {/* Acciones rápidas */}
+        <div className="p-3 border-t border-border space-y-2">
+          <button onClick={() => { navigator.clipboard.writeText(clientUrl); toast('Enlace copiado ✓', 'ok') }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-muted border border-border rounded-xl hover:border-accent hover:text-accent transition-colors">
+            <Link className="w-3.5 h-3.5" /> Copiar enlace
+          </button>
+          <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)}`, '_blank')}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-xl hover:bg-[#25D366]/5 transition-colors">
+            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+          </button>
+        </div>
+      </aside>
+
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top bar */}
+        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-6">
+          <div>
+            <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
+            <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs transition-all ${
+              saveState === 'saving' ? 'text-accent animate-pulse' :
+              saveState === 'saved'  ? 'text-ok' :
+              saveState === 'error'  ? 'text-warn' : 'opacity-0'
             }`}>
-              {saveState === 'pending' ? '...' :
-               saveState === 'saving'  ? 'Guardando...' :
-               saveState === 'saved'   ? '✓ Guardado' :
-               saveState === 'error'   ? '✗ Error' : ''}
+              {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
+            {activeTab === 'plan' && templates.length > 0 && (
+              <button onClick={() => setShowTemplates(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+                <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
+              </button>
+            )}
             <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
-              <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
+              <Save className="w-3.5 h-3.5" /> Guardar
             </Button>
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        <aside className="hidden lg:flex flex-col w-48 flex-shrink-0 bg-card border-r border-border overflow-y-auto">
-          <div className="p-5 text-center border-b border-border">
-            <div className="w-14 h-14 rounded-full bg-bg-alt border-2 border-border flex items-center justify-center font-serif text-2xl text-accent mx-auto mb-2">
-              {client.name?.[0]?.toUpperCase()}
+        {/* Contenido tab */}
+        <main className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-6 space-y-4">
+              <div className="h-8 w-48 bg-card border border-border rounded-lg animate-pulse" />
+              <div className="h-48 bg-card border border-border rounded-2xl animate-pulse" />
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-card border border-border rounded-xl animate-pulse" />)}</div>
             </div>
-            <h3 className="font-serif font-bold text-sm">{client.name} {client.surname}</h3>
-            <p className="text-[10px] text-muted mt-0.5 capitalize">{plan?.type || '—'}</p>
-          </div>
-          <div className="p-4 space-y-2 border-b border-border text-xs">
-            <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan?.weeks?.length || 0}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Ejercicios</span>
-              <span className="font-semibold">{plan?.weeks?.reduce((a, w) => a + w.days.reduce((b, d) => b + d.exercises.length, 0), 0) || 0}</span>
+          ) : (
+            <div className="p-6 h-full">
+              {activeTab === 'plan' && plan && (
+                <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
+                  allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient} />
+              )}
+              {activeTab === 'dieta' && (
+                <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />
+              )}
+              {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
+              {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
+              {activeTab === 'progreso' && <ProgresoTab client={client} />}
+              {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
+              {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
             </div>
-            <div className="flex justify-between"><span className="text-muted">Completados</span>
-              <span className="font-semibold text-ok">{Object.values(logs).filter(l => l.done).length}</span>
-            </div>
-          </div>
-          <div className="p-3 mt-auto space-y-2">
-            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}`); toast('Enlace copiado ✓', 'ok') }}
-              className="w-full text-[11px] font-semibold text-accent border border-accent/30 rounded-lg py-2 hover:bg-accent/5 transition-colors">
-              🔗 Copiar enlace
-            </button>
-            <button onClick={() => {
-              const url = `${window.location.origin}?c=${client.token}`
-              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)
-              window.open(`https://wa.me/?text=${msg}`, '_blank')
-            }} className="w-full text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-lg py-2 hover:bg-[#25D366]/5 transition-colors">
-              📱 WhatsApp
-            </button>
-          </div>
-        </aside>
-
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="w-full h-full">
-            {loading ? (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  {[1,2,3].map(i => <div key={i} className="h-8 w-24 bg-card border border-border rounded-lg animate-pulse" />)}
-                </div>
-                <div className="h-48 bg-card border border-border rounded-2xl animate-pulse" />
-                <div className="space-y-2">
-                  {[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />)}
-                </div>
-              </div>
-            ) : (
-              <>
-                {activeTab === 'plan' && plan && (
-                  <div className="space-y-4">
-                    {/* Botón aplicar plantilla */}
-                    {templates.length > 0 && (
-                      <div className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3">
-                        <div>
-                          <p className="text-sm font-semibold">Aplicar plantilla</p>
-                          <p className="text-xs text-muted">{templates.length} plantilla{templates.length !== 1 ? 's' : ''} disponible{templates.length !== 1 ? 's' : ''}</p>
-                        </div>
-                        <button onClick={() => setShowTemplates(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity">
-                          <ClipboardCheck className="w-4 h-4" /> Elegir plantilla
-                        </button>
-                      </div>
-                    )}
-                    <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
-                      allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient} />
-                  </div>
-                )}
-                {activeTab === 'dieta' && <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />}
-                {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
-                {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
-                {activeTab === 'progreso' && <ProgresoTab client={client} />}                {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
-                {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
-              </>
-            )}
-          </div>
+          )}
         </main>
       </div>
 
-      {/* Wizard de plantilla — 3 pasos */}
+      {/* Wizard plantilla */}
       <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
-        title={wizardStep === 1 ? 'Paso 1 — Elegir plantilla' : wizardStep === 2 ? 'Paso 2 — Calendario' : 'Paso 3 — Automatizaciones'}>
-        
-        {/* Indicador de pasos */}
-        <div className="flex items-center gap-2 mb-4">
-          {[1,2,3].map(s => (
-            <div key={s} className={`flex-1 h-1.5 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />
-          ))}
+        title={wizardStep === 1 ? 'Elegir plantilla' : wizardStep === 2 ? 'Fecha de inicio' : 'Automatizaciones'}>
+        <div className="flex gap-1.5 mb-5">
+          {[1,2,3].map(s => <div key={s} className={`flex-1 h-1 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />)}
         </div>
 
         {wizardStep === 1 && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted">Selecciona la plantilla base para este cliente.</p>
+          <div className="space-y-2">
+            <p className="text-sm text-muted mb-3">Selecciona la plantilla base para este cliente.</p>
             {templates.map(t => (
               <button key={t.id} onClick={() => { setWizardTemplate(t); setWizardStep(2) }}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent hover:bg-bg-alt transition-all text-left">
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
                 <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
                   <ClipboardList className="w-4 h-4 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{t.name}</p>
-                  <p className="text-xs text-muted">{t.weeks.length} sem · {t.weeks.reduce((a, w) => a + w.days.length, 0)} días · {t.type}</p>
+                  <p className="text-xs text-muted">{t.weeks.length} sem · {t.type}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
               </button>
             ))}
           </div>
@@ -336,35 +289,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
         {wizardStep === 2 && wizardTemplate && (
           <div className="space-y-4">
-            <div className="bg-bg border border-border rounded-xl p-3 flex items-center gap-3">
-              <ClipboardList className="w-4 h-4 text-accent flex-shrink-0" />
-              <p className="text-sm font-semibold">{wizardTemplate.name}</p>
-            </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fecha de inicio</label>
               <input type="date" value={wizardFechaInicio} onChange={e => setWizardFechaInicio(e.target.value)}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
-              />
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
               <p className="text-xs text-muted mt-1.5">
-                El sistema activará automáticamente la semana correcta según esta fecha.
                 {(() => {
                   const inicio = new Date(wizardFechaInicio + 'T00:00:00')
                   const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
                   const sem = Math.min(Math.floor(dias / 7) + 1, wizardTemplate.weeks.length)
-                  return ` Hoy sería la semana ${sem} de ${wizardTemplate.weeks.length}.`
+                  return `Hoy sería la semana ${sem} de ${wizardTemplate.weeks.length}.`
                 })()}
               </p>
             </div>
-            {trainerEsp.length > 0 && (
-              <div className="bg-bg border border-border rounded-xl p-3 space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Bloques sugeridos para tu especialidad</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {BLOQUES_POR_ESPECIALIDAD[trainerEsp[0]]?.map(b => (
-                    <span key={b} className="text-xs bg-card border border-border px-2 py-1 rounded-lg text-muted">{b}</span>
-                  ))}
-                </div>
-              </div>
-            )}
             <div className="flex gap-2">
               <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
               <button onClick={() => setWizardStep(3)} className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Siguiente →</button>
@@ -375,20 +312,20 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         {wizardStep === 3 && wizardTemplate && (
           <div className="space-y-4">
             <p className="text-sm text-muted">Activa las automatizaciones para este cliente.</p>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {[
-                { key: 'welcome', label: 'Mensaje de bienvenida', desc: 'Abre WhatsApp con mensaje al asignar el plan', val: wizardAutoWelcome, set: setWizardAutoWelcome, emoji: '👋' },
-                { key: 'checkin', label: 'Check-in semanal', desc: 'Recuérdame enviar encuesta al cerrar cada semana', val: wizardAutoCheckin, set: setWizardAutoCheckin, emoji: '📋' },
+                { label: 'Mensaje de bienvenida', desc: 'Abre WhatsApp al asignar el plan', val: wizardAutoWelcome, set: setWizardAutoWelcome, emoji: '👋' },
+                { label: 'Check-in semanal', desc: 'Recordatorio de encuesta semanal', val: wizardAutoCheckin, set: setWizardAutoCheckin, emoji: '📋' },
               ].map(a => (
-                <div key={a.key} className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer ${a.val ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+                <div key={a.label} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${a.val ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
                   onClick={() => a.set(!a.val)}>
                   <span className="text-xl">{a.emoji}</span>
                   <div className="flex-1">
                     <p className="text-sm font-semibold">{a.label}</p>
                     <p className="text-xs text-muted">{a.desc}</p>
                   </div>
-                  <div className={`w-10 h-6 rounded-full transition-all flex items-center ${a.val ? 'bg-ok' : 'bg-border'}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${a.val ? 'bg-ok' : 'bg-border'}`}>
+                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </div>
               ))}
@@ -405,22 +342,20 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   )
 }
 
-// ── Vista previa ──────────────────────────────────────────
 function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
   if (!plan?.weeks?.length) return (
     <div className="text-center py-16 text-muted">
       <Eye className="w-10 h-10 mx-auto mb-3 opacity-30" />
       <p className="font-serif text-lg">Sin plan asignado</p>
-      <p className="text-sm mt-1">Crea semanas y días en el tab Plan primero.</p>
     </div>
   )
   const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
   const weekIdx = plan.weeks.indexOf(currentWeek)
   return (
-    <div className="space-y-4 max-w-lg">
+    <div className="max-w-2xl space-y-4">
       <div>
-        <h3 className="font-serif font-bold text-lg mb-1">Vista previa — lo que ve el cliente</h3>
-        <p className="text-xs text-muted">Semana: <span className="font-semibold text-ink">{currentWeek.label}</span></p>
+        <h3 className="font-serif font-bold text-lg">Vista del cliente</h3>
+        <p className="text-xs text-muted mt-0.5">Semana activa: <span className="font-semibold text-ink">{currentWeek.label}</span></p>
       </div>
       {currentWeek.days.map((day, di) => {
         const dayKey = `w${weekIdx}_d${di}`
@@ -430,13 +365,10 @@ function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLog
         return (
           <div key={di} className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                pct === 100 ? 'bg-ok text-white' : pct > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-              }`}>{pct === 100 ? '✓' : `${pct}%`}</div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm">{day.title}</p>
-                {day.focus && <p className="text-xs text-muted">{day.focus}</p>}
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${pct === 100 ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>
+                {pct === 100 ? '✓' : `${pct}%`}
               </div>
+              <div className="flex-1"><p className="font-semibold text-sm">{day.title}</p>{day.focus && <p className="text-xs text-muted">{day.focus}</p>}</div>
               <span className="text-xs text-muted">{done}/{total}</span>
             </div>
             <div className="divide-y divide-border">
@@ -444,19 +376,12 @@ function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLog
                 const log = logs[`ex_${dayKey}_r${ri}`]
                 return (
                   <div key={ri} className={`flex items-center gap-3 px-4 py-2.5 ${log?.done ? 'opacity-50' : ''}`}>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>
-                      {log?.done ? '✓' : ri + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{ex.name}</p>
-                      <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>
-                    </div>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>{log?.done ? '✓' : ri + 1}</div>
+                    <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{ex.name}</p><p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p></div>
                     {log?.sets && Object.keys(log.sets).length > 0 && (
                       <div className="flex gap-1 flex-wrap">
                         {Object.values(log.sets).slice(0, 4).map((s, si) => (
-                          <span key={si} className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">
-                            {s.weight}×{s.reps}
-                          </span>
+                          <span key={si} className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
                         ))}
                       </div>
                     )}
@@ -471,7 +396,6 @@ function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLog
   )
 }
 
-// ── Historial entrenos ────────────────────────────────────
 function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | null }) {
   const byDate: Record<string, { exName: string; sets: any; key: string }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
@@ -487,24 +411,19 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
   if (!dates.length) return (
     <div className="text-center py-16 text-muted">
       <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="font-serif text-lg">Sin entrenamientos registrados</p>
-      <p className="text-sm mt-1">El cliente aún no ha completado ningún ejercicio.</p>
+      <p className="font-serif text-lg">Sin entrenamientos aún</p>
     </div>
   )
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="font-serif font-bold text-lg">Historial de entrenos</h3>
-        <p className="text-xs text-muted mt-0.5">{dates.length} días con actividad</p>
-      </div>
+    <div className="max-w-2xl space-y-4">
+      <div><h3 className="font-serif font-bold text-lg">Historial</h3><p className="text-xs text-muted">{dates.length} días con actividad</p></div>
       {dates.map(fecha => {
         const items = byDate[fecha]
-        const fmtFecha = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
         return (
           <div key={fecha} className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-bg-alt/30">
               <CheckCircle2 className="w-4 h-4 text-ok flex-shrink-0" />
-              <p className="text-sm font-semibold capitalize flex-1">{fmtFecha}</p>
+              <p className="text-sm font-semibold capitalize flex-1">{new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
               <span className="text-xs text-muted">{items.length} ejercicios</span>
             </div>
             <div className="divide-y divide-border">
@@ -513,31 +432,14 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
                 const mejor = setsArr.reduce((max: number, s: any) => Math.max(max, parseFloat(s.weight) || 0), 0)
                 return (
                   <div key={key} className="flex items-center gap-3 px-4 py-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0">
-                      <Dumbbell className="w-3.5 h-3.5 text-muted" />
-                    </div>
+                    <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0"><Dumbbell className="w-3.5 h-3.5 text-muted" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{exName}</p>
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                        {setsArr.map((s: any, si: number) => (
-                          <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded font-medium">
-                            {s.weight}kg × {s.reps}
-                          </span>
-                        ))}
+                        {setsArr.map((s: any, si: number) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}</span>)}
                       </div>
                     </div>
-                    {(logs[key] as any)?.videoEjecucion && (
-                      <a href={(logs[key] as any).videoEjecucion} target="_blank" rel="noreferrer"
-                        className="flex-shrink-0 w-12 h-9 rounded-lg overflow-hidden border border-border hover:border-accent transition-colors">
-                        <video src={(logs[key] as any).videoEjecucion} className="w-full h-full object-cover" />
-                      </a>
-                    )}
-                    {mejor > 0 && (
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs font-bold text-accent">{mejor} kg</p>
-                        <p className="text-[9px] text-muted">mejor</p>
-                      </div>
-                    )}
+                    {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[9px] text-muted">mejor</p></div>}
                   </div>
                 )
               })}
@@ -549,283 +451,134 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
   )
 }
 
-// ── Notas ─────────────────────────────────────────────────
 function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   if (!plan) return null
   const TAGS = ['⚠️ Lesión', '🔥 Alta intensidad', '🐢 Progreso lento', '⭐ Cliente VIP', '📞 Llamar esta semana']
   return (
-    <div className="space-y-4 max-w-lg">
-      <h3 className="font-serif font-bold text-lg mb-1">Notas privadas</h3>
-      <p className="text-xs text-muted mb-3">Solo las ves tú.</p>
-      <textarea rows={8} value={plan.coachNotes || ''}
-        onChange={e => onChange({ ...plan, coachNotes: e.target.value })}
+    <div className="max-w-lg space-y-4">
+      <div><h3 className="font-serif font-bold text-lg">Notas privadas</h3><p className="text-xs text-muted">Solo las ves tú.</p></div>
+      <textarea rows={10} value={plan.coachNotes || ''} onChange={e => onChange({ ...plan, coachNotes: e.target.value })}
         placeholder="Ej: Cuidado con la rodilla izquierda..."
-        className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none leading-relaxed"
-      />
+        className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
       <div className="flex flex-wrap gap-2">
         {TAGS.map(tag => (
           <button key={tag} onClick={() => onChange({ ...plan, coachNotes: (plan.coachNotes || '') + '\n[' + tag + '] ' })}
-            className="px-3 py-1.5 text-xs border border-border rounded-lg hover:border-accent hover:text-accent transition-colors">
-            {tag}
-          </button>
+            className="px-3 py-1.5 text-xs border border-border rounded-lg hover:border-accent hover:text-accent transition-colors">{tag}</button>
         ))}
       </div>
     </div>
   )
 }
 
-// ── Config ────────────────────────────────────────────────
 function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
-  const [pin, setPin] = useState(plan?.pin || '')
-  const [savingPin, setSavingPin] = useState(false)
+  const [pin, setPin] = useState((plan as any)?.pin || '')
 
   const revokeToken = async () => {
     setRevoking(true)
     const token = crypto.randomUUID().replace(/-/g, '')
     const { error } = await supabase.from('clientes').update({ token }).eq('id', client.id)
-    if (error) { toast('Error al regenerar enlace', 'warn') }
-    else {
-      setNewToken(token)
-      toast('Enlace regenerado ✓ El enlace anterior ya no funciona.', 'ok')
-      setShowRevoke(false)
-    }
+    if (error) toast('Error al regenerar enlace', 'warn')
+    else { setNewToken(token); toast('Enlace regenerado ✓', 'ok'); setShowRevoke(false) }
     setRevoking(false)
   }
 
-  const savePin = () => {
-    if (pin && (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin))) {
-      toast('El PIN debe ser 4-6 dígitos numéricos', 'warn'); return
-    }
-    if (!plan) return
-    onChange({ ...plan, pin: pin || undefined } as any)
-    toast(pin ? 'PIN guardado ✓' : 'PIN eliminado ✓', 'ok')
-  }
-
   const currentUrl = `${window.location.origin}?c=${newToken}`
-
   if (!plan) return null
-  
-  const toggleAuto = (key: string, val: boolean) => onChange({ ...plan, [key]: val } as TrainingPlan)
 
   return (
-    <div className="space-y-5 max-w-lg">
+    <div className="max-w-lg space-y-5">
       <h3 className="font-serif font-bold text-lg">Configuración</h3>
 
-      {/* AUTOMATIZACIONES */}
+      {/* Automatizaciones */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold">Automatizaciones</h4>
-          <p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p>
-        </div>
+        <div><h4 className="text-sm font-semibold">Automatizaciones</h4><p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p></div>
         {[
           { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
           { key: 'autoCheckin', label: 'Check-in semanal', desc: 'Recordatorio de encuesta al cerrar semana', emoji: '📋' },
-          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: 'WhatsApp si lleva +3 días sin entrenar', emoji: '⚠️' },
+          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: '+3 días sin entrenar → WhatsApp', emoji: '⚠️' },
         ].map(a => (
-          <div key={a.key}
-            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(plan as any)[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
-            onClick={() => toggleAuto(a.key, !(plan as any)[a.key])}>
-            <span className="text-lg flex-shrink-0">{a.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold">{a.label}</p>
-              <p className="text-xs text-muted">{a.desc}</p>
-            </div>
-            <div className={`w-10 h-6 rounded-full transition-all flex-shrink-0 flex items-center px-0.5 ${(plan as any)[a.key] ? 'bg-ok' : 'bg-border'}`}>
+          <div key={a.key} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(plan as any)[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+            onClick={() => onChange({ ...plan, [a.key]: !(plan as any)[a.key] } as TrainingPlan)}>
+            <span className="text-lg">{a.emoji}</span>
+            <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
+            <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${(plan as any)[a.key] ? 'bg-ok' : 'bg-border'}`}>
               <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${(plan as any)[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
           </div>
         ))}
-
-        {/* Próxima acción automática */}
-        {plan.fechaInicio && (
-          <div className="pt-2 border-t border-border">
-            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Próxima acción</p>
-            {(() => {
-              const inicio = new Date(plan.fechaInicio + 'T00:00:00')
-              const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-              const diasParaCheckin = 7 - (dias % 7)
-              return (
-                <div className="flex items-center gap-2 text-xs text-muted">
-                  <span>📋</span>
-                  <span>Check-in en <strong className="text-ink">{diasParaCheckin === 7 ? 'hoy' : `${diasParaCheckin} días`}</strong> — cierre de semana {Math.floor(dias / 7) + 1}</span>
-                </div>
-              )
-            })()}
-          </div>
-        )}
       </div>
 
-      {/* Tiempos descanso */}
+      {/* Descansos */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <h4 className="text-sm font-semibold">Tiempos de descanso</h4>
         {([['restMain', 'Principal (seg)'], ['restAcc', 'Accesorio (seg)'], ['restWarn', 'Aviso (seg)']] as const).map(([key, label]) => (
           <div key={key} className="flex items-center justify-between gap-4">
             <label className="text-sm text-muted">{label}</label>
-            <input type="number" value={plan[key]}
-              onChange={e => onChange({ ...plan, [key]: Number(e.target.value) })}
-              className="w-24 text-center px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-            />
+            <input type="number" value={plan[key]} onChange={e => onChange({ ...plan, [key]: Number(e.target.value) })}
+              className="w-24 text-center px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
         ))}
-      </div>
-
-      {/* Días de entrenamiento */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-        <div>
-          <h4 className="text-sm font-semibold">Días de entrenamiento</h4>
-          <p className="text-xs text-muted mt-0.5">El cliente podrá elegir qué días entrena según su disponibilidad.</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Días por semana</label>
-          <div className="flex gap-2">
-            {[2, 3, 4, 5, 6].map(n => (
-              <button key={n} onClick={() => onChange({ ...plan, diasSemana: n } as any)}
-                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${(plan as any).diasSemana === n ? 'bg-ink text-white' : 'bg-bg border border-border text-muted'}`}>
-                {n}
-              </button>
-            ))}
-          </div>
-          {(plan as any).diasSemana && (
-            <p className="text-xs text-muted mt-1.5">
-              El cliente verá un selector para elegir {(plan as any).diasSemana} días de los 7.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Mensaje */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
         <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
-        <p className="text-xs text-muted">Se muestra en la pantalla principal del cliente. Puedes usar una plantilla global o escribir uno personalizado.</p>
-        {(() => {
-          const LS_KEY = `pf_msg_plantillas_${client.trainerId}`
-          const plantillas = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') } catch { return [] } })()
-          if (!plantillas.length) return null
-          return (
-            <select onChange={e => { if (e.target.value) onChange({ ...plan, message: e.target.value }) }}
-              className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none text-muted">
-              <option value="">Usar plantilla global...</option>
-              {plantillas.filter((p: any) => p.tipo === 'bienvenida' || p.tipo === 'personalizado').map((p: any) => (
-                <option key={p.id} value={p.texto}>{p.nombre}</option>
-              ))}
-            </select>
-          )
-        })()}
-        <textarea rows={3} value={plan.message || ''}
-          onChange={e => onChange({ ...plan, message: e.target.value })}
-          placeholder="Mensaje motivacional que verá el cliente..."
-          className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-        />
+        <textarea rows={3} value={plan.message || ''} onChange={e => onChange({ ...plan, message: e.target.value })}
+          placeholder="Mensaje motivacional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
       </div>
 
-      {/* Acceso y seguridad */}
+      {/* Acceso */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <h4 className="text-sm font-semibold">Acceso del cliente</h4>
-
-        {/* URL actual */}
         <div className="flex gap-2">
-          <input readOnly value={currentUrl}
-            className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs text-muted outline-none font-mono"
-          />
-          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(currentUrl); toast('Copiado ✓', 'ok') }}>
-            Copiar
-          </Button>
+          <input readOnly value={currentUrl} className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs text-muted outline-none font-mono" />
+          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(currentUrl); toast('Copiado ✓', 'ok') }}>Copiar</Button>
         </div>
-
-        {/* WhatsApp */}
-        <button onClick={() => {
-          const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${currentUrl}\n\n💪`)
-          window.open(`https://wa.me/?text=${msg}`, '_blank')
-        }} className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\n${currentUrl}\n\n💪`)}`, '_blank')}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">
           📱 Enviar por WhatsApp
         </button>
-
-        {/* PIN opcional */}
-        <div className="border-t border-border pt-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold">PIN de acceso</p>
-              <p className="text-xs text-muted">4-6 dígitos. El cliente lo necesitará para entrar.</p>
+        {!showRevoke ? (
+          <button onClick={() => setShowRevoke(true)} className="w-full py-2.5 border border-warn/30 text-warn rounded-xl text-sm font-semibold hover:bg-warn/5">🔒 Regenerar enlace</button>
+        ) : (
+          <div className="bg-warn/5 border border-warn/20 rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-warn">⚠️ El enlace actual dejará de funcionar</p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowRevoke(false)} className="flex-1 py-2 border border-border rounded-lg text-sm text-muted">Cancelar</button>
+              <button onClick={revokeToken} disabled={revoking} className="flex-1 py-2 bg-warn text-white rounded-lg text-sm font-semibold disabled:opacity-50">
+                {revoking ? 'Regenerando...' : 'Sí, revocar'}
+              </button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <input type="number" value={pin} onChange={e => setPin(e.target.value)}
-              placeholder="Sin PIN (acceso libre)"
-              maxLength={6}
-              className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"
-            />
-            <Button variant="outline" size="sm" onClick={savePin}>
-              {pin ? 'Guardar PIN' : 'Sin PIN'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Revocar enlace */}
-        <div className="border-t border-border pt-4 space-y-2">
-          <div>
-            <p className="text-sm font-semibold text-warn">Revocar enlace actual</p>
-            <p className="text-xs text-muted">Genera un nuevo enlace. El anterior dejará de funcionar inmediatamente.</p>
-          </div>
-          {!showRevoke ? (
-            <button onClick={() => setShowRevoke(true)}
-              className="w-full py-2.5 border border-warn/30 text-warn rounded-xl text-sm font-semibold hover:bg-warn/5 transition-colors">
-              🔒 Regenerar enlace de acceso
-            </button>
-          ) : (
-            <div className="bg-warn/5 border border-warn/20 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-semibold text-warn">⚠️ ¿Estás seguro?</p>
-              <p className="text-xs text-muted">El enlace actual dejará de funcionar. Tendrás que enviar el nuevo al cliente.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setShowRevoke(false)}
-                  className="flex-1 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
-                  Cancelar
-                </button>
-                <button onClick={revokeToken} disabled={revoking}
-                  className="flex-1 py-2 bg-warn text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-                  {revoking ? 'Regenerando...' : 'Sí, revocar'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   )
 }
 
-// ── Dieta: macros rápidos + plan completo ────────────────
 function DietaTabEntrenador({ clientId, plan, onChange }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
-
-  const updateMacros = (updates: any) => {
-    if (!plan) return
-    onChange({ ...plan, macros: { ...macros, ...updates } } as any)
-  }
+  const updateMacros = (updates: any) => { if (!plan) return; onChange({ ...plan, macros: { ...macros, ...updates } } as any) }
 
   return (
-    <div className="space-y-4 max-w-lg">
+    <div className="max-w-lg space-y-4">
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
-        <button onClick={() => setSubtab('macros')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'macros' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          📊 Macros
-        </button>
-        <button onClick={() => setSubtab('plan')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'plan' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          🍽️ Plan completo
-        </button>
+        {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
+          <button key={t.id} onClick={() => setSubtab(t.id as any)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === t.id ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {subtab === 'macros' && (
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold">Objetivos nutricionales diarios</h4>
-              <p className="text-xs text-muted mt-0.5">El cliente verá estos macros en su panel aunque no tengas plan de comidas detallado.</p>
-            </div>
+            <div><h4 className="text-sm font-semibold">Objetivos diarios</h4><p className="text-xs text-muted mt-0.5">El cliente verá estos macros en su panel.</p></div>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { key: 'kcal', label: 'Calorías', unit: 'kcal', color: 'text-warn' },
@@ -836,48 +589,18 @@ function DietaTabEntrenador({ clientId, plan, onChange }: { clientId: string; pl
                 <div key={key} className="bg-bg border border-border rounded-xl p-3">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{label}</label>
                   <div className="flex items-baseline gap-1">
-                    <input type="number" value={macros[key] || ''}
-                      onChange={e => updateMacros({ [key]: Number(e.target.value) })}
-                      placeholder="0"
-                      className={`w-full text-xl font-serif font-bold bg-transparent outline-none ${color}`}
-                    />
+                    <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
+                      placeholder="0" className={`w-full text-xl font-serif font-bold bg-transparent outline-none ${color}`} />
                     <span className="text-xs text-muted">{unit}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nota nutricional</label>
-              <textarea rows={3} value={macros.notaMacros || ''}
-                onChange={e => updateMacros({ notaMacros: e.target.value })}
-                placeholder="Ej: Come en ventana de 8h, prioriza proteína en desayuno y post-entreno..."
-                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-              />
-            </div>
+            <textarea rows={3} value={macros.notaMacros || ''} onChange={e => updateMacros({ notaMacros: e.target.value })}
+              placeholder="Nota nutricional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
           </div>
-
-          {/* Preview */}
-          {macros.kcal > 0 && (
-            <div className="bg-ok/5 border border-ok/20 rounded-2xl p-4">
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Así lo verá el cliente</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'Kcal', value: macros.kcal, color: 'text-warn' },
-                  { label: 'Prot', value: `${macros.protein}g`, color: 'text-ok' },
-                  { label: 'Carbs', value: `${macros.carbs}g`, color: 'text-accent' },
-                  { label: 'Grasas', value: `${macros.fats}g`, color: 'text-muted' },
-                ].map(m => (
-                  <div key={m.label} className="text-center">
-                    <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
-                    <p className="text-[10px] text-muted">{m.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
-
       {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
     </div>
   )
