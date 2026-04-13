@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
+  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon, TrendingUp,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save
@@ -15,9 +15,11 @@ import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
 import { MensajesTab } from './MensajesTab'
+import { InsightsTab } from './InsightsTab'
+import { AdherenciaTab } from './AdherenciaTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface ClientWithStats extends ClientData {
@@ -44,6 +46,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const library = useExerciseLibrary(userProfile.uid)
+  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
 
   const fetchClients = async () => {
     setLoading(true)
@@ -59,6 +62,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       const { data: planes } = await supabase.from('planes').select('clientId,plan').in('clientId', ids)
       const planMap: Record<string, boolean> = {}
       ;(planes || []).forEach((p: any) => { planMap[p.clientId] = !!(p.plan?.P?.weeks?.length) })
+      const lm: Record<string, any> = {}
+      ;(regs || []).forEach((r: any) => { lm[r.clientId] = r.logs || {} })
+      setLogsMap(lm)
       setClients(mapped.map(c => {
         const reg = (regs || []).find((r: any) => r.clientId === c.id)
         const logs = reg?.logs || {}
@@ -133,6 +139,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     { id: 'templates', icon: ClipboardList,   label: 'Plantillas' },
     { id: 'settings',  icon: SettingsIcon,    label: 'Ajustes' },
     { id: 'mensajes',  icon: MessageCircle,    label: 'Mensajes' },
+    { id: 'insights',  icon: BarChart2,         label: 'Insights' },
+    { id: 'adherencia', icon: TrendingUp,        label: 'Adherencia' },
   ]
 
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
@@ -397,6 +405,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
+          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
         </div>
       </main>
 
