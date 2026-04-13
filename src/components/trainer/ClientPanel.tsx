@@ -260,8 +260,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           </div>
         </aside>
 
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-4xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <div className="w-full h-full">
             {loading ? (
               <div className="space-y-4">
                 <div className="flex gap-2">
