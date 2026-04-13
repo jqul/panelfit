@@ -14,9 +14,10 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
+import { MensajesTab } from './MensajesTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface ClientWithStats extends ClientData {
@@ -131,6 +132,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     { id: 'exercises', icon: Dumbbell,        label: 'Ejercicios' },
     { id: 'templates', icon: ClipboardList,   label: 'Plantillas' },
     { id: 'settings',  icon: SettingsIcon,    label: 'Ajustes' },
+    { id: 'mensajes',  icon: MessageCircle,    label: 'Mensajes' },
   ]
 
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
@@ -394,6 +396,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e) => library.addExercise(n,d,c,v,e)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
+          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
         </div>
       </main>
 
