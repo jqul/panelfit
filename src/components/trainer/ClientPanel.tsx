@@ -577,8 +577,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
 
   const calcMacros = () => {
     const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
-    if (!p || !h || !e) return
-    // TMB Harris-Benedict
+    if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
     const tmb = sexo === 'h'
       ? 88.362 + (13.397 * p) + (4.799 * h) - (5.677 * e)
       : 447.593 + (9.247 * p) + (3.098 * h) - (4.330 * e)
@@ -586,9 +585,9 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
     const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
     const protG = Math.round(p * ratio)
     const fatG = Math.round(p * 1.0)
-    const carbsKcal = kcalObj - (protG * 4) - (fatG * 9)
-    const carbsG = Math.max(0, Math.round(carbsKcal / 4))
+    const carbsG = Math.max(0, Math.round((kcalObj - (protG * 4) - (fatG * 9)) / 4))
     updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
+    toast('Macros calculados ✓', 'ok')
   }
 
   // Gráfica circular SVG
@@ -923,7 +922,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
           </div>
         </div>
       )}
-      {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
+      {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} syncedMacros={{ kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }} onMacrosChange={m => updateMacros(m)} />}
     </div>
   )
 }
