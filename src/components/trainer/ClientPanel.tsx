@@ -639,7 +639,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   ]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h-full">
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
         {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
           <button key={t.id} onClick={() => setSubtab(t.id as any)}
@@ -650,7 +650,9 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       </div>
 
       {subtab === 'macros' && (
-        <div className="space-y-4 max-w-2xl">
+        <div className="flex gap-5">
+          {/* Columna principal */}
+          <div className="flex-1 min-w-0 space-y-4">
 
           {/* Panel visual de macros */}
           <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -834,6 +836,91 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
               )}
             </div>
           )}
+          </div>{/* fin columna principal */}
+
+          {/* Columna derecha contextual */}
+          <div className="w-72 flex-shrink-0 space-y-4">
+            {/* Distribución por comidas */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-4">Distribución por comidas</h4>
+              {macros.kcal > 0 ? (
+                <div className="space-y-3">
+                  {[
+                    { label: 'Desayuno', pct: 0.25, icon: '🌅' },
+                    { label: 'Media mañana', pct: 0.15, icon: '🍎' },
+                    { label: 'Comida', pct: 0.35, icon: '🍽️' },
+                    { label: 'Cena', pct: 0.25, icon: '🌙' },
+                  ].map(m => {
+                    const kcal = Math.round(macros.kcal * m.pct)
+                    const prot = Math.round(macros.protein * m.pct)
+                    const carbs = Math.round(macros.carbs * m.pct)
+                    return (
+                      <div key={m.label} className="flex items-center gap-3">
+                        <span className="text-base flex-shrink-0">{m.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between mb-1">
+                            <p className="text-xs font-semibold">{m.label}</p>
+                            <p className="text-xs text-muted">{kcal} kcal</p>
+                          </div>
+                          <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
+                            <div className="h-full bg-accent rounded-full" style={{ width: `${m.pct * 100}%` }} />
+                          </div>
+                          <p className="text-[9px] text-muted mt-0.5">{prot}g prot · {carbs}g carbs</p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-muted text-center py-4">Introduce las calorías para ver la distribución</p>
+              )}
+            </div>
+
+            {/* Suplementación básica */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación básica</h4>
+              <div className="space-y-2">
+                {[
+                  { sup: '💊 Creatina', dosis: '5g diarios', timing: 'Cualquier momento' },
+                  { sup: '🥛 Proteína whey', dosis: 'Si no llegas por comida', timing: 'Post-entreno' },
+                  { sup: '☀️ Vitamina D', dosis: '2000 UI diarias', timing: 'Con comida grasa' },
+                  { sup: '🐟 Omega-3', dosis: '2-3g EPA/DHA', timing: 'Con comidas' },
+                ].map(s => (
+                  <div key={s.sup} className="flex items-start gap-2.5 p-2.5 bg-bg-alt rounded-xl">
+                    <span className="text-sm flex-shrink-0">{s.sup.split(' ')[0]}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold">{s.sup.split(' ').slice(1).join(' ')}</p>
+                      <p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Equivalencias visuales */}
+            {macros.protein > 0 && (
+              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Equivalencias proteína</h4>
+                <div className="space-y-2">
+                  {[
+                    { food: '🍗 Pechuga pollo', per100: 31, icon: '🍗' },
+                    { food: '🥚 Huevo entero', per100: 13, icon: '🥚' },
+                    { food: '🐟 Atún en lata', per100: 25, icon: '🐟' },
+                    { food: '🥛 Queso cottage', per100: 11, icon: '🥛' },
+                  ].map(f => {
+                    const gramos = Math.round(macros.protein / f.per100 * 100)
+                    return (
+                      <div key={f.food} className="flex items-center justify-between">
+                        <span className="text-xs text-muted">{f.food}</span>
+                        <span className="text-xs font-bold">{gramos}g</span>
+                      </div>
+                    )
+                  })}
+                  <p className="text-[9px] text-muted pt-1 border-t border-border">Para cubrir {macros.protein}g proteína total</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
       {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
