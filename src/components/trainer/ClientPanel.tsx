@@ -569,6 +569,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
   const updateMacros = (updates: any) => { if (!plan) return; onChange({ ...plan, macros: { ...macros, ...updates } } as any) }
 
+  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
+  const [showCalc, setShowCalc] = useState(false)
   const [peso, setPeso] = useState(String(client.weight || ''))
   const [altura, setAltura] = useState('')
   const [edad, setEdad] = useState('')
@@ -576,32 +578,29 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const [actividad, setActividad] = useState(1.55)
   const [objetivo, setObjetivo] = useState<'deficit' | 'mantenimiento' | 'superavit'>('superavit')
   const [ratio, setRatio] = useState(2.0)
-  const [showCalc, setShowCalc] = useState(false)
-  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
 
-  const [dist, setDist] = useState<{ label: string; icon: string; pct: number }[]>(
+  const [dist, setDist] = useState<{ label: string; icon: string; pct: number; time?: string }[]>(
     (plan as any)?.macros?.dist || [
-      { label: 'Desayuno', icon: '🌅', pct: 25 },
-      { label: 'Media mañana', icon: '🍎', pct: 15 },
-      { label: 'Comida', icon: '🍽️', pct: 35 },
-      { label: 'Cena', icon: '🌙', pct: 25 },
+      { label: 'Desayuno', icon: '🌅', pct: 25, time: '08:00' },
+      { label: 'Media mañana', icon: '🍎', pct: 15, time: '11:00' },
+      { label: 'Comida', icon: '🍽️', pct: 35, time: '14:00' },
+      { label: 'Cena', icon: '🌙', pct: 25, time: '20:30' },
     ]
   )
-  const [sups, setSups] = useState<{ name: string; dosis: string; timing: string; visible: boolean }[]>(
+  const [sups, setSups] = useState<{ name: string; desc: string; visible: boolean }[]>(
     (plan as any)?.macros?.sups || [
-      { name: 'Creatina', dosis: '5g diarios', timing: 'Cualquier momento', visible: true },
-      { name: 'Proteína whey', dosis: 'Si no llegas', timing: 'Post-entreno', visible: true },
-      { name: 'Vitamina D', dosis: '2000 UI', timing: 'Con comida grasa', visible: false },
-      { name: 'Omega-3', dosis: '2-3g EPA/DHA', timing: 'Con comidas', visible: false },
+      { name: 'Creatina', desc: 'Consume 5g de creatina diarios', visible: true },
+      { name: 'Proteína Whey', desc: 'Consume cuando no llegues a proteína', visible: true },
+      { name: 'Omega-3', desc: 'Consume un aporte de omega-3', visible: false },
     ]
   )
   const [showSups, setShowSups] = useState<boolean>((plan as any)?.macros?.showSups || false)
   const [equivs, setEquivs] = useState<{ food: string; per100: number }[]>(
     (plan as any)?.macros?.equivs || [
-      { food: '🍗 Pechuga pollo', per100: 31 },
-      { food: '🥚 Huevo entero', per100: 13 },
-      { food: '🐟 Atún en lata', per100: 25 },
-      { food: '🥛 Queso cottage', per100: 11 },
+      { food: 'Pechuga de pollo', per100: 31 },
+      { food: 'Pechuga collo', per100: 12 },
+      { food: 'Pechuga', per100: 12 },
+      { food: 'Pechuga de pollo', per100: 12 },
     ]
   )
 
@@ -610,157 +609,159 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const calcMacros = () => {
     const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
     if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
-    const tmb = sexo === 'h' ? 88.362 + (13.397*p) + (4.799*h) - (5.677*e) : 447.593 + (9.247*p) + (3.098*h) - (4.330*e)
+    const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
     const tdee = Math.round(tmb * actividad)
-    const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
-    const protG = Math.round(p * ratio)
-    const fatG = Math.round(p * 1.0)
+    const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
+    const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
     const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
     updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
     toast('Macros calculados ✓', 'ok')
   }
 
-  const total = (macros.protein * 4) + (macros.carbs * 4) + (macros.fats * 9)
-  const MACRO_COLORS = { protein: '#c0392b', carbs: '#d4a017', fats: '#4a7c59' }
+  const COLORS = { protein: '#c0392b', carbs: '#c49a00', fats: '#4a7c59' }
+  const total = (macros.protein*4) + (macros.carbs*4) + (macros.fats*9)
   const slices = total > 0 ? [
-    { label: 'Proteína', val: macros.protein * 4, color: MACRO_COLORS.protein, g: macros.protein },
-    { label: 'Carbos', val: macros.carbs * 4, color: MACRO_COLORS.carbs, g: macros.carbs },
-    { label: 'Grasas', val: macros.fats * 9, color: MACRO_COLORS.fats, g: macros.fats },
+    { label: 'Proteína', val: macros.protein*4, color: COLORS.protein, g: macros.protein },
+    { label: 'Carbos',   val: macros.carbs*4,   color: COLORS.carbs,   g: macros.carbs },
+    { label: 'Grasas',   val: macros.fats*9,    color: COLORS.fats,    g: macros.fats },
   ] : []
 
-  // Donut chart con hover
+  // Donut grande centrado con etiquetas flotantes
   const DonutChart = () => {
+    const W = 220; const cx = 110; const cy = 110; const r = 90; const ri = 58
     if (!slices.length) return (
-      <div className="w-28 h-28 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center p-3">Sin datos</div>
+      <div style={{width:W,height:W,borderRadius:'50%',border:'4px dashed #e5e2dc',display:'flex',alignItems:'center',justifyContent:'center',color:'#8a8278',fontSize:12}}>Sin datos</div>
     )
-    let cumAngle = -90
-    const r = 46; const ri = 28; const cx = 55; const cy = 55
-    const paths: { d: string; color: string; label: string; g: number; pct: number }[] = []
-    slices.forEach((s, idx) => {
-      const pct = s.val / total
-      const angle = pct * 360 - 0.5
-      const startRad = (cumAngle * Math.PI) / 180
-      const endRad = ((cumAngle + angle) * Math.PI) / 180
-      const x1o = cx + r * Math.cos(startRad); const y1o = cy + r * Math.sin(startRad)
-      const x2o = cx + r * Math.cos(endRad); const y2o = cy + r * Math.sin(endRad)
-      const x1i = cx + ri * Math.cos(endRad); const y1i = cy + ri * Math.sin(endRad)
-      const x2i = cx + ri * Math.cos(startRad); const y2i = cy + ri * Math.sin(startRad)
-      const large = angle > 180 ? 1 : 0
-      const d = `M${x1o},${y1o} A${r},${r} 0 ${large},1 ${x2o},${y2o} L${x1i},${y1i} A${ri},${ri} 0 ${large},0 ${x2i},${y2i} Z`
-      cumAngle += angle + 0.5
-      paths.push({ d, color: s.color, label: s.label, g: s.g, pct: Math.round(pct * 100) })
+    let cum = -90
+    const paths: {d:string;color:string;label:string;g:number;pct:number;midAngle:number}[] = []
+    slices.forEach(s => {
+      const pct = s.val/total; const angle = pct*360-0.5
+      const s1 = cum*Math.PI/180; const e1 = (cum+angle)*Math.PI/180
+      const mid = (cum + angle/2) * Math.PI/180
+      const x1o=cx+r*Math.cos(s1);const y1o=cy+r*Math.sin(s1)
+      const x2o=cx+r*Math.cos(e1);const y2o=cy+r*Math.sin(e1)
+      const x1i=cx+ri*Math.cos(e1);const y1i=cy+ri*Math.sin(e1)
+      const x2i=cx+ri*Math.cos(s1);const y2i=cy+ri*Math.sin(s1)
+      const lg = angle>180?1:0
+      const d=`M${x1o},${y1o} A${r},${r} 0 ${lg},1 ${x2o},${y2o} L${x1i},${y1i} A${ri},${ri} 0 ${lg},0 ${x2i},${y2i} Z`
+      cum += angle+0.5
+      paths.push({d,color:s.color,label:s.label,g:s.g,pct:Math.round(pct*100),midAngle:mid})
     })
-    const hovered = hoveredSlice !== null ? paths[hoveredSlice] : null
+    const hov = hoveredSlice !== null ? paths[hoveredSlice] : null
+    // Etiquetas flotantes fuera del donut
+    const labelR = r + 28
     return (
-      <div className="relative">
-        <svg viewBox="0 0 110 110" className="w-28 h-28 drop-shadow-sm">
-          {paths.map((p, i) => (
+      <div style={{position:'relative',width:W+80,height:W}}>
+        <svg viewBox={`0 0 ${W} ${W}`} style={{position:'absolute',left:40,top:0,width:W,height:W}}>
+          {paths.map((p,i) => (
             <path key={i} d={p.d} fill={p.color}
-              opacity={hoveredSlice === null ? 0.9 : hoveredSlice === i ? 1 : 0.4}
-              style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
-              onMouseEnter={() => setHoveredSlice(i)}
-              onMouseLeave={() => setHoveredSlice(null)}
-            />
+              opacity={hoveredSlice===null?0.92:hoveredSlice===i?1:0.3}
+              style={{cursor:'pointer',transition:'opacity 0.15s'}}
+              onMouseEnter={()=>setHoveredSlice(i)} onMouseLeave={()=>setHoveredSlice(null)}/>
           ))}
-          <circle cx={cx} cy={cy} r={ri} fill="white" />
-          {hovered ? (
+          <circle cx={cx} cy={cy} r={ri-2} fill="white"/>
+          {hov ? (
             <>
-              <text x={cx} y={cy - 6} textAnchor="middle" fontSize="11" fontWeight="800" fill={hovered.color}>{hovered.pct}%</text>
-              <text x={cx} y={cy + 6} textAnchor="middle" fontSize="7" fill="#8a8278">{hovered.g}g</text>
+              <text x={cx} y={cy-10} textAnchor="middle" fontSize="18" fontWeight="800" fill={hov.color}>{hov.pct}%</text>
+              <text x={cx} y={cy+8}  textAnchor="middle" fontSize="11" fill="#8a8278">{hov.label}</text>
+              <text x={cx} y={cy+24} textAnchor="middle" fontSize="11" fontWeight="700" fill="#1a1a1a">{hov.g}g</text>
             </>
           ) : (
             <>
-              <text x={cx} y={cy - 3} textAnchor="middle" fontSize="11" fontWeight="800" fill="#1a1a1a">{macros.kcal || '—'}</text>
-              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7" fill="#8a8278">kcal</text>
+              <text x={cx} y={cy-6}  textAnchor="middle" fontSize="24" fontWeight="800" fill="#1a1a1a">{macros.kcal||'—'}</text>
+              <text x={cx} y={cy+14} textAnchor="middle" fontSize="11" fill="#8a8278">kcal</text>
             </>
           )}
         </svg>
+        {/* Etiquetas flotantes */}
+        {paths.map((p,i) => {
+          const lx = 40 + cx + labelR * Math.cos(p.midAngle)
+          const ly = cy + labelR * Math.sin(p.midAngle)
+          const isRight = Math.cos(p.midAngle) > 0
+          return (
+            <div key={i} style={{
+              position:'absolute', left:lx, top:ly,
+              transform:`translate(${isRight?'0%':'-100%'},-50%)`,
+              textAlign: isRight?'left':'right', pointerEvents:'none'
+            }}>
+              <div style={{fontSize:11,color:p.color,fontWeight:700}}>{p.label}</div>
+              <div style={{fontSize:13,fontWeight:800,color:'#1a1a1a'}}>{p.pct}%</div>
+            </div>
+          )
+        })}
       </div>
     )
   }
 
-  const ACTIVIDAD_OPTS = [
-    { val: 1.2, label: 'Sedentario' }, { val: 1.375, label: 'Ligero' },
-    { val: 1.55, label: 'Moderado' }, { val: 1.725, label: 'Activo' }, { val: 1.9, label: 'Muy activo' },
+  const MACRO_CFG = [
+    { key:'protein', label:'Proteína', icon:'🥩', color:COLORS.protein, per:4 },
+    { key:'carbs',   label:'Carbos',   icon:'🌾', color:COLORS.carbs,   per:4 },
+    { key:'fats',    label:'Grasas',   icon:'🥑', color:COLORS.fats,    per:9 },
   ]
 
   return (
-    <div className="flex flex-col gap-3 h-full overflow-hidden">
-      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit flex-shrink-0">
-        {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
-          <button key={t.id} onClick={() => setSubtab(t.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === t.id ? 'bg-white shadow-sm text-ink' : 'text-muted'}`}>
+    <div style={{display:'flex',flexDirection:'column',gap:12,height:'100%',overflow:'hidden'}}>
+      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border" style={{width:'fit-content',flexShrink:0}}>
+        {[{id:'macros',label:'📊 Macros'},{id:'plan',label:'🍽️ Plan completo'}].map(t=>(
+          <button key={t.id} onClick={()=>setSubtab(t.id as any)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab===t.id?'bg-white shadow-sm text-ink':'text-muted'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {subtab === 'macros' && (
-        <div style={{display:"grid",gridTemplateColumns:"1fr 220px",gap:16,flex:1,minHeight:0,overflow:"hidden"}}>
+      {subtab==='macros' && (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 260px',gap:16,flex:1,minHeight:0,overflow:'hidden'}}>
 
-          {/* ── Columna central ── */}
-          <div style={{minWidth:0,overflowY:"auto",display:"flex",flexDirection:"column",gap:16}}>
+          {/* COLUMNA IZQUIERDA */}
+          <div style={{overflowY:'auto',display:'flex',flexDirection:'column',gap:12,minWidth:0}}>
+            <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 16px rgba(0,0,0,0.07)',padding:24,flexShrink:0}}>
+              <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em',color:'#8a8278',marginBottom:16}}>Objetivos diarios</p>
 
-            {/* Card principal macros */}
-            <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-4">Objetivos diarios</p>
-
-              {/* Donut + calorías */}
-              <div className="flex items-center gap-5 mb-5">
+              {/* Donut centrado */}
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:20}}>
                 <DonutChart />
-                <div className="flex-1 space-y-2">
-                  {/* Calorías */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-muted uppercase tracking-wider">Calorías totales</p>
-                      <div className="flex items-baseline gap-1">
-                        <input type="number" value={macros.kcal || ''} onChange={e => updateMacros({ kcal: Number(e.target.value) })}
-                          placeholder="0" className="text-3xl font-bold text-ink bg-transparent outline-none w-24" />
-                        <span className="text-sm text-muted">kcal</span>
-                      </div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
+                  <p style={{fontSize:13,fontWeight:700,color:'#1a1a1a'}}>CALORÍAS TOTALES:</p>
+                  <input type="number" value={macros.kcal||''} onChange={e=>updateMacros({kcal:Number(e.target.value)})}
+                    placeholder="0" style={{fontSize:16,fontWeight:800,color:'#1a1a1a',background:'transparent',border:'none',outline:'none',width:70}}/>
+                  <span style={{fontSize:13,color:'#8a8278'}}>kcal</span>
+                  <button onClick={()=>setShowCalc(!showCalc)}
+                    className={`ml-2 px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${showCalc?'bg-ink text-white':'border-border text-muted hover:border-accent'}`}>
+                    🧮 Calcular
+                  </button>
+                </div>
+                <div style={{display:'flex',gap:20,marginTop:8}}>
+                  {slices.map(s=>(
+                    <div key={s.label} style={{display:'flex',alignItems:'center',gap:5}}>
+                      <div style={{width:8,height:8,borderRadius:'50%',backgroundColor:s.color}}/>
+                      <span style={{fontSize:11,color:'#8a8278'}}>{s.label}: {total>0?Math.round(s.val/total*100):0}%</span>
                     </div>
-                    <button onClick={() => setShowCalc(!showCalc)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${showCalc ? 'bg-ink text-white' : 'border-border text-muted hover:border-accent'}`}>
-                      🧮 Calcular
-                    </button>
-                  </div>
-                  {/* Leyenda colores */}
-                  <div className="flex gap-3">
-                    {slices.map(s => (
-                      <div key={s.label} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                        <span className="text-[10px] text-muted">{s.label} {total > 0 ? Math.round(s.val/total*100) : 0}%</span>
-                      </div>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
 
-              {/* 3 macros con barra de progreso */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { key: 'protein', label: 'Proteína', icon: '🥩', color: MACRO_COLORS.protein, kcalPer: 4 },
-                  { key: 'carbs',   label: 'Carbos',   icon: '🌾', color: MACRO_COLORS.carbs,   kcalPer: 4 },
-                  { key: 'fats',    label: 'Grasas',   icon: '🥑', color: MACRO_COLORS.fats,    kcalPer: 9 },
-                ].map(({ key, label, icon, color, kcalPer }) => {
-                  const pct = total > 0 ? Math.round(macros[key] * kcalPer / total * 100) : 0
+              {/* 3 macros grid igual */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                {MACRO_CFG.map(({key,label,icon,color,per})=>{
+                  const pct = total>0?Math.round(macros[key]*per/total*100):0
                   return (
-                    <div key={key} className="rounded-xl p-3" style={{ backgroundColor: color + '0d', border: `1px solid ${color}22` }}>
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <span className="text-sm">{icon}</span>
-                        <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
+                    <div key={key} style={{borderRadius:12,padding:14,backgroundColor:color+'12',border:`1px solid ${color}25`}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                        <span style={{fontSize:14}}>{icon}</span>
+                        <span style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color}}>{label} - {macros[key]||0}g</span>
                       </div>
-                      <div className="flex items-baseline gap-1 mb-2">
-                        <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
-                          placeholder="0" className="text-xl font-bold bg-transparent outline-none w-full" style={{ color }} />
-                        <span className="text-xs text-muted">g</span>
+                      <div style={{display:'flex',alignItems:'baseline',gap:3,marginBottom:8}}>
+                        <input type="number" value={macros[key]||''} onChange={e=>updateMacros({[key]:Number(e.target.value)})}
+                          placeholder="0" style={{fontSize:32,fontWeight:800,color,background:'transparent',border:'none',outline:'none',width:'100%'}}/>
+                        <span style={{fontSize:11,color:'#8a8278'}}>g</span>
                       </div>
-                      <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mb-1">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                      <div style={{height:3,backgroundColor:'rgba(255,255,255,0.7)',borderRadius:2,overflow:'hidden',marginBottom:4}}>
+                        <div style={{height:'100%',width:`${pct}%`,backgroundColor:color,borderRadius:2}}/>
                       </div>
-                      <div className="flex justify-between">
-                        <p className="text-[9px] text-muted">{macros[key] ? Math.round(macros[key] * kcalPer) : 0} kcal</p>
-                        <p className="text-[9px] font-semibold" style={{ color }}>{pct}%</p>
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:10,color:'#8a8278'}}>{macros[key]?Math.round(macros[key]*per):0} kcal</span>
+                        <span style={{fontSize:10,fontWeight:700,color}}>{pct}%</span>
                       </div>
                     </div>
                   )
@@ -768,218 +769,172 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
               </div>
 
               {/* Nota nutricional */}
-              <div className="mt-4 pt-4 border-t border-border/40">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Nota nutricional</label>
-                <textarea rows={2} value={macros.notaMacros || ''}
-                  onChange={e => updateMacros({ notaMacros: e.target.value })}
-                  placeholder={`Instrucciones para ${client.name}: distribuye en 4-5 comidas, prioriza proteína (30g/comida), hidratación 3-4L/día...`}
-                  className="w-full px-3 py-2 bg-bg-alt/60 border border-border/40 rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
-                />
+              <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid #ece9e3'}}>
+                <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278',marginBottom:8}}>Nota nutricional...</p>
+                <textarea rows={3} value={macros.notaMacros||''} onChange={e=>updateMacros({notaMacros:e.target.value})}
+                  placeholder={`Instructivos para ${client.name}:
+• Distribuye en 4-5 comidas al día
+• Prioriza proteína en cada comida (mínimo 30g)
+• Fuentes recomendadas, incluidos de tahini...`}
+                  style={{width:'100%',padding:'10px 12px',background:'#f8f6f2',border:'1px solid #ece9e3',borderRadius:10,fontSize:13,resize:'none',outline:'none',lineHeight:1.6,color:'#5a5650',fontFamily:'inherit',boxSizing:'border-box'}}/>
               </div>
             </div>
 
             {/* Calculadora */}
             {showCalc && (
-              <div className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-                <div>
-                  <h4 className="font-semibold text-sm">Calculadora TDEE + Macros</h4>
-                  <p className="text-xs text-muted">Fórmula Harris-Benedict</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Peso (kg)', val: peso, set: setPeso, ph: String(client.weight || '80') },
-                    { label: 'Altura (cm)', val: altura, set: setAltura, ph: '175' },
-                    { label: 'Edad', val: edad, set: setEdad, ph: '30' },
-                  ].map(f => (
+              <div className="bg-white rounded-2xl p-5" style={{boxShadow:'0 2px 16px rgba(0,0,0,0.07)',flexShrink:0}}>
+                <p className="font-semibold text-sm mb-3">Calculadora TDEE — Harris-Benedict</p>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                  {[{label:'Peso (kg)',val:peso,set:setPeso,ph:String(client.weight||80)},{label:'Altura (cm)',val:altura,set:setAltura,ph:'175'},{label:'Edad',val:edad,set:setEdad,ph:'30'}].map(f=>(
                     <div key={f.label}>
-                      <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">{f.label}</label>
-                      <input type="number" value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                        className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                      <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>{f.label}</p>
+                      <input type="number" value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
+                        className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
                     </div>
                   ))}
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Sexo</label>
+                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Sexo</p>
                     <div className="flex gap-1">
-                      {[{ v: 'h', l: '♂ H' }, { v: 'm', l: '♀ M' }].map(s => (
-                        <button key={s.v} onClick={() => setSexo(s.v as any)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${sexo === s.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
-                          {s.l}
-                        </button>
+                      {[{v:'h',l:'♂ Hombre'},{v:'m',l:'♀ Mujer'}].map(s=>(
+                        <button key={s.v} onClick={()=>setSexo(s.v as any)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-medium border ${sexo===s.v?'bg-ink text-white border-ink':'border-border text-muted'}`}>{s.l}</button>
                       ))}
                     </div>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Actividad</label>
-                  <div className="grid grid-cols-5 gap-1">
-                    {ACTIVIDAD_OPTS.map(a => (
-                      <button key={a.val} onClick={() => setActividad(a.val)}
-                        className={`py-2 px-1 rounded-lg text-center border transition-all ${actividad === a.val ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
-                        <p className="text-[9px] font-bold leading-tight">{a.label}</p>
-                      </button>
-                    ))}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4,marginBottom:12}}>
+                  {[{val:1.2,l:'Sedentario'},{val:1.375,l:'Ligero'},{val:1.55,l:'Moderado'},{val:1.725,l:'Activo'},{val:1.9,l:'Muy activo'}].map(a=>(
+                    <button key={a.val} onClick={()=>setActividad(a.val)}
+                      className={`py-2 rounded-lg text-[9px] font-bold border ${actividad===a.val?'bg-ink text-white border-ink':'border-border text-muted'}`}>{a.l}</button>
+                  ))}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
+                  {[{v:'deficit',l:'🔥 Déficit',d:'-400 kcal'},{v:'mantenimiento',l:'⚖️ Mant.',d:'TDEE'},{v:'superavit',l:'💪 Superávit',d:'+300 kcal'}].map(o=>(
+                    <button key={o.v} onClick={()=>setObjetivo(o.v as any)}
+                      className={`py-2.5 rounded-xl border text-center ${objetivo===o.v?'bg-ink text-white border-ink':'border-border text-muted'}`}>
+                      <p className="text-xs font-semibold">{o.l}</p><p className="text-[9px] opacity-70">{o.d}</p>
+                    </button>
+                  ))}
+                </div>
+                <div style={{marginBottom:12}}>
+                  <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Proteína: <span style={{color:'#6e5438'}}>{ratio}g/kg</span></p>
+                  <input type="range" min="1.6" max="2.4" step="0.1" value={ratio} onChange={e=>setRatio(Number(e.target.value))} className="w-full accent-[#6e5438]"/>
+                </div>
+                {peso&&altura&&edad&&(()=>{
+                  const p=parseFloat(peso);const h=parseFloat(altura);const e=parseFloat(edad)
+                  const tmb=sexo==='h'?88.362+(13.397*p)+(4.799*h)-(5.677*e):447.593+(9.247*p)+(3.098*h)-(4.330*e)
+                  const tdee=Math.round(tmb*actividad)
+                  const kcalObj=objetivo==='deficit'?tdee-400:objetivo==='superavit'?tdee+300:tdee
+                  const protG=Math.round(p*ratio);const fatG=Math.round(p*1.0)
+                  const carbsG=Math.max(0,Math.round((kcalObj-protG*4-fatG*9)/4))
+                  return <div className="bg-bg-alt rounded-xl p-3 text-xs mb-3">
+                    <p className="text-muted">TMB: <strong>{Math.round(tmb)}</strong> · TDEE: <strong>{tdee}</strong> kcal</p>
+                    <p><strong style={{color:COLORS.protein}}>{kcalObj} kcal</strong> · Prot: <strong style={{color:COLORS.protein}}>{protG}g</strong> · Carbs: <strong style={{color:COLORS.carbs}}>{carbsG}g</strong> · Grasa: <strong style={{color:COLORS.fats}}>{fatG}g</strong></p>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Objetivo</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[{ v: 'deficit', l: '🔥 Déficit', d: '-400 kcal' }, { v: 'mantenimiento', l: '⚖️ Mant.', d: 'TDEE' }, { v: 'superavit', l: '💪 Superávit', d: '+300 kcal' }].map(o => (
-                      <button key={o.v} onClick={() => setObjetivo(o.v as any)}
-                        className={`py-2 rounded-xl border text-center transition-all ${objetivo === o.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
-                        <p className="text-xs font-semibold">{o.l}</p>
-                        <p className="text-[9px] opacity-70">{o.d}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Proteína: <span className="text-accent">{ratio}g/kg</span></label>
-                  <input type="range" min="1.6" max="2.4" step="0.1" value={ratio} onChange={e => setRatio(Number(e.target.value))} className="w-full accent-[#6e5438]" />
-                </div>
-                {peso && altura && edad && (() => {
-                  const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
-                  const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
-                  const tdee = Math.round(tmb * actividad)
-                  const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
-                  const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
-                  const carbsG = Math.max(0, Math.round((kcalObj-protG*4-fatG*9)/4))
-                  return (
-                    <div className="bg-bg-alt rounded-xl p-3 text-xs space-y-1">
-                      <p className="text-muted">TMB: <strong>{Math.round(tmb)}</strong> · TDEE: <strong>{tdee}</strong> kcal</p>
-                      <p>
-                        <strong className="text-warn">{kcalObj} kcal</strong> · 
-                        Prot: <strong style={{color:MACRO_COLORS.protein}}>{protG}g</strong> · 
-                        Carbs: <strong style={{color:MACRO_COLORS.carbs}}>{carbsG}g</strong> · 
-                        Grasa: <strong style={{color:MACRO_COLORS.fats}}>{fatG}g</strong>
-                      </p>
-                    </div>
-                  )
                 })()}
                 <button onClick={calcMacros} className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90">🧮 Calcular y aplicar</button>
               </div>
             )}
           </div>
 
-          {/* ── Columna derecha ── */}
-          <div style={{overflowY:"auto",display:"flex",flexDirection:"column",gap:12}}>
+          {/* COLUMNA DERECHA — sin scroll, todo visible */}
+          <div style={{display:'flex',flexDirection:'column',gap:8,overflow:'hidden'}}>
 
-            {/* Distribución comidas */}
-            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Distribución</p>
-                <button onClick={() => setDist([...dist, { label: 'Comida', icon: '🍴', pct: 0 }])}
-                  className="text-[10px] text-accent hover:underline">+ Añadir</button>
+            {/* Distribución por comidas */}
+            <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Distribución por comidas</p>
+                <button onClick={()=>setDist([...dist,{label:'Comida',icon:'🍴',pct:0,time:'12:00'}])} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>+ Añadir</button>
               </div>
-              <div className="space-y-2">
-                {dist.map((m, i) => (
-                  <div key={i}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <input value={m.icon} onChange={e => { const d=[...dist]; d[i]={...d[i],icon:e.target.value}; setDist(d) }}
-                        className="w-6 text-center bg-transparent outline-none text-sm" />
-                      <input value={m.label} onChange={e => { const d=[...dist]; d[i]={...d[i],label:e.target.value}; setDist(d) }}
-                        className="flex-1 text-xs font-semibold bg-transparent outline-none border-b border-transparent focus:border-accent" />
-                      <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d=[...dist]; d[i]={...d[i],pct:Number(e.target.value)}; setDist(d) }}
-                        className="w-10 text-center text-xs bg-bg border border-border/50 rounded px-1 py-0.5 outline-none" />
-                      <span className="text-[9px] text-muted">%</span>
-                      <button onClick={() => setDist(dist.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
-                    </div>
-                    <div className="flex items-center gap-2 pl-6">
-                      <div className="flex-1 h-1 bg-bg-alt rounded-full overflow-hidden">
-                        <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${m.pct}%` }} />
-                      </div>
-                      <span className="text-[9px] text-muted w-14 text-right">{macros.kcal > 0 ? Math.round(macros.kcal * m.pct / 100) : 0} kcal</span>
-                    </div>
-                  </div>
-                ))}
-                <p className={`text-[9px] mt-1 ${dist.reduce((a,d)=>a+d.pct,0)===100?'text-ok font-semibold':'text-warn'}`}>
-                  Total: {dist.reduce((a,d)=>a+d.pct,0)}% {dist.reduce((a,d)=>a+d.pct,0)===100?'✓':'≠ 100'}
-                </p>
-              </div>
+              {dist.map((m,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,padding:'4px 6px',background:'#f8f6f2',borderRadius:8}}>
+                  <span style={{fontSize:14}}>{m.icon}</span>
+                  <input value={m.label} onChange={e=>{const d=[...dist];d[i]={...d[i],label:e.target.value};setDist(d)}}
+                    style={{flex:1,fontSize:11,fontWeight:600,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
+                  <input value={m.time||''} onChange={e=>{const d=[...dist];d[i]={...d[i],time:e.target.value};setDist(d)}}
+                    style={{width:40,fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none',textAlign:'right'}}/>
+                  <input type="number" min={0} max={100} value={m.pct} onChange={e=>{const d=[...dist];d[i]={...d[i],pct:Number(e.target.value)};setDist(d)}}
+                    style={{width:28,fontSize:10,textAlign:'center',background:'white',border:'1px solid #e5e2dc',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
+                  <span style={{fontSize:9,color:'#8a8278'}}>%</span>
+                  <button onClick={()=>setDist(dist.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:12,lineHeight:1}}>×</button>
+                </div>
+              ))}
+              <p style={{fontSize:9,color:dist.reduce((a,d)=>a+d.pct,0)===100?'#4caf7d':'#e07b54',textAlign:'right'}}>
+                Total: {dist.reduce((a,d)=>a+d.pct,0)}%
+              </p>
             </div>
 
             {/* Suplementación */}
-            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Suplementación</p>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setSups([...sups, { name: 'Suplemento', dosis: '', timing: '', visible: true }])}
-                    className="text-[10px] text-accent hover:underline">+ Añadir</button>
-                  <div className={`w-7 h-4 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${showSups ? 'bg-ok' : 'bg-border'}`}
-                    onClick={() => setShowSups(!showSups)}>
-                    <div className={`w-3 h-3 bg-white rounded-full shadow transition-all ${showSups ? 'translate-x-3' : 'translate-x-0'}`} />
+            <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Suplementación básica</p>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  <button onClick={()=>setSups([...sups,{name:'Suplemento',desc:'',visible:true}])} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>Añadir</button>
+                  <div onClick={()=>setShowSups(!showSups)} style={{width:28,height:16,borderRadius:8,background:showSups?'#4caf7d':'#d0ccc6',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                    <div style={{position:'absolute',top:2,left:showSups?12:2,width:12,height:12,borderRadius:6,background:'white',transition:'left 0.2s'}}/>
                   </div>
                 </div>
               </div>
-              {!showSups && <p className="text-[9px] text-muted mb-2">Oculto al cliente. Activa el toggle para mostrar.</p>}
-              <div className="space-y-2">
-                {sups.map((s, i) => (
-                  <div key={i} className={`rounded-lg p-2 transition-all ${s.visible ? 'bg-ok/8' : 'bg-bg-alt/50'}`}>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => { const ss=[...sups]; ss[i]={...ss[i],visible:!ss[i].visible}; setSups(ss) }}
-                        className={`text-xs ${s.visible ? 'opacity-100' : 'opacity-40'}`}>
-                        {s.visible ? '👁️' : '🙈'}
-                      </button>
-                      <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; setSups(ss) }}
-                        className="flex-1 text-xs font-semibold bg-transparent outline-none" />
-                      <button onClick={() => setSups(sups.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
-                    </div>
-                    <div className="flex gap-2 pl-5 mt-0.5">
-                      <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; setSups(ss) }}
-                        placeholder="Dosis" className="text-[10px] text-muted bg-transparent outline-none flex-1 border-b border-transparent focus:border-accent/40" />
-                      <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; setSups(ss) }}
-                        placeholder="Timing" className="text-[10px] text-muted bg-transparent outline-none flex-1 border-b border-transparent focus:border-accent/40" />
-                    </div>
+              {sups.map((s,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'flex-start',gap:6,marginBottom:8,padding:'6px 8px',background:s.visible?'rgba(76,175,125,0.08)':'#f8f6f2',borderRadius:8}}>
+                  <div style={{width:28,height:28,borderRadius:8,background:s.visible?'rgba(76,175,125,0.15)':'#ece9e3',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}
+                    onClick={()=>{const ss=[...sups];ss[i]={...ss[i],visible:!ss[i].visible};setSups(ss)}}>
+                    <span style={{fontSize:11}}>{s.visible?'👁️':'🙈'}</span>
                   </div>
-                ))}
-              </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <input value={s.name} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],name:e.target.value};setSups(ss)}}
+                      style={{display:'block',width:'100%',fontSize:11,fontWeight:700,background:'transparent',border:'none',outline:'none',marginBottom:2}}/>
+                    <input value={s.desc} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],desc:e.target.value};setSups(ss)}}
+                      style={{display:'block',width:'100%',fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none'}}/>
+                  </div>
+                  <button onClick={()=>setSups(sups.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:12,lineHeight:1}}>×</button>
+                </div>
+              ))}
             </div>
 
             {/* Equivalencias proteína */}
             {macros.protein > 0 && (
-              <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Equivalencias proteína</p>
-                  <button onClick={() => setEquivs([...equivs, { food: '🥩 Alimento', per100: 20 }])}
-                    className="text-[10px] text-accent hover:underline">+ Añadir</button>
+              <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Equivalencias de proteína</p>
+                  <button onClick={()=>setEquivs([...equivs,{food:'Alimento',per100:20}])} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>+</button>
                 </div>
-                <div className="space-y-2.5">
-                  {equivs.map((f, i) => {
-                    const gramos = Math.round(macros.protein / f.per100 * 100)
-                    const maxGramos = Math.max(...equivs.map(e => Math.round(macros.protein / e.per100 * 100)), 1)
-                    const barPct = Math.round(gramos / maxGramos * 100)
-                    return (
-                      <div key={i}>
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <input value={f.food} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],food:e.target.value}; setEquivs(eq) }}
-                            className="flex-1 text-xs bg-transparent outline-none" />
-                          <input type="number" value={f.per100} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],per100:Number(e.target.value)}; setEquivs(eq) }}
-                            className="w-8 text-center text-[10px] bg-bg border border-border/50 rounded px-0.5 py-0.5 outline-none" />
-                          <span className="text-[9px] text-muted">g/100</span>
-                          <span className="text-xs font-bold w-10 text-right" style={{ color: MACRO_COLORS.protein }}>{gramos}g</span>
-                          <button onClick={() => setEquivs(equivs.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
-                        </div>
-                        <div className="h-1 bg-bg-alt rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: MACRO_COLORS.protein + 'aa' }} />
-                        </div>
+                {equivs.map((f,i)=>{
+                  const g = Math.round(macros.protein/f.per100*100)
+                  const maxG = Math.max(...equivs.map(e=>Math.round(macros.protein/e.per100*100)),1)
+                  return (
+                    <div key={i} style={{marginBottom:8}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                        <input value={f.food} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],food:e.target.value};setEquivs(eq)}}
+                          style={{flex:1,fontSize:11,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
+                        <input type="number" value={f.per100} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],per100:Number(e.target.value)};setEquivs(eq)}}
+                          style={{width:24,fontSize:10,textAlign:'center',background:'#f0ede8',border:'none',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
+                        <span style={{fontSize:10,fontWeight:700,color:COLORS.protein,width:36,textAlign:'right'}}>{g}g</span>
+                        <button onClick={()=>setEquivs(equivs.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:11,lineHeight:1}}>×</button>
                       </div>
-                    )
-                  })}
-                  <p className="text-[9px] text-muted pt-1 border-t border-border/40">Para cubrir {macros.protein}g proteína</p>
-                </div>
+                      <div style={{height:3,background:'#f0ede8',borderRadius:2,overflow:'hidden'}}>
+                        <div style={{height:'100%',width:`${Math.round(g/maxG*100)}%`,background:COLORS.protein+'88',borderRadius:2}}/>
+                      </div>
+                    </div>
+                  )
+                })}
+                <p style={{fontSize:9,color:'#8a8278',marginTop:4,borderTop:'1px solid #ece9e3',paddingTop:4}}>Cantidades para {macros.protein}g proteína</p>
               </div>
             )}
 
             <button onClick={saveSidePanel}
-              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+              style={{padding:'8px 0',background:'#1a1a1a',color:'white',border:'none',borderRadius:12,fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}
+              onMouseOver={e=>(e.currentTarget.style.opacity='0.85')} onMouseOut={e=>(e.currentTarget.style.opacity='1')}>
               💾 Guardar panel
             </button>
           </div>
         </div>
       )}
-      {subtab === 'plan' && (
+
+      {subtab==='plan' && (
         <DietEditor clientId={clientId} isTrainer={true}
-          syncedMacros={{ kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }}
-          onMacrosChange={m => updateMacros(m)} />
+          syncedMacros={{kcal:macros.kcal,protein:macros.protein,carbs:macros.carbs,fats:macros.fats}}
+          onMacrosChange={m=>updateMacros(m)}/>
       )}
     </div>
   )
