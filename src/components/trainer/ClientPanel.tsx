@@ -595,6 +595,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
     ]
   )
   const [showSups, setShowSups] = useState<boolean>((plan as any)?.macros?.showSups || false)
+  const [openDist, setOpenDist] = useState(false)
+  const [openSups, setOpenSups] = useState(false)
   const [equivs, setEquivs] = useState<{ food: string; per100: number }[]>(
     (plan as any)?.macros?.equivs || [
       { food: 'Pechuga de pollo', per100: 31 },
@@ -607,6 +609,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const saveSidePanel = () => { updateMacros({ dist, sups, showSups, equivs }); toast('Guardado ✓', 'ok') }
 
   const calcMacros = () => {
+    if (!plan) { toast('Sin plan cargado', 'warn'); return }
     const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
     if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
     const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
@@ -842,11 +845,14 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
 
             {/* Distribución por comidas */}
             <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:openDist?10:0,cursor:'pointer'}} onClick={()=>setOpenDist(!openDist)}>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Distribución por comidas</p>
-                <button onClick={()=>setDist([...dist,{label:'Comida',icon:'🍴',pct:0,time:'12:00'}])} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>+ Añadir</button>
+                <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                  {openDist && <button onClick={e=>{e.stopPropagation();setDist([...dist,{label:'Comida',icon:'🍴',pct:0,time:'12:00'}])}} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>+ Añadir</button>}
+                  <span style={{fontSize:10,color:'#8a8278'}}>{openDist?'▲':'▼'}</span>
+                </div>
               </div>
-              {dist.map((m,i)=>(
+              {openDist && dist.map((m,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,padding:'4px 6px',background:'#f8f6f2',borderRadius:8}}>
                   <span style={{fontSize:14}}>{m.icon}</span>
                   <input value={m.label} onChange={e=>{const d=[...dist];d[i]={...d[i],label:e.target.value};setDist(d)}}
@@ -859,23 +865,22 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
                   <button onClick={()=>setDist(dist.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:12,lineHeight:1}}>×</button>
                 </div>
               ))}
-              <p style={{fontSize:9,color:dist.reduce((a,d)=>a+d.pct,0)===100?'#4caf7d':'#e07b54',textAlign:'right'}}>
-                Total: {dist.reduce((a,d)=>a+d.pct,0)}%
-              </p>
+              {openDist && <p style={{fontSize:9,color:dist.reduce((a,d)=>a+d.pct,0)===100?'#4caf7d':'#e07b54',textAlign:'right'}}>Total: {dist.reduce((a,d)=>a+d.pct,0)}%</p>}
             </div>
 
             {/* Suplementación */}
             <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:openSups?10:0,cursor:'pointer'}} onClick={()=>setOpenSups(!openSups)}>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Suplementación básica</p>
                 <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                  <button onClick={()=>setSups([...sups,{name:'Suplemento',desc:'',visible:true}])} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>Añadir</button>
+                  {openSups && <button onClick={e=>{e.stopPropagation();setSups([...sups,{name:'Suplemento',desc:'',visible:true}])}} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>Añadir</button>}
+                  <span style={{fontSize:10,color:'#8a8278'}}>{openSups?'▲':'▼'}</span>
                   <div onClick={()=>setShowSups(!showSups)} style={{width:28,height:16,borderRadius:8,background:showSups?'#4caf7d':'#d0ccc6',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}>
                     <div style={{position:'absolute',top:2,left:showSups?12:2,width:12,height:12,borderRadius:6,background:'white',transition:'left 0.2s'}}/>
                   </div>
                 </div>
               </div>
-              {sups.map((s,i)=>(
+              {openSups && sups.map((s,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'flex-start',gap:6,marginBottom:8,padding:'6px 8px',background:s.visible?'rgba(76,175,125,0.08)':'#f8f6f2',borderRadius:8}}>
                   <div style={{width:28,height:28,borderRadius:8,background:s.visible?'rgba(76,175,125,0.15)':'#ece9e3',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}
                     onClick={()=>{const ss=[...sups];ss[i]={...ss[i],visible:!ss[i].visible};setSups(ss)}}>
@@ -932,9 +937,11 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       )}
 
       {subtab==='plan' && (
-        <DietEditor clientId={clientId} isTrainer={true}
-          syncedMacros={{kcal:macros.kcal,protein:macros.protein,carbs:macros.carbs,fats:macros.fats}}
-          onMacrosChange={m=>updateMacros(m)}/>
+        <div style={{flex:1,overflowY:'auto',minHeight:0}}>
+          <DietEditor clientId={clientId} isTrainer={true}
+            syncedMacros={{kcal:macros.kcal,protein:macros.protein,carbs:macros.carbs,fats:macros.fats}}
+            onMacrosChange={m=>updateMacros(m)}/>
+        </div>
       )}
     </div>
   )
