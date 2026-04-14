@@ -107,6 +107,8 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
   const [diet, setDiet] = useState<DietPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [openDist, setOpenDist] = useState(false)
+  const [openSups, setOpenSups] = useState(false)
 
   useEffect(() => { loadDiet() }, [clientId])
 
@@ -248,8 +250,6 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
   }
 
   // ── Vista entrenador ──────────────────────────────────────────
-  const [openDist, setOpenDist] = useState(false)
-  const [openSups, setOpenSups] = useState(false)
   const dist = diet.mealDistribution || []
   const sups = diet.supplements || []
 
