@@ -631,10 +631,10 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   // Donut chart con hover
   const DonutChart = () => {
     if (!slices.length) return (
-      <div className="w-40 h-40 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center p-3">Sin datos</div>
+      <div className="w-28 h-28 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center p-3">Sin datos</div>
     )
     let cumAngle = -90
-    const r = 56; const ri = 36; const cx = 70; const cy = 70
+    const r = 46; const ri = 28; const cx = 55; const cy = 55
     const paths: { d: string; color: string; label: string; g: number; pct: number }[] = []
     slices.forEach((s, idx) => {
       const pct = s.val / total
@@ -653,7 +653,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
     const hovered = hoveredSlice !== null ? paths[hoveredSlice] : null
     return (
       <div className="relative">
-        <svg viewBox="0 0 140 140" className="w-40 h-40 drop-shadow-sm">
+        <svg viewBox="0 0 110 110" className="w-28 h-28 drop-shadow-sm">
           {paths.map((p, i) => (
             <path key={i} d={p.d} fill={p.color}
               opacity={hoveredSlice === null ? 0.9 : hoveredSlice === i ? 1 : 0.4}
@@ -665,14 +665,13 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
           <circle cx={cx} cy={cy} r={ri} fill="white" />
           {hovered ? (
             <>
-              <text x={cx} y={cy - 8} textAnchor="middle" fontSize="13" fontWeight="800" fill={hovered.color}>{hovered.pct}%</text>
-              <text x={cx} y={cy + 6} textAnchor="middle" fontSize="9" fill="#8a8278">{hovered.label}</text>
-              <text x={cx} y={cy + 18} textAnchor="middle" fontSize="9" fontWeight="700" fill="#1a1a1a">{hovered.g}g</text>
+              <text x={cx} y={cy - 6} textAnchor="middle" fontSize="11" fontWeight="800" fill={hovered.color}>{hovered.pct}%</text>
+              <text x={cx} y={cy + 6} textAnchor="middle" fontSize="7" fill="#8a8278">{hovered.g}g</text>
             </>
           ) : (
             <>
-              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="14" fontWeight="800" fill="#1a1a1a">{macros.kcal || '—'}</text>
-              <text x={cx} y={cy + 10} textAnchor="middle" fontSize="8" fill="#8a8278">kcal</text>
+              <text x={cx} y={cy - 3} textAnchor="middle" fontSize="11" fontWeight="800" fill="#1a1a1a">{macros.kcal || '—'}</text>
+              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7" fill="#8a8278">kcal</text>
             </>
           )}
         </svg>
@@ -716,7 +715,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
                       <p className="text-[10px] text-muted uppercase tracking-wider">Calorías totales</p>
                       <div className="flex items-baseline gap-1">
                         <input type="number" value={macros.kcal || ''} onChange={e => updateMacros({ kcal: Number(e.target.value) })}
-                          placeholder="0" className="text-4xl font-bold text-ink bg-transparent outline-none w-32" />
+                          placeholder="0" className="text-3xl font-bold text-ink bg-transparent outline-none w-24" />
                         <span className="text-sm text-muted">kcal</span>
                       </div>
                     </div>
@@ -753,7 +752,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
                       </div>
                       <div className="flex items-baseline gap-1 mb-2">
                         <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
-                          placeholder="0" className="text-2xl font-bold bg-transparent outline-none w-full" style={{ color }} />
+                          placeholder="0" className="text-xl font-bold bg-transparent outline-none w-full" style={{ color }} />
                         <span className="text-xs text-muted">g</span>
                       </div>
                       <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mb-1">
@@ -771,10 +770,10 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
               {/* Nota nutricional */}
               <div className="mt-4 pt-4 border-t border-border/40">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Nota nutricional</label>
-                <textarea rows={3} value={macros.notaMacros || ''}
+                <textarea rows={2} value={macros.notaMacros || ''}
                   onChange={e => updateMacros({ notaMacros: e.target.value })}
                   placeholder={`Instrucciones para ${client.name}: distribuye en 4-5 comidas, prioriza proteína (30g/comida), hidratación 3-4L/día...`}
-                  className="w-full px-3 py-2.5 bg-bg-alt/60 border border-border/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
+                  className="w-full px-3 py-2 bg-bg-alt/60 border border-border/40 rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
                 />
               </div>
             </div>
