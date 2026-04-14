@@ -565,7 +565,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
   const updateMacros = (updates: any) => { if (!plan) return; onChange({ ...plan, macros: { ...macros, ...updates } } as any) }
 
-  // Calculadora
   const [peso, setPeso] = useState(String(client.weight || ''))
   const [altura, setAltura] = useState('')
   const [edad, setEdad] = useState('')
@@ -574,8 +573,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const [objetivo, setObjetivo] = useState<'deficit' | 'mantenimiento' | 'superavit'>('superavit')
   const [ratio, setRatio] = useState(2.0)
   const [showCalc, setShowCalc] = useState(false)
+  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
 
-  // Estado editable columna derecha
   const [dist, setDist] = useState<{ label: string; icon: string; pct: number }[]>(
     (plan as any)?.macros?.dist || [
       { label: 'Desayuno', icon: '🌅', pct: 25 },
@@ -602,75 +601,88 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
     ]
   )
 
-  const saveSidePanel = () => {
-    updateMacros({ dist, sups, showSups, equivs })
-    toast('Panel guardado ✓', 'ok')
-  }
+  const saveSidePanel = () => { updateMacros({ dist, sups, showSups, equivs }); toast('Guardado ✓', 'ok') }
 
   const calcMacros = () => {
     const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
     if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
-    const tmb = sexo === 'h'
-      ? 88.362 + (13.397 * p) + (4.799 * h) - (5.677 * e)
-      : 447.593 + (9.247 * p) + (3.098 * h) - (4.330 * e)
+    const tmb = sexo === 'h' ? 88.362 + (13.397*p) + (4.799*h) - (5.677*e) : 447.593 + (9.247*p) + (3.098*h) - (4.330*e)
     const tdee = Math.round(tmb * actividad)
     const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
     const protG = Math.round(p * ratio)
     const fatG = Math.round(p * 1.0)
-    const carbsG = Math.max(0, Math.round((kcalObj - (protG * 4) - (fatG * 9)) / 4))
+    const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
     updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
     toast('Macros calculados ✓', 'ok')
   }
 
-  // Gráfica circular SVG
   const total = (macros.protein * 4) + (macros.carbs * 4) + (macros.fats * 9)
+  const MACRO_COLORS = { protein: '#c0392b', carbs: '#d4a017', fats: '#4a7c59' }
   const slices = total > 0 ? [
-    { label: 'Proteína', val: macros.protein * 4, color: '#4caf7d', g: macros.protein, icon: '🥩' },
-    { label: 'Carbos', val: macros.carbs * 4, color: '#6e5438', g: macros.carbs, icon: '🌾' },
-    { label: 'Grasas', val: macros.fats * 9, color: '#e07b54', g: macros.fats, icon: '🥑' },
+    { label: 'Proteína', val: macros.protein * 4, color: MACRO_COLORS.protein, g: macros.protein },
+    { label: 'Carbos', val: macros.carbs * 4, color: MACRO_COLORS.carbs, g: macros.carbs },
+    { label: 'Grasas', val: macros.fats * 9, color: MACRO_COLORS.fats, g: macros.fats },
   ] : []
 
-  const PieChart = () => {
+  // Donut chart con hover
+  const DonutChart = () => {
     if (!slices.length) return (
-      <div className="w-32 h-32 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center leading-tight p-2">
-        Sin datos
-      </div>
+      <div className="w-40 h-40 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center p-3">Sin datos</div>
     )
     let cumAngle = -90
-    const r = 52; const cx = 64; const cy = 64
-    const paths: { label: string; val: number; color: string; g: any; icon: string; d: string; pct: number }[] = []
-    slices.forEach(s => {
+    const r = 56; const ri = 36; const cx = 70; const cy = 70
+    const paths: { d: string; color: string; label: string; g: number; pct: number }[] = []
+    slices.forEach((s, idx) => {
       const pct = s.val / total
-      const angle = pct * 360
+      const angle = pct * 360 - 0.5
       const startRad = (cumAngle * Math.PI) / 180
       const endRad = ((cumAngle + angle) * Math.PI) / 180
-      const x1 = cx + r * Math.cos(startRad); const y1 = cy + r * Math.sin(startRad)
-      const x2 = cx + r * Math.cos(endRad); const y2 = cy + r * Math.sin(endRad)
+      const x1o = cx + r * Math.cos(startRad); const y1o = cy + r * Math.sin(startRad)
+      const x2o = cx + r * Math.cos(endRad); const y2o = cy + r * Math.sin(endRad)
+      const x1i = cx + ri * Math.cos(endRad); const y1i = cy + ri * Math.sin(endRad)
+      const x2i = cx + ri * Math.cos(startRad); const y2i = cy + ri * Math.sin(startRad)
       const large = angle > 180 ? 1 : 0
-      const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`
-      cumAngle += angle
-      paths.push({ ...s, d, pct: Math.round(pct * 100) })
+      const d = `M${x1o},${y1o} A${r},${r} 0 ${large},1 ${x2o},${y2o} L${x1i},${y1i} A${ri},${ri} 0 ${large},0 ${x2i},${y2i} Z`
+      cumAngle += angle + 0.5
+      paths.push({ d, color: s.color, label: s.label, g: s.g, pct: Math.round(pct * 100) })
     })
+    const hovered = hoveredSlice !== null ? paths[hoveredSlice] : null
     return (
-      <svg viewBox="0 0 128 128" className="w-32 h-32 drop-shadow-sm">
-        {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} opacity="0.9" />)}
-        <circle cx={cx} cy={cy} r="28" fill="white" />
-        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#1a1a1a">{macros.kcal}</text>
-        <text x={cx} y={cy + 9} textAnchor="middle" fontSize="7" fill="#8a8278">kcal</text>
-      </svg>
+      <div className="relative">
+        <svg viewBox="0 0 140 140" className="w-40 h-40 drop-shadow-sm">
+          {paths.map((p, i) => (
+            <path key={i} d={p.d} fill={p.color}
+              opacity={hoveredSlice === null ? 0.9 : hoveredSlice === i ? 1 : 0.4}
+              style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+              onMouseEnter={() => setHoveredSlice(i)}
+              onMouseLeave={() => setHoveredSlice(null)}
+            />
+          ))}
+          <circle cx={cx} cy={cy} r={ri} fill="white" />
+          {hovered ? (
+            <>
+              <text x={cx} y={cy - 8} textAnchor="middle" fontSize="13" fontWeight="800" fill={hovered.color}>{hovered.pct}%</text>
+              <text x={cx} y={cy + 6} textAnchor="middle" fontSize="9" fill="#8a8278">{hovered.label}</text>
+              <text x={cx} y={cy + 18} textAnchor="middle" fontSize="9" fontWeight="700" fill="#1a1a1a">{hovered.g}g</text>
+            </>
+          ) : (
+            <>
+              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="14" fontWeight="800" fill="#1a1a1a">{macros.kcal || '—'}</text>
+              <text x={cx} y={cy + 10} textAnchor="middle" fontSize="8" fill="#8a8278">kcal</text>
+            </>
+          )}
+        </svg>
+      </div>
     )
   }
 
   const ACTIVIDAD_OPTS = [
-    { val: 1.2, label: 'Sedentario', desc: 'Sin ejercicio' },
-    { val: 1.375, label: 'Ligero', desc: '1-3 días/sem' },
-    { val: 1.55, label: 'Moderado', desc: '3-5 días/sem' },
-    { val: 1.725, label: 'Activo', desc: '6-7 días/sem' },
-    { val: 1.9, label: 'Muy activo', desc: 'Dobles sesiones' },
+    { val: 1.2, label: 'Sedentario' }, { val: 1.375, label: 'Ligero' },
+    { val: 1.55, label: 'Moderado' }, { val: 1.725, label: 'Activo' }, { val: 1.9, label: 'Muy activo' },
   ]
 
   return (
-    <div className="space-y-4 h-full">
+    <div className="flex flex-col gap-4 h-full">
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
         {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
           <button key={t.id} onClick={() => setSubtab(t.id as any)}
@@ -681,304 +693,291 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       </div>
 
       {subtab === 'macros' && (
-        <div className="flex gap-5">
-          {/* Columna principal */}
-          <div className="flex-1 min-w-0 space-y-4">
+        <div className="flex gap-4 flex-1 min-h-0">
 
-          {/* Panel visual de macros */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-            <div className="flex items-start gap-6">
-              {/* Pie chart */}
-              <div className="flex-shrink-0 flex flex-col items-center gap-3">
-                <PieChart />
-                <div className="space-y-1.5">
-                  {slices.map(s => (
-                    <div key={s.label} className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
-                      <span className="text-[10px] text-muted">{s.label}</span>
-                      <span className="text-[10px] font-bold ml-auto">{total > 0 ? Math.round(s.val / total * 100) : 0}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          {/* ── Columna central (más estrecha) ── */}
+          <div className="flex-1 min-w-0 space-y-4 overflow-y-auto">
 
-              {/* Macros editables */}
-              <div className="flex-1 space-y-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Objetivos diarios</p>
-                  {/* Calorías destacadas */}
-                  <div className="bg-bg-alt rounded-xl p-3 mb-3 flex items-center justify-between">
+            {/* Card principal macros */}
+            <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-4">Objetivos diarios</p>
+
+              {/* Donut + calorías */}
+              <div className="flex items-center gap-5 mb-5">
+                <DonutChart />
+                <div className="flex-1 space-y-2">
+                  {/* Calorías */}
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Calorías totales</p>
-                      <div className="flex items-baseline gap-1 mt-0.5">
+                      <p className="text-[10px] text-muted uppercase tracking-wider">Calorías totales</p>
+                      <div className="flex items-baseline gap-1">
                         <input type="number" value={macros.kcal || ''} onChange={e => updateMacros({ kcal: Number(e.target.value) })}
-                          placeholder="0" className="text-3xl font-bold text-warn bg-transparent outline-none w-28" />
+                          placeholder="0" className="text-4xl font-bold text-ink bg-transparent outline-none w-32" />
                         <span className="text-sm text-muted">kcal</span>
                       </div>
                     </div>
                     <button onClick={() => setShowCalc(!showCalc)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${showCalc ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${showCalc ? 'bg-ink text-white' : 'border-border text-muted hover:border-accent'}`}>
                       🧮 Calcular
                     </button>
                   </div>
-
-                  {/* Los 3 macros */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { key: 'protein', label: 'Proteína', icon: '🥩', color: '#4caf7d', kcalPer: 4 },
-                      { key: 'carbs', label: 'Carbos', icon: '🌾', color: '#6e5438', kcalPer: 4 },
-                      { key: 'fats', label: 'Grasas', icon: '🥑', color: '#e07b54', kcalPer: 9 },
-                    ].map(({ key, label, icon, color, kcalPer }) => (
-                      <div key={key} className="bg-bg rounded-xl p-3 border border-border/50">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-sm">{icon}</span>
-                          <p className="text-[9px] font-bold uppercase tracking-wider text-muted">{label}</p>
-                        </div>
-                        <div className="flex items-baseline gap-1">
-                          <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
-                            placeholder="0" className="text-xl font-bold bg-transparent outline-none w-full" style={{ color }} />
-                          <span className="text-xs text-muted">g</span>
-                        </div>
-                        <p className="text-[9px] text-muted mt-1">{macros[key] ? Math.round(macros[key] * kcalPer) : 0} kcal</p>
+                  {/* Leyenda colores */}
+                  <div className="flex gap-3">
+                    {slices.map(s => (
+                      <div key={s.label} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                        <span className="text-[10px] text-muted">{s.label} {total > 0 ? Math.round(s.val/total*100) : 0}%</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Nota nutricional */}
-            <div className="mt-4 pt-4 border-t border-border/50">
-              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-2">Nota nutricional</label>
-              <textarea rows={4} value={macros.notaMacros || ''}
-                onChange={e => updateMacros({ notaMacros: e.target.value })}
-                placeholder={`Instrucciones para ${client.name}:
-• Distribuye en 4-5 comidas al día
-• Prioriza proteína en cada comida (mínimo 30g)
-• Fuentes: arroz, patata, avena (carbos) · pollo, huevos, atún (proteína) · AOVE, aguacate (grasa)
-• Bebe 3-4L de agua al día`}
-                className="w-full px-3 py-2.5 bg-bg-alt border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
-              />
-            </div>
-          </div>
-
-          {/* Calculadora desplegable */}
-          {showCalc && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-semibold text-sm">Calculadora TDEE + Macros</h4>
-                  <p className="text-xs text-muted mt-0.5">Fórmula Harris-Benedict</p>
-                </div>
+              {/* 3 macros con barra de progreso */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { key: 'protein', label: 'Proteína', icon: '🥩', color: MACRO_COLORS.protein, kcalPer: 4 },
+                  { key: 'carbs',   label: 'Carbos',   icon: '🌾', color: MACRO_COLORS.carbs,   kcalPer: 4 },
+                  { key: 'fats',    label: 'Grasas',   icon: '🥑', color: MACRO_COLORS.fats,    kcalPer: 9 },
+                ].map(({ key, label, icon, color, kcalPer }) => {
+                  const pct = total > 0 ? Math.round(macros[key] * kcalPer / total * 100) : 0
+                  return (
+                    <div key={key} className="rounded-xl p-3" style={{ backgroundColor: color + '0d', border: `1px solid ${color}22` }}>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <span className="text-sm">{icon}</span>
+                        <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
+                      </div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
+                          placeholder="0" className="text-2xl font-bold bg-transparent outline-none w-full" style={{ color }} />
+                        <span className="text-xs text-muted">g</span>
+                      </div>
+                      <div className="h-1.5 bg-white/60 rounded-full overflow-hidden mb-1">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                      </div>
+                      <div className="flex justify-between">
+                        <p className="text-[9px] text-muted">{macros[key] ? Math.round(macros[key] * kcalPer) : 0} kcal</p>
+                        <p className="text-[9px] font-semibold" style={{ color }}>{pct}%</p>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Nota nutricional */}
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Nota nutricional</label>
+                <textarea rows={3} value={macros.notaMacros || ''}
+                  onChange={e => updateMacros({ notaMacros: e.target.value })}
+                  placeholder={`Instrucciones para ${client.name}: distribuye en 4-5 comidas, prioriza proteína (30g/comida), hidratación 3-4L/día...`}
+                  className="w-full px-3 py-2.5 bg-bg-alt/60 border border-border/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
+                />
+              </div>
+            </div>
+
+            {/* Calculadora */}
+            {showCalc && (
+              <div className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Peso (kg)</label>
-                  <input type="number" value={peso} onChange={e => setPeso(e.target.value)} placeholder="80"
-                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                  <h4 className="font-semibold text-sm">Calculadora TDEE + Macros</h4>
+                  <p className="text-xs text-muted">Fórmula Harris-Benedict</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Peso (kg)', val: peso, set: setPeso, ph: String(client.weight || '80') },
+                    { label: 'Altura (cm)', val: altura, set: setAltura, ph: '175' },
+                    { label: 'Edad', val: edad, set: setEdad, ph: '30' },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">{f.label}</label>
+                      <input type="number" value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                        className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Sexo</label>
+                    <div className="flex gap-1">
+                      {[{ v: 'h', l: '♂ H' }, { v: 'm', l: '♀ M' }].map(s => (
+                        <button key={s.v} onClick={() => setSexo(s.v as any)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${sexo === s.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                          {s.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Altura (cm)</label>
-                  <input type="number" value={altura} onChange={e => setAltura(e.target.value)} placeholder="175"
-                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Edad</label>
-                  <input type="number" value={edad} onChange={e => setEdad(e.target.value)} placeholder="30"
-                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Sexo</label>
-                  <div className="flex gap-1">
-                    {[{ v: 'h', l: '♂ Hombre' }, { v: 'm', l: '♀ Mujer' }].map(s => (
-                      <button key={s.v} onClick={() => setSexo(s.v as any)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${sexo === s.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
-                        {s.l}
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Actividad</label>
+                  <div className="grid grid-cols-5 gap-1">
+                    {ACTIVIDAD_OPTS.map(a => (
+                      <button key={a.val} onClick={() => setActividad(a.val)}
+                        className={`py-2 px-1 rounded-lg text-center border transition-all ${actividad === a.val ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                        <p className="text-[9px] font-bold leading-tight">{a.label}</p>
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Nivel de actividad</label>
-                <div className="grid grid-cols-5 gap-1">
-                  {ACTIVIDAD_OPTS.map(a => (
-                    <button key={a.val} onClick={() => setActividad(a.val)}
-                      className={`py-2 px-1 rounded-lg text-center border transition-all ${actividad === a.val ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-                      <p className="text-[9px] font-bold">{a.label}</p>
-                      <p className="text-[8px] opacity-70">{a.desc}</p>
-                    </button>
-                  ))}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Objetivo</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[{ v: 'deficit', l: '🔥 Déficit', d: '-400 kcal' }, { v: 'mantenimiento', l: '⚖️ Mant.', d: 'TDEE' }, { v: 'superavit', l: '💪 Superávit', d: '+300 kcal' }].map(o => (
+                      <button key={o.v} onClick={() => setObjetivo(o.v as any)}
+                        className={`py-2 rounded-xl border text-center transition-all ${objetivo === o.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                        <p className="text-xs font-semibold">{o.l}</p>
+                        <p className="text-[9px] opacity-70">{o.d}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Objetivo</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { v: 'deficit', l: '🔥 Déficit', desc: '-400 kcal' },
-                    { v: 'mantenimiento', l: '⚖️ Mant.', desc: 'TDEE exacto' },
-                    { v: 'superavit', l: '💪 Superávit', desc: '+300 kcal' },
-                  ].map(o => (
-                    <button key={o.v} onClick={() => setObjetivo(o.v as any)}
-                      className={`py-2.5 px-2 rounded-xl border text-center transition-all ${objetivo === o.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-                      <p className="text-xs font-semibold">{o.l}</p>
-                      <p className="text-[9px] opacity-70">{o.desc}</p>
-                    </button>
-                  ))}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Proteína: <span className="text-accent">{ratio}g/kg</span></label>
+                  <input type="range" min="1.6" max="2.4" step="0.1" value={ratio} onChange={e => setRatio(Number(e.target.value))} className="w-full accent-[#6e5438]" />
                 </div>
+                {peso && altura && edad && (() => {
+                  const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
+                  const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
+                  const tdee = Math.round(tmb * actividad)
+                  const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
+                  const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
+                  const carbsG = Math.max(0, Math.round((kcalObj-protG*4-fatG*9)/4))
+                  return (
+                    <div className="bg-bg-alt rounded-xl p-3 text-xs space-y-1">
+                      <p className="text-muted">TMB: <strong>{Math.round(tmb)}</strong> · TDEE: <strong>{tdee}</strong> kcal</p>
+                      <p>
+                        <strong className="text-warn">{kcalObj} kcal</strong> · 
+                        Prot: <strong style={{color:MACRO_COLORS.protein}}>{protG}g</strong> · 
+                        Carbs: <strong style={{color:MACRO_COLORS.carbs}}>{carbsG}g</strong> · 
+                        Grasa: <strong style={{color:MACRO_COLORS.fats}}>{fatG}g</strong>
+                      </p>
+                    </div>
+                  )
+                })()}
+                <button onClick={calcMacros} className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90">🧮 Calcular y aplicar</button>
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">
-                  Ratio proteína: <span className="text-accent">{ratio}g/kg</span>
-                </label>
-                <input type="range" min="1.6" max="2.4" step="0.1" value={ratio} onChange={e => setRatio(Number(e.target.value))}
-                  className="w-full accent-[#6e5438]" />
-                <div className="flex justify-between text-[9px] text-muted mt-0.5">
-                  <span>1.6g/kg (mínimo)</span><span>2.0g/kg (óptimo)</span><span>2.4g/kg (máximo)</span>
-                </div>
-              </div>
+          {/* ── Columna derecha ── */}
+          <div className="w-64 flex-shrink-0 space-y-3 overflow-y-auto">
 
-              <button onClick={calcMacros}
-                className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
-                🧮 Calcular y aplicar macros
-              </button>
-
-              {/* Preview del cálculo */}
-              {peso && altura && edad && (
-                <div className="bg-bg-alt rounded-xl p-3 text-xs text-muted space-y-1">
-                  {(() => {
-                    const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
-                    const tmb = sexo === 'h' ? 88.362 + (13.397*p) + (4.799*h) - (5.677*e) : 447.593 + (9.247*p) + (3.098*h) - (4.330*e)
-                    const tdee = Math.round(tmb * actividad)
-                    const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
-                    const protG = Math.round(p * ratio)
-                    const fatG = Math.round(p * 1.0)
-                    const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
-                    return <>
-                      <p>TMB: <strong>{Math.round(tmb)} kcal</strong> · TDEE: <strong>{tdee} kcal</strong></p>
-                      <p>Objetivo: <strong className="text-warn">{kcalObj} kcal</strong> · Prot: <strong className="text-ok">{protG}g</strong> · Carbs: <strong className="text-accent">{carbsG}g</strong> · Grasa: <strong style={{color:'#e07b54'}}>{fatG}g</strong></p>
-                    </>
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
-          </div>{/* fin columna principal */}
-
-          {/* Columna derecha contextual — editable */}
-          <div className="w-72 flex-shrink-0 space-y-4">
-
-            {/* Distribución por comidas — editable */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            {/* Distribución comidas */}
+            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Distribución comidas</h4>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Distribución</p>
                 <button onClick={() => setDist([...dist, { label: 'Comida', icon: '🍴', pct: 0 }])}
                   className="text-[10px] text-accent hover:underline">+ Añadir</button>
               </div>
               <div className="space-y-2">
                 {dist.map((m, i) => (
-                  <div key={i} className="space-y-1">
-                    <div className="flex items-center gap-1.5">
+                  <div key={i}>
+                    <div className="flex items-center gap-1.5 mb-1">
                       <input value={m.icon} onChange={e => { const d=[...dist]; d[i]={...d[i],icon:e.target.value}; setDist(d) }}
-                        className="w-7 text-center bg-bg border border-border rounded text-sm outline-none" />
+                        className="w-6 text-center bg-transparent outline-none text-sm" />
                       <input value={m.label} onChange={e => { const d=[...dist]; d[i]={...d[i],label:e.target.value}; setDist(d) }}
-                        className="flex-1 px-2 py-1 bg-bg border border-border rounded-lg text-xs outline-none" />
+                        className="flex-1 text-xs font-semibold bg-transparent outline-none border-b border-transparent focus:border-accent" />
                       <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d=[...dist]; d[i]={...d[i],pct:Number(e.target.value)}; setDist(d) }}
-                        className="w-12 text-center px-1 py-1 bg-bg border border-border rounded-lg text-xs outline-none" />
-                      <span className="text-[10px] text-muted">%</span>
+                        className="w-10 text-center text-xs bg-bg border border-border/50 rounded px-1 py-0.5 outline-none" />
+                      <span className="text-[9px] text-muted">%</span>
                       <button onClick={() => setDist(dist.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
                     </div>
-                    {macros.kcal > 0 && (
-                      <div className="flex items-center gap-2 pl-9">
-                        <div className="flex-1 h-1 bg-bg-alt rounded-full overflow-hidden">
-                          <div className="h-full bg-accent rounded-full" style={{ width: `${m.pct}%` }} />
-                        </div>
-                        <span className="text-[9px] text-muted">{Math.round(macros.kcal * m.pct / 100)} kcal</span>
+                    <div className="flex items-center gap-2 pl-6">
+                      <div className="flex-1 h-1 bg-bg-alt rounded-full overflow-hidden">
+                        <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${m.pct}%` }} />
                       </div>
-                    )}
+                      <span className="text-[9px] text-muted w-14 text-right">{macros.kcal > 0 ? Math.round(macros.kcal * m.pct / 100) : 0} kcal</span>
+                    </div>
                   </div>
                 ))}
-                <p className={`text-[9px] mt-1 ${dist.reduce((a,d)=>a+d.pct,0)===100?'text-ok':'text-warn'}`}>
-                  Total: {dist.reduce((a,d)=>a+d.pct,0)}% {dist.reduce((a,d)=>a+d.pct,0)===100?'✓':'(debe sumar 100%)'}
+                <p className={`text-[9px] mt-1 ${dist.reduce((a,d)=>a+d.pct,0)===100?'text-ok font-semibold':'text-warn'}`}>
+                  Total: {dist.reduce((a,d)=>a+d.pct,0)}% {dist.reduce((a,d)=>a+d.pct,0)===100?'✓':'≠ 100'}
                 </p>
               </div>
             </div>
 
-            {/* Suplementación — editable con toggle */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            {/* Suplementación */}
+            <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Suplementación</h4>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Suplementación</p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setSups([...sups, { name: 'Suplemento', dosis: '', timing: '', visible: true }])}
                     className="text-[10px] text-accent hover:underline">+ Añadir</button>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] text-muted">Ver cliente</span>
-                    <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${showSups ? 'bg-ok' : 'bg-border'}`}
-                      onClick={() => setShowSups(!showSups)}>
-                      <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${showSups ? 'translate-x-3' : 'translate-x-0'}`} />
-                    </div>
+                  <div className={`w-7 h-4 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${showSups ? 'bg-ok' : 'bg-border'}`}
+                    onClick={() => setShowSups(!showSups)}>
+                    <div className={`w-3 h-3 bg-white rounded-full shadow transition-all ${showSups ? 'translate-x-3' : 'translate-x-0'}`} />
                   </div>
                 </div>
               </div>
+              {!showSups && <p className="text-[9px] text-muted mb-2">Oculto al cliente. Activa el toggle para mostrar.</p>}
               <div className="space-y-2">
                 {sups.map((s, i) => (
-                  <div key={i} className={`rounded-xl p-2 border transition-all ${s.visible ? 'bg-ok/5 border-ok/20' : 'bg-bg border-border'}`}>
-                    <div className="flex items-center gap-1.5 mb-1">
+                  <div key={i} className={`rounded-lg p-2 transition-all ${s.visible ? 'bg-ok/8' : 'bg-bg-alt/50'}`}>
+                    <div className="flex items-center gap-1.5">
                       <button onClick={() => { const ss=[...sups]; ss[i]={...ss[i],visible:!ss[i].visible}; setSups(ss) }}
-                        className={`text-xs flex-shrink-0 ${s.visible ? 'text-ok' : 'text-muted'}`}>
-                        {s.visible ? '👁' : '🙈'}
+                        className={`text-xs ${s.visible ? 'opacity-100' : 'opacity-40'}`}>
+                        {s.visible ? '👁️' : '🙈'}
                       </button>
                       <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; setSups(ss) }}
-                        className="flex-1 text-xs font-semibold bg-transparent outline-none border-b border-transparent focus:border-accent" />
-                      <button onClick={() => setSups(sups.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn flex-shrink-0"><X className="w-3 h-3" /></button>
+                        className="flex-1 text-xs font-semibold bg-transparent outline-none" />
+                      <button onClick={() => setSups(sups.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
                     </div>
-                    <div className="grid grid-cols-2 gap-1 pl-5">
+                    <div className="flex gap-2 pl-5 mt-0.5">
                       <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; setSups(ss) }}
-                        placeholder="Dosis" className="text-[10px] text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
+                        placeholder="Dosis" className="text-[10px] text-muted bg-transparent outline-none flex-1 border-b border-transparent focus:border-accent/40" />
                       <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; setSups(ss) }}
-                        placeholder="Timing" className="text-[10px] text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
+                        placeholder="Timing" className="text-[10px] text-muted bg-transparent outline-none flex-1 border-b border-transparent focus:border-accent/40" />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Equivalencias proteína — editables */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Equivalencias proteína</h4>
-                <button onClick={() => setEquivs([...equivs, { food: '🥩 Alimento', per100: 20 }])}
-                  className="text-[10px] text-accent hover:underline">+ Añadir</button>
+            {/* Equivalencias proteína */}
+            {macros.protein > 0 && (
+              <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Equivalencias proteína</p>
+                  <button onClick={() => setEquivs([...equivs, { food: '🥩 Alimento', per100: 20 }])}
+                    className="text-[10px] text-accent hover:underline">+ Añadir</button>
+                </div>
+                <div className="space-y-2.5">
+                  {equivs.map((f, i) => {
+                    const gramos = Math.round(macros.protein / f.per100 * 100)
+                    const maxGramos = Math.max(...equivs.map(e => Math.round(macros.protein / e.per100 * 100)), 1)
+                    const barPct = Math.round(gramos / maxGramos * 100)
+                    return (
+                      <div key={i}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <input value={f.food} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],food:e.target.value}; setEquivs(eq) }}
+                            className="flex-1 text-xs bg-transparent outline-none" />
+                          <input type="number" value={f.per100} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],per100:Number(e.target.value)}; setEquivs(eq) }}
+                            className="w-8 text-center text-[10px] bg-bg border border-border/50 rounded px-0.5 py-0.5 outline-none" />
+                          <span className="text-[9px] text-muted">g/100</span>
+                          <span className="text-xs font-bold w-10 text-right" style={{ color: MACRO_COLORS.protein }}>{gramos}g</span>
+                          <button onClick={() => setEquivs(equivs.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
+                        </div>
+                        <div className="h-1 bg-bg-alt rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: MACRO_COLORS.protein + 'aa' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <p className="text-[9px] text-muted pt-1 border-t border-border/40">Para cubrir {macros.protein}g proteína</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                {equivs.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input value={f.food} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],food:e.target.value}; setEquivs(eq) }}
-                      className="flex-1 text-xs text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
-                    <input type="number" value={f.per100} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],per100:Number(e.target.value)}; setEquivs(eq) }}
-                      className="w-10 text-center text-xs bg-bg border border-border rounded px-1 py-0.5 outline-none" />
-                    <span className="text-[9px] text-muted">g/100g</span>
-                    {macros.protein > 0 && <span className="text-xs font-bold w-12 text-right">{Math.round(macros.protein/f.per100*100)}g</span>}
-                    <button onClick={() => setEquivs(equivs.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
-                  </div>
-                ))}
-                {macros.protein > 0 && <p className="text-[9px] text-muted pt-1 border-t border-border">Para cubrir {macros.protein}g proteína</p>}
-              </div>
-            </div>
+            )}
 
-            {/* Guardar panel */}
             <button onClick={saveSidePanel}
-              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-              💾 Guardar panel derecho
+              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+              💾 Guardar panel
             </button>
           </div>
         </div>
       )}
-      {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} syncedMacros={{ kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }} onMacrosChange={m => updateMacros(m)} />}
+      {subtab === 'plan' && (
+        <DietEditor clientId={clientId} isTrainer={true}
+          syncedMacros={{ kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fats: macros.fats }}
+          onMacrosChange={m => updateMacros(m)} />
+      )}
     </div>
   )
 }
