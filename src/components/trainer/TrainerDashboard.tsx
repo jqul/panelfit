@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon, TrendingUp,
+  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save
+  Clock, X, BarChart2, Menu, Save, TrendingUp, Zap,
+  StickyNote, Activity
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
@@ -45,8 +46,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const library = useExerciseLibrary(userProfile.uid)
+  const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
+  const library = useExerciseLibrary(userProfile.uid)
 
   const fetchClients = async () => {
     setLoading(true)
@@ -132,78 +134,127 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     return new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
   }
 
-  const navItems: { id: Tab; icon: React.ElementType; label: string; badge?: number }[] = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Resumen' },
-    { id: 'clients',   icon: Users,           label: 'Clientes', badge: clients.length },
-    { id: 'exercises', icon: Dumbbell,        label: 'Ejercicios' },
-    { id: 'templates', icon: ClipboardList,   label: 'Plantillas' },
-    { id: 'settings',  icon: SettingsIcon,    label: 'Ajustes' },
-    { id: 'mensajes',  icon: MessageCircle,    label: 'Mensajes' },
-    { id: 'insights',  icon: BarChart2,         label: 'Insights' },
-    { id: 'adherencia', icon: TrendingUp,        label: 'Adherencia' },
+  // Feed de actividad reciente desde logs
+  const activityFeed = useMemo(() => {
+    const events: { clientName: string; text: string; date: string; type: 'workout' | 'weight' }[] = []
+    clients.forEach(c => {
+      const logs = logsMap[c.id] || {}
+      const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
+      if (dates[0]) events.push({ clientName: `${c.name} ${c.surname}`, text: 'completó una sesión', date: dates[0], type: 'workout' })
+    })
+    return events.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
+  }, [clients, logsMap])
+
+  const NAV_GROUPS = [
+    {
+      label: 'Gestión',
+      items: [
+        { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
+        { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
+        { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
+      ]
+    },
+    {
+      label: 'Contenido',
+      items: [
+        { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
+        { id: 'templates' as Tab, icon: ClipboardList, label: 'Plantillas' },
+      ]
+    },
+    {
+      label: 'Análisis',
+      items: [
+        { id: 'insights' as Tab, icon: BarChart2, label: 'Insights' },
+        { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
+      ]
+    },
+    {
+      label: 'Configuración',
+      items: [
+        { id: 'settings' as Tab, icon: SettingsIcon, label: 'Ajustes' },
+      ]
+    },
   ]
 
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
 
-  const Sidebar = () => (
-    <aside className="w-60 flex-shrink-0 bg-card border-r border-border flex flex-col h-full">
-      <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-        <h1 className="text-xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-5 h-5" /></button>
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
+        <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
+        <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
       </div>
+
+      {/* Usuario */}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center font-serif text-accent text-sm font-bold flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center font-bold text-accent text-sm flex-shrink-0">
             {userProfile.displayName?.[0]?.toUpperCase() || '?'}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
             <p className="text-[10px] text-muted truncate">{userProfile.email}</p>
           </div>
         </div>
       </div>
-      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ id, icon: Icon, label, badge }) => (
-          <button key={id} onClick={() => handleTabChange(id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
-            <Icon className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1 text-left">{label}</span>
-            {badge !== undefined && badge > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20 text-white' : 'bg-bg-alt text-muted'}`}>{badge}</span>
-            )}
-          </button>
+
+      {/* Nav agrupado */}
+      <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
+        {NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
+            <div className="space-y-0.5">
+              {group.items.map(({ id, icon: Icon, label, badge }) => (
+                <button key={id} onClick={() => handleTabChange(id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
+                  }`}>
+                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="flex-1 text-left">{label}</span>
+                  {badge !== undefined && badge > 0 && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         ))}
       </nav>
-      <div className="p-3 border-t border-border space-y-2">
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border space-y-1.5">
         {alerts.length > 0 && (
           <button onClick={() => { setActiveTab('clients'); setClientFilter('no-activity'); setSidebarOpen(false) }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl text-xs font-semibold text-warn hover:bg-warn/10">
+            className="w-full flex items-center gap-2 px-3 py-2 bg-warn/5 border border-warn/20 rounded-lg text-xs font-semibold text-warn hover:bg-warn/10">
             <Bell className="w-3.5 h-3.5" /> {alerts.length} alerta{alerts.length > 1 ? 's' : ''}
           </button>
         )}
-        <Button className="w-full gap-2 text-sm" onClick={() => { setShowAdd(true); setSidebarOpen(false) }}>
-          <UserPlus className="w-4 h-4" /> Nuevo cliente
-        </Button>
-        <Button variant="outline" className="w-full justify-start gap-2 text-sm" onClick={onLogout}>
-          <LogOut className="w-4 h-4" /> Cerrar sesión
-        </Button>
+        <button onClick={() => { setShowAdd(true); setSidebarOpen(false) }}
+          className="w-full flex items-center gap-2 px-3 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
+          <UserPlus className="w-3.5 h-3.5" /> Nuevo cliente
+        </button>
+        <button onClick={onLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
+          <LogOut className="w-3.5 h-3.5" /> Cerrar sesión
+        </button>
       </div>
-    </aside>
+    </div>
   )
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg">
       {/* Sidebar desktop */}
-      <div className="hidden lg:flex flex-shrink-0">
-        <Sidebar />
+      <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border">
+        <SidebarContent />
       </div>
 
       {/* Drawer móvil */}
       {sidebarOpen && (
         <>
           <div className="fixed inset-0 bg-ink/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed inset-y-0 left-0 z-40 lg:hidden">
-            <Sidebar />
+          <div className="fixed inset-y-0 left-0 z-40 w-52 bg-card border-r border-border lg:hidden">
+            <SidebarContent />
           </div>
         </>
       )}
@@ -212,114 +263,202 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       <main className="flex-1 overflow-y-auto min-w-0">
         {/* Header móvil */}
         <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted">
-            <Menu className="w-5 h-5" />
-          </button>
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted">
-            <UserPlus className="w-5 h-5" />
-          </button>
+          <button onClick={() => setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
         </div>
 
-        <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6">
-
-          {/* DASHBOARD */}
+        <div className="p-6">
+          {/* DASHBOARD — 3 columnas */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6 animate-fade-in">
-              <div>
-                <h2 className="text-3xl font-serif font-bold">Resumen</h2>
-                <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { label: 'Clientes', value: clients.length, icon: Users, color: 'text-ink', bg: 'bg-bg-alt', onClick: () => handleTabChange('clients') },
-                  { label: 'Hoy', value: activeToday, icon: CheckCircle2, color: 'text-ok', bg: 'bg-ok/10', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
-                  { label: 'Sin plan', value: noPlan, icon: AlertCircle, color: 'text-warn', bg: 'bg-warn/10', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
-                  { label: 'Sin actividad', value: noActivity7d, icon: Clock, color: 'text-warn', bg: 'bg-warn/10', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
-                ].map(({ label, value, icon: Icon, color, bg, onClick }) => (
-                  <button key={label} onClick={onClick} className="bg-card border border-border rounded-2xl p-4 text-left hover:border-accent transition-all">
-                    <div className={`w-8 h-8 ${bg} rounded-xl flex items-center justify-center mb-2`}>
-                      <Icon className={`w-4 h-4 ${color}`} />
+            <div className="flex gap-6 animate-fade-in">
+              {/* Columna central */}
+              <div className="flex-1 min-w-0 space-y-6">
+                <div>
+                  <h2 className="text-4xl font-serif font-bold">Resumen</h2>
+                  <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                </div>
+
+                {/* KPIs */}
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Clientes', value: clients.length, icon: Users, color: 'text-ink', accent: '#6e5438', onClick: () => handleTabChange('clients') },
+                    { label: 'Entrenaron hoy', value: activeToday, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
+                    { label: 'Sin plan', value: noPlan, icon: AlertCircle, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
+                    { label: 'Sin actividad', value: noActivity7d, icon: Clock, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
+                  ].map(({ label, value, icon: Icon, color, accent, onClick }) => (
+                    <button key={label} onClick={onClick}
+                      className="bg-white border-0 rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm"
+                      style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                          <Icon className={`w-4 h-4 ${color}`} />
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-muted/40" />
+                      </div>
+                      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+                      <p className="text-xs text-muted font-medium mt-0.5">{label}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Gráfica grande */}
+                <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h3 className="font-serif font-bold text-lg">Actividad semanal</h3>
+                      <p className="text-xs text-muted mt-0.5">Clientes que completaron sesiones cada día</p>
                     </div>
-                    <p className={`text-2xl font-serif font-bold ${color}`}>{value}</p>
-                    <p className="text-[10px] text-muted uppercase tracking-wider font-semibold mt-0.5">{label}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-5">
-                    <div><h3 className="font-serif font-bold">Actividad esta semana</h3><p className="text-xs text-muted mt-0.5">Clientes que entrenaron cada día</p></div>
-                    <BarChart2 className="w-4 h-4 text-muted" />
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <span className="w-2 h-2 rounded-full bg-accent inline-block" />
+                      Sesiones
+                    </div>
                   </div>
-                  <div className="h-40">
+                  <div className="h-52">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
+                      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <defs>
                           <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#6e5438" stopOpacity={0.3} />
+                            <stop offset="5%" stopColor="#6e5438" stopOpacity={0.2} />
                             <stop offset="95%" stopColor="#6e5438" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d8d4ca" />
-                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: '#faf8f5', border: '1px solid #d8d4ca', borderRadius: 8, fontSize: 12 }} />
-                        <Area type="monotone" dataKey="count" name="Clientes" stroke="#6e5438" strokeWidth={2} fill="url(#grad)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} allowDecimals={false} />
+                        <Tooltip contentStyle={{ background: 'white', border: 'none', borderRadius: 12, fontSize: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }} />
+                        <Area type="monotone" dataKey="count" name="Clientes" stroke="#6e5438" strokeWidth={2.5} fill="url(#grad)" dot={{ fill: '#6e5438', r: 3 }} activeDot={{ r: 5 }} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                    <h3 className="font-serif font-bold text-sm">Requieren atención</h3>
-                    <Bell className="w-4 h-4 text-muted" />
+
+                {/* Lista clientes */}
+                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
+                    <h3 className="font-serif font-bold">Clientes recientes</h3>
+                    <button onClick={() => handleTabChange('clients')} className="text-xs text-accent hover:underline font-semibold">Ver todos →</button>
                   </div>
-                  <div className="divide-y divide-border max-h-56 overflow-y-auto">
-                    {alerts.length === 0 ? (
-                      <div className="px-5 py-8 text-center"><CheckCircle2 className="w-8 h-8 text-ok mx-auto mb-2 opacity-60" /><p className="text-sm text-muted">Todo en orden</p></div>
-                    ) : alerts.slice(0, 8).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg-alt text-left">
-                        <div className="w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{c.name} {c.surname}</p>
-                          <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan asignado' : `Sin entrenar: ${formatLastActive(c.lastActive)}`}</p>
+                  <div className="divide-y divide-border/50">
+                    {clients.slice(0, 5).map(c => (
+                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-bg-alt/50 text-left group transition-colors">
+                        <div className="relative w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">
+                          {c.name[0]?.toUpperCase()}
+                          {c.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-white" />}
                         </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {!c.hasPlan && <span className="text-[10px] text-warn font-semibold">Sin plan</span>}
+                            {c.hasPlan && <span className="text-[10px] text-muted">{formatLastActive(c.lastActive)}</span>}
+                            {!!c.weeklyDays && <span className="text-[10px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
                       </button>
                     ))}
+                    {!clients.length && (
+                      <div className="px-5 py-10 text-center text-muted">
+                        <p className="text-sm">Sin clientes aún.</p>
+                        <button onClick={() => setShowAdd(true)} className="mt-2 text-accent text-sm hover:underline">Añadir el primero →</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-                  <h3 className="font-serif font-bold">Clientes recientes</h3>
-                  <button onClick={() => handleTabChange('clients')} className="text-xs text-accent hover:underline font-semibold">Ver todos →</button>
-                </div>
-                <div className="divide-y divide-border">
-                  {clients.slice(0, 6).map(c => (
-                    <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-bg-alt text-left group">
-                      <div className="relative w-9 h-9 rounded-full bg-bg-alt border border-border flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">
-                        {c.name[0]?.toUpperCase()}
-                        {c.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-card" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {!c.hasPlan && <span className="text-[10px] text-warn font-semibold">Sin plan</span>}
-                          {c.hasPlan && <span className="text-[10px] text-muted">{formatLastActive(c.lastActive)}</span>}
-                          {!!c.weeklyDays && <span className="text-[10px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100" />
-                    </button>
-                  ))}
-                  {!clients.length && (
-                    <div className="px-5 py-10 text-center text-muted">
-                      <p className="text-sm">Sin clientes aún.</p>
-                      <button onClick={() => setShowAdd(true)} className="mt-2 text-accent text-sm hover:underline">Añadir el primero →</button>
+
+              {/* Columna derecha — contexto */}
+              <div className="w-72 flex-shrink-0 space-y-4">
+                {/* Alertas */}
+                {alerts.length > 0 && (
+                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                    <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
+                      <Bell className="w-3.5 h-3.5 text-warn" />
+                      <h3 className="text-sm font-semibold">Requieren atención</h3>
                     </div>
-                  )}
+                    <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
+                      {alerts.slice(0, 5).map(c => (
+                        <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
+                          <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
+                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : 'Sin actividad reciente'}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feed actividad */}
+                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-accent" />
+                    <h3 className="text-sm font-semibold">Actividad reciente</h3>
+                  </div>
+                  <div className="divide-y divide-border/50">
+                    {activityFeed.length === 0 ? (
+                      <div className="px-4 py-6 text-center">
+                        <p className="text-xs text-muted">Sin actividad reciente</p>
+                      </div>
+                    ) : activityFeed.map((ev, i) => (
+                      <div key={i} className="flex items-start gap-3 px-4 py-3">
+                        <div className="w-7 h-7 rounded-full bg-ok/10 flex items-center justify-center text-xs font-bold text-ok flex-shrink-0 mt-0.5">
+                          {ev.clientName[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs leading-tight">
+                            <span className="font-semibold">{ev.clientName}</span>
+                            <span className="text-muted"> {ev.text}</span>
+                          </p>
+                          <p className="text-[10px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
+                        </div>
+                        {ev.type === 'workout' && <CheckCircle2 className="w-3.5 h-3.5 text-ok flex-shrink-0 mt-0.5" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tareas pendientes */}
+                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                    <h3 className="text-sm font-semibold">Tareas de hoy</h3>
+                  </div>
+                  <div className="p-3 space-y-1.5">
+                    {alerts.slice(0, 3).map(c => (
+                      <button key={c.id} onClick={() => onSelectClient(c)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
+                        <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
+                        <p className="text-xs text-muted">
+                          {!c.hasPlan ? `Crear plan para ${c.name}` : `Revisar progreso de ${c.name}`}
+                        </p>
+                      </button>
+                    ))}
+                    {alerts.length === 0 && (
+                      <div className="px-3 py-4 text-center">
+                        <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
+                        <p className="text-xs text-muted">Todo al día ✓</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notas rápidas */}
+                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
+                    <StickyNote className="w-3.5 h-3.5 text-accent" />
+                    <h3 className="text-sm font-semibold">Notas rápidas</h3>
+                  </div>
+                  <div className="p-3">
+                    <textarea
+                      value={quickNote}
+                      onChange={e => { setQuickNote(e.target.value); localStorage.setItem('pf_quick_note', e.target.value) }}
+                      placeholder="Anota algo al vuelo..."
+                      rows={4}
+                      className="w-full text-xs text-muted bg-bg-alt/50 border border-border/50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -327,7 +466,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
           {/* CLIENTES */}
           {activeTab === 'clients' && (
-            <div className="animate-fade-in space-y-5">
+            <div className="animate-fade-in space-y-5 max-w-5xl">
               <div className="flex items-center justify-between">
                 <div><h2 className="text-3xl font-serif font-bold">Clientes</h2><p className="text-muted text-sm mt-1">{clients.length} alumnos</p></div>
                 <Button className="gap-2" onClick={() => setShowAdd(true)}><UserPlus className="w-4 h-4" /> Nuevo</Button>
@@ -336,12 +475,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 <div className="relative flex-1 min-w-40">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }] as const).map(f => (
                     <button key={f.id} onClick={() => setClientFilter(f.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted hover:border-accent'}`}>
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
                       {f.label}
                     </button>
                   ))}
@@ -349,21 +488,23 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
               </div>
               {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1,2,3].map(i => <div key={i} className="h-40 bg-card border border-border rounded-2xl animate-pulse" />)}
+                  {[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse shadow-sm" />)}
                 </div>
               ) : filteredClients.length === 0 ? (
-                <div className="text-center py-20 bg-card border border-dashed border-border rounded-2xl">
+                <div className="text-center py-20 bg-white rounded-2xl shadow-sm">
                   <Users className="w-12 h-12 text-muted/30 mx-auto mb-4" />
                   <p className="font-serif font-bold text-lg">Sin resultados</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredClients.map(client => (
-                    <div key={client.id} className="bg-card border border-border rounded-2xl p-5 hover:border-accent hover:shadow-sm transition-all cursor-pointer group" onClick={() => onSelectClient(client)}>
+                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm"
+                      style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}
+                      onClick={() => onSelectClient(client)}>
                       <div className="flex items-center gap-3 mb-4">
                         <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
                           {client.name[0]?.toUpperCase()}
-                          {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-card" />}
+                          {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
@@ -371,9 +512,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                         </div>
                       </div>
                       <div className="flex gap-2 mb-4 flex-wrap">
-                        {!client.hasPlan && <span className="text-[10px] font-bold bg-warn/10 text-warn px-2 py-0.5 rounded-full border border-warn/20">Sin plan</span>}
-                        {client.hasPlan && <span className="text-[10px] font-bold bg-ok/10 text-ok px-2 py-0.5 rounded-full border border-ok/20">Plan ✓</span>}
-                        {!!client.weeklyDays && <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full border border-accent/20">{client.weeklyDays}d semana</span>}
+                        {!client.hasPlan && <span className="text-[10px] font-bold bg-warn/10 text-warn px-2 py-0.5 rounded-full">Sin plan</span>}
+                        {client.hasPlan && <span className="text-[10px] font-bold bg-ok/10 text-ok px-2 py-0.5 rounded-full">Plan ✓</span>}
+                        {!!client.weeklyDays && <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">{client.weeklyDays}d semana</span>}
                       </div>
                       {deletingId === client.id ? (
                         <div className="flex gap-2">
@@ -416,12 +557,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
             <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
             <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
@@ -453,11 +594,10 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   )
 }
 
-// ── Settings completo ─────────────────────────────────────
+// ── Settings ──────────────────────────────────────────────
 function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
   const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
-
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
   const [brandName, setBrandName] = useState(saved.brandName || '')
   const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
@@ -474,119 +614,71 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     await supabase.from('entrenadores').update({ displayName }).eq('uid', userProfile.uid)
-    toast('Perfil guardado ✓', 'ok')
-    setSaving(false)
-  }
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return
-    if (file.size > 2 * 1024 * 1024) { toast('Máximo 2MB', 'warn'); return }
-    const reader = new FileReader()
-    reader.onload = () => setBrandLogo(reader.result as string)
-    reader.readAsDataURL(file)
+    toast('Perfil guardado ✓', 'ok'); setSaving(false)
   }
 
   return (
     <div className="animate-fade-in space-y-6 max-w-lg">
       <h2 className="text-3xl font-serif font-bold">Configuración</h2>
-
-      {/* Perfil personal */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Perfil personal</h3>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
           <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
           <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio / Especialidad</label>
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio</label>
           <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..."
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1">Email</label>
-          <p className="text-sm text-muted px-1">{userProfile.email}</p>
-        </div>
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+        <div><label className="text-xs text-muted">Email</label><p className="text-sm text-muted px-1 mt-0.5">{userProfile.email}</p></div>
       </div>
-
-      {/* Marca */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
-          <p className="text-xs text-muted mt-1">El cliente verá tu marca en vez de "PanelFit".</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
           <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: Carlos Training"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
-        </div>
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo</label>
           <div className="flex items-center gap-4">
             {brandLogo ? (
-              <div className="relative">
-                <img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="Logo" />
-                <button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full flex items-center justify-center text-xs font-bold">×</button>
-              </div>
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs text-center p-1">Tu logo</div>
-            )}
-            <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer">
-              Subir imagen
-              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+              <div className="relative"><img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="" />
+                <button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center">×</button></div>
+            ) : <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs">Logo</div>}
+            <label className="px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent cursor-pointer">
+              Subir imagen<input type="file" accept="image/*" className="hidden" onChange={e => {
+                const file = e.target.files?.[0]; if (!file || file.size > 2*1024*1024) return
+                const r = new FileReader(); r.onload = () => setBrandLogo(r.result as string); r.readAsDataURL(file)
+              }} />
             </label>
           </div>
-          <p className="text-[10px] text-muted mt-1">PNG, JPG · Máx 2MB</p>
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color de marca</label>
           <div className="flex items-center gap-3">
-            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)}
-              className="w-10 h-10 rounded-xl border border-border cursor-pointer bg-bg" />
+            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} className="w-10 h-10 rounded-xl border border-border cursor-pointer" />
             <span className="text-sm text-muted font-mono">{brandColor}</span>
             <div className="flex gap-2">
-              {['#6e5438', '#1a1a2e', '#0f4c75', '#1b4332', '#7b2d8b', '#c0392b'].map(c => (
-                <button key={c} onClick={() => setBrandColor(c)}
-                  className="w-6 h-6 rounded-full border-2 transition-all"
-                  style={{ backgroundColor: c, borderColor: brandColor === c ? 'var(--color-ink)' : 'transparent' }} />
+              {['#6e5438','#1a1a2e','#0f4c75','#1b4332','#7b2d8b','#c0392b'].map(c => (
+                <button key={c} onClick={() => setBrandColor(c)} className="w-6 h-6 rounded-full border-2 transition-all"
+                  style={{ backgroundColor: c, borderColor: brandColor === c ? '#1a1a1a' : 'transparent' }} />
               ))}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Mensajes */}
-      <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Mensajes</h3>
-          <p className="text-xs text-muted mt-1">Lo que ven tus clientes en su panel.</p>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label>
-          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
-            placeholder="Ej: Cada entreno te acerca a tu mejor versión. ¡Vamos! 💪"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de descanso</label>
-          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
-            placeholder="Ej: Hoy es día de descanso. Recupera bien. 🧘"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
-        </div>
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bienvenida</label>
+          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido a tu panel! 💪"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label>
+          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. Recupera bien. 🧘"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
       </div>
-
       <div className="flex gap-3">
-        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
-          <Save className="w-4 h-4" /> {saving ? 'Guardando...' : 'Guardar cambios'}
-        </Button>
-        <Button variant="outline" className="gap-2" onClick={onLogout}>
-          <LogOut className="w-4 h-4" /> Salir
-        </Button>
+        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}><Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar cambios'}</Button>
+        <Button variant="outline" className="gap-2" onClick={onLogout}><LogOut className="w-4 h-4" />Salir</Button>
       </div>
     </div>
   )
