@@ -236,7 +236,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         </header>
 
         {/* Contenido tab */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {loading ? (
             <div className="p-6 space-y-4">
               <div className="h-8 w-48 bg-card border border-border rounded-lg animate-pulse" />
@@ -244,20 +244,24 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-card border border-border rounded-xl animate-pulse" />)}</div>
             </div>
           ) : (
-            <div className="p-6 h-full">
+            <div className="p-6 flex-1 overflow-hidden flex flex-col min-h-0">
               {activeTab === 'plan' && plan && (
-                <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
-                  allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient}
-                  logs={logs} clientName={`${client.name} ${client.surname}`} />
+                <div className="flex-1 overflow-hidden">
+                  <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
+                    allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient}
+                    logs={logs} clientName={`${client.name} ${client.surname}`} />
+                </div>
               )}
               {activeTab === 'dieta' && (
-                <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} />
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} />
+                </div>
               )}
-              {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
-              {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
-              {activeTab === 'progreso' && <ProgresoTab client={client} />}
-              {activeTab === 'notas' && <NotasTab plan={plan} onChange={handlePlanChange} />}
-              {activeTab === 'config' && <ConfigTab client={client} plan={plan} onChange={handlePlanChange} />}
+              {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
+              {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} /></div>}
+              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} /></div>}
+              {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
+              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
             </div>
           )}
         </main>
@@ -682,8 +686,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   ]
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
+    <div className="flex flex-col gap-3 h-full overflow-hidden">
+      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit flex-shrink-0">
         {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
           <button key={t.id} onClick={() => setSubtab(t.id as any)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === t.id ? 'bg-white shadow-sm text-ink' : 'text-muted'}`}>
@@ -693,10 +697,10 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       </div>
 
       {subtab === 'macros' && (
-        <div className="flex gap-4 flex-1 min-h-0">
+        <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
 
-          {/* ── Columna central (más estrecha) ── */}
-          <div className="flex-1 min-w-0 space-y-4 overflow-y-auto">
+          {/* ── Columna central ── */}
+          <div className="flex-1 min-w-0 space-y-4 overflow-y-auto pr-1">
 
             {/* Card principal macros */}
             <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
@@ -858,7 +862,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
           </div>
 
           {/* ── Columna derecha ── */}
-          <div className="w-64 flex-shrink-0 space-y-3 overflow-y-auto">
+          <div className="w-56 flex-shrink-0 space-y-3 overflow-y-auto">
 
             {/* Distribución comidas */}
             <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
