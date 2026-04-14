@@ -108,7 +108,7 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
 
   // Ejercicio seleccionado para panel derecho
   const selEx = selectedEx ? weeks[selectedEx.wi]?.days[selectedEx.di]?.exercises[selectedEx.ri] : null
-  const selLibEx = selEx ? library.find(l => l.name.toLowerCase() === selEx.name.toLowerCase()) : null
+  const selLibEx = selEx ? library.find(l => l.name.toLowerCase() === selEx.name.toLowerCase()) : undefined
 
   return (
     <div className="flex gap-0 h-full min-h-0">
@@ -371,12 +371,12 @@ function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: numb
   const w = 260; const h = 80; const pad = 8
 
   const points = data.map((d, i) => {
-    const x = pad + (i / (data.length - 1)) * (w - pad * 2)
-    const y = h - pad - ((d.y - min) / range) * (h - pad * 2)
-    return { x, y, ...d }
+    const px = pad + (i / (data.length - 1)) * (w - pad * 2)
+    const py = h - pad - ((d.y - min) / range) * (h - pad * 2)
+    return { px, py, label: d.x, val: d.y }
   })
 
-  const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
+  const polyline = points.map(p => `${p.px},${p.py}`).join(' ')
   const area = `${pad},${h - pad} ${polyline} ${w - pad},${h - pad}`
 
   return (
@@ -391,14 +391,14 @@ function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: numb
       <polyline points={polyline} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r="3" fill={color} />
+          <circle cx={p.px} cy={p.py} r="3" fill={color} />
           {(i === 0 || i === points.length - 1) && (
-            <text x={p.x} y={p.y - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="700">{p.y}kg</text>
+            <text x={p.px} y={p.py - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="700">{p.val}kg</text>
           )}
         </g>
       ))}
       {points.filter((_, i) => i === 0 || i === points.length - 1).map((p, i) => (
-        <text key={i} x={p.x} y={h - 1} textAnchor="middle" fontSize="8" fill="#8a8278">{p.x.slice(5)}</text>
+        <text key={i} x={p.px} y={h - 1} textAnchor="middle" fontSize="8" fill="#8a8278">{p.label.slice(5)}</text>
       ))}
     </svg>
   )
