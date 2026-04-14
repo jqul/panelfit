@@ -663,7 +663,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
                     <div key={s.label} className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
                       <span className="text-[10px] text-muted">{s.label}</span>
-                      <span className="text-[10px] font-bold ml-auto">{s.pct}%</span>
+                      <span className="text-[10px] font-bold ml-auto">{total > 0 ? Math.round(s.val / total * 100) : 0}%</span>
                     </div>
                   ))}
                 </div>
