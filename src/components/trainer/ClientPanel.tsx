@@ -607,7 +607,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
     )
     let cumAngle = -90
     const r = 52; const cx = 64; const cy = 64
-    const paths = slices.map(s => {
+    const paths: { label: string; val: number; color: string; g: any; icon: string; d: string; pct: number }[] = []
+    slices.forEach(s => {
       const pct = s.val / total
       const angle = pct * 360
       const startRad = (cumAngle * Math.PI) / 180
@@ -617,7 +618,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       const large = angle > 180 ? 1 : 0
       const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`
       cumAngle += angle
-      return { ...s, d, pct: Math.round(pct * 100) }
+      paths.push({ ...s, d, pct: Math.round(pct * 100) })
     })
     return (
       <svg viewBox="0 0 128 128" className="w-32 h-32 drop-shadow-sm">
@@ -627,6 +628,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
         <text x={cx} y={cy + 9} textAnchor="middle" fontSize="7" fill="#8a8278">kcal</text>
       </svg>
     )
+  }
   }
 
   const ACTIVIDAD_OPTS = [
