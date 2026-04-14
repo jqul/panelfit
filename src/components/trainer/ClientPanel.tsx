@@ -251,7 +251,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                   logs={logs} clientName={`${client.name} ${client.surname}`} />
               )}
               {activeTab === 'dieta' && (
-                <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />
+                <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} />
               )}
               {activeTab === 'vista' && <VistaTab plan={plan} logs={logs} />}
               {activeTab === 'entrenos' && <EntrenosTab logs={logs} plan={plan} />}
@@ -560,46 +560,279 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
   )
 }
 
-function DietaTabEntrenador({ clientId, plan, onChange }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData }) {
   const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
   const updateMacros = (updates: any) => { if (!plan) return; onChange({ ...plan, macros: { ...macros, ...updates } } as any) }
 
+  // Calculadora
+  const [peso, setPeso] = useState(String(client.weight || ''))
+  const [altura, setAltura] = useState('')
+  const [edad, setEdad] = useState('')
+  const [sexo, setSexo] = useState<'h' | 'm'>('h')
+  const [actividad, setActividad] = useState(1.55)
+  const [objetivo, setObjetivo] = useState<'deficit' | 'mantenimiento' | 'superavit'>('superavit')
+  const [ratio, setRatio] = useState(2.0)
+  const [showCalc, setShowCalc] = useState(false)
+
+  const calcMacros = () => {
+    const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
+    if (!p || !h || !e) return
+    // TMB Harris-Benedict
+    const tmb = sexo === 'h'
+      ? 88.362 + (13.397 * p) + (4.799 * h) - (5.677 * e)
+      : 447.593 + (9.247 * p) + (3.098 * h) - (4.330 * e)
+    const tdee = Math.round(tmb * actividad)
+    const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
+    const protG = Math.round(p * ratio)
+    const fatG = Math.round(p * 1.0)
+    const carbsKcal = kcalObj - (protG * 4) - (fatG * 9)
+    const carbsG = Math.max(0, Math.round(carbsKcal / 4))
+    updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
+  }
+
+  // Gráfica circular SVG
+  const total = (macros.protein * 4) + (macros.carbs * 4) + (macros.fats * 9)
+  const slices = total > 0 ? [
+    { label: 'Proteína', val: macros.protein * 4, color: '#4caf7d', g: macros.protein, icon: '🥩' },
+    { label: 'Carbos', val: macros.carbs * 4, color: '#6e5438', g: macros.carbs, icon: '🌾' },
+    { label: 'Grasas', val: macros.fats * 9, color: '#e07b54', g: macros.fats, icon: '🥑' },
+  ] : []
+
+  const PieChart = () => {
+    if (!slices.length) return (
+      <div className="w-32 h-32 rounded-full border-4 border-dashed border-border flex items-center justify-center text-muted text-xs text-center leading-tight p-2">
+        Sin datos
+      </div>
+    )
+    let cumAngle = -90
+    const r = 52; const cx = 64; const cy = 64
+    const paths = slices.map(s => {
+      const pct = s.val / total
+      const angle = pct * 360
+      const startRad = (cumAngle * Math.PI) / 180
+      const endRad = ((cumAngle + angle) * Math.PI) / 180
+      const x1 = cx + r * Math.cos(startRad); const y1 = cy + r * Math.sin(startRad)
+      const x2 = cx + r * Math.cos(endRad); const y2 = cy + r * Math.sin(endRad)
+      const large = angle > 180 ? 1 : 0
+      const d = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z`
+      cumAngle += angle
+      return { ...s, d, pct: Math.round(pct * 100) }
+    })
+    return (
+      <svg viewBox="0 0 128 128" className="w-32 h-32 drop-shadow-sm">
+        {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} opacity="0.9" />)}
+        <circle cx={cx} cy={cy} r="28" fill="white" />
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#1a1a1a">{macros.kcal}</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fontSize="7" fill="#8a8278">kcal</text>
+      </svg>
+    )
+  }
+
+  const ACTIVIDAD_OPTS = [
+    { val: 1.2, label: 'Sedentario', desc: 'Sin ejercicio' },
+    { val: 1.375, label: 'Ligero', desc: '1-3 días/sem' },
+    { val: 1.55, label: 'Moderado', desc: '3-5 días/sem' },
+    { val: 1.725, label: 'Activo', desc: '6-7 días/sem' },
+    { val: 1.9, label: 'Muy activo', desc: 'Dobles sesiones' },
+  ]
+
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="space-y-4">
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
         {[{ id: 'macros', label: '📊 Macros' }, { id: 'plan', label: '🍽️ Plan completo' }].map(t => (
           <button key={t.id} onClick={() => setSubtab(t.id as any)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === t.id ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subtab === t.id ? 'bg-white shadow-sm text-ink' : 'text-muted'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
       {subtab === 'macros' && (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-            <div><h4 className="text-sm font-semibold">Objetivos diarios</h4><p className="text-xs text-muted mt-0.5">El cliente verá estos macros en su panel.</p></div>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: 'kcal', label: 'Calorías', unit: 'kcal', color: 'text-warn' },
-                { key: 'protein', label: 'Proteína', unit: 'g', color: 'text-ok' },
-                { key: 'carbs', label: 'Carbohidratos', unit: 'g', color: 'text-accent' },
-                { key: 'fats', label: 'Grasas', unit: 'g', color: 'text-muted' },
-              ].map(({ key, label, unit, color }) => (
-                <div key={key} className="bg-bg border border-border rounded-xl p-3">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{label}</label>
-                  <div className="flex items-baseline gap-1">
-                    <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
-                      placeholder="0" className={`w-full text-xl font-serif font-bold bg-transparent outline-none ${color}`} />
-                    <span className="text-xs text-muted">{unit}</span>
+        <div className="space-y-4 max-w-2xl">
+
+          {/* Panel visual de macros */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <div className="flex items-start gap-6">
+              {/* Pie chart */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-3">
+                <PieChart />
+                <div className="space-y-1.5">
+                  {slices.map(s => (
+                    <div key={s.label} className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                      <span className="text-[10px] text-muted">{s.label}</span>
+                      <span className="text-[10px] font-bold ml-auto">{s.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Macros editables */}
+              <div className="flex-1 space-y-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Objetivos diarios</p>
+                  {/* Calorías destacadas */}
+                  <div className="bg-bg-alt rounded-xl p-3 mb-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Calorías totales</p>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <input type="number" value={macros.kcal || ''} onChange={e => updateMacros({ kcal: Number(e.target.value) })}
+                          placeholder="0" className="text-3xl font-bold text-warn bg-transparent outline-none w-28" />
+                        <span className="text-sm text-muted">kcal</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowCalc(!showCalc)}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${showCalc ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      🧮 Calcular
+                    </button>
+                  </div>
+
+                  {/* Los 3 macros */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { key: 'protein', label: 'Proteína', icon: '🥩', color: '#4caf7d', kcalPer: 4 },
+                      { key: 'carbs', label: 'Carbos', icon: '🌾', color: '#6e5438', kcalPer: 4 },
+                      { key: 'fats', label: 'Grasas', icon: '🥑', color: '#e07b54', kcalPer: 9 },
+                    ].map(({ key, label, icon, color, kcalPer }) => (
+                      <div key={key} className="bg-bg rounded-xl p-3 border border-border/50">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="text-sm">{icon}</span>
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-muted">{label}</p>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <input type="number" value={macros[key] || ''} onChange={e => updateMacros({ [key]: Number(e.target.value) })}
+                            placeholder="0" className="text-xl font-bold bg-transparent outline-none w-full" style={{ color }} />
+                          <span className="text-xs text-muted">g</span>
+                        </div>
+                        <p className="text-[9px] text-muted mt-1">{macros[key] ? Math.round(macros[key] * kcalPer) : 0} kcal</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-            <textarea rows={3} value={macros.notaMacros || ''} onChange={e => updateMacros({ notaMacros: e.target.value })}
-              placeholder="Nota nutricional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+
+            {/* Nota nutricional */}
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-2">Nota nutricional</label>
+              <textarea rows={4} value={macros.notaMacros || ''}
+                onChange={e => updateMacros({ notaMacros: e.target.value })}
+                placeholder={`Instrucciones para ${client.name}:
+• Distribuye en 4-5 comidas al día
+• Prioriza proteína en cada comida (mínimo 30g)
+• Fuentes: arroz, patata, avena (carbos) · pollo, huevos, atún (proteína) · AOVE, aguacate (grasa)
+• Bebe 3-4L de agua al día`}
+                className="w-full px-3 py-2.5 bg-bg-alt border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed text-muted"
+              />
+            </div>
           </div>
+
+          {/* Calculadora desplegable */}
+          {showCalc && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-sm">Calculadora TDEE + Macros</h4>
+                  <p className="text-xs text-muted mt-0.5">Fórmula Harris-Benedict</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Peso (kg)</label>
+                  <input type="number" value={peso} onChange={e => setPeso(e.target.value)} placeholder="80"
+                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Altura (cm)</label>
+                  <input type="number" value={altura} onChange={e => setAltura(e.target.value)} placeholder="175"
+                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Edad</label>
+                  <input type="number" value={edad} onChange={e => setEdad(e.target.value)} placeholder="30"
+                    className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Sexo</label>
+                  <div className="flex gap-1">
+                    {[{ v: 'h', l: '♂ Hombre' }, { v: 'm', l: '♀ Mujer' }].map(s => (
+                      <button key={s.v} onClick={() => setSexo(s.v as any)}
+                        className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all ${sexo === s.v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                        {s.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Nivel de actividad</label>
+                <div className="grid grid-cols-5 gap-1">
+                  {ACTIVIDAD_OPTS.map(a => (
+                    <button key={a.val} onClick={() => setActividad(a.val)}
+                      className={`py-2 px-1 rounded-lg text-center border transition-all ${actividad === a.val ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      <p className="text-[9px] font-bold">{a.label}</p>
+                      <p className="text-[8px] opacity-70">{a.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Objetivo</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { v: 'deficit', l: '🔥 Déficit', desc: '-400 kcal' },
+                    { v: 'mantenimiento', l: '⚖️ Mant.', desc: 'TDEE exacto' },
+                    { v: 'superavit', l: '💪 Superávit', desc: '+300 kcal' },
+                  ].map(o => (
+                    <button key={o.v} onClick={() => setObjetivo(o.v as any)}
+                      className={`py-2.5 px-2 rounded-xl border text-center transition-all ${objetivo === o.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      <p className="text-xs font-semibold">{o.l}</p>
+                      <p className="text-[9px] opacity-70">{o.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-2">
+                  Ratio proteína: <span className="text-accent">{ratio}g/kg</span>
+                </label>
+                <input type="range" min="1.6" max="2.4" step="0.1" value={ratio} onChange={e => setRatio(Number(e.target.value))}
+                  className="w-full accent-[#6e5438]" />
+                <div className="flex justify-between text-[9px] text-muted mt-0.5">
+                  <span>1.6g/kg (mínimo)</span><span>2.0g/kg (óptimo)</span><span>2.4g/kg (máximo)</span>
+                </div>
+              </div>
+
+              <button onClick={calcMacros}
+                className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+                🧮 Calcular y aplicar macros
+              </button>
+
+              {/* Preview del cálculo */}
+              {peso && altura && edad && (
+                <div className="bg-bg-alt rounded-xl p-3 text-xs text-muted space-y-1">
+                  {(() => {
+                    const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
+                    const tmb = sexo === 'h' ? 88.362 + (13.397*p) + (4.799*h) - (5.677*e) : 447.593 + (9.247*p) + (3.098*h) - (4.330*e)
+                    const tdee = Math.round(tmb * actividad)
+                    const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
+                    const protG = Math.round(p * ratio)
+                    const fatG = Math.round(p * 1.0)
+                    const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
+                    return <>
+                      <p>TMB: <strong>{Math.round(tmb)} kcal</strong> · TDEE: <strong>{tdee} kcal</strong></p>
+                      <p>Objetivo: <strong className="text-warn">{kcalObj} kcal</strong> · Prot: <strong className="text-ok">{protG}g</strong> · Carbs: <strong className="text-accent">{carbsG}g</strong> · Grasa: <strong style={{color:'#e07b54'}}>{fatG}g</strong></p>
+                    </>
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {subtab === 'plan' && <DietEditor clientId={clientId} isTrainer={true} />}
