@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, X, Info } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
-import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise } from '../../types'
+import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
 import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
 
@@ -12,6 +12,8 @@ interface Props {
   allClients?: { id: string; name: string; surname: string }[]
   onImportFromClient?: (clientId: string) => Promise<TrainingPlan | null>
   library?: LibraryExercise[]
+  logs?: TrainingLogs
+  clientName?: string
 }
 
 const emptyExercise = (): Exercise => ({ name: '', sets: '3×10', weight: '', isMain: false, comment: '', videoUrl: '' })
@@ -25,7 +27,7 @@ function getYTId(url: string) {
 
 interface SelectedEx { wi: number; di: number; ri: number }
 
-export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFromClient, library = [] }: Props) {
+export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFromClient, library = [], logs = {}, clientName = '' }: Props) {
   const [activeWeek, setActiveWeek] = useState(0)
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({ 0: true })
   const [pickerFor, setPickerFor] = useState<{ dayIdx: number } | null>(null)
@@ -303,82 +305,18 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
         )}
       </div>
 
-      {/* ── PANEL DERECHO CONTEXTUAL ── */}
-      <div className={`flex-shrink-0 transition-all duration-300 overflow-hidden ${selEx ? 'w-64 ml-4' : 'w-0 ml-0'}`}>
-        {selEx && (
-          <div className="w-64 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-muted">Detalle</p>
-              <button onClick={() => setSelectedEx(null)} className="p-1 text-muted hover:text-ink rounded-lg">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Nombre ejercicio */}
-            <div className="bg-card border border-border rounded-2xl p-4">
-              <p className="font-serif font-bold text-base">{selEx.name || 'Sin nombre'}</p>
-              {selEx.isMain && <span className="text-[10px] text-accent font-bold uppercase tracking-wider">Principal</span>}
-              <div className="flex gap-2 mt-3">
-                <div className="flex-1 bg-bg rounded-xl p-2.5 text-center">
-                  <p className="text-lg font-bold font-serif">{selEx.sets || '—'}</p>
-                  <p className="text-[9px] text-muted uppercase tracking-wider">Series</p>
-                </div>
-                <div className="flex-1 bg-bg rounded-xl p-2.5 text-center">
-                  <p className="text-lg font-bold font-serif truncate">{selEx.weight || '—'}</p>
-                  <p className="text-[9px] text-muted uppercase tracking-wider">Peso</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Vídeo */}
-            {selEx.videoUrl && getYTId(selEx.videoUrl) && (
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <a href={selEx.videoUrl} target="_blank" rel="noreferrer">
-                  <img src={`https://img.youtube.com/vi/${getYTId(selEx.videoUrl)}/mqdefault.jpg`}
-                    className="w-full aspect-video object-cover" alt="" />
-                </a>
-                <p className="text-[10px] text-muted px-3 py-2">Ver vídeo de referencia →</p>
-              </div>
-            )}
-
-            {/* Info de biblioteca */}
-            {selLibEx && (
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted font-bold flex items-center gap-1.5">
-                  <Info className="w-3 h-3" /> Biblioteca
-                </p>
-                {selLibEx.description && (
-                  <p className="text-xs text-muted leading-relaxed">{selLibEx.description}</p>
-                )}
-                {selLibEx.category && (
-                  <span className="inline-block text-[10px] bg-bg-alt border border-border px-2 py-0.5 rounded-full text-muted">{selLibEx.category}</span>
-                )}
-                {(selLibEx.videos || []).length > 1 && (
-                  <div className="grid grid-cols-2 gap-1.5 pt-1">
-                    {selLibEx.videos!.slice(0, 4).map((v, i) => {
-                      const ytId = getYTId(v.url)
-                      return ytId ? (
-                        <a key={i} href={v.url} target="_blank" rel="noreferrer"
-                          className="rounded-lg overflow-hidden border border-border">
-                          <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full aspect-video object-cover" alt="" />
-                          {v.label && <p className="text-[9px] text-muted px-1.5 py-1 truncate">{v.label}</p>}
-                        </a>
-                      ) : null
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Indicaciones */}
-            {selEx.comment && (
-              <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider text-accent font-bold mb-2">Indicaciones</p>
-                <p className="text-xs text-ink/80 leading-relaxed">{selEx.comment}</p>
-              </div>
-            )}
-          </div>
+      {/* ── PANEL DERECHO ANALYTICS ── */}
+      <div className={`flex-shrink-0 transition-all duration-300 overflow-hidden ${selEx ? 'w-72 ml-4' : 'w-0 ml-0'}`}>
+        {selEx && selectedEx && (
+          <ExerciseAnalyticsPanel
+            ex={selEx}
+            libEx={selLibEx}
+            logs={logs}
+            plan={plan}
+            exName={selEx.name}
+            clientName={clientName}
+            onClose={() => setSelectedEx(null)}
+          />
         )}
       </div>
 
@@ -407,6 +345,233 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
           ))}
         </div>
       </Modal>
+    </div>
+  )
+}
+
+// ── Panel Analytics del ejercicio ────────────────────────
+interface AnalyticsPanelProps {
+  ex: Exercise
+  libEx: LibraryExercise | undefined
+  logs: TrainingLogs
+  plan: TrainingPlan
+  exName: string
+  clientName: string
+  onClose: () => void
+}
+
+function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: number }[]; color?: string }) {
+  if (data.length < 2) return (
+    <div className="h-24 flex items-center justify-center text-xs text-muted">Sin suficientes datos</div>
+  )
+  const vals = data.map(d => d.y)
+  const min = Math.min(...vals)
+  const max = Math.max(...vals)
+  const range = max - min || 1
+  const w = 260; const h = 80; const pad = 8
+
+  const points = data.map((d, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - pad * 2)
+    const y = h - pad - ((d.y - min) / range) * (h - pad * 2)
+    return { x, y, ...d }
+  })
+
+  const polyline = points.map(p => `${p.x},${p.y}`).join(' ')
+  const area = `${pad},${h - pad} ${polyline} ${w - pad},${h - pad}`
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: 80 }}>
+      <defs>
+        <linearGradient id={`ag_${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill={`url(#ag_${color.replace('#','')})`} />
+      <polyline points={polyline} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r="3" fill={color} />
+          {(i === 0 || i === points.length - 1) && (
+            <text x={p.x} y={p.y - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="700">{p.y}kg</text>
+          )}
+        </g>
+      ))}
+      {points.filter((_, i) => i === 0 || i === points.length - 1).map((p, i) => (
+        <text key={i} x={p.x} y={h - 1} textAnchor="middle" fontSize="8" fill="#8a8278">{p.x.slice(5)}</text>
+      ))}
+    </svg>
+  )
+}
+
+function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onClose }: AnalyticsPanelProps) {
+  // Buscar todos los logs de este ejercicio por nombre
+  const exLogs: { date: string; sets: { weight: string; reps: string }[]; bestWeight: number }[] = []
+
+  plan.weeks.forEach((week, wi) => {
+    week.days.forEach((day, di) => {
+      day.exercises.forEach((planEx, ri) => {
+        if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+        const key = `ex_w${wi}_d${di}_r${ri}`
+        const log = logs[key]
+        if (!log?.dateDone) return
+        const sets = Object.values(log.sets || {}).map((s: any) => ({ weight: s.weight || '0', reps: s.reps || '0' }))
+        const bestWeight = Math.max(0, ...sets.map(s => parseFloat(s.weight) || 0))
+        exLogs.push({ date: log.dateDone, sets, bestWeight })
+      })
+    })
+  })
+
+  // Ordenar por fecha
+  exLogs.sort((a, b) => a.date.localeCompare(b.date))
+
+  // Deduplicar por fecha (quedarse con el mejor)
+  const byDate: Record<string, typeof exLogs[0]> = {}
+  exLogs.forEach(l => {
+    if (!byDate[l.date] || l.bestWeight > byDate[l.date].bestWeight) byDate[l.date] = l
+  })
+  const chartData = Object.entries(byDate).map(([date, l]) => ({ x: date, y: l.bestWeight }))
+
+  const lastLog = exLogs[exLogs.length - 1]
+  const prevLog = exLogs[exLogs.length - 2]
+  const bestEver = Math.max(0, ...exLogs.map(l => l.bestWeight))
+
+  // 1RM estimado (fórmula Epley)
+  const est1RM = lastLog ? (() => {
+    const best = lastLog.sets.reduce((best, s) => {
+      const w = parseFloat(s.weight) || 0
+      const r = parseInt(s.reps) || 1
+      const rm = w * (1 + r / 30)
+      return rm > best ? rm : best
+    }, 0)
+    return Math.round(best)
+  })() : 0
+
+  // Tendencia vs sesión anterior
+  const trend = lastLog && prevLog ? lastLog.bestWeight - prevLog.bestWeight : 0
+
+  const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
+
+  return (
+    <div className="w-72 space-y-3 overflow-y-auto max-h-full pb-4">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Analytics</p>
+          <p className="font-serif font-bold text-base mt-0.5 leading-tight">{exName || 'Ejercicio'}</p>
+          {clientName && <p className="text-[10px] text-muted">{clientName}</p>}
+        </div>
+        <button onClick={onClose} className="p-1 text-muted hover:text-ink rounded-lg flex-shrink-0 mt-1">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* KPIs */}
+      {exLogs.length > 0 ? (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+              <p className="font-serif font-bold text-base text-accent">{bestEver > 0 ? `${bestEver}kg` : '—'}</p>
+              <p className="text-[9px] text-muted uppercase tracking-wider">Mejor</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+              <p className="font-serif font-bold text-base text-ok">{est1RM > 0 ? `~${est1RM}kg` : '—'}</p>
+              <p className="text-[9px] text-muted uppercase tracking-wider">1RM est.</p>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-2.5 text-center">
+              <p className={`font-serif font-bold text-base ${trend > 0 ? 'text-ok' : trend < 0 ? 'text-warn' : 'text-muted'}`}>
+                {trend > 0 ? `+${trend}` : trend < 0 ? `${trend}` : '—'}
+                {trend !== 0 ? 'kg' : ''}
+              </p>
+              <p className="text-[9px] text-muted uppercase tracking-wider">Tendencia</p>
+            </div>
+          </div>
+
+          {/* Gráfica */}
+          {chartData.length >= 2 && (
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-3">Progresión de peso</p>
+              <MiniLineChart data={chartData} />
+            </div>
+          )}
+
+          {/* Última sesión */}
+          {lastLog && (
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">
+                Última sesión · {new Date(lastLog.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+              </p>
+              <div className="space-y-1.5">
+                {lastLog.sets.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-[10px] w-5 h-5 rounded-lg bg-bg-alt flex items-center justify-center text-muted font-bold">{i + 1}</span>
+                    <div className="flex-1 bg-bg rounded-lg px-2 py-1 flex items-center justify-between">
+                      <span className="text-xs font-bold">{s.weight}kg</span>
+                      <span className="text-xs text-muted">×{s.reps}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {prevLog && (
+                <p className="text-[10px] text-muted mt-2">
+                  Anterior: <span className="font-semibold">{prevLog.bestWeight}kg</span>
+                  {trend !== 0 && <span className={trend > 0 ? 'text-ok ml-1' : 'text-warn ml-1'}>{trend > 0 ? `↑ +${trend}kg` : `↓ ${trend}kg`}</span>}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Sesiones totales */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">Historial</p>
+            <div className="flex items-end gap-1 h-10">
+              {chartData.slice(-8).map((d, i) => {
+                const maxY = Math.max(...chartData.map(c => c.y), 1)
+                const h = Math.max(4, Math.round((d.y / maxY) * 32))
+                const isLast = i === chartData.slice(-8).length - 1
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div className={`w-full rounded-sm ${isLast ? 'bg-accent' : 'bg-bg-alt'}`} style={{ height: h }} />
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-muted mt-1">{exLogs.length} sesión{exLogs.length !== 1 ? 'es' : ''} registrada{exLogs.length !== 1 ? 's' : ''}</p>
+          </div>
+        </>
+      ) : (
+        <div className="bg-card border border-border rounded-2xl p-6 text-center">
+          <p className="text-2xl mb-2">📊</p>
+          <p className="text-sm font-semibold">Sin historial aún</p>
+          <p className="text-xs text-muted mt-1">Los datos aparecerán cuando el cliente complete sesiones con este ejercicio.</p>
+        </div>
+      )}
+
+      {/* Vídeo referencia */}
+      {ytId && (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <a href={ex.videoUrl} target="_blank" rel="noreferrer">
+            <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} className="w-full aspect-video object-cover" alt="" />
+          </a>
+          <p className="text-[10px] text-muted px-3 py-2">📹 Ver vídeo de referencia</p>
+        </div>
+      )}
+
+      {/* Info biblioteca */}
+      {libEx?.description && (
+        <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4">
+          <p className="text-[10px] uppercase tracking-wider text-accent font-bold mb-1.5">Notas técnicas</p>
+          <p className="text-xs text-ink/80 leading-relaxed">{libEx.description}</p>
+        </div>
+      )}
+
+      {/* Indicaciones del plan */}
+      {ex.comment && (
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1.5">Indicaciones al cliente</p>
+          <p className="text-xs text-muted leading-relaxed">{ex.comment}</p>
+        </div>
+      )}
     </div>
   )
 }
