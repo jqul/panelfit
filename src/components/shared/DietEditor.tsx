@@ -20,8 +20,8 @@ const emptyDiet = (clientId: string): DietPlan => ({
   showSupplements: false,
   supplements: [
     { name: 'Creatina', dosis: '5g diarios', timing: 'Cualquier momento', visible: true },
-    { name: 'Proteína whey', dosis: 'Si no llegas por comida', timing: 'Post-entreno', visible: true },
-    { name: 'Vitamina D', dosis: '2000 UI diarias', timing: 'Con comida grasa', visible: false },
+    { name: 'Proteína whey', dosis: 'Si no llegas', timing: 'Post-entreno', visible: true },
+    { name: 'Vitamina D', dosis: '2000 UI', timing: 'Con comida grasa', visible: false },
     { name: 'Omega-3', dosis: '2-3g EPA/DHA', timing: 'Con comidas', visible: false },
   ],
   mealDistribution: [
@@ -33,6 +33,44 @@ const emptyDiet = (clientId: string): DietPlan => ({
 })
 
 const emptyMeal = (): Meal => ({ id: `meal_${Date.now()}`, time: '08:00', name: '', kcal: 0, items: [''] })
+
+// Plantillas de dieta predefinidas
+const DIET_TEMPLATES = [
+  {
+    name: 'Hipertrofia (2800 kcal)',
+    diet: { kcal: 2800, protein: 180, carbs: 350, fats: 80,
+      meals: [
+        { id: 'm1', time: '08:00', name: 'Desayuno', kcal: 700, items: ['Avena 80g', 'Leche 300ml', 'Plátano 1ud', 'Proteína whey 30g'] },
+        { id: 'm2', time: '11:00', name: 'Media mañana', kcal: 400, items: ['Arroz con leche 200g', 'Fruta 1ud'] },
+        { id: 'm3', time: '14:00', name: 'Comida', kcal: 900, items: ['Arroz 150g (crudo)', 'Pollo 200g', 'Verdura al gusto', 'AOVE 20ml'] },
+        { id: 'm4', time: '17:00', name: 'Merienda', kcal: 400, items: ['Pan integral 80g', 'Pavo 100g', 'Fruta 1ud'] },
+        { id: 'm5', time: '21:00', name: 'Cena', kcal: 400, items: ['Salmón 200g', 'Patata 200g', 'Ensalada variada'] },
+      ]
+    }
+  },
+  {
+    name: 'Déficit (2000 kcal)',
+    diet: { kcal: 2000, protein: 160, carbs: 200, fats: 65,
+      meals: [
+        { id: 'm1', time: '08:00', name: 'Desayuno', kcal: 500, items: ['Huevos 3ud', 'Tostada integral 2ud', 'Café solo'] },
+        { id: 'm2', time: '13:00', name: 'Comida', kcal: 700, items: ['Pollo 180g', 'Arroz 100g (crudo)', 'Verdura al vapor'] },
+        { id: 'm3', time: '17:00', name: 'Merienda', kcal: 300, items: ['Yogur griego 200g', 'Nueces 20g'] },
+        { id: 'm4', time: '21:00', name: 'Cena', kcal: 500, items: ['Merluza 200g', 'Ensalada grande', 'AOVE 10ml'] },
+      ]
+    }
+  },
+  {
+    name: 'Mantenimiento (2400 kcal)',
+    diet: { kcal: 2400, protein: 150, carbs: 280, fats: 75,
+      meals: [
+        { id: 'm1', time: '08:00', name: 'Desayuno', kcal: 600, items: ['Avena 60g', 'Leche 250ml', 'Fruta 1ud'] },
+        { id: 'm2', time: '14:00', name: 'Comida', kcal: 900, items: ['Pasta 130g (crudo)', 'Carne picada 150g', 'Salsa de tomate'] },
+        { id: 'm3', time: '17:00', name: 'Merienda', kcal: 300, items: ['Proteína whey 30g', 'Plátano 1ud'] },
+        { id: 'm4', time: '21:00', name: 'Cena', kcal: 600, items: ['Tortilla 3 huevos', 'Ensalada', 'Pan integral 50g'] },
+      ]
+    }
+  },
+]
 
 function MacroPill({ label, value, unit, color, onChange }: {
   label: string; value: number; unit: string; color: string; onChange: (v: number) => void
@@ -109,10 +147,10 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
   const [saving, setSaving] = useState(false)
   const [openDist, setOpenDist] = useState(false)
   const [openSups, setOpenSups] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
 
   useEffect(() => { loadDiet() }, [clientId])
 
-  // Sincronizar macros externos → diet
   useEffect(() => {
     if (!syncedMacros || !diet) return
     const changed = syncedMacros.kcal !== diet.kcal || syncedMacros.protein !== diet.protein ||
@@ -125,7 +163,6 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
     const { data } = await supabase.from('dietas').select('datos').eq('cliente_id', clientId).maybeSingle()
     if (data?.datos) {
       const loaded = data.datos as DietPlan
-      // Aplicar macros sincronizados si existen
       if (syncedMacros && (syncedMacros.kcal > 0 || syncedMacros.protein > 0)) {
         setDiet({ ...emptyDiet(clientId), ...loaded, ...syncedMacros })
       } else {
@@ -141,10 +178,16 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
     if (!diet) return
     const newDiet = { ...diet, ...updates }
     setDiet(newDiet)
-    // Si cambian macros, notificar al padre
     if (onMacrosChange && (updates.kcal !== undefined || updates.protein !== undefined || updates.carbs !== undefined || updates.fats !== undefined)) {
       onMacrosChange({ kcal: newDiet.kcal, protein: newDiet.protein, carbs: newDiet.carbs, fats: newDiet.fats })
     }
+  }
+
+  const applyTemplate = (tpl: typeof DIET_TEMPLATES[0]) => {
+    if (!diet) return
+    updateDiet({ ...tpl.diet, meals: tpl.diet.meals.map(m => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })) })
+    setShowTemplates(false)
+    toast(`Plantilla "${tpl.name}" aplicada ✓`, 'ok')
   }
 
   const saveDiet = async () => {
@@ -190,7 +233,6 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
             </div>
           ))}
         </div>
-        {/* Distribución por comidas si está configurada */}
         {diet.mealDistribution && diet.kcal > 0 && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Distribución diaria</p>
@@ -226,14 +268,14 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
             </div>
           ))}
         </div>
-        {/* Suplementación si está activada */}
         {diet.showSupplements && diet.supplements && diet.supplements.filter(s => s.visible).length > 0 && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación recomendada</p>
             <div className="space-y-2">
               {diet.supplements.filter(s => s.visible).map((s, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-2.5 bg-bg rounded-xl">
-                  <div className="min-w-0"><p className="text-xs font-semibold">{s.name}</p><p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p></div>
+                <div key={i} className="p-2.5 bg-bg rounded-xl">
+                  <p className="text-xs font-semibold">{s.name}</p>
+                  <p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p>
                 </div>
               ))}
             </div>
@@ -254,19 +296,44 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
   const sups = diet.supplements || []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-serif font-bold">Plan Nutricional</h2>
           <p className="text-muted text-sm mt-0.5">{diet.meals.length} comidas · {totalKcal} kcal registradas</p>
         </div>
-        <button onClick={saveDiet} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
-          <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar dieta'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowTemplates(!showTemplates)}
+            className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+            📋 Plantillas
+          </button>
+          <button onClick={saveDiet} disabled={saving}
+            className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
+            <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar dieta'}
+          </button>
+        </div>
       </div>
 
-      {/* Macros sincronizados */}
+      {/* Plantillas */}
+      {showTemplates && (
+        <div className="bg-card border border-accent/20 rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Aplicar plantilla de dieta</p>
+          <div className="grid grid-cols-3 gap-3">
+            {DIET_TEMPLATES.map(tpl => (
+              <button key={tpl.name} onClick={() => applyTemplate(tpl)}
+                className="bg-bg border border-border rounded-xl p-4 text-left hover:border-accent transition-all">
+                <p className="text-sm font-semibold">{tpl.name}</p>
+                <p className="text-xs text-muted mt-1">{tpl.diet.meals.length} comidas · {tpl.diet.kcal} kcal</p>
+                <p className="text-xs text-muted">P:{tpl.diet.protein}g · C:{tpl.diet.carbs}g · G:{tpl.diet.fats}g</p>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-warn">⚠️ Aplicar una plantilla sobreescribirá el plan actual</p>
+        </div>
+      )}
+
+      {/* Macros */}
       <div>
         <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-3">Objetivos diarios</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -278,65 +345,80 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
         {syncedMacros && <p className="text-[10px] text-muted mt-2">↕ Sincronizado con la pestaña Macros</p>}
       </div>
 
-      {/* Distribución por comidas editable */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-        <div className="flex items-center justify-between">
+      {/* Distribución por comidas — colapsable */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 cursor-pointer hover:bg-bg-alt/30 transition-colors"
+          onClick={() => setOpenDist(!openDist)}>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Distribución por comidas</p>
-          <button onClick={() => updateDiet({ mealDistribution: [...dist, { label: 'Nueva comida', icon: '🍴', pct: 0 }] })}
-            className="text-xs text-accent hover:underline">+ Añadir</button>
-        </div>
-        {openDist && dist.map((m, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <input value={m.icon} onChange={e => { const d = [...dist]; d[i] = { ...d[i], icon: e.target.value }; updateDiet({ mealDistribution: d }) }}
-              className="w-8 text-center bg-bg border border-border rounded-lg text-sm outline-none" />
-            <input value={m.label} onChange={e => { const d = [...dist]; d[i] = { ...d[i], label: e.target.value }; updateDiet({ mealDistribution: d }) }}
-              className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
-            <div className="flex items-center gap-1">
-              <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d = [...dist]; d[i] = { ...d[i], pct: Number(e.target.value) }; updateDiet({ mealDistribution: d }) }}
-                className="w-14 text-center px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
-              <span className="text-xs text-muted">%</span>
-            </div>
-            <span className="text-xs text-muted w-16 text-right">{diet.kcal > 0 ? Math.round(diet.kcal * m.pct / 100) : 0} kcal</span>
-            <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+          <div className="flex items-center gap-3">
+            {openDist && (
+              <button onClick={e => { e.stopPropagation(); updateDiet({ mealDistribution: [...dist, { label: 'Nueva comida', icon: '🍴', pct: 0 }] }) }}
+                className="text-xs text-accent hover:underline">+ Añadir</button>
+            )}
+            {openDist ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
           </div>
-        ))}
-        {openDist && <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}% (debe sumar 100%)</p>}
+        </div>
+        {openDist && (
+          <div className="px-5 pb-4 space-y-2 border-t border-border">
+            <div className="pt-3 space-y-2">
+              {dist.map((m, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input value={m.icon} onChange={e => { const d = [...dist]; d[i] = { ...d[i], icon: e.target.value }; updateDiet({ mealDistribution: d }) }}
+                    className="w-8 text-center bg-bg border border-border rounded-lg text-sm outline-none" />
+                  <input value={m.label} onChange={e => { const d = [...dist]; d[i] = { ...d[i], label: e.target.value }; updateDiet({ mealDistribution: d }) }}
+                    className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
+                  <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d = [...dist]; d[i] = { ...d[i], pct: Number(e.target.value) }; updateDiet({ mealDistribution: d }) }}
+                    className="w-16 text-center px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
+                  <span className="text-xs text-muted">%</span>
+                  <span className="text-xs text-muted w-16 text-right">{diet.kcal > 0 ? Math.round(diet.kcal * m.pct / 100) : 0} kcal</span>
+                  <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}% (debe sumar 100%)</p>
+          </div>
+        )}
       </div>
 
-      {/* Suplementación editable con toggle de visibilidad */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Suplementación</p>
-            <p className="text-[10px] text-muted mt-0.5">Activa el toggle para mostrar al cliente</p>
-          </div>
+      {/* Suplementación — colapsable */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3.5 cursor-pointer hover:bg-bg-alt/30 transition-colors"
+          onClick={() => setOpenSups(!openSups)}>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Suplementación</p>
           <div className="flex items-center gap-3">
-            <button onClick={() => updateDiet({ supplements: [...sups, { name: 'Nuevo suplemento', dosis: '', timing: '', visible: true }] })}
-              className="text-xs text-accent hover:underline">+ Añadir</button>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted">Mostrar al cliente</span>
-              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${diet.showSupplements ? 'bg-ok' : 'bg-border'}`}
+            {openSups && (
+              <button onClick={e => { e.stopPropagation(); updateDiet({ supplements: [...sups, { name: 'Nuevo suplemento', dosis: '', timing: '', visible: true }] }) }}
+                className="text-xs text-accent hover:underline">+ Añadir</button>
+            )}
+            <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+              <span className="text-[10px] text-muted">Mostrar cliente</span>
+              <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${diet.showSupplements ? 'bg-ok' : 'bg-border'}`}
                 onClick={() => updateDiet({ showSupplements: !diet.showSupplements })}>
-                <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-4' : 'translate-x-0'}`} />
+                <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
               </div>
             </div>
+            {openSups ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
           </div>
         </div>
-        {openSups && sups.map((s, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <button onClick={() => { const ss = [...sups]; ss[i] = { ...ss[i], visible: !ss[i].visible }; updateDiet({ supplements: ss }) }}
-              className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${s.visible ? 'text-ok bg-ok/10' : 'text-muted bg-bg-alt'}`}>
-              {s.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-            </button>
-            <input value={s.name} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], name: e.target.value }; updateDiet({ supplements: ss }) }}
-              className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" />
-            <input value={s.dosis} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], dosis: e.target.value }; updateDiet({ supplements: ss }) }}
-              className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" />
-            <input value={s.timing} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], timing: e.target.value }; updateDiet({ supplements: ss }) }}
-              className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" />
-            <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+        {openSups && (
+          <div className="px-5 pb-4 space-y-2 border-t border-border pt-3">
+            {sups.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <button onClick={() => { const ss = [...sups]; ss[i] = { ...ss[i], visible: !ss[i].visible }; updateDiet({ supplements: ss }) }}
+                  className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${s.visible ? 'text-ok bg-ok/10' : 'text-muted bg-bg-alt'}`}>
+                  {s.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                </button>
+                <input value={s.name} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], name: e.target.value }; updateDiet({ supplements: ss }) }}
+                  className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" />
+                <input value={s.dosis} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], dosis: e.target.value }; updateDiet({ supplements: ss }) }}
+                  className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" />
+                <input value={s.timing} onChange={e => { const ss = [...sups]; ss[i] = { ...ss[i], timing: e.target.value }; updateDiet({ supplements: ss }) }}
+                  className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" />
+                <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* Comidas */}
