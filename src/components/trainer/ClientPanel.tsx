@@ -629,7 +629,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       </svg>
     )
   }
-  }
 
   const ACTIVIDAD_OPTS = [
     { val: 1.2, label: 'Sedentario', desc: 'Sin ejercicio' },
