@@ -696,10 +696,10 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
       </div>
 
       {subtab === 'macros' && (
-        <div className="flex gap-4 flex-1 min-h-0 overflow-hidden">
+        <div className="flex gap-3 flex-1 min-h-0" style={{overflow:'hidden', maxWidth:'100%'}}>
 
           {/* ── Columna central ── */}
-          <div className="flex-1 min-w-0 space-y-4 overflow-y-auto pr-1">
+          <div className="min-w-0 space-y-4 overflow-y-auto pr-1" style={{flex:'1 1 0', minWidth:0, maxWidth:'calc(100% - 230px)'}}>
 
             {/* Card principal macros */}
             <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
@@ -861,7 +861,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
           </div>
 
           {/* ── Columna derecha ── */}
-          <div className="w-56 flex-shrink-0 space-y-3 overflow-y-auto">
+          <div className="flex-shrink-0 space-y-3 overflow-y-auto" style={{width:'210px'}}>
 
             {/* Distribución comidas */}
             <div className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)' }}>
