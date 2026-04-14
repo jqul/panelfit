@@ -247,7 +247,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <div className="p-6 h-full">
               {activeTab === 'plan' && plan && (
                 <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
-                  allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient} />
+                  allClients={otherClients} library={library.exercises} onImportFromClient={importFromClient}
+                  logs={logs} clientName={`${client.name} ${client.surname}`} />
               )}
               {activeTab === 'dieta' && (
                 <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} />
