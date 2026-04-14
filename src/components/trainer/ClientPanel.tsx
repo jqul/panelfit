@@ -575,6 +575,38 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
   const [ratio, setRatio] = useState(2.0)
   const [showCalc, setShowCalc] = useState(false)
 
+  // Estado editable columna derecha
+  const [dist, setDist] = useState<{ label: string; icon: string; pct: number }[]>(
+    (plan as any)?.macros?.dist || [
+      { label: 'Desayuno', icon: '🌅', pct: 25 },
+      { label: 'Media mañana', icon: '🍎', pct: 15 },
+      { label: 'Comida', icon: '🍽️', pct: 35 },
+      { label: 'Cena', icon: '🌙', pct: 25 },
+    ]
+  )
+  const [sups, setSups] = useState<{ name: string; dosis: string; timing: string; visible: boolean }[]>(
+    (plan as any)?.macros?.sups || [
+      { name: 'Creatina', dosis: '5g diarios', timing: 'Cualquier momento', visible: true },
+      { name: 'Proteína whey', dosis: 'Si no llegas', timing: 'Post-entreno', visible: true },
+      { name: 'Vitamina D', dosis: '2000 UI', timing: 'Con comida grasa', visible: false },
+      { name: 'Omega-3', dosis: '2-3g EPA/DHA', timing: 'Con comidas', visible: false },
+    ]
+  )
+  const [showSups, setShowSups] = useState<boolean>((plan as any)?.macros?.showSups || false)
+  const [equivs, setEquivs] = useState<{ food: string; per100: number }[]>(
+    (plan as any)?.macros?.equivs || [
+      { food: '🍗 Pechuga pollo', per100: 31 },
+      { food: '🥚 Huevo entero', per100: 13 },
+      { food: '🐟 Atún en lata', per100: 25 },
+      { food: '🥛 Queso cottage', per100: 11 },
+    ]
+  )
+
+  const saveSidePanel = () => {
+    updateMacros({ dist, sups, showSups, equivs })
+    toast('Panel guardado ✓', 'ok')
+  }
+
   const calcMacros = () => {
     const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
     if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
@@ -837,88 +869,112 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
           )}
           </div>{/* fin columna principal */}
 
-          {/* Columna derecha contextual */}
+          {/* Columna derecha contextual — editable */}
           <div className="w-72 flex-shrink-0 space-y-4">
-            {/* Distribución por comidas */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-4">Distribución por comidas</h4>
-              {macros.kcal > 0 ? (
-                <div className="space-y-3">
-                  {[
-                    { label: 'Desayuno', pct: 0.25, icon: '🌅' },
-                    { label: 'Media mañana', pct: 0.15, icon: '🍎' },
-                    { label: 'Comida', pct: 0.35, icon: '🍽️' },
-                    { label: 'Cena', pct: 0.25, icon: '🌙' },
-                  ].map(m => {
-                    const kcal = Math.round(macros.kcal * m.pct)
-                    const prot = Math.round(macros.protein * m.pct)
-                    const carbs = Math.round(macros.carbs * m.pct)
-                    return (
-                      <div key={m.label} className="flex items-center gap-3">
-                        <span className="text-base flex-shrink-0">{m.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between mb-1">
-                            <p className="text-xs font-semibold">{m.label}</p>
-                            <p className="text-xs text-muted">{kcal} kcal</p>
-                          </div>
-                          <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
-                            <div className="h-full bg-accent rounded-full" style={{ width: `${m.pct * 100}%` }} />
-                          </div>
-                          <p className="text-[9px] text-muted mt-0.5">{prot}g prot · {carbs}g carbs</p>
+
+            {/* Distribución por comidas — editable */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Distribución comidas</h4>
+                <button onClick={() => setDist([...dist, { label: 'Comida', icon: '🍴', pct: 0 }])}
+                  className="text-[10px] text-accent hover:underline">+ Añadir</button>
+              </div>
+              <div className="space-y-2">
+                {dist.map((m, i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <input value={m.icon} onChange={e => { const d=[...dist]; d[i]={...d[i],icon:e.target.value}; setDist(d) }}
+                        className="w-7 text-center bg-bg border border-border rounded text-sm outline-none" />
+                      <input value={m.label} onChange={e => { const d=[...dist]; d[i]={...d[i],label:e.target.value}; setDist(d) }}
+                        className="flex-1 px-2 py-1 bg-bg border border-border rounded-lg text-xs outline-none" />
+                      <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d=[...dist]; d[i]={...d[i],pct:Number(e.target.value)}; setDist(d) }}
+                        className="w-12 text-center px-1 py-1 bg-bg border border-border rounded-lg text-xs outline-none" />
+                      <span className="text-[10px] text-muted">%</span>
+                      <button onClick={() => setDist(dist.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
+                    </div>
+                    {macros.kcal > 0 && (
+                      <div className="flex items-center gap-2 pl-9">
+                        <div className="flex-1 h-1 bg-bg-alt rounded-full overflow-hidden">
+                          <div className="h-full bg-accent rounded-full" style={{ width: `${m.pct}%` }} />
                         </div>
+                        <span className="text-[9px] text-muted">{Math.round(macros.kcal * m.pct / 100)} kcal</span>
                       </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-muted text-center py-4">Introduce las calorías para ver la distribución</p>
-              )}
+                    )}
+                  </div>
+                ))}
+                <p className={`text-[9px] mt-1 ${dist.reduce((a,d)=>a+d.pct,0)===100?'text-ok':'text-warn'}`}>
+                  Total: {dist.reduce((a,d)=>a+d.pct,0)}% {dist.reduce((a,d)=>a+d.pct,0)===100?'✓':'(debe sumar 100%)'}
+                </p>
+              </div>
             </div>
 
-            {/* Suplementación básica */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación básica</h4>
+            {/* Suplementación — editable con toggle */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Suplementación</h4>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setSups([...sups, { name: 'Suplemento', dosis: '', timing: '', visible: true }])}
+                    className="text-[10px] text-accent hover:underline">+ Añadir</button>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-muted">Ver cliente</span>
+                    <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${showSups ? 'bg-ok' : 'bg-border'}`}
+                      onClick={() => setShowSups(!showSups)}>
+                      <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${showSups ? 'translate-x-3' : 'translate-x-0'}`} />
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
-                {[
-                  { sup: '💊 Creatina', dosis: '5g diarios', timing: 'Cualquier momento' },
-                  { sup: '🥛 Proteína whey', dosis: 'Si no llegas por comida', timing: 'Post-entreno' },
-                  { sup: '☀️ Vitamina D', dosis: '2000 UI diarias', timing: 'Con comida grasa' },
-                  { sup: '🐟 Omega-3', dosis: '2-3g EPA/DHA', timing: 'Con comidas' },
-                ].map(s => (
-                  <div key={s.sup} className="flex items-start gap-2.5 p-2.5 bg-bg-alt rounded-xl">
-                    <span className="text-sm flex-shrink-0">{s.sup.split(' ')[0]}</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold">{s.sup.split(' ').slice(1).join(' ')}</p>
-                      <p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p>
+                {sups.map((s, i) => (
+                  <div key={i} className={`rounded-xl p-2 border transition-all ${s.visible ? 'bg-ok/5 border-ok/20' : 'bg-bg border-border'}`}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <button onClick={() => { const ss=[...sups]; ss[i]={...ss[i],visible:!ss[i].visible}; setSups(ss) }}
+                        className={`text-xs flex-shrink-0 ${s.visible ? 'text-ok' : 'text-muted'}`}>
+                        {s.visible ? '👁' : '🙈'}
+                      </button>
+                      <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; setSups(ss) }}
+                        className="flex-1 text-xs font-semibold bg-transparent outline-none border-b border-transparent focus:border-accent" />
+                      <button onClick={() => setSups(sups.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn flex-shrink-0"><X className="w-3 h-3" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 pl-5">
+                      <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; setSups(ss) }}
+                        placeholder="Dosis" className="text-[10px] text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
+                      <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; setSups(ss) }}
+                        placeholder="Timing" className="text-[10px] text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Equivalencias visuales */}
-            {macros.protein > 0 && (
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Equivalencias proteína</h4>
-                <div className="space-y-2">
-                  {[
-                    { food: '🍗 Pechuga pollo', per100: 31, icon: '🍗' },
-                    { food: '🥚 Huevo entero', per100: 13, icon: '🥚' },
-                    { food: '🐟 Atún en lata', per100: 25, icon: '🐟' },
-                    { food: '🥛 Queso cottage', per100: 11, icon: '🥛' },
-                  ].map(f => {
-                    const gramos = Math.round(macros.protein / f.per100 * 100)
-                    return (
-                      <div key={f.food} className="flex items-center justify-between">
-                        <span className="text-xs text-muted">{f.food}</span>
-                        <span className="text-xs font-bold">{gramos}g</span>
-                      </div>
-                    )
-                  })}
-                  <p className="text-[9px] text-muted pt-1 border-t border-border">Para cubrir {macros.protein}g proteína total</p>
-                </div>
+            {/* Equivalencias proteína — editables */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Equivalencias proteína</h4>
+                <button onClick={() => setEquivs([...equivs, { food: '🥩 Alimento', per100: 20 }])}
+                  className="text-[10px] text-accent hover:underline">+ Añadir</button>
               </div>
-            )}
+              <div className="space-y-2">
+                {equivs.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input value={f.food} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],food:e.target.value}; setEquivs(eq) }}
+                      className="flex-1 text-xs text-muted bg-transparent outline-none border-b border-transparent focus:border-accent" />
+                    <input type="number" value={f.per100} onChange={e => { const eq=[...equivs]; eq[i]={...eq[i],per100:Number(e.target.value)}; setEquivs(eq) }}
+                      className="w-10 text-center text-xs bg-bg border border-border rounded px-1 py-0.5 outline-none" />
+                    <span className="text-[9px] text-muted">g/100g</span>
+                    {macros.protein > 0 && <span className="text-xs font-bold w-12 text-right">{Math.round(macros.protein/f.per100*100)}g</span>}
+                    <button onClick={() => setEquivs(equivs.filter((_,idx)=>idx!==i))} className="text-muted hover:text-warn"><X className="w-3 h-3" /></button>
+                  </div>
+                ))}
+                {macros.protein > 0 && <p className="text-[9px] text-muted pt-1 border-t border-border">Para cubrir {macros.protein}g proteína</p>}
+              </div>
+            </div>
+
+            {/* Guardar panel */}
+            <button onClick={saveSidePanel}
+              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+              💾 Guardar panel derecho
+            </button>
           </div>
         </div>
       )}
