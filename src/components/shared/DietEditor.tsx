@@ -248,6 +248,8 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
   }
 
   // ── Vista entrenador ──────────────────────────────────────────
+  const [openDist, setOpenDist] = useState(false)
+  const [openSups, setOpenSups] = useState(false)
   const dist = diet.mealDistribution || []
   const sups = diet.supplements || []
 
@@ -283,7 +285,7 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
           <button onClick={() => updateDiet({ mealDistribution: [...dist, { label: 'Nueva comida', icon: '🍴', pct: 0 }] })}
             className="text-xs text-accent hover:underline">+ Añadir</button>
         </div>
-        {dist.map((m, i) => (
+        {openDist && dist.map((m, i) => (
           <div key={i} className="flex items-center gap-2">
             <input value={m.icon} onChange={e => { const d = [...dist]; d[i] = { ...d[i], icon: e.target.value }; updateDiet({ mealDistribution: d }) }}
               className="w-8 text-center bg-bg border border-border rounded-lg text-sm outline-none" />
@@ -298,7 +300,7 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
             <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
           </div>
         ))}
-        <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}% (debe sumar 100%)</p>
+        {openDist && <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}% (debe sumar 100%)</p>}
       </div>
 
       {/* Suplementación editable con toggle de visibilidad */}
@@ -320,7 +322,7 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
             </div>
           </div>
         </div>
-        {sups.map((s, i) => (
+        {openSups && sups.map((s, i) => (
           <div key={i} className="flex items-center gap-2">
             <button onClick={() => { const ss = [...sups]; ss[i] = { ...ss[i], visible: !ss[i].visible }; updateDiet({ supplements: ss }) }}
               className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${s.visible ? 'text-ok bg-ok/10' : 'text-muted bg-bg-alt'}`}>
