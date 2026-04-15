@@ -938,7 +938,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
 
       {subtab==='plan' && (
         <div style={{flex:1,overflowY:'auto',minHeight:0}}>
-          <DietEditor clientId={clientId} isTrainer={true}
+          <DietEditor clientId={clientId} isTrainer={true} trainerId={client.trainerId || userProfile?.uid}
             syncedMacros={{kcal:macros.kcal,protein:macros.protein,carbs:macros.carbs,fats:macros.fats}}
             onMacrosChange={m=>updateMacros(m)}/>
         </div>
