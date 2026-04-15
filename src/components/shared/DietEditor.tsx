@@ -134,20 +134,36 @@ function MealCard({ meal, index, onChange, onDelete }: { meal: Meal; index: numb
   )
 }
 
+interface DietTemplate {
+  id: string
+  name: string
+  trainerId: string
+  createdAt: number
+  diet: Partial<DietPlan>
+}
+
 interface Props {
   clientId: string
   isTrainer: boolean
+  trainerId?: string
   syncedMacros?: { kcal: number; protein: number; carbs: number; fats: number }
   onMacrosChange?: (macros: { kcal: number; protein: number; carbs: number; fats: number }) => void
 }
 
-export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }: Props) {
+export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMacrosChange }: Props) {
   const [diet, setDiet] = useState<DietPlan | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [openDist, setOpenDist] = useState(false)
   const [openSups, setOpenSups] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [savedTemplates, setSavedTemplates] = useState<DietTemplate[]>(() => {
+    if (!trainerId) return []
+    try { return JSON.parse(localStorage.getItem(`pf_diet_templates_${trainerId}`) || '[]') }
+    catch { return [] }
+  })
 
   useEffect(() => { loadDiet() }, [clientId])
 
@@ -183,11 +199,47 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
     }
   }
 
-  const applyTemplate = (tpl: typeof DIET_TEMPLATES[0]) => {
+  const saveAsTemplate = () => {
+    if (!diet || !trainerId || !templateName.trim()) return
+    const tpl: DietTemplate = {
+      id: `dt_${Date.now()}`,
+      name: templateName.trim(),
+      trainerId,
+      createdAt: Date.now(),
+      diet: {
+        kcal: diet.kcal, protein: diet.protein, carbs: diet.carbs, fats: diet.fats,
+        meals: diet.meals.map(m => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })),
+        advice: diet.advice,
+        mealDistribution: diet.mealDistribution,
+        supplements: diet.supplements,
+        showSupplements: diet.showSupplements,
+      }
+    }
+    const updated = [...savedTemplates, tpl]
+    setSavedTemplates(updated)
+    localStorage.setItem(`pf_diet_templates_${trainerId}`, JSON.stringify(updated))
+    setTemplateName('')
+    setShowSaveTemplate(false)
+    toast(`Plantilla "${tpl.name}" guardada ✓`, 'ok')
+  }
+
+  const deleteTemplate = (id: string) => {
+    if (!trainerId) return
+    const updated = savedTemplates.filter(t => t.id !== id)
+    setSavedTemplates(updated)
+    localStorage.setItem(`pf_diet_templates_${trainerId}`, JSON.stringify(updated))
+    toast('Plantilla eliminada', 'ok')
+  }
+
+  const applyTemplate = (tpl: DietTemplate | typeof DIET_TEMPLATES[0]) => {
     if (!diet) return
-    updateDiet({ ...tpl.diet, meals: tpl.diet.meals.map(m => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })) })
+    const d = 'diet' in tpl ? tpl.diet : tpl.diet
+    updateDiet({
+      ...d,
+      meals: (d.meals || []).map((m: any) => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` }))
+    })
     setShowTemplates(false)
-    toast(`Plantilla "${tpl.name}" aplicada ✓`, 'ok')
+    toast('Plantilla aplicada ✓', 'ok')
   }
 
   const saveDiet = async () => {
@@ -306,7 +358,7 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
         <div className="flex gap-2">
           <button onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            📋 Plantillas
+            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
           </button>
           <button onClick={saveDiet} disabled={saving}
             className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
@@ -317,19 +369,70 @@ export function DietEditor({ clientId, isTrainer, syncedMacros, onMacrosChange }
 
       {/* Plantillas */}
       {showTemplates && (
-        <div className="bg-card border border-accent/20 rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Aplicar plantilla de dieta</p>
-          <div className="grid grid-cols-3 gap-3">
-            {DIET_TEMPLATES.map(tpl => (
-              <button key={tpl.name} onClick={() => applyTemplate(tpl)}
-                className="bg-bg border border-border rounded-xl p-4 text-left hover:border-accent transition-all">
-                <p className="text-sm font-semibold">{tpl.name}</p>
-                <p className="text-xs text-muted mt-1">{tpl.diet.meals.length} comidas · {tpl.diet.kcal} kcal</p>
-                <p className="text-xs text-muted">P:{tpl.diet.protein}g · C:{tpl.diet.carbs}g · G:{tpl.diet.fats}g</p>
+        <div className="bg-card border border-accent/20 rounded-2xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">Plantillas de dieta</p>
+            {trainerId && (
+              <button onClick={() => setShowSaveTemplate(!showSaveTemplate)}
+                className="text-xs text-accent hover:underline font-semibold">
+                + Guardar actual como plantilla
               </button>
-            ))}
+            )}
           </div>
-          <p className="text-[10px] text-warn">⚠️ Aplicar una plantilla sobreescribirá el plan actual</p>
+
+          {/* Guardar como plantilla */}
+          {showSaveTemplate && (
+            <div className="flex gap-2 items-center bg-bg border border-border rounded-xl p-3">
+              <input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()}
+                placeholder="Nombre de la plantilla..."
+                className="flex-1 bg-transparent text-sm outline-none" />
+              <button onClick={saveAsTemplate} disabled={!templateName.trim()}
+                className="px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
+                Guardar
+              </button>
+              <button onClick={() => setShowSaveTemplate(false)} className="text-muted hover:text-ink">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Mis plantillas guardadas */}
+          {savedTemplates.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Mis plantillas</p>
+              <div className="grid grid-cols-2 gap-2">
+                {savedTemplates.map(tpl => (
+                  <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
+                    <button onClick={() => applyTemplate(tpl)} className="flex-1 text-left">
+                      <p className="text-sm font-semibold">{tpl.name}</p>
+                      <p className="text-xs text-muted mt-0.5">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal} kcal</p>
+                      <p className="text-xs text-muted">P:{tpl.diet.protein}g · C:{tpl.diet.carbs}g · G:{tpl.diet.fats}g</p>
+                    </button>
+                    <button onClick={() => deleteTemplate(tpl.id)} className="text-muted hover:text-warn flex-shrink-0 mt-0.5">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Plantillas base */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
+            <div className="grid grid-cols-3 gap-2">
+              {DIET_TEMPLATES.map(tpl => (
+                <button key={tpl.name} onClick={() => applyTemplate(tpl)}
+                  className="bg-bg border border-border rounded-xl p-3 text-left hover:border-accent transition-all">
+                  <p className="text-sm font-semibold">{tpl.name}</p>
+                  <p className="text-xs text-muted mt-1">{tpl.diet.meals.length} comidas</p>
+                  <p className="text-xs text-muted">P:{tpl.diet.protein}g · C:{tpl.diet.carbs}g</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-warn">⚠️ Aplicar sobreescribirá el plan actual</p>
         </div>
       )}
 
