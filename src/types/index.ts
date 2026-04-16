@@ -1,3 +1,4 @@
+import { Especialidad } from '../lib/especialidades'
 // ── USUARIOS ──────────────────────────────────────────
 export interface UserProfile {
   uid: string; email: string; displayName: string; photoURL?: string
@@ -49,10 +50,10 @@ export interface TrainingTemplate {
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
-export interface LibraryVideo { url: string; label?: string; especialidades?: string[] }
+export interface LibraryVideo { url: string; label?: string; especialidades?: Especialidad[] }
 export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
-  category?: string; especialidades?: string[]; videos?: LibraryVideo[]; createdAt: number
+  category?: string; especialidades?: Especialidad[]; videos?: LibraryVideo[]; createdAt: number
 }
 
 // ── REGISTROS ─────────────────────────────────────────
