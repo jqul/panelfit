@@ -157,6 +157,37 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
   const [openDist, setOpenDist] = useState(false)
   const [openSups, setOpenSups] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+
+  const LS_DIET_TEMPLATES = `pf_diet_templates_${trainerId || 'default'}`
+
+  const loadDietTemplates = (): {id: string; name: string; diet: Partial<DietPlan>}[] => {
+    try { return JSON.parse(localStorage.getItem(LS_DIET_TEMPLATES) || '[]') } catch { return [] }
+  }
+
+  const saveAsTemplate = () => {
+    if (!diet || !templateName.trim()) { toast('Escribe un nombre para la plantilla', 'warn'); return }
+    const templates = loadDietTemplates()
+    const newTemplate = {
+      id: `dt_${Date.now()}`,
+      name: templateName.trim(),
+      diet: { kcal: diet.kcal, protein: diet.protein, carbs: diet.carbs, fats: diet.fats,
+        meals: diet.meals.map(m => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })),
+        advice: diet.advice, mealDistribution: diet.mealDistribution, supplements: diet.supplements }
+    }
+    localStorage.setItem(LS_DIET_TEMPLATES, JSON.stringify([...templates, newTemplate]))
+    toast(`Plantilla "${templateName}" guardada ✓`, 'ok')
+    setTemplateName(''); setShowSaveTemplate(false)
+  }
+
+  const deleteTemplate = (id: string) => {
+    const templates = loadDietTemplates().filter(t => t.id !== id)
+    localStorage.setItem(LS_DIET_TEMPLATES, JSON.stringify(templates))
+    toast('Plantilla eliminada', 'ok')
+    // forzar re-render
+    setShowTemplates(false); setTimeout(() => setShowTemplates(true), 10)
+  }
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [savedTemplates, setSavedTemplates] = useState<DietTemplate[]>(() => {
@@ -231,15 +262,14 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
     toast('Plantilla eliminada', 'ok')
   }
 
-  const applyTemplate = (tpl: DietTemplate | typeof DIET_TEMPLATES[0]) => {
+  const applyTemplate = (d: Partial<DietPlan>, name: string) => {
     if (!diet) return
-    const d = 'diet' in tpl ? tpl.diet : tpl.diet
     updateDiet({
       ...d,
       meals: (d.meals || []).map((m: any) => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` }))
     })
     setShowTemplates(false)
-    toast('Plantilla aplicada ✓', 'ok')
+    toast(`Plantilla "${name}" aplicada ✓`, 'ok')
   }
 
   const saveDiet = async () => {
@@ -404,7 +434,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
               <div className="grid grid-cols-2 gap-2">
                 {savedTemplates.map(tpl => (
                   <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
-                    <button onClick={() => applyTemplate(tpl)} className="flex-1 text-left">
+                    <button onClick={() => applyTemplate(tpl.diet, tpl.name)} className="flex-1 text-left">
                       <p className="text-sm font-semibold">{tpl.name}</p>
                       <p className="text-xs text-muted mt-0.5">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal} kcal</p>
                       <p className="text-xs text-muted">P:{tpl.diet.protein}g · C:{tpl.diet.carbs}g · G:{tpl.diet.fats}g</p>
@@ -423,7 +453,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
             <div className="grid grid-cols-3 gap-2">
               {DIET_TEMPLATES.map(tpl => (
-                <button key={tpl.name} onClick={() => applyTemplate(tpl)}
+                <button key={tpl.name} onClick={() => applyTemplate(tpl.diet as Partial<DietPlan>, tpl.name)}
                   className="bg-bg border border-border rounded-xl p-3 text-left hover:border-accent transition-all">
                   <p className="text-sm font-semibold">{tpl.name}</p>
                   <p className="text-xs text-muted mt-1">{tpl.diet.meals.length} comidas</p>
