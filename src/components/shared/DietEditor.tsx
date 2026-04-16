@@ -156,38 +156,6 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
   const [saving, setSaving] = useState(false)
   const [openDist, setOpenDist] = useState(false)
   const [openSups, setOpenSups] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [templateName, setTemplateName] = useState('')
-  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
-
-  const LS_DIET_TEMPLATES = `pf_diet_templates_${trainerId || 'default'}`
-
-  const loadDietTemplates = (): {id: string; name: string; diet: Partial<DietPlan>}[] => {
-    try { return JSON.parse(localStorage.getItem(LS_DIET_TEMPLATES) || '[]') } catch { return [] }
-  }
-
-  const saveAsTemplate = () => {
-    if (!diet || !templateName.trim()) { toast('Escribe un nombre para la plantilla', 'warn'); return }
-    const templates = loadDietTemplates()
-    const newTemplate = {
-      id: `dt_${Date.now()}`,
-      name: templateName.trim(),
-      diet: { kcal: diet.kcal, protein: diet.protein, carbs: diet.carbs, fats: diet.fats,
-        meals: diet.meals.map(m => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })),
-        advice: diet.advice, mealDistribution: diet.mealDistribution, supplements: diet.supplements }
-    }
-    localStorage.setItem(LS_DIET_TEMPLATES, JSON.stringify([...templates, newTemplate]))
-    toast(`Plantilla "${templateName}" guardada ✓`, 'ok')
-    setTemplateName(''); setShowSaveTemplate(false)
-  }
-
-  const deleteTemplate = (id: string) => {
-    const templates = loadDietTemplates().filter(t => t.id !== id)
-    localStorage.setItem(LS_DIET_TEMPLATES, JSON.stringify(templates))
-    toast('Plantilla eliminada', 'ok')
-    // forzar re-render
-    setShowTemplates(false); setTimeout(() => setShowTemplates(true), 10)
-  }
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
   const [savedTemplates, setSavedTemplates] = useState<DietTemplate[]>(() => {
