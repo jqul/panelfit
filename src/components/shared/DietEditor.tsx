@@ -200,7 +200,8 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
 
   const applyTemplate = (d: Partial<DietPlan>, name: string) => {
     if (!diet) return
-    updateDiet({ ...d, meals: (d.meals || []).map((m: any) => ({ ...m, id: `meal_${Date.now()}_${Math.random()}` })) })
+    const meals = (d.meals || []).map((m: any) => ({ ...m, id: `meal_${Date.now()}_${Math.random().toString(36).slice(2)}` }))
+    updateDiet({ ...d, meals })
     setShowTemplates(false)
     toast(`Plantilla "${name}" aplicada ✓`, 'ok')
   }
@@ -326,7 +327,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                   <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
                     <button onClick={() => applyTemplate(tpl.diet, tpl.name)} className="flex-1 text-left">
                       <p className="text-sm font-semibold">{tpl.name}</p>
-                      <p className="text-xs text-muted">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal} kcal</p>
+                      <p className="text-xs text-muted">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal || 0} kcal</p>
                     </button>
                     <button onClick={() => deleteTemplate(tpl.id)} className="text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
@@ -338,7 +339,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
             <div className="grid grid-cols-3 gap-2">
               {DIET_TEMPLATES.map(tpl => (
-                <button key={tpl.name} onClick={() => applyTemplate(tpl.diet as Partial<DietPlan>, tpl.name)}
+                <button key={tpl.name} onClick={() => applyTemplate({ ...tpl.diet, meals: tpl.diet.meals || [] } as Partial<DietPlan>, tpl.name)}
                   className="bg-bg border border-border rounded-xl p-3 text-left hover:border-accent transition-all">
                   <p className="text-sm font-semibold">{tpl.name}</p>
                   <p className="text-xs text-muted">{tpl.diet.meals.length} comidas · P:{tpl.diet.protein}g</p>
