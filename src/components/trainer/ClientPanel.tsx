@@ -254,7 +254,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               )}
               {activeTab === 'dieta' && (
                 <div className="flex-1 overflow-hidden min-h-0">
-                  <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} />
+                  <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} trainerId={userProfile.uid} />
                 </div>
               )}
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
@@ -564,7 +564,7 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
   )
 }
 
-function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData }) {
+function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData; trainerId: string }) {
   const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
   const updateMacros = (updates: any) => { if (!plan) return; onChange({ ...plan, macros: { ...macros, ...updates } } as any) }
@@ -938,7 +938,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client }: { clientId: st
 
       {subtab==='plan' && (
         <div style={{flex:1,overflowY:'auto',minHeight:0}}>
-          <DietEditor clientId={clientId} isTrainer={true} trainerId={client.trainerId || userProfile?.uid}
+          <DietEditor clientId={clientId} isTrainer={true} trainerId={trainerId}
             syncedMacros={{kcal:macros.kcal,protein:macros.protein,carbs:macros.carbs,fats:macros.fats}}
             onMacrosChange={m=>updateMacros(m)}/>
         </div>
