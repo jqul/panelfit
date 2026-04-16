@@ -270,10 +270,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             </div>
           ))}
         </div>
-        {diet.showSupplements && diet.supplements?.filter(s => s.visible).length > 0 && (
+        {diet.showSupplements && (diet.supplements?.filter(s => s.visible).length ?? 0) > 0 && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación recomendada</p>
-            <div className="space-y-2">{diet.supplements.filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
+            <div className="space-y-2">{(diet.supplements || []).filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
           </div>
         )}
         {diet.advice && <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5"><p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p><p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p></div>}
