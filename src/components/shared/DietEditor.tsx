@@ -136,7 +136,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
   const [templateName, setTemplateName] = useState('')
   const [savedTemplates, setSavedTemplates] = useState<DietTemplate[]>(() => {
     if (!trainerId) return []
-    try { return JSON.parse(localStorage.getItem(`pf_diet_templates_${trainerId}`) || '[]') }
+    try {
+      const raw = JSON.parse(localStorage.getItem(`pf_diet_templates_${trainerId}`) || '[]')
+      return raw.map((t: any) => ({ ...t, diet: { ...t.diet, meals: t.diet?.meals || [] } }))
+    }
     catch { return [] }
   })
 
@@ -325,7 +328,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
               <div className="grid grid-cols-2 gap-2">
                 {savedTemplates.map(tpl => (
                   <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
-                    <button onClick={() => applyTemplate(tpl.diet, tpl.name)} className="flex-1 text-left">
+                    <button onClick={() => applyTemplate({ ...tpl.diet, meals: tpl.diet.meals || [] }, tpl.name)} className="flex-1 text-left">
                       <p className="text-sm font-semibold">{tpl.name}</p>
                       <p className="text-xs text-muted">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal || 0} kcal</p>
                     </button>
