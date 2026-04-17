@@ -35,7 +35,8 @@ export function useExerciseLibrary(trainerId: string) {
     description = '',
     category = '',
     videos: NonNullable<LibraryExercise['videos']> = [],
-    especialidades: Especialidad[] = []
+    especialidades: Especialidad[] = [],
+    tags: string[] = []
   ) => {
     const ex: LibraryExercise = {
       id: `ex_${Date.now()}`,
@@ -46,7 +47,8 @@ export function useExerciseLibrary(trainerId: string) {
       especialidades,
       videos,
       createdAt: Date.now(),
-    }
+      ...(tags.length ? { tags } : {}),
+    } as any
     save([...exercises, ex].sort((a, b) => a.name.localeCompare(b.name)))
     return ex
   }
