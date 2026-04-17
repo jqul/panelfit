@@ -612,16 +612,16 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
     const p = parseFloat(peso)
     const h = parseFloat(altura)
     const e = parseFloat(edad)
-    if (isNaN(p) || p <= 0) { toast('Introduce el peso', 'warn'); return }
-    if (isNaN(h) || h <= 0) { toast('Introduce la altura', 'warn'); return }
-    if (isNaN(e) || e <= 0) { toast('Introduce la edad', 'warn'); return }
+    if (isNaN(p) || p <= 0) { alert('Falta peso: "' + peso + '"'); return }
+    if (isNaN(h) || h <= 0) { alert('Falta altura: "' + altura + '"'); return }
+    if (isNaN(e) || e <= 0) { alert('Falta edad: "' + edad + '"'); return }
     const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
     const tdee = Math.round(tmb * actividad)
     const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
     const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
     const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
     updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
-    toast('Macros calculados ✓', 'ok')
+    alert('Calculado: ' + kcalObj + ' kcal, ' + protG + 'g prot, ' + carbsG + 'g carbs, ' + fatG + 'g grasas')
   }
 
   const COLORS = { protein: '#c0392b', carbs: '#c49a00', fats: '#4a7c59' }
