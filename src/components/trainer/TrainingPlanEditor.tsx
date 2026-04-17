@@ -272,16 +272,17 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                                     className="flex-1 text-xs bg-bg border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20"
                                   />
                                 </div>
-                                {/* Botón pedir vídeo al cliente */}
                                 <button
-                                  onClick={() => {
-                                    const msg = encodeURIComponent(`Hola! Para el ejercicio *${ex.name}* necesito que me grabes un vídeo haciéndolo para poder darte feedback técnico. Mándamelo cuando puedas 💪`)
-                                    window.open(`https://wa.me/?text=${msg}`, '_blank')
-                                    toast('WhatsApp abierto ✓', 'ok')
-                                  }}
-                                  className="w-full flex items-center justify-center gap-2 py-1.5 border border-[#25D366]/30 text-[#25D366] rounded-lg text-xs font-semibold hover:bg-[#25D366]/5 transition-colors">
-                                  📱 Pedir vídeo al cliente por WhatsApp
+                                  onClick={() => updateExercise(activeWeek, di, ri, { requiresVideo: !ex.requiresVideo })}
+                                  className={`w-full flex items-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
+                                    ex.requiresVideo
+                                      ? 'bg-warn/10 border-warn/30 text-warn'
+                                      : 'border-border text-muted hover:border-warn/40 hover:text-warn'
+                                  }`}>
+                                  <span className="text-sm">📹</span>
+                                  {ex.requiresVideo ? '✓ Pidiendo vídeo al cliente' : 'Pedir vídeo de ejecución al cliente'}
                                 </button>
+
                               </div>
                             )}
                           </div>
