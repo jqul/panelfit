@@ -31,7 +31,7 @@ function load<T>(key: string, def: T): T {
 function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify(val)) }
 
 function TagBadge({ tag }: { tag: CustomTag }) {
-  const c = TAG_COLORS[tag.colorIdx % TAG_COLORS.length]
+  const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
       {tag.emoji} {tag.label}
@@ -175,7 +175,7 @@ function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onC
             {tags.length > 0 && (
               <div className="space-y-2">
                 {tags.map(tag => {
-                  const c = TAG_COLORS[tag.colorIdx % TAG_COLORS.length]
+                  const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
                   return (
                     <div key={tag.id} className="flex items-center gap-2">
                       <input value={tag.emoji} onChange={e=>editTag(tag.id,{emoji:e.target.value})}
@@ -307,7 +307,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
           <label className="block text-xs font-semibold text-muted mb-2">Etiquetas</label>
           <div className="flex flex-wrap gap-2">
             {tags.map(tag => {
-              const c = TAG_COLORS[tag.colorIdx % TAG_COLORS.length]
+              const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
               const active = form.tags.includes(tag.id)
               return (
                 <button key={tag.id} type="button" onClick={()=>toggle('tags',tag.id)}
