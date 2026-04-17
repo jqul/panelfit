@@ -1,13 +1,13 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
-import { ESPECIALIDADES } from '../../lib/especialidades'
+import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 
 interface Props {
   exercises: LibraryExercise[]
   trainerId: string
-  onAdd: (name: string, desc: string, category: string, videos: LibraryVideo[], especialidades: string[]) => void
+  onAdd: (name: string, desc: string, category: string, videos: LibraryVideo[], especialidades: Especialidad[]) => void
   onUpdate: (id: string, updates: Partial<LibraryExercise>) => void
   onDelete: (id: string) => void
 }
@@ -21,11 +21,10 @@ function getYTId(url: string) {
 
 interface FormState {
   name: string; description: string; category: string
-  especialidades: string[]; videos: LibraryVideo[]
+  especialidades: Especialidad[]; videos: LibraryVideo[]
 }
 const emptyForm = (): FormState => ({ name: '', description: '', category: '', especialidades: [], videos: [] })
 
-// Componente de formulario SEPARADO del componente padre — evita re-mount en cada render
 interface ExFormProps {
   initial: FormState
   trainerId: string
@@ -38,15 +37,22 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
   const [form, setForm] = useState<FormState>(initial)
   const [newVideoUrl, setNewVideoUrl] = useState('')
   const [newVideoLabel, setNewVideoLabel] = useState('')
-  const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])
+  const [newVideoEsps, setNewVideoEsps] = useState<Especialidad[]>([])
   const [uploading, setUploading] = useState(false)
   const [videoMode, setVideoMode] = useState<'url' | 'file'>('url')
 
   const addVideo = () => {
     if (!newVideoUrl.trim()) return
-    setForm(f => ({ ...f, videos: [...f.videos, { url: newVideoUrl.trim(), label: newVideoLabel.trim() || undefined, especialidades: newVideoEsps }] }))
+    const newVid: LibraryVideo = { url: newVideoUrl.trim(), label: newVideoLabel.trim() || undefined, especialidades: newVideoEsps }
+    setForm(f => ({ ...f, videos: [...f.videos, newVid] }))
     setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
   }
+
+  const toggleEsp = (val: Especialidad) =>
+    setForm(f => ({ ...f, especialidades: f.especialidades.includes(val) ? f.especialidades.filter(x => x !== val) : [...f.especialidades, val] }))
+
+  const toggleVideoEsp = (val: Especialidad) =>
+    setNewVideoEsps(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val])
 
   return (
     <div className="bg-card border border-accent/20 rounded-2xl p-5 space-y-4">
@@ -83,8 +89,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
         <label className="block text-xs font-semibold text-muted mb-2">Especialidades</label>
         <div className="flex flex-wrap gap-2">
           {ESPECIALIDADES.map(e => (
-            <button key={e.value} type="button"
-              onClick={() => setForm(f => ({ ...f, especialidades: f.especialidades.includes(e.value) ? f.especialidades.filter(x => x !== e.value) : [...f.especialidades, e.value] }))}
+            <button key={e.value} type="button" onClick={() => toggleEsp(e.value)}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs border transition-all ${form.especialidades.includes(e.value) ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
               {e.emoji} {e.label}
             </button>
@@ -92,7 +97,6 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
         </div>
       </div>
 
-      {/* Vídeos existentes */}
       {form.videos.length > 0 && (
         <div className="space-y-2">
           {form.videos.map((v, i) => {
@@ -102,6 +106,11 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-12 h-9 object-cover rounded" alt="" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium truncate">{v.label || v.url}</p>
+                  {(v.especialidades || []).length > 0 && (
+                    <div className="flex gap-1 mt-0.5">
+                      {v.especialidades!.map(esp => <span key={esp} className="text-[9px] text-muted">{ESPECIALIDADES.find(e => e.value === esp)?.emoji} {esp}</span>)}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setForm(f => ({ ...f, videos: f.videos.filter((_, idx) => idx !== i) }))} className="p-1 text-muted hover:text-warn flex-shrink-0">
                   <X className="w-3.5 h-3.5" />
@@ -112,7 +121,6 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
         </div>
       )}
 
-      {/* Añadir vídeo */}
       <div className="bg-bg-alt border border-border rounded-xl p-3 space-y-2">
         <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
         <div className="flex gap-1 bg-bg p-0.5 rounded-lg border border-border w-fit">
@@ -149,7 +157,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
           className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none" />
         <div className="flex flex-wrap gap-1.5">
           {ESPECIALIDADES.map(e => (
-            <button key={e.value} type="button" onClick={() => setNewVideoEsps(prev => prev.includes(e.value) ? prev.filter(x => x !== e.value) : [...prev, e.value])}
+            <button key={e.value} type="button" onClick={() => toggleVideoEsp(e.value)}
               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${newVideoEsps.includes(e.value) ? 'bg-accent text-white border-accent' : 'border-border text-muted'}`}>
               {e.emoji} {e.label}
             </button>
@@ -183,12 +191,16 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const filtered = exercises.filter(ex => {
     const matchSearch = !search || ex.name.toLowerCase().includes(search.toLowerCase())
     const matchCat = !filterCat || ex.category === filterCat
-    const matchEsp = !filterEsp || ex.especialidades?.includes(filterEsp)
+    const matchEsp = !filterEsp || ex.especialidades?.includes(filterEsp as Especialidad)
     return matchSearch && matchCat && matchEsp
   })
 
   const startEdit = (ex: LibraryExercise) => {
-    setEditInitial({ name: ex.name, description: ex.description || '', category: ex.category || '', especialidades: ex.especialidades || [], videos: ex.videos || [] })
+    setEditInitial({
+      name: ex.name, description: ex.description || '', category: ex.category || '',
+      especialidades: (ex.especialidades || []) as Especialidad[],
+      videos: ex.videos || []
+    })
     setEditId(ex.id)
     setShowNew(false)
   }
@@ -207,14 +219,9 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
       </div>
 
       {showNew && (
-        <ExForm
-          key="new"
-          initial={emptyForm()}
-          trainerId={trainerId}
-          title="Nuevo ejercicio"
+        <ExForm key="new" initial={emptyForm()} trainerId={trainerId} title="Nuevo ejercicio"
           onSave={f => { onAdd(f.name, f.description, f.category, f.videos, f.especialidades); setShowNew(false) }}
-          onCancel={() => setShowNew(false)}
-        />
+          onCancel={() => setShowNew(false)} />
       )}
 
       <div className="flex gap-2 flex-wrap">
@@ -245,29 +252,28 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
           {filtered.map(ex => (
             <div key={ex.id}>
               {editId === ex.id ? (
-                <ExForm
-                  key={`edit-${ex.id}`}
-                  initial={editInitial}
-                  trainerId={trainerId}
-                  title={`Editar: ${ex.name}`}
-                  onSave={f => { onUpdate(ex.id, f); setEditId(null) }}
-                  onCancel={() => setEditId(null)}
-                />
+                <ExForm key={`edit-${ex.id}`} initial={editInitial} trainerId={trainerId} title={`Editar: ${ex.name}`}
+                  onSave={f => { onUpdate(ex.id, { ...f, especialidades: f.especialidades }); setEditId(null) }}
+                  onCancel={() => setEditId(null)} />
               ) : (
                 <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold">{ex.name}</p>
                       {ex.category && <span className="text-[10px] bg-bg-alt border border-border px-1.5 py-0.5 rounded-full text-muted">{ex.category}</span>}
+                      {ex.especialidades?.map(esp => {
+                        const info = ESPECIALIDADES.find(e => e.value === esp)
+                        return info ? <span key={esp} className="text-[10px] text-muted">{info.emoji}</span> : null
+                      })}
                     </div>
                     {ex.description && <p className="text-xs text-muted mt-0.5 truncate">{ex.description}</p>}
-                    {ex.videos && ex.videos.length > 0 && (
-                      <p className="text-[10px] text-muted mt-1"><Video className="w-3 h-3 inline mr-1" />{ex.videos.length} vídeo{ex.videos.length > 1 ? 's' : ''}</p>
+                    {(ex.videos?.length || 0) > 0 && (
+                      <p className="text-[10px] text-muted mt-1 flex items-center gap-1"><Video className="w-3 h-3" />{ex.videos!.length} vídeo{ex.videos!.length > 1 ? 's' : ''}</p>
                     )}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => startEdit(ex)} className="p-1.5 text-muted hover:text-accent transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => startEdit(ex)} className="p-1.5 text-muted hover:text-accent"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               )}
