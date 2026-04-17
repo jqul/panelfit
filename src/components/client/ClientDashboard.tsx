@@ -103,7 +103,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
-    <div className="max-w-xl mx-auto pb-24">
+    <div className="max-w-xl mx-auto">
       {/* Offline banner */}
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
