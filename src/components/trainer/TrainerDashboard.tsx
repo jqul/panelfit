@@ -243,7 +243,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
+    <div className="flex min-h-[100dvh] overflow-hidden bg-bg">
       {/* Sidebar desktop */}
       <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border">
         <SidebarContent />
@@ -268,10 +268,10 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           <button onClick={() => setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 lg:p-6">
           {/* DASHBOARD — 3 columnas */}
           {activeTab === 'dashboard' && (
-            <div className="flex gap-6 animate-fade-in">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
               {/* Columna central */}
               <div className="flex-1 min-w-0 space-y-6">
                 <div>
@@ -280,7 +280,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 </div>
 
                 {/* KPIs */}
-                <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
                     { label: 'Clientes', value: clients.length, icon: Users, color: 'text-ink', accent: '#6e5438', onClick: () => handleTabChange('clients') },
                     { label: 'Entrenaron hoy', value: activeToday, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
@@ -314,7 +314,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       Sesiones
                     </div>
                   </div>
-                  <div className="h-52">
+                  <div className="h-40 lg:h-52">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <defs>
@@ -368,7 +368,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
               </div>
 
               {/* Columna derecha — contexto */}
-              <div className="w-72 flex-shrink-0 space-y-4">
+              <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
                 {/* Alertas */}
                 {alerts.length > 0 && (
                   <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -487,7 +487,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 </div>
               </div>
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse shadow-sm" />)}
                 </div>
               ) : filteredClients.length === 0 ? (
@@ -496,7 +496,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   <p className="font-serif font-bold text-lg">Sin resultados</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredClients.map(client => (
                     <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm"
                       style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}
