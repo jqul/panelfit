@@ -113,7 +113,7 @@ export default function App() {
           allClients={allClients} onClose={() => setSelectedClient(null)} />
       ) : (
         <TrainerDashboard userProfile={userProfile} onLogout={handleLogout}
-          onSelectClient={(client) => {
+          onSelectClient={(client: ClientData) => {
             setSelectedClient(client)
             setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
           }} />
@@ -142,7 +142,7 @@ export default function App() {
           userProfile={DEMO_PROFILE_TRAINER}
           onLogout={() => { window.location.href = '/' }}
           demoClients={DEMO_CLIENTS as any}
-          onSelectClient={(client) => {
+          onSelectClient={(client: ClientData) => {
             setSelectedClient(client)
             setAllClients(DEMO_CLIENTS as any)
           }}
