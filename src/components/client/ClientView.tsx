@@ -89,29 +89,28 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }, [plan, client?.id])
 
- const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
-  setLogs(newLogs)
-  setSyncState('saving')
-  if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-  if (!navigator.onLine) { setSyncState('offline'); return }
-  if (client?.id) {
-    const { error } = await supabase.from('registros')
-      .upsert(
-        { clientId: client.id, logs: newLogs, updatedAt: Date.now() },
-        { onConflict: 'clientId' }
-      )
-    if (error) { 
-      console.error('Error guardando logs:', error)
-      setSyncState('error')
-      return 
+  const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
+    setLogs(newLogs)
+    setSyncState('saving')
+    if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+
+    if (!navigator.onLine) { setSyncState('offline'); return }
+
+    if (client?.id) {
+      const { error: updateErr } = await supabase.from('registros')
+        .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
+      if (updateErr) {
+        const { error: insertErr } = await supabase.from('registros')
+          .insert({ clientId: client.id, logs: newLogs, updatedAt: Date.now() })
+        if (insertErr) { logError('ClientView:saveLogs', insertErr); setSyncState('error'); return }
+      }
+      setSyncState('saved')
+      setTimeout(() => setSyncState('idle'), 2000)
     }
-    setSyncState('saved')
-    setTimeout(() => setSyncState('idle'), 2000)
-  }
-}, [client?.id])
+  }, [client?.id])
 
   if (loading) return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
+    <div className="min-h-[100dvh] bg-bg flex items-center justify-center">
       <div className="text-center space-y-3">
         <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex gap-1 justify-center">
@@ -133,7 +132,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       else { setPinError(true); setPinInput('') }
     }
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="min-h-[100dvh] bg-bg flex items-center justify-center p-4">
         <div className="w-full max-w-xs text-center space-y-6">
           <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
           <div className="space-y-3">
@@ -193,7 +192,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="min-h-[100dvh] bg-bg flex flex-col">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
@@ -224,7 +223,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <SyncIndicator />
 
       {/* Contenido */}
-      <main className="flex-1 pb-20 max-w-2xl mx-auto w-full">
+      <main className="flex-1 max-w-2xl mx-auto w-full" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
@@ -255,7 +254,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </main>
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
         <div className="flex max-w-2xl mx-auto">
           {TABS.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
