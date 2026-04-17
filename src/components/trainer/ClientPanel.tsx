@@ -609,9 +609,12 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
   const saveSidePanel = () => { updateMacros({ dist, sups, showSups, equivs }); toast('Guardado ✓', 'ok') }
 
   const calcMacros = () => {
-    if (!plan) { toast('Sin plan cargado', 'warn'); return }
-    const p = parseFloat(peso); const h = parseFloat(altura); const e = parseFloat(edad)
-    if (!p || !h || !e) { toast('Rellena peso, altura y edad', 'warn'); return }
+    const p = parseFloat(peso)
+    const h = parseFloat(altura)
+    const e = parseFloat(edad)
+    if (isNaN(p) || p <= 0) { toast('Introduce el peso', 'warn'); return }
+    if (isNaN(h) || h <= 0) { toast('Introduce la altura', 'warn'); return }
+    if (isNaN(e) || e <= 0) { toast('Introduce la edad', 'warn'); return }
     const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
     const tdee = Math.round(tmb * actividad)
     const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
@@ -788,13 +791,21 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
               <div className="bg-white rounded-2xl p-5" style={{boxShadow:'0 2px 16px rgba(0,0,0,0.07)',flexShrink:0}}>
                 <p className="font-semibold text-sm mb-3">Calculadora TDEE — Harris-Benedict</p>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                  {[{label:'Peso (kg)',val:peso,set:setPeso,ph:String(client.weight||80)},{label:'Altura (cm)',val:altura,set:setAltura,ph:'175'},{label:'Edad',val:edad,set:setEdad,ph:'30'}].map(f=>(
-                    <div key={f.label}>
-                      <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>{f.label}</p>
-                      <input type="number" value={f.val} onChange={e=>f.set(e.target.value)} placeholder={f.ph}
-                        className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                    </div>
-                  ))}
+                  <div>
+                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Peso (kg)</p>
+                    <input type="number" value={peso} onChange={e=>setPeso(e.target.value)} placeholder={String(client.weight||80)}
+                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
+                  </div>
+                  <div>
+                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Altura (cm)</p>
+                    <input type="number" value={altura} onChange={e=>setAltura(e.target.value)} placeholder="175"
+                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
+                  </div>
+                  <div>
+                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Edad</p>
+                    <input type="number" value={edad} onChange={e=>setEdad(e.target.value)} placeholder="30"
+                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
+                  </div>
                   <div>
                     <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Sexo</p>
                     <div className="flex gap-1">
