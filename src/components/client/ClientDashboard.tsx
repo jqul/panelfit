@@ -16,6 +16,7 @@ interface Props {
   welcomeMsg?: string
   motivMsg?: string
   restDayMsg?: string
+  brandBg?: string
   brandColor?: string
 }
 
@@ -50,7 +51,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
@@ -104,7 +105,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="max-w-xl mx-auto" style={{paddingTop: brandBg ? 8 : 0}}>
       {/* Offline banner */}
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
