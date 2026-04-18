@@ -28,6 +28,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [trainerProfile, setTrainerProfile] = useState<Record<string,any>>({})
 
   useEffect(() => {
     loadData()
@@ -73,6 +74,23 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (regErr) logError('ClientView:loadRegistros', regErr)
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
+
+    // Cargar perfil del entrenador desde Supabase
+    if (clientData.trainerId) {
+      const { data: trainerData } = await supabase
+        .from('entrenadores').select('profile').eq('uid', clientData.trainerId).maybeSingle()
+      if (trainerData?.profile && Object.keys(trainerData.profile).length > 0) {
+        setTrainerProfile(trainerData.profile)
+        // Sincronizar al localStorage para acceso offline
+        localStorage.setItem(`pf_trainer_profile_${clientData.trainerId}`, JSON.stringify(trainerData.profile))
+      } else {
+        // Fallback a localStorage si Supabase no tiene datos
+        try {
+          const local = JSON.parse(localStorage.getItem(`pf_trainer_profile_${clientData.trainerId}`) || '{}')
+          setTrainerProfile(local)
+        } catch {}
+      }
+    }
 
     setLoading(false)
   }
@@ -156,14 +174,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   if (!client) return null
 
   const clientName = `${client.name || ''} ${client.surname || ''}`.trim()
-  const trainerProfile = (() => {
-    try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
-  })()
   const brandName = trainerProfile.brandName || 'PanelFit'
   const brandLogo = trainerProfile.brandLogo || null
   const brandColor = trainerProfile.brandColor || '#6e5438'
   const welcomeMsg = trainerProfile.welcomeMsg || ''
   const motivMsg = trainerProfile.motivMsg || ''
+  const restDayMsg = trainerProfile.restDayMsg || ''
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
@@ -236,7 +252,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                     <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
                       weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
-                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} brandColor={brandColor} />
+                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} restDayMsg={restDayMsg} brandColor={brandColor} />
                   </>
                 : <NoPlanView />
             )}
