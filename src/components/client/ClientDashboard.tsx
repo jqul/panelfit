@@ -15,6 +15,7 @@ interface Props {
   objetivo?: string
   welcomeMsg?: string
   motivMsg?: string
+  restDayMsg?: string
   brandColor?: string
 }
 
@@ -49,7 +50,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
@@ -225,7 +226,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
               <Dumbbell className="w-7 h-7 text-muted opacity-40" />
             </div>
             <h3 className="font-serif font-bold text-lg">Día de descanso</h3>
-            <p className="text-sm text-muted mt-1">{motivMsg || "Tu entrenador no ha programado sesión para hoy. ¡Descansa y recupera!"}</p>
+            <p className="text-sm text-muted mt-1">{motivMsg || "Hoy toca descansar y recuperar. ¡Tu cuerpo lo necesita!"}</p>
           </div>
         )}
 
