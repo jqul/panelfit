@@ -598,6 +598,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
   const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
+
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
   const [brandName, setBrandName] = useState(saved.brandName || '')
   const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
@@ -606,79 +607,189 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [bio, setBio] = useState(saved.bio || '')
   const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
   const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
+  const [restDayMsg, setRestDayMsg] = useState(saved.restDayMsg || '')
+  const [accentFont, setAccentFont] = useState(saved.accentFont || 'serif')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandColor, phone, bio, welcomeMsg, motivMsg }
+    const profile = {
+      displayName, brandName, brandLogo, brandColor,
+      phone, bio, welcomeMsg, motivMsg, restDayMsg, accentFont,
+      updatedAt: Date.now()
+    }
+    // Guardar en localStorage (acceso inmediato en mismo dispositivo)
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
-    await supabase.from('entrenadores').update({ displayName }).eq('uid', userProfile.uid)
-    toast('Perfil guardado ✓', 'ok'); setSaving(false)
+
+    // Guardar en Supabase (para que el cliente lo lea desde cualquier dispositivo)
+    const { error } = await supabase.from('entrenadores')
+      .update({ displayName, profile })
+      .eq('uid', userProfile.uid)
+
+    if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaving(false); return }
+    toast('Perfil guardado ✓', 'ok')
+    setSaving(false)
   }
 
+  const PRESET_COLORS = ['#6e5438','#1a1a2e','#0f4c75','#1b4332','#7b2d8b','#c0392b','#e67e22','#2c3e50']
+
   return (
-    <div className="animate-fade-in space-y-6 max-w-lg">
-      <h2 className="text-3xl font-serif font-bold">Configuración</h2>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Perfil personal</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
-          <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
-          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio</label>
-          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..."
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="text-xs text-muted">Email</label><p className="text-sm text-muted px-1 mt-0.5">{userProfile.email}</p></div>
+    <div className="animate-fade-in space-y-6 max-w-2xl">
+      <div>
+        <h2 className="text-3xl font-serif font-bold">Personalización</h2>
+        <p className="text-muted text-sm mt-1">Todo lo que configures aquí aparecerá en el panel de tus clientes.</p>
       </div>
+
+      {/* Preview del panel cliente */}
+      <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
+        <div className="px-4 py-3 flex items-center gap-3" style={{ backgroundColor: brandColor }}>
+          {brandLogo
+            ? <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border-2 border-white/30 flex-shrink-0" alt="" />
+            : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {(brandName || displayName || 'T')[0]?.toUpperCase()}
+              </div>
+          }
+          <span className="font-bold text-white text-base">{brandName || displayName || 'Tu marca'}</span>
+          <span className="ml-auto text-white/60 text-xs">Vista previa del cliente</span>
+        </div>
+        <div className="px-4 py-3 bg-[#f5f0ea] text-sm text-muted">
+          {welcomeMsg
+            ? <p className="italic">"{welcomeMsg}"</p>
+            : <p className="opacity-50">Tu mensaje de bienvenida aparecerá aquí</p>
+          }
+        </div>
+      </div>
+
+      {/* Identidad de marca */}
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Tu marca</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
-          <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: Carlos Training"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo</label>
-          <div className="flex items-center gap-4">
-            {brandLogo ? (
-              <div className="relative"><img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="" />
-                <button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center">×</button></div>
-            ) : <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-muted text-xs">Logo</div>}
-            <label className="px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent cursor-pointer">
-              Subir imagen<input type="file" accept="image/*" className="hidden" onChange={e => {
-                const file = e.target.files?.[0]; if (!file || file.size > 2*1024*1024) return
-                const r = new FileReader(); r.onload = () => setBrandLogo(r.result as string); r.readAsDataURL(file)
-              }} />
-            </label>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">🏷️ Identidad de marca</h3>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
+            <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
+              placeholder="Ej: Carlos Training" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
         </div>
+
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color de marca</label>
-          <div className="flex items-center gap-3">
-            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} className="w-10 h-10 rounded-xl border border-border cursor-pointer" />
-            <span className="text-sm text-muted font-mono">{brandColor}</span>
-            <div className="flex gap-2">
-              {['#6e5438','#1a1a2e','#0f4c75','#1b4332','#7b2d8b','#c0392b'].map(c => (
-                <button key={c} onClick={() => setBrandColor(c)} className="w-6 h-6 rounded-full border-2 transition-all"
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
+          <input type="text" value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          <p className="text-[10px] text-muted mt-1">Los clientes usarán este número para contactarte directamente.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio / descripción</label>
+          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)}
+            placeholder="Entrenador personal especializado en..."
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+        </div>
+      </div>
+
+      {/* Logo y color */}
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">🎨 Aspecto visual</h3>
+
+        <div className="grid grid-cols-2 gap-6">
+          {/* Logo */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo / foto</label>
+            <div className="flex items-center gap-4">
+              {brandLogo
+                ? <div className="relative">
+                    <img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="" />
+                    <button onClick={() => setBrandLogo('')}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center">×</button>
+                  </div>
+                : <div className="w-16 h-16 rounded-full bg-bg-alt border-2 border-dashed border-border flex items-center justify-center text-2xl"
+                    style={{ backgroundColor: brandColor + '20' }}>
+                    {(brandName || displayName || 'T')[0]?.toUpperCase()}
+                  </div>
+              }
+              <label className="px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent cursor-pointer transition-colors">
+                {brandLogo ? 'Cambiar' : 'Subir logo'}
+                <input type="file" accept="image/*" className="hidden" onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (!file || file.size > 2*1024*1024) { toast('Máximo 2MB', 'warn'); return }
+                  const r = new FileReader()
+                  r.onload = () => setBrandLogo(r.result as string)
+                  r.readAsDataURL(file)
+                }} />
+              </label>
+            </div>
+            <p className="text-[10px] text-muted mt-1">Se muestra en el header del cliente. Máx 2MB.</p>
+          </div>
+
+          {/* Color */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color principal</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {PRESET_COLORS.map(c => (
+                <button key={c} onClick={() => setBrandColor(c)}
+                  className="w-8 h-8 rounded-full border-4 transition-all"
                   style={{ backgroundColor: c, borderColor: brandColor === c ? '#1a1a1a' : 'transparent' }} />
               ))}
             </div>
+            <div className="flex items-center gap-3">
+              <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)}
+                className="w-10 h-10 rounded-xl border border-border cursor-pointer" />
+              <span className="text-sm text-muted font-mono">{brandColor}</span>
+            </div>
+            <p className="text-[10px] text-muted mt-1">Aparece en el header, botones y acentos del cliente.</p>
           </div>
         </div>
       </div>
+
+      {/* Mensajes personalizados */}
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bienvenida</label>
-          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido a tu panel! 💪"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label>
-          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. Recupera bien. 🧘"
-            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label>
+          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
+            placeholder="¡Bienvenido a tu panel! Aquí encontrarás todo lo que necesitas para alcanzar tus objetivos 💪"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+          <p className="text-[10px] text-muted mt-1">Se muestra en la pantalla de inicio del cliente cada día.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label>
+          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
+            placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+          <p className="text-[10px] text-muted mt-1">Se muestra cuando no hay sesión programada para ese día.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label>
+          <input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)}
+            placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          <p className="text-[10px] text-muted mt-1">Se muestra cuando el cliente lleva 3+ días seguidos entrenando.</p>
+        </div>
       </div>
+
+      {/* Info cuenta */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-3">👤 Cuenta</h3>
+        <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
+        <p className="text-[10px] text-muted mt-1">El email no se puede cambiar desde aquí.</p>
+      </div>
+
       <div className="flex gap-3">
-        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}><Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar cambios'}</Button>
-        <Button variant="outline" className="gap-2" onClick={onLogout}><LogOut className="w-4 h-4" />Salir</Button>
+        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
+          <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar cambios'}
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={onLogout}>
+          <LogOut className="w-4 h-4" />Salir
+        </Button>
       </div>
     </div>
   )
