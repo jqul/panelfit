@@ -180,6 +180,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const welcomeMsg = trainerProfile.welcomeMsg || ''
   const motivMsg = trainerProfile.motivMsg || ''
   const restDayMsg = trainerProfile.restDayMsg || ''
+  const brandBg = trainerProfile.brandBg || ''
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
@@ -208,9 +209,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-bg flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col" style={{backgroundImage:brandBg?`url(${brandBg})`:"none",backgroundSize:"cover",backgroundPosition:"center",backgroundAttachment:"fixed",backgroundColor:"#f5f0ea"}}>
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
+      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2.5">
             {brandLogo
@@ -239,7 +240,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <SyncIndicator />
 
       {/* Contenido */}
-      <main className="flex-1 max-w-2xl mx-auto w-full" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
+      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
@@ -252,7 +253,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                     <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
                       weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
-                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} restDayMsg={restDayMsg} brandColor={brandColor} />
+                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor} />
                   </>
                 : <NoPlanView />
             )}
@@ -270,7 +271,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </main>
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-10" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border z-20" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
         <div className="flex max-w-2xl mx-auto">
           {TABS.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
