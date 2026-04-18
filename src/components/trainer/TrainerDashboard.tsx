@@ -657,7 +657,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
 
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label>
-          <EmojiBar onPick={e => setWelcomeMsg(m => m + e)} />
+          <EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} />
           <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
             placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪"
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
@@ -666,7 +666,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
 
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label>
-          <EmojiBar onPick={e => setMotivMsg(m => m + e)} />
+          <EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} />
           <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
             placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘"
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
@@ -675,7 +675,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
 
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label>
-          <EmojiBar onPick={e => setRestDayMsg(m => m + e)} />
+          <EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} />
           <input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)}
             placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥"
             className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
