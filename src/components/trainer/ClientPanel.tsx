@@ -57,6 +57,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
   const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
   const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
+  const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -137,10 +138,16 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     : 0
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden" style={{flexDirection:'row'}}>
 
       {/* ── SIDEBAR IZQUIERDO ── */}
-      <aside className="w-56 flex-shrink-0 bg-card border-r border-border flex flex-col">
+      {/* Overlay móvil */}
+      {mobileShowSidebar && (
+        <div className="fixed inset-0 bg-ink/40 z-10 lg:hidden" onClick={() => setMobileShowSidebar(false)} />
+      )}
+      <aside className={`flex-shrink-0 bg-card border-r border-border flex flex-col transition-all z-20 ${
+        mobileShowSidebar ? 'fixed inset-y-0 left-0 w-64' : 'hidden lg:flex lg:w-56'
+      }`}>
         {/* Back + nombre */}
         <div className="px-4 py-4 border-b border-border">
           <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm">
@@ -175,7 +182,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         {/* Nav tabs vertical */}
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
           {TABS.map(({ id, icon: Icon, label, desc }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
+            <button key={id} onClick={() => { setActiveTab(id); setMobileShowSidebar(false) }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${
                 activeTab === id
                   ? 'bg-ink text-white'
@@ -207,10 +214,15 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       {/* ── CONTENIDO PRINCIPAL ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-6">
-          <div>
-            <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
-            <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-3 lg:px-6">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden p-2 rounded-lg hover:bg-bg-alt text-muted">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <div>
+              <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
+              <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span className={`text-xs transition-all ${
@@ -259,7 +271,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               )}
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
               {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} /></div>}
-              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} /></div>}
+              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} /></div>}
               {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
               {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
             </div>
@@ -612,16 +624,16 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
     const p = parseFloat(peso)
     const h = parseFloat(altura)
     const e = parseFloat(edad)
-    if (isNaN(p) || p <= 0) { alert('Falta peso: "' + peso + '"'); return }
-    if (isNaN(h) || h <= 0) { alert('Falta altura: "' + altura + '"'); return }
-    if (isNaN(e) || e <= 0) { alert('Falta edad: "' + edad + '"'); return }
+    if (isNaN(p) || p <= 0) { toast('Introduce el peso', 'warn'); return }
+    if (isNaN(h) || h <= 0) { toast('Introduce la altura', 'warn'); return }
+    if (isNaN(e) || e <= 0) { toast('Introduce la edad', 'warn'); return }
     const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
     const tdee = Math.round(tmb * actividad)
     const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
     const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
     const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
     updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
-    alert('Calculado: ' + kcalObj + ' kcal, ' + protG + 'g prot, ' + carbsG + 'g carbs, ' + fatG + 'g grasas')
+    toast('Macros calculados ✓', 'ok')
   }
 
   const COLORS = { protein: '#c0392b', carbs: '#c49a00', fats: '#4a7c59' }
