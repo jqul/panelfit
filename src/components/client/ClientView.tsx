@@ -262,7 +262,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                 ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} />
                 : <NoPlanView />
             )}
-            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} />}
+            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} plan={plan} />}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} />}
