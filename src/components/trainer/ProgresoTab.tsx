@@ -1,376 +1,423 @@
-import { useState, useEffect, useRef } from 'react'
-import { Camera, Plus, Trash2, Scale, ChevronDown, ChevronUp, X, MessageSquare } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import { ClientData } from '../../types'
-import { toast } from '../shared/Toast'
+import { useState, useMemo } from 'react'
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart
+} from 'recharts'
+import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown } from 'lucide-react'
+import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 
-interface WeightEntry { date: string; weight: number }
-interface PhotoSession {
-  id: string
-  date: string
-  front?: string
-  side?: string
-  back?: string
-  note?: string
+interface Props {
+  client: ClientData
+  plan?: TrainingPlan | null
+  logs?: TrainingLogs
 }
 
-interface Props { client: ClientData }
+// ── Helpers ───────────────────────────────────────────────
+function getExName(key: string, plan?: TrainingPlan | null) {
+  const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
+  if (!m || !plan) return null
+  return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || null
+}
 
-export function ProgresoTab({ client }: Props) {
-  const [subtab, setSubtab] = useState<'peso' | 'fotos' | 'encuesta' | 'checkins'>('peso')
-  const [checkins, setCheckins] = useState<any[]>([])
-  const [loadingCheckins, setLoadingCheckins] = useState(false)
-  const [weights, setWeights] = useState<WeightEntry[]>([])
-  const [photos, setPhotos] = useState<PhotoSession[]>([])
-  const [newWeight, setNewWeight] = useState('')
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0])
-  const [uploading, setUploading] = useState(false)
-  const [expandedSession, setExpandedSession] = useState<string | null>(null)
+function useWeightHistory(clientId: string) {
+  try {
+    const raw = localStorage.getItem(`pf_weight_${clientId}`)
+    return raw ? JSON.parse(raw) as { date: string; weight: number }[] : []
+  } catch { return [] }
+}
 
-  const LS_W = `pf_weight_${client.id}`
-  const LS_P = `pf_photos_${client.id}`
+// ── Tooltip personalizado ─────────────────────────────────
+function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+      <p className="text-muted mb-1">{label}</p>
+      {payload.map((p: any, i: number) => (
+        <p key={i} style={{ color: p.color }} className="font-bold">{p.value} {unit}</p>
+      ))}
+    </div>
+  )
+}
 
-  useEffect(() => {
-    try { setWeights(JSON.parse(localStorage.getItem(LS_W) || '[]')) } catch {}
-    try { setPhotos(JSON.parse(localStorage.getItem(LS_P) || '[]')) } catch {}
-    loadCheckins()
-  }, [client.id])
+// ── Gráfica fuerza por ejercicio ──────────────────────────
+function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  // Construir mapa ejercicio → historial de mejor peso por fecha
+  const ejercicios = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {}
+    Object.entries(logs).forEach(([key, log]) => {
+      if (!log.dateDone) return
+      const name = getExName(key, plan)
+      if (!name) return
+      const best = Math.max(0, ...Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight) || 0))
+      if (!best) return
+      if (!map[name]) map[name] = {}
+      if (!map[name][log.dateDone] || best > map[name][log.dateDone]) {
+        map[name][log.dateDone] = best
+      }
+    })
+    return Object.entries(map)
+      .filter(([, dates]) => Object.keys(dates).length >= 2)
+      .sort((a, b) => Object.keys(b[1]).length - Object.keys(a[1]).length)
+  }, [logs, plan])
 
-  const loadCheckins = async () => {
-    setLoadingCheckins(true)
-    const { data } = await supabase.from('checkins')
-      .select('*').eq('clientId', client.id)
-      .order('createdAt', { ascending: false }).limit(10)
-    setCheckins(data || [])
-    setLoadingCheckins(false)
-  }
+  const [selected, setSelected] = useState(0)
 
-  const saveWeights = (w: WeightEntry[]) => {
-    setWeights(w); localStorage.setItem(LS_W, JSON.stringify(w))
-  }
-  const savePhotos = (p: PhotoSession[]) => {
-    setPhotos(p); localStorage.setItem(LS_P, JSON.stringify(p))
-  }
+  if (!ejercicios.length) return (
+    <div className="flex flex-col items-center justify-center py-10 text-muted gap-2">
+      <Dumbbell className="w-8 h-8 opacity-30" />
+      <p className="text-sm">Sin datos suficientes aún</p>
+      <p className="text-xs">Necesita al menos 2 sesiones por ejercicio</p>
+    </div>
+  )
 
-  const addWeight = () => {
-    const w = parseFloat(newWeight)
-    if (!w || w < 20 || w > 300) { toast('Peso no válido', 'warn'); return }
-    const existing = weights.find(x => x.date === newDate)
-    if (existing) {
-      saveWeights(weights.map(x => x.date === newDate ? { ...x, weight: w } : x))
-    } else {
-      saveWeights([...weights, { date: newDate, weight: w }].sort((a, b) => b.date.localeCompare(a.date)))
-    }
-    setNewWeight(''); toast('Peso registrado ✓', 'ok')
-  }
+  const [name, dates] = ejercicios[selected]
+  const data = Object.entries(dates)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, best]) => ({
+      fecha: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+      kg: best
+    }))
 
-  const deleteWeight = (date: string) => saveWeights(weights.filter(w => w.date !== date))
-
-  const uploadPhoto = async (sessionId: string, type: 'front' | 'side' | 'back', file: File) => {
-    if (file.size > 10 * 1024 * 1024) { toast('Máximo 10MB', 'warn'); return }
-    setUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `fotos/${client.id}/${sessionId}/${type}.${ext}`
-    const { error } = await supabase.storage.from('media').upload(path, file, { upsert: true })
-    if (error) { toast('Error al subir: ' + error.message, 'warn'); setUploading(false); return }
-    const { data: urlData } = supabase.storage.from('media').getPublicUrl(path)
-    savePhotos(photos.map(s => s.id === sessionId ? { ...s, [type]: urlData.publicUrl } : s))
-    toast('Foto guardada ✓', 'ok'); setUploading(false)
-  }
-
-  const newSession = () => {
-    const session: PhotoSession = {
-      id: `session_${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      note: ''
-    }
-    savePhotos([session, ...photos])
-    setExpandedSession(session.id)
-  }
-
-  const deleteSession = (id: string) => savePhotos(photos.filter(s => s.id !== id))
-
-  // Encuesta
-  const LS_ENC = `pf_encuesta_${client.id}`
-  const [preguntas, setPreguntas] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(LS_ENC) || 'null') || [
-      '¿Cómo te has sentido esta semana en los entrenamientos?',
-      '¿Has tenido alguna molestia o dolor?',
-      '¿Estás descansando bien?',
-      '¿Cómo ha ido la dieta?',
-    ]} catch { return [] }
-  })
-  const [nuevaPregunta, setNuevaPregunta] = useState('')
-  const savePreguntas = (p: string[]) => { setPreguntas(p); localStorage.setItem(LS_ENC, JSON.stringify(p)) }
-
-  // Calcular cambio de peso
-  const lastTwo = weights.slice(0, 2)
-  const weightDiff = lastTwo.length === 2 ? (lastTwo[0].weight - lastTwo[1].weight) : null
+  const min = Math.min(...data.map(d => d.kg))
+  const max = Math.max(...data.map(d => d.kg))
+  const trend = data.length >= 2 ? data[data.length - 1].kg - data[0].kg : 0
 
   return (
-    <div className="space-y-5 max-w-xl">
-      <h3 className="font-serif font-bold text-lg">Progreso</h3>
-
-      {/* Subtabs */}
-      <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit flex-wrap">
-        <button onClick={() => setSubtab('peso')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'peso' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          <Scale className="w-4 h-4" /> Peso
-        </button>
-        <button onClick={() => setSubtab('fotos')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'fotos' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          <Camera className="w-4 h-4" /> Fotos
-        </button>
-        <button onClick={() => setSubtab('encuesta')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'encuesta' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          <MessageSquare className="w-4 h-4" /> Encuesta
-        </button>
-        <button onClick={() => { setSubtab('checkins'); loadCheckins() }}
-          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${subtab === 'checkins' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
-          📋 Check-ins {checkins.length > 0 && <span className="bg-accent text-white text-[10px] px-1.5 py-0.5 rounded-full">{checkins.length}</span>}
-        </button>
+    <div className="space-y-3">
+      {/* Selector ejercicio */}
+      <div className="relative">
+        <select value={selected} onChange={e => setSelected(+e.target.value)}
+          className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm font-medium outline-none appearance-none pr-8">
+          {ejercicios.map(([n], i) => <option key={i} value={i}>{n}</option>)}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
       </div>
 
-      {/* ── PESO ── */}
-      {subtab === 'peso' && (
-        <div className="space-y-4">
-          {/* Stats rápidos */}
-          {weights.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <p className="text-2xl font-serif font-bold">{weights[0].weight}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider">kg actual</p>
-              </div>
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <p className={`text-2xl font-serif font-bold ${weightDiff === null ? 'text-muted' : weightDiff > 0 ? 'text-warn' : weightDiff < 0 ? 'text-ok' : 'text-muted'}`}>
-                  {weightDiff === null ? '—' : `${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(1)}`}
-                </p>
-                <p className="text-[10px] text-muted uppercase tracking-wider">vs anterior</p>
-              </div>
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <p className="text-2xl font-serif font-bold">{weights.length}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider">registros</p>
-              </div>
-            </div>
-          )}
+      {/* KPIs del ejercicio */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Mejor marca', value: `${max} kg`, color: 'text-accent' },
+          { label: 'Progreso total', value: `${trend >= 0 ? '+' : ''}${trend.toFixed(1)} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
+          { label: 'Sesiones', value: data.length, color: 'text-ink' },
+        ].map((k, i) => (
+          <div key={i} className="bg-bg rounded-xl p-3 text-center">
+            <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
+            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+          </div>
+        ))}
+      </div>
 
-          {/* Añadir peso */}
-          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-            <h4 className="text-sm font-semibold">Registrar peso</h4>
-            <div className="flex gap-2">
-              <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
-                className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+      {/* Gráfica */}
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            <defs>
+              <linearGradient id="gFuerza" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6e5438" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#6e5438" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+            <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis domain={[min * 0.95, max * 1.05]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="kg" name="Peso" stroke="#6e5438" strokeWidth={2.5}
+              fill="url(#gFuerza)" dot={{ fill: '#6e5438', r: 3 }} activeDot={{ r: 5 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ── Gráfica peso corporal ─────────────────────────────────
+function PesoChart({ clientId, clientWeight }: { clientId: string; clientWeight?: number }) {
+  const weights = useWeightHistory(clientId)
+
+  if (weights.length < 2) return (
+    <div className="flex flex-col items-center justify-center py-10 text-muted gap-2">
+      <Scale className="w-8 h-8 opacity-30" />
+      <p className="text-sm">Sin historial de peso aún</p>
+      <p className="text-xs">El cliente debe registrar su peso desde su panel</p>
+    </div>
+  )
+
+  const data = [...weights].reverse().map(w => ({
+    fecha: new Date(w.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    kg: w.weight
+  }))
+
+  const min = Math.min(...data.map(d => d.kg))
+  const max = Math.max(...data.map(d => d.kg))
+  const inicio = data[0].kg
+  const actual = data[data.length - 1].kg
+  const cambio = actual - inicio
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Peso inicial', value: `${inicio} kg`, color: 'text-muted' },
+          { label: 'Peso actual', value: `${actual} kg`, color: 'text-ink' },
+          { label: 'Cambio total', value: `${cambio >= 0 ? '+' : ''}${cambio.toFixed(1)} kg`, color: cambio <= 0 ? 'text-ok' : 'text-warn' },
+        ].map((k, i) => (
+          <div key={i} className="bg-bg rounded-xl p-3 text-center">
+            <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
+            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            <defs>
+              <linearGradient id="gPeso" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#4caf7d" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#4caf7d" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+            <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis domain={[min * 0.98, max * 1.02]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="kg" name="Peso" stroke="#4caf7d" strokeWidth={2.5}
+              fill="url(#gPeso)" dot={{ fill: '#4caf7d', r: 3 }} activeDot={{ r: 5 }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ── Gráfica volumen semanal ───────────────────────────────
+function VolumenChart({ logs }: { logs: TrainingLogs }) {
+  const data = useMemo(() => {
+    const semanas: Record<string, number> = {}
+    Object.values(logs).forEach(log => {
+      if (!log.dateDone || !log.done) return
+      const d = new Date(log.dateDone + 'T00:00:00')
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1) // lunes
+      const lunes = new Date(d)
+      lunes.setDate(diff)
+      const key = lunes.toISOString().split('T')[0]
+      const vol = Object.values(log.sets || {}).reduce((acc, s: any) =>
+        acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      semanas[key] = (semanas[key] || 0) + vol
+    })
+    return Object.entries(semanas)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-10)
+      .map(([date, vol]) => ({
+        semana: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+        kg: Math.round(vol)
+      }))
+  }, [logs])
+
+  if (data.length < 2) return (
+    <div className="flex flex-col items-center justify-center py-10 text-muted gap-2">
+      <Activity className="w-8 h-8 opacity-30" />
+      <p className="text-sm">Sin datos suficientes</p>
+      <p className="text-xs">Necesita actividad en al menos 2 semanas</p>
+    </div>
+  )
+
+  const maxVol = Math.max(...data.map(d => d.kg))
+  const avg = Math.round(data.reduce((a, d) => a + d.kg, 0) / data.length)
+  const trend = data[data.length - 1].kg - data[0].kg
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Pico semanal', value: `${maxVol.toLocaleString()} kg`, color: 'text-accent' },
+          { label: 'Media/semana', value: `${avg.toLocaleString()} kg`, color: 'text-ink' },
+          { label: 'Tendencia', value: `${trend >= 0 ? '+' : ''}${trend.toLocaleString()} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
+        ].map((k, i) => (
+          <div key={i} className="bg-bg rounded-xl p-3 text-center">
+            <p className={`text-base font-bold ${k.color}`}>{k.value}</p>
+            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="h-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine y={avg} stroke="#8a8278" strokeDasharray="4 2" strokeWidth={1} label={{ value: 'media', position: 'right', fontSize: 9, fill: '#8a8278' }} />
+            <Bar dataKey="kg" name="Volumen" fill="#6e5438" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+// ── Adherencia mensual ────────────────────────────────────
+function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const diasProgramados = plan?.weeks?.reduce((acc, w) => acc + w.days.filter(d => d.exercises.length > 0).length, 0) || 0
+  const semanas = plan?.weeks?.length || 1
+  const diasPorSemana = diasProgramados / semanas
+
+  const data = useMemo(() => {
+    const byWeek: Record<string, Set<string>> = {}
+    Object.values(logs).forEach(log => {
+      if (!log.dateDone || !log.done) return
+      const d = new Date(log.dateDone + 'T00:00:00')
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const lunes = new Date(d); lunes.setDate(diff)
+      const key = lunes.toISOString().split('T')[0]
+      if (!byWeek[key]) byWeek[key] = new Set()
+      byWeek[key].add(log.dateDone)
+    })
+    return Object.entries(byWeek)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-8)
+      .map(([date, dias]) => {
+        const pct = diasPorSemana > 0 ? Math.min(100, Math.round(dias.size / diasPorSemana * 100)) : 0
+        return {
+          semana: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+          pct,
+          dias: dias.size
+        }
+      })
+  }, [logs, diasPorSemana])
+
+  const avgPct = data.length ? Math.round(data.reduce((a, d) => a + d.pct, 0) / data.length) : 0
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-bg rounded-xl p-3 text-center">
+          <p className={`text-2xl font-bold ${avgPct >= 80 ? 'text-ok' : avgPct >= 50 ? 'text-accent' : 'text-warn'}`}>{avgPct}%</p>
+          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Adherencia media</p>
+        </div>
+        <div className="bg-bg rounded-xl p-3 text-center">
+          <p className="text-2xl font-bold text-ink">{diasPorSemana > 0 ? diasPorSemana.toFixed(0) : '—'}</p>
+          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Días/semana planificados</p>
+        </div>
+      </div>
+
+      {data.length >= 2 ? (
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+              <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} unit="%" />
+              <Tooltip content={<CustomTooltip unit="%" />} />
+              <ReferenceLine y={80} stroke="#4caf7d" strokeDasharray="4 2" strokeWidth={1} label={{ value: '80%', position: 'right', fontSize: 9, fill: '#4caf7d' }} />
+              <Bar dataKey="pct" name="Adherencia" radius={[4, 4, 0, 0]}
+                fill="#6e5438"
+                label={{ position: 'top', fontSize: 9, fill: '#8a8278', formatter: (v: number) => v > 0 ? `${v}%` : '' }}
               />
-              <div className="relative flex-1">
-                <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addWeight()}
-                  placeholder="75.5"
-                  className="w-full px-3 py-2.5 pr-8 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted">kg</span>
-              </div>
-              <button onClick={addWeight}
-                className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 flex-shrink-0">
-                + Añadir
-              </button>
-            </div>
-          </div>
-
-          {/* Historial */}
-          {weights.length === 0 ? (
-            <div className="text-center py-10 text-muted">
-              <Scale className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Sin registros de peso aún</p>
-            </div>
-          ) : (
-            <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
-              {weights.map(w => (
-                <div key={w.date} className="flex items-center gap-4 px-4 py-3 group">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{w.weight} kg</p>
-                    <p className="text-xs text-muted">{new Date(w.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                  </div>
-                  <button onClick={() => deleteWeight(w.date)}
-                    className="p-1.5 text-muted hover:text-warn opacity-0 group-hover:opacity-100 transition-all">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            </BarChart>
+          </ResponsiveContainer>
         </div>
+      ) : (
+        <div className="py-6 text-center text-muted text-sm">Necesita datos de al menos 2 semanas</div>
       )}
+    </div>
+  )
+}
 
-      {/* ── FOTOS ── */}
-      {subtab === 'fotos' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted">{photos.length} sesión{photos.length !== 1 ? 'es' : ''} de fotos</p>
-            <button onClick={newSession}
-              className="flex items-center gap-2 px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
-              <Plus className="w-4 h-4" /> Nueva sesión
-            </button>
+// ── Récords del cliente ───────────────────────────────────
+function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const records = useMemo(() => {
+    const r: Record<string, { best: number; date: string; reps: string }> = {}
+    Object.entries(logs).forEach(([key, log]) => {
+      if (!log.done) return
+      const name = getExName(key, plan)
+      if (!name) return
+      Object.values(log.sets || {}).forEach((s: any) => {
+        const w = parseFloat(s.weight) || 0
+        if (!r[name] || w > r[name].best) r[name] = { best: w, date: log.dateDone || '', reps: s.reps || '?' }
+      })
+    })
+    return Object.entries(r).filter(([, v]) => v.best > 0).sort((a, b) => b[1].best - a[1].best)
+  }, [logs, plan])
+
+  if (!records.length) return (
+    <div className="text-center py-8 text-muted text-sm">Sin marcas personales registradas aún</div>
+  )
+
+  return (
+    <div className="divide-y divide-border rounded-2xl border border-border overflow-hidden bg-card">
+      {records.map(([name, rec], i) => (
+        <div key={name} className="flex items-center gap-3 px-4 py-2.5">
+          <span className="text-sm w-6 text-center flex-shrink-0">
+            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-xs text-muted">{i+1}</span>}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{name}</p>
+            {rec.date && <p className="text-[10px] text-muted">{new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
           </div>
-
-          {photos.length === 0 && (
-            <div className="text-center py-10 text-muted border-2 border-dashed border-border rounded-2xl">
-              <Camera className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Sin fotos de progreso aún</p>
-              <p className="text-xs mt-1">Crea una sesión para añadir fotos de frente, lado y espalda</p>
-            </div>
-          )}
-
-          {photos.map(session => (
-            <div key={session.id} className="bg-card border border-border rounded-2xl overflow-hidden">
-              {/* Header sesión */}
-              <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-bg-alt/40 transition-colors"
-                onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}>
-                <Camera className="w-4 h-4 text-muted flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">
-                    {new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {[session.front, session.side, session.back].filter(Boolean).length}/3 fotos
-                  </p>
-                </div>
-                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }}
-                  className="p-1.5 text-muted hover:text-warn transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-                {expandedSession === session.id ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
-              </div>
-
-              {/* Fotos */}
-              {expandedSession === session.id && (
-                <div className="px-4 pb-4 space-y-3 border-t border-border">
-                  <div className="grid grid-cols-3 gap-3 pt-3">
-                    {(['front', 'side', 'back'] as const).map(type => {
-                      const labels = { front: 'Frente', side: 'Lado', back: 'Espalda' }
-                      const url = session[type]
-                      return (
-                        <div key={type} className="space-y-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
-                          <label className={`block relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all ${
-                            url ? 'border-border' : 'border-dashed border-border hover:border-accent'
-                          } aspect-[3/4]`}>
-                            {url ? (
-                              <>
-                                <img src={url} className="w-full h-full object-cover" alt={labels[type]} />
-                                <div className="absolute inset-0 bg-ink/0 hover:bg-ink/20 transition-colors flex items-center justify-center">
-                                  <Camera className="w-6 h-6 text-white opacity-0 hover:opacity-100" />
-                                </div>
-                              </>
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted">
-                                <Camera className="w-6 h-6 opacity-40" />
-                                <span className="text-[10px]">Subir foto</span>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*" capture="environment" className="hidden"
-                              onChange={e => {
-                                const file = e.target.files?.[0]
-                                if (file) uploadPhoto(session.id, type, file)
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Nota */}
-                  <textarea rows={2} value={session.note || ''}
-                    onChange={e => savePhotos(photos.map(s => s.id === session.id ? { ...s, note: e.target.value } : s))}
-                    placeholder="Nota de esta sesión (peso, observaciones...)"
-                    className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20 resize-none"
-                  />
-
-                  {uploading && (
-                    <p className="text-xs text-accent text-center">Subiendo foto...</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* CHECK-INS */}
-      {subtab === 'checkins' && (
-        <div className="space-y-3">
-          {loadingCheckins ? (
-            <div className="space-y-2">
-              {[1,2].map(i => <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />)}
-            </div>
-          ) : checkins.length === 0 ? (
-            <div className="text-center py-10 text-muted">
-              <p className="text-sm">El cliente aún no ha enviado ningún check-in.</p>
-              <p className="text-xs mt-1">Envíale el enlace de encuesta desde la pestaña Encuesta.</p>
-            </div>
-          ) : checkins.map((c, i) => (
-            <div key={c.id} className="bg-card border border-border rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <p className="text-sm font-semibold">
-                  {new Date(c.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-                {i === 0 && <span className="text-[10px] bg-ok/10 text-ok font-bold px-2 py-0.5 rounded-full">Último</span>}
-              </div>
-              <div className="divide-y divide-border">
-                {(c.respuestas || []).map((r: any, ri: number) => (
-                  <div key={ri} className="px-4 py-3">
-                    <p className="text-xs text-muted font-semibold mb-1">{r.pregunta}</p>
-                    <p className="text-sm">{r.respuesta || <span className="text-muted italic">Sin respuesta</span>}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ENCUESTA */}
-      {subtab === 'encuesta' && (
-        <div className="space-y-4">
-          <p className="text-xs text-muted">Configura las preguntas y envía el enlace al cliente cuando quieras.</p>
-          <div className="space-y-2">
-            {preguntas.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-3">
-                <span className="text-xs font-bold text-muted w-5 flex-shrink-0">{i + 1}.</span>
-                <p className="text-sm flex-1">{p}</p>
-                <button onClick={() => savePreguntas(preguntas.filter((_, idx) => idx !== i))}
-                  className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input type="text" placeholder="Nueva pregunta..." value={nuevaPregunta}
-              onChange={e => setNuevaPregunta(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && nuevaPregunta.trim()) { savePreguntas([...preguntas, nuevaPregunta.trim()]); setNuevaPregunta('') }}}
-              className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
-            />
-            <button onClick={() => { if (nuevaPregunta.trim()) { savePreguntas([...preguntas, nuevaPregunta.trim()]); setNuevaPregunta('') }}}
-              className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0">
-              + Añadir
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}?c=${client.token}&encuesta=1`); toast('Enlace copiado ✓', 'ok') }}
-              className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
-              🔗 Copiar enlace
-            </button>
-            <button onClick={() => {
-              const url = `${window.location.origin}?c=${client.token}&encuesta=1`
-              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe mando la encuesta de seguimiento:\n\n${url}\n\nTarda menos de 2 minutos 🙏`)
-              window.open(`https://wa.me/?text=${msg}`, '_blank')
-            }} className="flex-1 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
-              📱 Enviar por WhatsApp
-            </button>
+          <div className="text-right flex-shrink-0">
+            <p className="text-sm font-bold text-accent">{rec.best} kg</p>
+            <p className="text-[10px] text-muted">×{rec.reps}</p>
           </div>
         </div>
-      )}
+      ))}
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────
+type Section = 'fuerza' | 'peso' | 'volumen' | 'adherencia' | 'records'
+
+const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
+  { id: 'fuerza',     icon: '💪', label: 'Fuerza',     desc: 'Progreso de peso por ejercicio' },
+  { id: 'peso',       icon: '⚖️', label: 'Peso',        desc: 'Evolución del peso corporal' },
+  { id: 'volumen',    icon: '📊', label: 'Volumen',     desc: 'Carga total semanal' },
+  { id: 'adherencia', icon: '🎯', label: 'Adherencia',  desc: '% días entrenados vs planificados' },
+  { id: 'records',    icon: '🏆', label: 'Récords',     desc: 'Marcas personales' },
+]
+
+export function ProgresoTab({ client, plan, logs = {} }: Props) {
+  const [section, setSection] = useState<Section>('fuerza')
+  const current = SECTIONS.find(s => s.id === section)!
+
+  return (
+    <div className="max-w-2xl space-y-5 animate-fade-in">
+      <div>
+        <h3 className="font-serif font-bold text-lg">Progreso de {client.name}</h3>
+        <p className="text-xs text-muted mt-0.5">Análisis de rendimiento y evolución</p>
+      </div>
+
+      {/* Nav secciones */}
+      <div className="flex gap-2 flex-wrap">
+        {SECTIONS.map(s => (
+          <button key={s.id} onClick={() => setSection(s.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${
+              section === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-accent'
+            }`}>
+            {s.icon} {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Gráfica activa */}
+      <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="mb-4">
+          <p className="text-sm font-bold">{current.icon} {current.label}</p>
+          <p className="text-xs text-muted mt-0.5">{current.desc}</p>
+        </div>
+
+        {section === 'fuerza'     && <FuerzaChart     logs={logs} plan={plan} />}
+        {section === 'peso'       && <PesoChart       clientId={client.id} clientWeight={client.weight} />}
+        {section === 'volumen'    && <VolumenChart     logs={logs} />}
+        {section === 'adherencia' && <AdherenciaChart  logs={logs} plan={plan} />}
+        {section === 'records'    && <RecordsTable     logs={logs} plan={plan} />}
+      </div>
+
+      {/* Info pie */}
+      <p className="text-[10px] text-muted text-center">
+        Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real
+      </p>
     </div>
   )
 }
