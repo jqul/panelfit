@@ -510,13 +510,18 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     setSaving(false)
   }
 
-  const uploadImage = (maxMB: number, onDone: (b64: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadImage = (field: string, maxMB: number, onDone: (url: string) => void) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > maxMB * 1024 * 1024) { toast(`Máximo ${maxMB}MB`, 'warn'); return }
-    const r = new FileReader()
-    r.onload = () => onDone(r.result as string)
-    r.readAsDataURL(file)
+    toast('Subiendo imagen...', 'info')
+    const ext = file.name.split('.').pop()
+    const path = `${userProfile.uid}/${field}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('trainer-assets').upload(path, file, { upsert: true })
+    if (error) { toast('Error al subir imagen', 'warn'); return }
+    const { data } = supabase.storage.from('trainer-assets').getPublicUrl(path)
+    onDone(data.publicUrl)
+    toast('Imagen subida ✓', 'ok')
   }
 
   return (
@@ -600,7 +605,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
             <div className="space-y-1">
               <label className="block px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent cursor-pointer transition-colors w-fit">
                 {brandLogo ? 'Cambiar logo' : 'Subir logo'}
-                <input type="file" accept="image/*" className="hidden" onChange={uploadImage(2, setBrandLogo)} />
+                <input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
               </label>
               <p className="text-[10px] text-muted">Aparece en el header del cliente. Máx 2MB.</p>
             </div>
@@ -617,7 +622,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
                   <div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3">
                     <label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white transition-colors">
                       Cambiar fondo
-                      <input type="file" accept="image/*" className="hidden" onChange={uploadImage(3, setBrandBg)} />
+                      <input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} />
                     </label>
                     <button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button>
                   </div>
@@ -626,7 +631,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
                   <span className="text-3xl">🖼️</span>
                   <span className="text-sm font-medium">Subir imagen de fondo</span>
                   <span className="text-[10px]">Se muestra detrás del contenido del cliente · Máx 3MB</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={uploadImage(3, setBrandBg)} />
+                  <input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} />
                 </label>
             }
           </div>
