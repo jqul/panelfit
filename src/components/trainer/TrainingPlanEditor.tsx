@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, X, Info } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, X, Timer } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
@@ -16,7 +16,7 @@ interface Props {
   clientName?: string
 }
 
-const emptyExercise = (): Exercise => ({ name: '', sets: '3×10', weight: '', isMain: false, comment: '', videoUrl: '' })
+const emptyExercise = (): Exercise => ({ name: '', sets: '3×10', weight: '', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 120 })
 const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [] })
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
 
@@ -26,6 +26,35 @@ function getYTId(url: string) {
 }
 
 interface SelectedEx { wi: number; di: number; ri: number }
+
+// Formateador de segundos
+function fmtRest(s: number) {
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s/60)}m${s%60>0?s%60+'s':''}`
+}
+
+// Selector de descanso rápido
+function RestPicker({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
+  const presets = [30, 45, 60, 90, 120, 150, 180, 240, 300]
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">{label}</p>
+      <div className="flex gap-1 flex-wrap">
+        {presets.map(p => (
+          <button key={p} type="button" onClick={() => onChange(p)}
+            className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${value === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+            {fmtRest(p)}
+          </button>
+        ))}
+        <div className="flex items-center gap-1 border border-border rounded-lg px-2 py-1">
+          <input type="number" value={value} onChange={e => onChange(Number(e.target.value))} min={0} max={600} step={5}
+            className="w-10 text-[10px] font-bold bg-transparent outline-none text-center" />
+          <span className="text-[10px] text-muted">s</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFromClient, library = [], logs = {}, clientName = '' }: Props) {
   const [activeWeek, setActiveWeek] = useState(0)
@@ -50,10 +79,7 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
     const w = [...weeks]; const days = [...w[wi].days]; const exs = [...days[di].exercises]
     exs[ri] = { ...exs[ri], ...updates }; days[di] = { ...days[di], exercises: exs }
     w[wi] = { ...w[wi], days }; updatePlan({ weeks: w })
-    // Actualizar panel derecho si es el ejercicio seleccionado
-    if (selectedEx?.wi === wi && selectedEx?.di === di && selectedEx?.ri === ri) {
-      setSelectedEx({ wi, di, ri }) // forzar re-render
-    }
+    if (selectedEx?.wi === wi && selectedEx?.di === di && selectedEx?.ri === ri) setSelectedEx({ wi, di, ri })
   }
 
   const addWeek = () => { updatePlan({ weeks: [...weeks, emptyWeek(weeks.length + 1)] }); setActiveWeek(weeks.length) }
@@ -106,7 +132,6 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
     setImporting(false)
   }
 
-  // Ejercicio seleccionado para panel derecho
   const selEx = selectedEx ? weeks[selectedEx.wi]?.days[selectedEx.di]?.exercises[selectedEx.ri] : null
   const selLibEx = selEx ? library.find(l => l.name.toLowerCase() === selEx.name.toLowerCase()) : undefined
 
@@ -205,6 +230,8 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                       {day.exercises.map((ex, ri) => {
                         const isSelected = selectedEx?.wi === activeWeek && selectedEx?.di === di && selectedEx?.ri === ri
                         const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
+                        const restSets = ex.restSets ?? 90
+                        const restAfter = ex.restAfter ?? 120
 
                         return (
                           <div key={ri}
@@ -237,6 +264,10 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                               />
                               {/* Acciones */}
                               <div className="flex items-center gap-0.5 flex-shrink-0">
+                                {/* Badge descanso */}
+                                <span className="flex items-center gap-0.5 text-[9px] text-muted bg-bg-alt px-1.5 py-0.5 rounded-md mr-1 border border-border">
+                                  <Timer className="w-2.5 h-2.5" />{fmtRest(restSets)}
+                                </span>
                                 {ytId && (
                                   <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`}
                                     className="w-10 h-7 object-cover rounded border border-border mr-1" alt="" />
@@ -258,12 +289,33 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
 
                             {/* Expandido si seleccionado */}
                             {isSelected && (
-                              <div className="px-3 pb-3 space-y-2 border-t border-accent/20 mt-0.5 pt-2" onClick={e => e.stopPropagation()}>
+                              <div className="px-3 pb-3 space-y-3 border-t border-accent/20 mt-0.5 pt-3" onClick={e => e.stopPropagation()}>
+                                {/* Indicaciones */}
                                 <input value={ex.comment}
                                   onChange={e => updateExercise(activeWeek, di, ri, { comment: e.target.value })}
                                   placeholder="Indicaciones técnicas para el alumno..."
                                   className="w-full text-xs text-muted bg-bg-alt border border-border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/20"
                                 />
+
+                                {/* Tiempos de descanso */}
+                                <div className="bg-bg-alt rounded-xl p-3 space-y-3 border border-border">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Timer className="w-3.5 h-3.5 text-accent" />
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Tiempos de descanso</p>
+                                  </div>
+                                  <RestPicker
+                                    label="Entre series"
+                                    value={restSets}
+                                    onChange={v => updateExercise(activeWeek, di, ri, { restSets: v })}
+                                  />
+                                  <RestPicker
+                                    label="Tras el ejercicio"
+                                    value={restAfter}
+                                    onChange={v => updateExercise(activeWeek, di, ri, { restAfter: v })}
+                                  />
+                                </div>
+
+                                {/* Vídeo */}
                                 <div className="flex items-center gap-2">
                                   <Video className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                                   <input value={ex.videoUrl || ''}
@@ -272,6 +324,8 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                                     className="flex-1 text-xs bg-bg border border-border rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20"
                                   />
                                 </div>
+
+                                {/* Pedir vídeo */}
                                 <button
                                   onClick={() => updateExercise(activeWeek, di, ri, { requiresVideo: !ex.requiresVideo })}
                                   className={`w-full flex items-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
@@ -282,7 +336,6 @@ export function TrainingPlanEditor({ plan, onChange, allClients = [], onImportFr
                                   <span className="text-sm">📹</span>
                                   {ex.requiresVideo ? '✓ Pidiendo vídeo al cliente' : 'Pedir vídeo de ejecución al cliente'}
                                 </button>
-
                               </div>
                             )}
                           </div>
@@ -416,7 +469,6 @@ function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: numb
 }
 
 function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onClose }: AnalyticsPanelProps) {
-  // Buscar todos los logs de este ejercicio por nombre
   const exLogs: { date: string; sets: { weight: string; reps: string }[]; bestWeight: number }[] = []
 
   plan.weeks.forEach((week, wi) => {
@@ -433,10 +485,8 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
     })
   })
 
-  // Ordenar por fecha
   exLogs.sort((a, b) => a.date.localeCompare(b.date))
 
-  // Deduplicar por fecha (quedarse con el mejor)
   const byDate: Record<string, typeof exLogs[0]> = {}
   exLogs.forEach(l => {
     if (!byDate[l.date] || l.bestWeight > byDate[l.date].bestWeight) byDate[l.date] = l
@@ -447,7 +497,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
   const prevLog = exLogs[exLogs.length - 2]
   const bestEver = Math.max(0, ...exLogs.map(l => l.bestWeight))
 
-  // 1RM estimado (fórmula Epley)
   const est1RM = lastLog ? (() => {
     const best = lastLog.sets.reduce((best, s) => {
       const w = parseFloat(s.weight) || 0
@@ -458,14 +507,11 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
     return Math.round(best)
   })() : 0
 
-  // Tendencia vs sesión anterior
   const trend = lastLog && prevLog ? lastLog.bestWeight - prevLog.bestWeight : 0
-
   const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
 
   return (
     <div className="w-72 space-y-3 overflow-y-auto max-h-full pb-4">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Analytics</p>
@@ -477,7 +523,15 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
         </button>
       </div>
 
-      {/* KPIs */}
+      {/* Descansos configurados */}
+      <div className="bg-card border border-border rounded-xl px-3 py-2 flex items-center gap-4">
+        <Timer className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+        <div className="flex gap-4 text-xs">
+          <div><span className="text-muted">Entre series: </span><span className="font-bold">{fmtRest(ex.restSets ?? 90)}</span></div>
+          <div><span className="text-muted">Tras ejercicio: </span><span className="font-bold">{fmtRest(ex.restAfter ?? 120)}</span></div>
+        </div>
+      </div>
+
       {exLogs.length > 0 ? (
         <>
           <div className="grid grid-cols-3 gap-2">
@@ -491,14 +545,12 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
             </div>
             <div className="bg-card border border-border rounded-xl p-2.5 text-center">
               <p className={`font-serif font-bold text-base ${trend > 0 ? 'text-ok' : trend < 0 ? 'text-warn' : 'text-muted'}`}>
-                {trend > 0 ? `+${trend}` : trend < 0 ? `${trend}` : '—'}
-                {trend !== 0 ? 'kg' : ''}
+                {trend > 0 ? `+${trend}` : trend < 0 ? `${trend}` : '—'}{trend !== 0 ? 'kg' : ''}
               </p>
               <p className="text-[9px] text-muted uppercase tracking-wider">Tendencia</p>
             </div>
           </div>
 
-          {/* Gráfica */}
           {chartData.length >= 2 && (
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-3">Progresión de peso</p>
@@ -506,7 +558,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
             </div>
           )}
 
-          {/* Última sesión */}
           {lastLog && (
             <div className="bg-card border border-border rounded-2xl p-4">
               <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">
@@ -532,7 +583,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
             </div>
           )}
 
-          {/* Sesiones totales */}
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">Historial</p>
             <div className="flex items-end gap-1 h-10">
@@ -558,7 +608,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
         </div>
       )}
 
-      {/* Vídeo referencia */}
       {ytId && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <a href={ex.videoUrl} target="_blank" rel="noreferrer">
@@ -568,7 +617,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
         </div>
       )}
 
-      {/* Info biblioteca */}
       {libEx?.description && (
         <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-accent font-bold mb-1.5">Notas técnicas</p>
@@ -576,7 +624,6 @@ function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientName, onC
         </div>
       )}
 
-      {/* Indicaciones del plan */}
       {ex.comment && (
         <div className="bg-card border border-border rounded-2xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1.5">Indicaciones al cliente</p>
