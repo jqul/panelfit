@@ -18,9 +18,10 @@ import { TemplatesTab } from './TemplatesTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
+import { EncuestasTab } from './EncuestasTab'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface ClientWithStats extends ClientData {
@@ -149,6 +150,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
       { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
       { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
+      { id: 'encuestas' as Tab, icon: ClipboardList, label: 'Encuestas' },
     ]},
     { label: 'Contenido', items: [
       { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
@@ -435,6 +437,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'encuestas' && <EncuestasTab trainerId={userProfile.uid} clients={clients} />}
         </div>
       </main>
 
