@@ -13,6 +13,7 @@ import { toast } from '../shared/Toast'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
+import { InformePDF } from './InformePDF'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
@@ -51,6 +52,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [showInforme, setShowInforme] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
@@ -232,6 +234,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             }`}>
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
+            {activeTab === 'progreso' && (
+              <button onClick={() => setShowInforme(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+                📄 Informe PDF
+              </button>
+            )}
             {activeTab === 'plan' && templates.length > 0 && (
               <button onClick={() => setShowTemplates(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
@@ -278,6 +286,17 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           )}
         </main>
       </div>
+
+      {/* Informe PDF */}
+      {showInforme && (
+        <InformePDF
+          client={client}
+          plan={plan}
+          logs={logs}
+          trainerProfile={(() => { try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}') } catch { return {} } })()}
+          onClose={() => setShowInforme(false)}
+        />
+      )}
 
       {/* Wizard plantilla */}
       <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
@@ -614,16 +633,23 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
     const p = parseFloat(peso)
     const h = parseFloat(altura)
     const e = parseFloat(edad)
-    if (isNaN(p) || p <= 0) { toast('Introduce el peso', 'warn'); return }
-    if (isNaN(h) || h <= 0) { toast('Introduce la altura', 'warn'); return }
-    if (isNaN(e) || e <= 0) { toast('Introduce la edad', 'warn'); return }
-    const tmb = sexo === 'h' ? 88.362+(13.397*p)+(4.799*h)-(5.677*e) : 447.593+(9.247*p)+(3.098*h)-(4.330*e)
+    if (!peso || isNaN(p) || p <= 0) { window.alert('Introduce el peso en kg'); return }
+    if (!altura || isNaN(h) || h <= 0) { window.alert('Introduce la altura en cm'); return }
+    if (!edad || isNaN(e) || e <= 0) { window.alert('Introduce la edad'); return }
+    const tmb = sexo === 'h'
+      ? 88.362 + (13.397 * p) + (4.799 * h) - (5.677 * e)
+      : 447.593 + (9.247 * p) + (3.098 * h) - (4.330 * e)
     const tdee = Math.round(tmb * actividad)
-    const kcalObj = objetivo === 'deficit' ? tdee-400 : objetivo === 'superavit' ? tdee+300 : tdee
-    const protG = Math.round(p * ratio); const fatG = Math.round(p * 1.0)
-    const carbsG = Math.max(0, Math.round((kcalObj - protG*4 - fatG*9) / 4))
-    updateMacros({ kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG })
-    toast('Macros calculados ✓', 'ok')
+    const kcalObj = objetivo === 'deficit' ? tdee - 400 : objetivo === 'superavit' ? tdee + 300 : tdee
+    const protG = Math.round(p * ratio)
+    const fatG = Math.round(p * 1.0)
+    const carbsG = Math.max(0, Math.round((kcalObj - protG * 4 - fatG * 9) / 4))
+    // Actualizar macros directamente en el plan
+    if (!plan) { window.alert('No hay plan cargado'); return }
+    const newMacros = { ...(macros || {}), kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG }
+    onChange({ ...plan, macros: newMacros } as any)
+    setShowCalc(false)
+    window.alert(`✓ Macros calculados:\n${kcalObj} kcal · ${protG}g prot · ${carbsG}g carbs · ${fatG}g grasa`)
   }
 
   const COLORS = { protein: '#c0392b', carbs: '#c49a00', fats: '#4a7c59' }
