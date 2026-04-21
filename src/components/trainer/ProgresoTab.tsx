@@ -5,6 +5,7 @@ import {
 } from 'recharts'
 import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown } from 'lucide-react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
+import { supabase } from '../../lib/supabase'
 
 interface Props {
   client: ClientData
@@ -378,15 +379,24 @@ function FotosTab({ clientId }: { clientId: string }) {
   const [compareA, setCompareA] = useState<string | null>(null)
   const [compareB, setCompareB] = useState<string | null>(null)
 
-  // Cargar fotos desde localStorage del cliente (misma key que usa el cliente)
+  // Cargar fotos desde Supabase
   useEffect(() => {
     setLoading(true)
-    try {
-      const raw = localStorage.getItem(`pf_photos_${clientId}`)
-      const parsed: PhotoSession[] = raw ? JSON.parse(raw) : []
-      setPhotos(parsed.sort((a, b) => b.date.localeCompare(a.date)))
-    } catch {}
-    setLoading(false)
+    supabase
+      .from('foto_sessions')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setPhotos(data.map((r: any) => ({
+            id: r.id, date: r.date,
+            front: r.front_url, side: r.side_url, back: r.back_url,
+            note: r.note || ''
+          })))
+        }
+        setLoading(false)
+      })
   }, [clientId])
 
   const TYPES: ('front'|'side'|'back')[] = ['front', 'side', 'back']
