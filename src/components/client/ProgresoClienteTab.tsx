@@ -383,17 +383,50 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
   const [newWeight, setNewWeight] = useState('')
   const [uploading, setUploading] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
+  const [loadingPhotos, setLoadingPhotos] = useState(true)
 
   const LS_W = `pf_weight_${clientId}`
-  const LS_P = `pf_photos_${clientId}`
 
   useEffect(() => {
     try { setWeights(JSON.parse(localStorage.getItem(LS_W) || '[]')) } catch {}
-    try { setPhotos(JSON.parse(localStorage.getItem(LS_P) || '[]')) } catch {}
+    loadPhotos()
   }, [clientId])
 
+  const loadPhotos = async () => {
+    setLoadingPhotos(true)
+    const { data, error } = await supabase
+      .from('foto_sessions')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('date', { ascending: false })
+    if (!error && data) {
+      setPhotos(data.map((r: any) => ({
+        id: r.id, date: r.date,
+        front: r.front_url, side: r.side_url, back: r.back_url,
+        note: r.note || ''
+      })))
+    }
+    setLoadingPhotos(false)
+  }
+
   const saveWeights = (w: WeightEntry[]) => { setWeights(w); localStorage.setItem(LS_W, JSON.stringify(w)) }
-  const savePhotos = (p: PhotoSession[]) => { setPhotos(p); localStorage.setItem(LS_P, JSON.stringify(p)) }
+
+  const createSession = async () => {
+    const id = `s_${Date.now()}`
+    const date = new Date().toISOString().split('T')[0]
+    const { error } = await supabase.from('foto_sessions').insert({ id, client_id: clientId, date, created_at: Date.now() })
+    if (!error) { await loadPhotos(); setExpandedSession(id) }
+  }
+
+  const deleteSession = async (id: string) => {
+    await supabase.from('foto_sessions').delete().eq('id', id)
+    setPhotos(p => p.filter(s => s.id !== id))
+  }
+
+  const updateNote = async (sessionId: string, note: string) => {
+    setPhotos(p => p.map(s => s.id === sessionId ? { ...s, note } : s))
+    await supabase.from('foto_sessions').update({ note }).eq('id', sessionId)
+  }
 
   const addWeight = () => {
     const w = parseFloat(newWeight)
@@ -406,11 +439,14 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
   const uploadPhoto = async (sessionId: string, type: 'front' | 'side' | 'back', file: File) => {
     if (file.size > 10 * 1024 * 1024) return
     setUploading(true)
-    const path = `fotos/${clientId}/${sessionId}/${type}.${file.name.split('.').pop()}`
+    const path = `fotos/${clientId}/${sessionId}/${type}_${Date.now()}.${file.name.split('.').pop()}`
     const { error } = await supabase.storage.from('media').upload(path, file, { upsert: true })
     if (!error) {
       const { data } = supabase.storage.from('media').getPublicUrl(path)
-      savePhotos(photos.map(s => s.id === sessionId ? { ...s, [type]: data.publicUrl } : s))
+      const url = data.publicUrl
+      const col = type === 'front' ? 'front_url' : type === 'side' ? 'side_url' : 'back_url'
+      await supabase.from('foto_sessions').update({ [col]: url }).eq('id', sessionId)
+      setPhotos(p => p.map(s => s.id === sessionId ? { ...s, [type]: url } : s))
     }
     setUploading(false)
   }
@@ -525,13 +561,11 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
 
       {subtab === 'fotos' && (
         <div className="space-y-4">
-          <button onClick={() => {
-            const s: PhotoSession = { id: `s_${Date.now()}`, date: new Date().toISOString().split('T')[0] }
-            savePhotos([s, ...photos]); setExpandedSession(s.id)
-          }} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
+          <button onClick={createSession} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
             <Plus className="w-4 h-4" /> Nueva sesión de fotos
           </button>
-          {photos.length === 0 && <div className="text-center py-10 text-muted"><Camera className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin fotos aún.</p></div>}
+          {loadingPhotos && <div className="text-center py-6 text-muted text-sm">Cargando fotos...</div>}
+          {!loadingPhotos && photos.length === 0 && <div className="text-center py-10 text-muted"><Camera className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin fotos aún.</p></div>}
           {photos.map(session => (
             <div key={session.id} className="bg-card border border-border rounded-2xl overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={() => setExpandedSession(expandedSession === session.id ? null : session.id)}>
@@ -540,7 +574,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
                   <p className="text-sm font-semibold">{new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <p className="text-xs text-muted">{[session.front, session.side, session.back].filter(Boolean).length}/3 fotos</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); savePhotos(photos.filter(s => s.id !== session.id)) }} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
                 {expandedSession === session.id ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
               </div>
               {expandedSession === session.id && (
@@ -561,7 +595,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
                     })}
                   </div>
                   {uploading && <p className="text-xs text-accent text-center">Subiendo foto...</p>}
-                  <textarea rows={2} value={session.note || ''} onChange={e => savePhotos(photos.map(s => s.id === session.id ? { ...s, note: e.target.value } : s))}
+                  <textarea rows={2} value={session.note || ''} onChange={e => updateNote(session.id, e.target.value)}
                     placeholder="Nota de esta sesión..." className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" style={{ fontSize: '16px' }} />
                 </div>
               )}
