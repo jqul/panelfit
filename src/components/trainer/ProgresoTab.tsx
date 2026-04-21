@@ -3,7 +3,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart
 } from 'recharts'
-import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown } from 'lucide-react'
+import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown, Camera, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 
