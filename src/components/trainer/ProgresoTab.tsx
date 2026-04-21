@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart
@@ -366,8 +366,177 @@ function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
   )
 }
 
+
+// ── Fotos del cliente ─────────────────────────────────────
+interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
+
+function FotosTab({ clientId }: { clientId: string }) {
+  const [photos, setPhotos] = useState<PhotoSession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [lightbox, setLightbox] = useState<{ session: PhotoSession; type: 'front'|'side'|'back' } | null>(null)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareA, setCompareA] = useState<string | null>(null)
+  const [compareB, setCompareB] = useState<string | null>(null)
+
+  // Cargar fotos desde localStorage del cliente (misma key que usa el cliente)
+  useEffect(() => {
+    setLoading(true)
+    try {
+      const raw = localStorage.getItem(`pf_photos_${clientId}`)
+      const parsed: PhotoSession[] = raw ? JSON.parse(raw) : []
+      setPhotos(parsed.sort((a, b) => b.date.localeCompare(a.date)))
+    } catch {}
+    setLoading(false)
+  }, [clientId])
+
+  const TYPES: ('front'|'side'|'back')[] = ['front', 'side', 'back']
+  const TYPE_LABELS = { front: 'Frente', side: 'Lateral', back: 'Espalda' }
+
+  // Navegar lightbox
+  const allImages = useMemo(() => {
+    const imgs: { session: PhotoSession; type: 'front'|'side'|'back' }[] = []
+    photos.forEach(s => TYPES.forEach(t => { if (s[t]) imgs.push({ session: s, type: t }) }))
+    return imgs
+  }, [photos])
+
+  const lightboxIdx = lightbox ? allImages.findIndex(i => i.session.id === lightbox.session.id && i.type === lightbox.type) : -1
+  const prevImg = () => lightboxIdx > 0 ? setLightbox(allImages[lightboxIdx - 1]) : null
+  const nextImg = () => lightboxIdx < allImages.length - 1 ? setLightbox(allImages[lightboxIdx + 1]) : null
+
+  if (loading) return <div className="py-8 text-center text-muted text-sm">Cargando fotos...</div>
+
+  if (!photos.length) return (
+    <div className="flex flex-col items-center justify-center py-10 text-muted gap-2">
+      <Camera className="w-8 h-8 opacity-30" />
+      <p className="text-sm">El cliente aún no ha subido fotos</p>
+      <p className="text-xs">Las fotos aparecerán aquí cuando las suba desde su panel</p>
+    </div>
+  )
+
+  const sessionsWithPhotos = photos.filter(s => s.front || s.side || s.back)
+
+  return (
+    <div className="space-y-4">
+      {/* Toggle comparativa */}
+      {sessionsWithPhotos.length >= 2 && (
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setCompareMode(!compareMode); setCompareA(null); setCompareB(null) }}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${compareMode ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+            🔄 {compareMode ? 'Salir de comparativa' : 'Comparar fechas'}
+          </button>
+          {compareMode && (
+            <p className="text-xs text-muted">Selecciona dos sesiones para comparar</p>
+          )}
+        </div>
+      )}
+
+      {/* Modo comparativa */}
+      {compareMode && (
+        <div className="grid grid-cols-2 gap-3">
+          {(['A', 'B'] as const).map((slot, si) => {
+            const selectedId = si === 0 ? compareA : compareB
+            const session = photos.find(p => p.id === selectedId)
+            return (
+              <div key={slot} className="space-y-2">
+                <p className="text-xs font-bold text-muted uppercase tracking-wider">Sesión {slot}</p>
+                <select value={selectedId || ''} onChange={e => si === 0 ? setCompareA(e.target.value) : setCompareB(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none">
+                  <option value="">Seleccionar fecha...</option>
+                  {sessionsWithPhotos.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {new Date(s.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </option>
+                  ))}
+                </select>
+                {session && (
+                  <div className="grid grid-cols-3 gap-1">
+                    {TYPES.map(t => session[t] ? (
+                      <div key={t} className="space-y-0.5">
+                        <p className="text-[9px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p>
+                        <img src={session[t]} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" alt={TYPE_LABELS[t]} />
+                      </div>
+                    ) : null)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Lista de sesiones */}
+      {!compareMode && sessionsWithPhotos.map(session => (
+        <div key={session.id} className="bg-bg rounded-2xl border border-border overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+            <Camera className="w-4 h-4 text-muted flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                {new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              {session.note && <p className="text-xs text-muted mt-0.5 italic">"{session.note}"</p>}
+            </div>
+            <span className="text-xs text-muted">{TYPES.filter(t => session[t]).length}/3</span>
+          </div>
+          <div className="p-3 grid grid-cols-3 gap-2">
+            {TYPES.map(type => session[type] ? (
+              <div key={type} className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p>
+                <button onClick={() => setLightbox({ session, type })}
+                  className="w-full aspect-[3/4] rounded-xl overflow-hidden border border-border hover:border-accent transition-colors">
+                  <img src={session[type]} className="w-full h-full object-cover" alt={TYPE_LABELS[type]} />
+                </button>
+              </div>
+            ) : (
+              <div key={type} className="space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p>
+                <div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-border flex items-center justify-center">
+                  <Camera className="w-4 h-4 text-muted/30" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Lightbox */}
+      {lightbox && lightbox.session[lightbox.type] && (
+        <div className="fixed inset-0 z-50 bg-ink/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <button onClick={e => { e.stopPropagation(); prevImg() }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            style={{ display: lightboxIdx > 0 ? 'block' : 'none' }}>
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          <div className="relative max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-white text-sm font-semibold">
+                {new Date(lightbox.session.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {' · '}{TYPE_LABELS[lightbox.type]}
+              </p>
+              <button onClick={() => setLightbox(null)} className="p-1 text-white/70 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <img src={lightbox.session[lightbox.type]} className="w-full rounded-2xl" alt="" />
+            {lightbox.session.note && (
+              <p className="text-white/60 text-xs mt-2 italic text-center">"{lightbox.session.note}"</p>
+            )}
+          </div>
+
+          <button onClick={e => { e.stopPropagation(); nextImg() }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            style={{ display: lightboxIdx < allImages.length - 1 ? 'block' : 'none' }}>
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────
-type Section = 'fuerza' | 'peso' | 'volumen' | 'adherencia' | 'records'
+type Section = 'fuerza' | 'peso' | 'volumen' | 'adherencia' | 'records' | 'fotos'
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'fuerza',     icon: '💪', label: 'Fuerza',     desc: 'Progreso de peso por ejercicio' },
@@ -375,6 +544,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'volumen',    icon: '📊', label: 'Volumen',     desc: 'Carga total semanal' },
   { id: 'adherencia', icon: '🎯', label: 'Adherencia',  desc: '% días entrenados vs planificados' },
   { id: 'records',    icon: '🏆', label: 'Récords',     desc: 'Marcas personales' },
+  { id: 'fotos',      icon: '📸', label: 'Fotos',       desc: 'Fotos de progreso del cliente' },
 ]
 
 export function ProgresoTab({ client, plan, logs = {} }: Props) {
@@ -412,6 +582,7 @@ export function ProgresoTab({ client, plan, logs = {} }: Props) {
         {section === 'volumen'    && <VolumenChart     logs={logs} />}
         {section === 'adherencia' && <AdherenciaChart  logs={logs} plan={plan} />}
         {section === 'records'    && <RecordsTable     logs={logs} plan={plan} />}
+        {section === 'fotos'      && <FotosTab         clientId={client.id} />}
       </div>
 
       {/* Info pie */}
