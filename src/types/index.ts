@@ -18,6 +18,8 @@ export interface Exercise {
   name: string; sets: string; weight: string; isMain: boolean
   comment: string; videoUrl?: string; videoUrls?: string[]
   requiresVideo?: boolean  // el entrenador pide vídeo de ejecución
+  restSets?: number        // descanso entre series (seg)
+  restAfter?: number       // descanso tras el ejercicio (seg)
 }
 
 export interface ExerciseVideoUpload {
