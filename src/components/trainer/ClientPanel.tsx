@@ -528,17 +528,7 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
         ))}
       </div>
 
-      {/* Descansos */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
-        <h4 className="text-sm font-semibold">Tiempos de descanso</h4>
-        {([['restMain', 'Principal (seg)'], ['restAcc', 'Accesorio (seg)'], ['restWarn', 'Aviso (seg)']] as const).map(([key, label]) => (
-          <div key={key} className="flex items-center justify-between gap-4">
-            <label className="text-sm text-muted">{label}</label>
-            <input type="number" value={plan[key]} onChange={e => onChange({ ...plan, [key]: Number(e.target.value) })}
-              className="w-24 text-center px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-          </div>
-        ))}
-      </div>
+      {/* Tiempos de descanso eliminados — ahora se configuran por ejercicio en el plan */}
 
       {/* Mensaje */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
