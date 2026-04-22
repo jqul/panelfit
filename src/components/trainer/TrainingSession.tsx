@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy, Flame } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy } from 'lucide-react'
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
+import { VideoModal } from './VideoModal'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
@@ -26,6 +27,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [showCalc, setShowCalc] = useState<number | null>(null)
   const [uploadedVideos, setUploadedVideos] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const exercises = day.exercises
 
   useEffect(() => {
@@ -37,7 +39,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   }, [timerRunning, timer])
 
   const startTimer = (s: number) => { setTimer(s); setTimerRunning(true); setTimerDone(false) }
-
   const skipTimer = () => { setTimer(0); setTimerRunning(false); setTimerDone(false) }
   const getLog = (ri: number): ExerciseLog => logs[`ex_${dayKey}_r${ri}`] || { sets: {}, done: false }
 
@@ -76,7 +77,9 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const allDone = Object.keys(sets).length >= total
     updateLog(ri, { sets, done: allDone, dateDone: allDone ? new Date().toISOString().split('T')[0] : undefined })
     vibrate(50)
-    startTimer(ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+    // Usar restSets del ejercicio si existe, si no el global del plan
+    const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+    startTimer(restTime)
     if (allDone && ri < exercises.length - 1) setTimeout(() => setActiveIdx(ri + 1), 600)
   }
 
@@ -89,14 +92,12 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const totalDone = exercises.filter((_, ri) => getLog(ri).done).length
   const pct = exercises.length ? Math.round((totalDone / exercises.length) * 100) : 0
 
-  // ── Fin ───────────────────────────────────────────────
   if (view === 'finish') {
     const mejores = exercises.map((ex, ri) => {
       const mejor = Object.values(getLog(ri).sets || {}).reduce((max: number, s: any) => Math.max(max, parseFloat(s.weight) || 0), 0)
       return { name: ex.name, mejor }
     }).filter(x => x.mejor > 0).sort((a, b) => b.mejor - a.mejor)
     const mins = Math.round((Date.now() - sessionStart) / 60000)
-
     return (
       <div className="fixed inset-0 bg-bg z-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-ok/10 rounded-full flex items-center justify-center mb-5">
@@ -135,7 +136,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     )
   }
 
-  // ── Mapa ──────────────────────────────────────────────
   const MapView = () => (
     <div className="flex-1 overflow-y-auto p-4 space-y-2">
       {exercises.map((ex, ri) => {
@@ -170,13 +170,12 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     </div>
   )
 
-  // ── Acción ────────────────────────────────────────────
   const ActionView = () => {
     const ex = exercises[activeIdx]
     const log = getLog(activeIdx)
     const totalSeries = parseInt(ex.sets?.split('×')[0] || '3')
     const doneSeries = Object.keys(log.sets).length
-    const restTotal = ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)
+    const restTotal = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
     const timerPct = timerRunning ? (timer / restTotal) * 100 : 0
     const allVideos = [ex.videoUrl, ...(ex.videoUrls || [])].filter(Boolean).filter((u, i, a) => a.indexOf(u) === i)
 
@@ -184,14 +183,12 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 py-5 space-y-5 max-w-lg mx-auto">
 
-          {/* Nombre y datos */}
           <div>
             {ex.isMain && <p className="text-[10px] uppercase tracking-widest text-accent font-bold mb-0.5">Principal</p>}
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-3xl font-serif font-bold leading-tight flex-1">{ex.name}</h2>
               <button onClick={() => setShowCalc(activeIdx)}
-                className="flex-shrink-0 mt-1 px-3 py-1.5 bg-card border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-all"
-                title="Calculadora de discos">
+                className="flex-shrink-0 mt-1 px-3 py-1.5 bg-card border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-all">
                 🏋️ Discos
               </button>
             </div>
@@ -201,21 +198,49 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             {ex.comment && <p className="text-xs text-muted italic mt-1.5 leading-relaxed">"{ex.comment}"</p>}
           </div>
 
-          {/* Vídeo compacto */}
-          {allVideos.length > 0 && getYTId(allVideos[0] as string) && (
-            <a href={allVideos[0] as string} target="_blank" rel="noreferrer"
-              className="flex items-center gap-3 bg-card border border-border rounded-xl p-3">
-              <img src={`https://img.youtube.com/vi/${getYTId(allVideos[0] as string)}/default.jpg`}
-                className="w-14 h-10 object-cover rounded-lg flex-shrink-0" alt="" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold">Ver técnica</p>
-                <p className="text-xs text-muted">YouTube ↗</p>
-              </div>
-              <Play className="w-4 h-4 text-muted flex-shrink-0" />
-            </a>
+          {/* ── VÍDEOS — modal in-app, sin salir ── */}
+          {allVideos.length > 0 && (
+            <div className="space-y-2">
+              {/* Vídeo principal */}
+              <button onClick={() => setVideoUrl(allVideos[0] as string)}
+                className="w-full flex items-center gap-3 bg-card border border-border rounded-xl p-3 active:scale-[0.98] transition-transform text-left">
+                {getYTId(allVideos[0] as string) ? (
+                  <img src={`https://img.youtube.com/vi/${getYTId(allVideos[0] as string)}/default.jpg`}
+                    className="w-16 h-11 object-cover rounded-lg flex-shrink-0" alt="" />
+                ) : (
+                  <div className="w-16 h-11 rounded-lg bg-bg-alt flex items-center justify-center flex-shrink-0">
+                    <Play className="w-5 h-5 text-muted" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">Ver técnica</p>
+                  <p className="text-xs text-muted">Toca para reproducir</p>
+                </div>
+                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+                  <Play className="w-4 h-4 text-white ml-0.5" />
+                </div>
+              </button>
+
+              {/* Si hay varios vídeos, mostrar miniaturas */}
+              {allVideos.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {allVideos.slice(1).map((vurl, vi) => {
+                    const ytId = getYTId(vurl as string)
+                    return (
+                      <button key={vi} onClick={() => setVideoUrl(vurl as string)}
+                        className="flex-shrink-0 w-20 h-14 rounded-xl overflow-hidden border border-border active:scale-95 transition-transform">
+                        {ytId
+                          ? <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
+                          : <div className="w-full h-full bg-bg-alt flex items-center justify-center"><Play className="w-4 h-4 text-muted" /></div>
+                        }
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Timer */}
           {timerRunning && (
             <div className="bg-ink text-white rounded-2xl p-4 flex items-center gap-4">
               <div className="relative w-14 h-14 flex-shrink-0">
@@ -249,7 +274,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           )}
 
-          {/* Series — diseño mejorado */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
               <p className="text-xs font-bold uppercase tracking-widest text-muted">
@@ -262,10 +286,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                 const isDone = si < doneSeries
                 const isCurrent = si === doneSeries && !timerRunning && !log.done
                 return (
-                  <div key={si} className={`transition-all ${
-                    isDone ? 'bg-ok/5' : isCurrent ? 'bg-bg' : 'opacity-35'
-                  }`}>
-                    {/* Label */}
+                  <div key={si} className={`transition-all ${isDone ? 'bg-ok/5' : isCurrent ? 'bg-bg' : 'opacity-35'}`}>
                     <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${
                         isDone ? 'bg-ok text-white' : isCurrent ? 'bg-ink text-white' : 'bg-bg-alt text-muted'
@@ -274,7 +295,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                         {isDone ? `Serie ${si + 1} ✓` : isCurrent ? `Serie ${si + 1} — activa` : `Serie ${si + 1}`}
                       </p>
                     </div>
-                    {/* Inputs */}
                     <div className="flex items-end px-4 pb-3 gap-2">
                       <div className="flex-1 text-center">
                         <p className="text-[9px] text-muted uppercase tracking-wider mb-0.5">kg</p>
@@ -282,7 +302,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                           value={s?.weight || ''}
                           onChange={e => updateSet(activeIdx, si, 'weight', e.target.value)}
                           disabled={!isCurrent && !isDone}
-                          aria-label={`Peso serie ${si + 1}`}
                           style={{ fontSize: isCurrent ? '28px' : '20px' }}
                           className={`w-full text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
                             isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
@@ -296,7 +315,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                           value={s?.reps || ''}
                           onChange={e => updateSet(activeIdx, si, 'reps', e.target.value)}
                           disabled={!isCurrent && !isDone}
-                          aria-label={`Reps serie ${si + 1}`}
                           style={{ fontSize: isCurrent ? '28px' : '20px' }}
                           className={`w-full text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
                             isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
@@ -310,7 +328,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           </div>
 
-          {/* Upload vídeo si el ejercicio lo requiere */}
           {exercises[activeIdx]?.requiresVideo && (
             <div className={`border-2 rounded-2xl p-4 space-y-2 ${uploadedVideos[`r${activeIdx}`] ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
               <div className="flex items-center gap-2">
@@ -337,7 +354,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           )}
 
-          {/* Botón */}
           {!timerRunning && (
             <button
               onClick={() => doneSeries < totalSeries ? markSeriesDone(activeIdx) : toggleExDone(activeIdx)}
@@ -358,10 +374,12 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
 
   return (
     <div className="fixed inset-0 bg-bg z-50 flex flex-col">
+      {/* Modal vídeo in-app */}
+      {videoUrl && <VideoModal url={videoUrl} onClose={() => setVideoUrl(null)} />}
+
       <header className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center h-14 px-4 gap-3">
-          <button onClick={onBack} aria-label="Volver"
-            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+          <button onClick={onBack} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
             <X className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
@@ -374,7 +392,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           </div>
           <button onClick={() => setView(v => v === 'map' ? 'action' : 'map')}
-            aria-label={view === 'map' ? 'Ir al ejercicio' : 'Ver lista'}
             className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
             {view === 'map' ? <ChevronRight className="w-5 h-5" /> : <List className="w-5 h-5" />}
           </button>
@@ -405,7 +422,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           )}
         </footer>
       )}
-      {/* Calculadora de discos */}
+
       {showCalc !== null && (
         <CalculadoraDiscos
           pesoObjetivo={parseFloat(exercises[showCalc]?.weight || '0') || undefined}
