@@ -3,7 +3,7 @@ import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy } 
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
-import { VideoModal } from './VideoModal'
+import { VideoModal } from '../client/VideoModal'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
