@@ -104,11 +104,43 @@ export function useExerciseLibrary(trainerId: string) {
     return counts
   }
 
+
+  // Punto 5: Validar y limpiar ejercicios con datos inconsistentes
+  const validateAndClean = () => {
+    const VALID_ESPS = ['hipertrofia','fuerza','halterofilia','rehabilitacion','rendimiento','perdida_grasa']
+    let changed = false
+    const cleaned = exercises.map(ex => {
+      let e = { ...ex }
+      // Limpiar especialidades inválidas
+      if (e.especialidades) {
+        const valid = e.especialidades.filter(esp => VALID_ESPS.includes(esp))
+        if (valid.length !== e.especialidades.length) { e.especialidades = valid as Especialidad[]; changed = true }
+      }
+      // Limpiar especialidades inválidas en vídeos
+      if (e.videos) {
+        e.videos = e.videos.map(v => {
+          if (!v.especialidades?.length) return v
+          const valid = v.especialidades.filter(esp => VALID_ESPS.includes(esp))
+          if (valid.length !== v.especialidades.length) { changed = true; return { ...v, especialidades: valid as Especialidad[] } }
+          return v
+        })
+      }
+      // Asegurar que tiene createdAt
+      if (!e.createdAt) { e.createdAt = Date.now(); changed = true }
+      return e
+    })
+    if (changed) {
+      save(cleaned)
+      console.log('[PanelFit] Biblioteca limpiada: datos inconsistentes corregidos')
+    }
+    return changed
+  }
+
   return {
     exercises, loading,
     addExercise, updateExercise, deleteExercise,
     findByName, getVideosForClient, getYTId,
-    videoCountByEsp,
+    videoCountByEsp, validateAndClean,
   }
 }
 
