@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { UserProfile, ClientData } from './types'
 import { Auth } from './components/shared/Auth'
-import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID, DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA } from './lib/demo-data'
+import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID, DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA, DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA, DEMO_SURVEY_RESPONSES, DEMO_SURVEY_TEMPLATE } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
 
 const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
@@ -73,15 +73,17 @@ export default function App() {
     setView('auth'); setUserProfile(null); setSelectedClient(null)
   }
 
-  // Pre-cargar datos demo
+  // Pre-cargar datos demo en localStorage
   if (view === 'demo') {
     localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
     localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
-    localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify([
-      { date: new Date().toISOString().split('T')[0], weight: 62.0 },
-      { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 62.8 },
-      { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 63.5 },
-    ]))
+    // Pesos corporales
+    localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify(DEMO_WEIGHTS_MARIA))
+    localStorage.setItem(`pf_weight_demo-client-002`, JSON.stringify(DEMO_WEIGHTS_CARLOS))
+    localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
+    // Encuestas demo
+    localStorage.setItem(`pf_demo_survey_template`, JSON.stringify(DEMO_SURVEY_TEMPLATE))
+    localStorage.setItem(`pf_demo_survey_responses`, JSON.stringify(DEMO_SURVEY_RESPONSES))
   }
 
   if (view === 'loading') return <LoadingScreen />
@@ -135,7 +137,7 @@ export default function App() {
             selectedClient.id === 'demo-client-002' ? DEMO_PLAN_CARLOS :
             DEMO_PLAN_LAURA
           }
-          demoLogs={selectedClient.id === 'demo-client-001' ? DEMO_LOGS_MARIA : undefined}
+          demoLogs={selectedClient.id === 'demo-client-001' ? DEMO_LOGS_MARIA : selectedClient.id === 'demo-client-002' ? DEMO_LOGS_CARLOS : DEMO_LOGS_LAURA}
         />
       ) : (
         <TrainerDashboard
