@@ -231,7 +231,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           <div className="fixed inset-y-0 left-0 z-40 w-52 bg-card border-r border-border lg:hidden"><SidebarContent /></div>
         </>
       )}
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
         <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
           <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
