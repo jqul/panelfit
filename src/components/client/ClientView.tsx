@@ -240,7 +240,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <SyncIndicator />
 
       {/* Contenido */}
-      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
+      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10 pb-20" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
