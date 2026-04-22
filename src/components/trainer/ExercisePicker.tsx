@@ -9,7 +9,6 @@ function getYTId(url: string) {
   return m ? m[1] : null
 }
 
-// Mejora 6: colores por especialidad
 const ESP_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   fuerza:        { bg: 'bg-slate-100',  text: 'text-slate-700',  border: 'border-slate-300' },
   hipertrofia:   { bg: 'bg-violet-50',  text: 'text-violet-700', border: 'border-violet-200' },
@@ -34,7 +33,7 @@ interface Props {
   library: LibraryExercise[]
   onSelect: (exercise: Exercise) => void
   onClose: () => void
-  clientEspecialidad?: Especialidad  // Mejora 1: especialidad del cliente
+  clientEspecialidad?: Especialidad
 }
 
 const LAST_FILTER_KEY = 'pf_picker_last_filter'
@@ -43,13 +42,12 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState(() => localStorage.getItem(LAST_FILTER_KEY) || 'Todos')
   const [espFilter, setEspFilter] = useState<Especialidad | ''>('')
-  const [onlyClientEsp, setOnlyClientEsp] = useState(false)  // Mejora 4: toggle cliente
+  const [onlyClientEsp, setOnlyClientEsp] = useState(false)
   const [selected, setSelected] = useState<LibraryExercise | null>(null)
   const [selectedVideoIdx, setSelectedVideoIdx] = useState<number[]>([])
   const [customName, setCustomName] = useState('')
   const [mode, setMode] = useState<'library' | 'custom'>('library')
 
-  // Mejora 4: contador por especialidad
   const espCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     library.forEach(ex => {
@@ -78,23 +76,16 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
   const handleSelect = (ex: LibraryExercise) => {
     if (selected?.id === ex.id) { setSelected(null); setSelectedVideoIdx([]); return }
     setSelected(ex)
-
-    // Mejora 2: priorizar vídeos del cliente en 3 pasos
     const vids = ex.videos || []
     if (!clientEspecialidad || !vids.length) {
-      setSelectedVideoIdx(vids.map((_, i) => i))
-      return
+      setSelectedVideoIdx(vids.map((_, i) => i)); return
     }
     const exactIdx = vids.map((v, i) => ({ v, i }))
-      .filter(({ v }) => v.especialidades?.includes(clientEspecialidad))
-      .map(({ i }) => i)
+      .filter(({ v }) => v.especialidades?.includes(clientEspecialidad)).map(({ i }) => i)
     if (exactIdx.length) { setSelectedVideoIdx(exactIdx); return }
-
     const genericIdx = vids.map((v, i) => ({ v, i }))
-      .filter(({ v }) => !v.especialidades?.length)
-      .map(({ i }) => i)
+      .filter(({ v }) => !v.especialidades?.length).map(({ i }) => i)
     if (genericIdx.length) { setSelectedVideoIdx(genericIdx); return }
-
     setSelectedVideoIdx(vids.map((_, i) => i))
   }
 
@@ -152,7 +143,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
               className="w-full pl-9 pr-4 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
 
-          {/* Mejora 4: toggle especialidad cliente */}
           {clientEspecialidad && (
             <button onClick={() => setOnlyClientEsp(!onlyClientEsp)}
               className={`mb-2 w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
@@ -164,7 +154,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
             </button>
           )}
 
-          {/* Filtros categoría */}
           <div className="flex gap-1 flex-wrap mb-2">
             {cats.map(cat => (
               <button key={cat} onClick={() => { setCatFilter(cat); localStorage.setItem(LAST_FILTER_KEY, cat) }}
@@ -174,7 +163,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
             ))}
           </div>
 
-          {/* Filtros especialidad con contador */}
           {!onlyClientEsp && (
             <div className="flex gap-1 flex-wrap mb-2">
               <button onClick={() => setEspFilter('')}
@@ -193,16 +181,9 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
                   {e.emoji} {e.label} ({espCounts[e.value]})
                 </button>
               ))}
-              {espCounts['generico'] > 0 && (
-                <button onClick={() => setEspFilter(espFilter === 'generico' as any ? '' : 'generico' as any)}
-                  className="px-2 py-0.5 rounded-full text-[9px] font-semibold border border-border text-muted">
-                  🌐 Genérico ({espCounts['generico']})
-                </button>
-              )}
             </div>
           )}
 
-          {/* Lista ejercicios */}
           <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-48">
             {filtered.map(ex => {
               const isSelected = selected?.id === ex.id
@@ -213,7 +194,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
                     isSelected ? 'bg-accent/10 border border-accent/30' : 'hover:bg-bg-alt border border-transparent'
                   }`}>
-                  {/* Mejora 6: icono especialidad principal */}
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs flex-shrink-0 ${
                     color ? `${color.bg} ${color.text}` : 'bg-bg-alt text-muted'
                   }`}>
@@ -223,7 +203,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       {ex.category && <span className="text-[9px] text-muted">{ex.category}</span>}
-                      {/* Mejora 6: estado genérico explícito */}
                       {(!ex.especialidades || ex.especialidades.length === 0) && (
                         <span className="text-[9px] text-muted/60 italic">genérico</span>
                       )}
@@ -249,45 +228,73 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
             )}
           </div>
 
-          {/* Vídeos del ejercicio seleccionado */}
+          {/* SECCIÓN VÍDEOS — aquí está el fix principal */}
           {selected && (selected.videos?.length || 0) > 0 && (
-            <div className="mt-3 p-3 bg-bg rounded-xl border border-border">
-              <div className="flex items-center justify-between mb-2">
+            <div className="mt-3 p-3 bg-bg rounded-xl border border-border space-y-2">
+              <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">
                   Vídeos — selecciona cuáles añadir
                 </p>
                 {clientEspecialidad && (
                   <span className="text-[9px] text-accent">
-                    Auto-seleccionados para {ESPECIALIDADES.find(e => e.value === clientEspecialidad)?.label}
+                    Auto para {ESPECIALIDADES.find(e => e.value === clientEspecialidad)?.label}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+
+              {/* Layout en lista en vez de grid — más espacio para las etiquetas */}
+              <div className="space-y-2">
                 {selected.videos!.map((v, i) => {
                   const ytId = getYTId(v.url)
                   const isChecked = selectedVideoIdx.includes(i)
                   const vEsps = v.especialidades || []
+
                   return (
                     <button key={i} onClick={() => toggleVideo(i)}
-                      className={`relative rounded-lg overflow-hidden border-2 transition-all ${isChecked ? 'border-accent' : 'border-border opacity-50'}`}>
-                      {ytId ? (
-                        <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full aspect-video object-cover" alt="" />
-                      ) : (
-                        <div className="w-full aspect-video bg-bg-alt flex items-center justify-center"><Video className="w-4 h-4 text-muted" /></div>
-                      )}
-                      {isChecked && (
-                        <div className="absolute top-1 right-1 w-4 h-4 bg-accent rounded-full flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-white" />
+                      className={`w-full flex items-center gap-3 rounded-xl border-2 overflow-hidden transition-all ${
+                        isChecked ? 'border-accent bg-accent/5' : 'border-border opacity-60 hover:opacity-80'
+                      }`}>
+
+                      {/* Miniatura */}
+                      <div className="flex-shrink-0 w-20 h-14">
+                        {ytId
+                          ? <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
+                          : <div className="w-full h-full bg-bg-alt flex items-center justify-center"><Video className="w-4 h-4 text-muted" /></div>
+                        }
+                      </div>
+
+                      {/* Info del vídeo */}
+                      <div className="flex-1 min-w-0 py-2 pr-2 text-left">
+                        {/* Etiqueta del vídeo */}
+                        <p className="text-xs font-semibold truncate">
+                          {v.label || `Vídeo ${i + 1}`}
+                        </p>
+
+                        {/* Especialidades como badges legibles */}
+                        <div className="flex gap-1 flex-wrap mt-1">
+                          {vEsps.length > 0 ? (
+                            vEsps.map(esp => {
+                              const info = ESPECIALIDADES.find(e => e.value === esp)
+                              const c = ESP_COLORS[esp] || { bg: 'bg-bg-alt', text: 'text-muted', border: 'border-border' }
+                              return info ? (
+                                <span key={esp} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${c.bg} ${c.text} ${c.border}`}>
+                                  {info.emoji} {info.label}
+                                </span>
+                              ) : null
+                            })
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-bg-alt border border-border text-muted">
+                              🌐 Genérico
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {/* Mejora 3: chips de especialidad en vídeo */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-ink/70 px-1 py-0.5 flex gap-0.5 flex-wrap">
-                        {vEsps.length > 0 ? vEsps.map(esp => (
-                          <span key={esp} className="text-[7px] text-white/90 font-semibold">
-                            {ESPECIALIDADES.find(e => e.value === esp)?.emoji}
-                          </span>
-                        )) : <span className="text-[7px] text-white/60">🌐</span>}
-                        {v.label && <span className="text-[7px] text-white/80 truncate">{v.label}</span>}
+                      </div>
+
+                      {/* Check */}
+                      <div className={`w-5 h-5 rounded-full flex-shrink-0 mr-3 flex items-center justify-center border-2 transition-all ${
+                        isChecked ? 'bg-accent border-accent' : 'border-border'
+                      }`}>
+                        {isChecked && <Check className="w-3 h-3 text-white" />}
                       </div>
                     </button>
                   )
