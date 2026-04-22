@@ -5,6 +5,7 @@ import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
+import { PWAInstallBanner } from './PWAInstallBanner'
 import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
@@ -238,6 +239,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
       {/* Sync banner */}
       <SyncIndicator />
+      <PWAInstallBanner />
 
       {/* Contenido */}
       <main className="flex-1 max-w-2xl mx-auto w-full relative z-10 pb-20" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
