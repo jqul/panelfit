@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Play, CheckCircle2, Video, ExternalLink, Dumbbell } from 'lucide-react'
+import { ChevronDown, ChevronUp, Play, Video, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
+import { VideoModal } from './VideoModal'
 
 interface Props {
   plan: TrainingPlan
@@ -17,6 +18,7 @@ function getYTId(url: string) {
 export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
   const weekIdx = plan.weeks?.indexOf(currentWeek) ?? 0
@@ -42,14 +44,14 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
 
   return (
     <div className="pb-24">
-      {/* Semana actual */}
+      {videoUrl && <VideoModal url={videoUrl} onClose={() => setVideoUrl(null)} />}
+
       <div className="px-4 pt-5 pb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
         {currentWeek.rpe && <p className="text-xs text-muted mt-0.5">Intensidad objetivo: {currentWeek.rpe}</p>}
       </div>
 
-      {/* Lista de días */}
       <div className="px-4 space-y-3">
         {currentWeek.days.map((day, di) => {
           const dayKey = `w${weekIdx}_d${di}`
@@ -61,7 +63,6 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
 
           return (
             <div key={di} className={`bg-card border rounded-2xl overflow-hidden transition-all ${isComplete ? 'border-ok/40' : 'border-border'}`}>
-              {/* Header día */}
               <div className="flex items-center gap-3 px-4 py-4">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
                   isComplete ? 'bg-ok text-white' : pct > 0 ? 'bg-accent/10 text-accent border-2 border-accent/30' : 'bg-bg-alt text-muted'
@@ -74,15 +75,12 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
                   <p className="text-[10px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {/* Botón empezar */}
                   <button
                     onClick={() => setActiveWorkout({ weekIdx, dayIdx: di })}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       isComplete ? 'bg-ok/10 text-ok border border-ok/30' :
-                      pct > 0 ? 'bg-accent text-white' :
-                      'bg-ink text-white'
-                    }`}
-                  >
+                      pct > 0 ? 'bg-accent text-white' : 'bg-ink text-white'
+                    }`}>
                     <Play className="w-3.5 h-3.5" />
                     {isComplete ? 'Repetir' : pct > 0 ? 'Continuar' : 'Empezar'}
                   </button>
@@ -93,7 +91,6 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
                 </div>
               </div>
 
-              {/* Barra progreso */}
               {pct > 0 && (
                 <div className="px-4 pb-3 -mt-1">
                   <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
@@ -102,7 +99,6 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
                 </div>
               )}
 
-              {/* Ejercicios expandidos */}
               {isOpen && (
                 <div className="border-t border-border divide-y divide-border">
                   {day.exercises.map((ex, ri) => {
@@ -121,10 +117,11 @@ export function TrainingPlanView({ plan, logs, onLogsChange }: Props) {
                           {ex.isMain && <span className="text-[9px] font-bold text-accent uppercase tracking-wider">Principal</span>}
                         </div>
                         {ytId && (
-                          <a href={ex.videoUrl} target="_blank" rel="noreferrer"
-                            className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-border">
+                          <button
+                            onClick={() => setVideoUrl(ex.videoUrl!)}
+                            className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-border active:scale-95 transition-transform">
                             <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
-                          </a>
+                          </button>
                         )}
                         {log?.sets && Object.keys(log.sets).length > 0 && (
                           <div className="flex flex-col gap-0.5">
