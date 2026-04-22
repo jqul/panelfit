@@ -10,7 +10,7 @@ export interface ClientData {
   id: string; name: string; surname: string; weight: number; fatPercentage: number
   muscleMass: number; totalLifted: number; planDescription: string
   trainerId: string; token: string; createdAt: number; isActive?: boolean
-  objetivo?: 'fuerza' | 'hipertrofia' | 'perdida_grasa' | 'resistencia' | 'general'
+  objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
 }
 
 // ── PLAN ──────────────────────────────────────────────
