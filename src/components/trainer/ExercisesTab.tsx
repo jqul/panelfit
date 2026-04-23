@@ -443,6 +443,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [filterCat, setFilterCat]   = useState('')
   const [filterEsp, setFilterEsp]   = useState('')
   const [filterTag, setFilterTag]   = useState('')
+  const [filterVideos, setFilterVideos] = useState<''|'con_esp'|'sin_esp'|'sin_video'>('')
   const [editId, setEditId]         = useState<string|null>(null)
   const [showNew, setShowNew]       = useState(false)
   const [showConfig, setShowConfig] = useState(false)
@@ -460,6 +461,9 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
     if (filterCat && ex.category !== filterCat) return false
     if (filterEsp && !(ex.especialidades||[]).includes(filterEsp as any)) return false
     if (filterTag && !((ex as any).tags||[]).includes(filterTag)) return false
+    if (filterVideos === 'con_esp' && !(ex.videos||[]).some(v => v.especialidades?.length)) return false
+    if (filterVideos === 'sin_esp' && !(ex.videos||[]).some(v => !v.especialidades?.length)) return false
+    if (filterVideos === 'sin_video' && (ex.videos||[]).length > 0) return false
     return true
   })
 
@@ -525,6 +529,14 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
             {tags.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
           </select>
         )}
+        {/* Filtro rápido vídeos */}
+        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as any)}
+          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+          <option value="">Todos los vídeos</option>
+          <option value="con_esp">🎯 Con vídeos esp.</option>
+          <option value="sin_esp">🌐 Solo genéricos</option>
+          <option value="sin_video">❌ Sin vídeo</option>
+        </select>
       </div>
 
       {/* Chips filtros activos */}
@@ -569,9 +581,28 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                       </div>
                       {ex.description&&<p className="text-xs text-muted mt-0.5 truncate">{ex.description}</p>}
                       {(ex.videos?.length||0)>0&&(
-                        <p className="text-[10px] text-muted mt-1 flex items-center gap-1">
-                          <Video className="w-3 h-3"/>{ex.videos!.length} vídeo{ex.videos!.length>1?'s':''}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {/* Vídeos especializados vs genéricos */}
+                          {(() => {
+                            const vids = ex.videos || []
+                            const especializados = vids.filter(v => v.especialidades?.length)
+                            const genericos = vids.filter(v => !v.especialidades?.length)
+                            return (
+                              <>
+                                {especializados.length > 0 && (
+                                  <span className="text-[9px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <Video className="w-2.5 h-2.5"/>{especializados.length} esp.
+                                  </span>
+                                )}
+                                {genericos.length > 0 && (
+                                  <span className="text-[9px] text-muted bg-bg-alt border border-border px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                    <Video className="w-2.5 h-2.5"/>{genericos.length} gen.
+                                  </span>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
