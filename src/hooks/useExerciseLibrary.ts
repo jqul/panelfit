@@ -142,7 +142,7 @@ export function useExerciseLibrary(trainerId: string) {
     name: string,
     description = '',
     category = '',
-    videos: NonNullable<LibraryExercise['videos']> = [],
+    videos: LibraryVideo[] = [],
     especialidades: Especialidad[] = [],
     tags: string[] = []
   ) => {
