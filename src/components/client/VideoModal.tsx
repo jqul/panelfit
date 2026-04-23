@@ -1,8 +1,8 @@
-import { X, Play } from 'lucide-react'
-import { useState } from 'react'
+import { X, ExternalLink } from 'lucide-react'
 
 interface Props {
   url: string
+  label?: string
   onClose: () => void
 }
 
@@ -11,95 +11,103 @@ function getYTId(url: string) {
   return m ? m[1] : null
 }
 
-export function VideoModal({ url, onClose }: Props) {
-  const ytId = getYTId(url)
-  const [playing, setPlaying] = useState(false)
+function isMobile() {
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent)
+}
 
-  // URL embed con parámetros que evitan redirección a app nativa
+export function VideoModal({ url, label, onClose }: Props) {
+  const ytId = getYTId(url)
+  const mobile = isMobile()
+
+  // En móvil: YouTube siempre abre la app — mejor abrir en navegador
+  // En desktop: iframe funciona perfectamente
+  const openInBrowser = () => {
+    // Forzar apertura en navegador web, no en app YouTube
+    // youtube.com/watch funciona en navegador si el usuario no tiene la app o la tiene pero abre Safari/Chrome primero
+    const webUrl = ytId
+      ? `https://www.youtube.com/watch?v=${ytId}`
+      : url
+    window.open(webUrl, '_blank', 'noopener,noreferrer')
+  }
+
   const embedUrl = ytId
     ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&playsinline=1&rel=0&modestbranding=1`
     : null
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black"
+    <div className="fixed inset-0 z-[100] flex flex-col bg-black"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0 bg-black">
-        <p className="text-white/60 text-sm">Técnica del ejercicio</p>
-        <button
-          onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20"
-          style={{ minWidth: 44, minHeight: 44 }}>
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+        <p className="text-white/60 text-sm truncate flex-1 mr-2">{label || 'Técnica del ejercicio'}</p>
+        <button onClick={onClose}
+          className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
           <X className="w-5 h-5 text-white" />
         </button>
       </div>
 
-      {/* Vídeo centrado */}
-      <div className="flex-1 flex items-center justify-center px-0 bg-black">
-        {ytId ? (
-          <div className="w-full" style={{ aspectRatio: '16/9', maxHeight: '70vh' }}>
-            {playing ? (
-              /* iframe solo se monta al pulsar play — evita redirección automática */
-              <iframe
-                src={embedUrl!}
-                className="w-full h-full"
-                style={{ border: 'none', display: 'block' }}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen={false}
-                title="Vídeo ejercicio"
-                referrerPolicy="strict-origin"
+      {/* Contenido */}
+      <div className="flex-1 flex items-center justify-center px-4">
+        {!ytId ? (
+          /* Vídeo nativo — funciona siempre */
+          <video src={url} controls playsInline autoPlay className="w-full rounded-xl"
+            style={{ maxHeight: '70vh' }} />
+        ) : mobile ? (
+          /* MÓVIL — no se puede evitar que abra la app de YouTube con iframe
+             Solución: mostrar miniatura grande + botón para abrir en navegador */
+          <div className="w-full space-y-4">
+            <div className="relative w-full rounded-2xl overflow-hidden bg-black"
+              style={{ aspectRatio: '16/9' }}>
+              <img
+                src={`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`}
+                onError={e => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` }}
+                className="w-full h-full object-cover"
+                alt=""
               />
-            ) : (
-              /* Pantalla de previa con botón play */
-              <div className="w-full h-full relative bg-black flex items-center justify-center cursor-pointer"
-                onClick={() => setPlaying(true)}>
-                <img
-                  src={`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`}
-                  onError={e => { (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` }}
-                  className="w-full h-full object-contain"
-                  alt=""
-                />
-                {/* Overlay oscuro */}
-                <div className="absolute inset-0 bg-black/30" />
-                {/* Botón play */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center shadow-2xl"
-                    style={{ minWidth: 64, minHeight: 64 }}>
-                    <Play className="w-8 h-8 text-white ml-1" />
-                  </div>
+              {/* Logo YouTube encima */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-red-600/90 flex items-center justify-center shadow-2xl">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 fill-white ml-1">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="space-y-2">
+              <button onClick={openInBrowser}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-red-600 text-white rounded-2xl font-bold text-base active:opacity-80">
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white"><path d="M8 5v14l11-7z"/></svg>
+                Ver en YouTube
+              </button>
+              <p className="text-white/40 text-xs text-center">
+                Se abrirá en el navegador
+              </p>
+            </div>
           </div>
         ) : (
-          /* Vídeo no-YouTube — usar <video> nativo */
-          <video
-            src={url}
-            controls
-            playsInline
-            autoPlay
-            className="w-full"
-            style={{ maxHeight: '70vh' }}
-          />
+          /* DESKTOP — iframe funciona perfectamente */
+          <div className="w-full rounded-2xl overflow-hidden"
+            style={{ aspectRatio: '16/9', maxHeight: '70vh' }}>
+            <iframe
+              src={embedUrl!}
+              className="w-full h-full"
+              style={{ border: 'none' }}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              title="Vídeo ejercicio"
+            />
+          </div>
         )}
       </div>
 
-      {/* Instrucción */}
-      <div className="flex-shrink-0 py-4 text-center bg-black">
-        <p className="text-white/30 text-xs">Toca fuera del vídeo para cerrar</p>
-        {ytId && !playing && (
-          <button
-            onClick={() => setPlaying(true)}
-            className="mt-2 px-4 py-2 bg-white/10 rounded-full text-white text-xs font-semibold">
-            ▶ Reproducir
-          </button>
-        )}
+      {/* Fondo tapable para cerrar */}
+      <div className="flex-shrink-0 py-4 text-center">
+        <button onClick={onClose} className="text-white/30 text-xs">
+          Toca aquí para cerrar
+        </button>
       </div>
-
-      {/* Tap fondo para cerrar */}
-      <div className="absolute inset-0 -z-10" onClick={onClose} />
     </div>
   )
 }
