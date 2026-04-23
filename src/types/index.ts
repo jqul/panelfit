@@ -52,10 +52,10 @@ export interface TrainingTemplate {
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
-export interface LibraryVideo { url: string; label?: string; especialidades?: Especialidad[] }
+export interface LibraryVideo { url: string; label?: string; especialidades?: Especialidad[] }  // especialidades del vídeo — fuente de verdad
 export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
-  category?: string; especialidades?: Especialidad[]; videos?: LibraryVideo[]; createdAt: number
+  category?: string; especialidades?: Especialidad[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
 }
 
 // ── REGISTROS ─────────────────────────────────────────
