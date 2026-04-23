@@ -34,11 +34,13 @@ interface Props {
   onSelect: (exercise: Exercise) => void
   onClose: () => void
   clientEspecialidad?: Especialidad
+  trackUsage?: (id: string, name: string, event: 'selected' | 'video_played' | 'added_to_plan', clientId?: string, esp?: string) => void
+  clientId?: string
 }
 
 const LAST_FILTER_KEY = 'pf_picker_last_filter'
 
-export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad }: Props) {
+export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad, trackUsage, clientId }: Props) {
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState(() => localStorage.getItem(LAST_FILTER_KEY) || 'Todos')
   const [espFilter, setEspFilter] = useState<Especialidad | ''>('')
@@ -101,6 +103,8 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad 
     }
     if (!selected) return
     const videos = selectedVideoIdx.sort().map(i => selected.videos![i].url).filter(Boolean)
+    // Telemetría
+    trackUsage?.(selected.id, selected.name, 'added_to_plan', clientId, clientEspecialidad)
     onSelect({
       name: selected.name, sets: '3×10', weight: '', isMain: false,
       comment: selected.description || '', videoUrl: videos[0] || '', videoUrls: videos,
