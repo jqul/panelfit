@@ -235,7 +235,8 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
   const [form, setForm] = useState<FormState>(initial)
   const [newVideoUrl, setNewVideoUrl] = useState('')
   const [newVideoLabel, setNewVideoLabel] = useState('')
-  const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])
+  const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])       // para YouTube URL
+  const [uploadVideoEsps, setUploadVideoEsps] = useState<string[]>([]) // para subida local
   const [uploading, setUploading] = useState(false)
   const [videoMode, setVideoMode] = useState<'url'|'file'>('url')
 
@@ -326,10 +327,32 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
           {form.videos.map((v,i) => {
             const ytId = getYTId(v.url)
             return (
-              <div key={i} className="flex items-center gap-2 bg-bg border border-border rounded-lg p-2">
-                {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-12 h-9 object-cover rounded" alt=""/>}
-                <p className="flex-1 text-xs truncate">{v.label||v.url}</p>
-                <button onClick={()=>setForm(f=>({...f,videos:f.videos.filter((_,idx)=>idx!==i)}))} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5"/></button>
+              <div key={i} className="bg-bg border border-border rounded-xl p-2.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-12 h-9 object-cover rounded flex-shrink-0" alt=""/>}
+                  <input value={v.label||''} onChange={e=>{const vs=[...form.videos];vs[i]={...vs[i],label:e.target.value};setForm(f=>({...f,videos:vs}))}}
+                    placeholder="Etiqueta del vídeo..." className="flex-1 text-xs bg-transparent outline-none border-b border-border focus:border-accent"/>
+                  <button onClick={()=>setForm(f=>({...f,videos:f.videos.filter((_,idx)=>idx!==i)}))} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5"/></button>
+                </div>
+                {/* Edición rápida de especialidades del vídeo */}
+                <div className="flex flex-wrap gap-1">
+                  <span className="text-[9px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
+                  {allEsps.map(e => {
+                    const active = (v.especialidades||[]).includes(e.id as any)
+                    return (
+                      <button key={e.id} type="button"
+                        onClick={()=>{
+                          const vs=[...form.videos]
+                          const esps=(vs[i].especialidades||[]) as string[]
+                          vs[i]={...vs[i],especialidades:(active?esps.filter(x=>x!==e.id):[...esps,e.id]) as any}
+                          setForm(f=>({...f,videos:vs}))
+                        }}
+                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
+                        {e.emoji} {e.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )
           })}
@@ -365,6 +388,20 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 setNewVideoUrl(data.publicUrl);setUploading(false)
               }}/>
           </label>
+        )}
+        {/* Especialidades para el vídeo subido localmente */}
+        {videoMode==='file' && (
+          <div className="flex flex-wrap gap-1.5">
+            {allEsps.map(e => {
+              const active = uploadVideoEsps.includes(e.id)
+              return (
+                <button key={e.id} type="button" onClick={()=>setUploadVideoEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
+                  {e.emoji} {e.label}
+                </button>
+              )
+            })}
+          </div>
         )}
         <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
           placeholder="Etiqueta del vídeo" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
