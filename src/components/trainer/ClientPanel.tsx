@@ -99,11 +99,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     const p = planToSave || pendingPlan.current || plan; if (!p) return
     setSaveState('saving')
     if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
-    const { error: updateError } = await supabase.from('planes').update({ plan: { P: p }, updatedAt: Date.now() }).eq('clientId', client.id)
-    if (updateError) {
-      const { error: insertError } = await supabase.from('planes').insert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() })
-      if (insertError) { logError('savePlan', insertError); setSaveState('error'); return }
-    }
+    // Upsert — funciona tanto si existe la fila como si no
+    const { error } = await supabase.from('planes')
+      .upsert(
+        { clientId: client.id, plan: { P: p }, updatedAt: Date.now() },
+        { onConflict: 'clientId' }
+      )
+    if (error) { logError('savePlan', error); setSaveState('error'); return }
     setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
   }
 
