@@ -82,6 +82,7 @@ export function TrainingPlanEditor({
   const [importing, setImporting] = useState(false)
   const [selectedEx, setSelectedEx] = useState<SelectedEx | null>(null)
   const [restPopup, setRestPopup] = useState<{ wi: number; di: number; ri: number; field: 'restSets' | 'restAfter' } | null>(null)
+  const [confirmDeleteWeek, setConfirmDeleteWeek] = useState<number | null>(null)
 
   const weeks = plan.weeks || []
   const currentWeek = weeks[activeWeek]
@@ -114,9 +115,14 @@ export function TrainingPlanEditor({
   }
   const deleteWeek = (wi: number) => {
     if (weeks.length <= 1) { toast('Debe haber al menos 1 semana', 'warn'); return }
-    if (!confirm('¿Eliminar esta semana?')) return
+    setConfirmDeleteWeek(wi)
+  }
+
+  const confirmDeleteWeekFn = () => {
+    const wi = confirmDeleteWeek; if (wi === null) return
     const w = weeks.filter((_, i) => i !== wi)
     updatePlan({ weeks: w }); setActiveWeek(Math.max(0, wi - 1))
+    setConfirmDeleteWeek(null)
   }
   const setCurrentWeek = (wi: number) =>
     updatePlan({ weeks: weeks.map((wk, i) => ({ ...wk, isCurrent: i === wi })) })
@@ -220,7 +226,17 @@ export function TrainingPlanEditor({
                 <Star className="w-3.5 h-3.5" />
               </button>
               <button onClick={() => copyWeek(activeWeek)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
-              <button onClick={() => deleteWeek(activeWeek)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+              {confirmDeleteWeek === activeWeek ? (
+                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                  <span className="text-[10px] text-warn font-semibold">¿Borrar?</span>
+                  <button onClick={confirmDeleteWeekFn}
+                    className="px-2 py-1 bg-warn text-white rounded text-[10px] font-bold">Sí</button>
+                  <button onClick={() => setConfirmDeleteWeek(null)}
+                    className="px-2 py-1 border border-border rounded text-[10px] text-muted">No</button>
+                </div>
+              ) : (
+                <button onClick={() => deleteWeek(activeWeek)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+              )}
             </div>
 
             {/* Días */}
