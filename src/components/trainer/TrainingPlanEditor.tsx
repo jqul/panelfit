@@ -83,6 +83,8 @@ export function TrainingPlanEditor({
   const [selectedEx, setSelectedEx] = useState<SelectedEx | null>(null)
   const [restPopup, setRestPopup] = useState<{ wi: number; di: number; ri: number; field: 'restSets' | 'restAfter' } | null>(null)
   const [confirmDeleteWeek, setConfirmDeleteWeek] = useState<number | null>(null)
+  const [dragging, setDragging] = useState<{ di: number; ri: number } | null>(null)
+  const [dragOver, setDragOver] = useState<{ di: number; ri: number } | null>(null)
 
   const weeks = plan.weeks || []
   const currentWeek = weeks[activeWeek]
@@ -161,6 +163,15 @@ export function TrainingPlanEditor({
     if (imported) { updatePlan({ weeks: imported.weeks, type: imported.type }); toast('Importado ✓', 'ok'); setShowImport(false) }
     else toast('Sin plan', 'warn')
     setImporting(false)
+  }
+
+
+  const moveExercise = (di: number, fromRi: number, toRi: number) => {
+    if (fromRi === toRi) return
+    const exs = [...weeks[activeWeek].days[di].exercises]
+    const [moved] = exs.splice(fromRi, 1)
+    exs.splice(toRi, 0, moved)
+    updateDay(activeWeek, di, { exercises: exs })
   }
 
   const selEx = selectedEx ? weeks[selectedEx.wi]?.days[selectedEx.di]?.exercises[selectedEx.ri] : null
@@ -367,6 +378,19 @@ export function TrainingPlanEditor({
 
                                 {/* Acciones */}
                                 <div className="flex items-center justify-end gap-0.5">
+                                  {/* Botones reordenar — útiles en móvil */}
+                                  <div className="flex flex-col gap-0 mr-0.5">
+                                    <button onClick={e => { e.stopPropagation(); if (ri > 0) moveExercise(di, ri, ri - 1) }}
+                                      disabled={ri === 0}
+                                      className="p-0.5 text-muted hover:text-ink disabled:opacity-20 transition-colors leading-none">
+                                      <ChevronUp className="w-3 h-3" />
+                                    </button>
+                                    <button onClick={e => { e.stopPropagation(); if (ri < day.exercises.length - 1) moveExercise(di, ri, ri + 1) }}
+                                      disabled={ri === day.exercises.length - 1}
+                                      className="p-0.5 text-muted hover:text-ink disabled:opacity-20 transition-colors leading-none">
+                                      <ChevronDown className="w-3 h-3" />
+                                    </button>
+                                  </div>
                                   <button onClick={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { isMain: !ex.isMain }) }}
                                     title="Marcar como principal"
                                     className={`p-1.5 rounded transition-colors ${ex.isMain ? 'text-accent' : 'text-muted hover:text-accent'}`}>
