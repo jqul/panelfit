@@ -131,7 +131,7 @@
    if (view === 'loading') return <LoadingScreen />
  
    const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
-
+// -102,50 +140,57 @@ export default function App() {
        <Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
          if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
        })} onDemo={() => setView('demo')} />
@@ -189,6 +189,3 @@
              setAllClients(DEMO_CLIENTS as any)
            }}
          />
- 
-EOF
-)
