@@ -11,8 +11,7 @@
  const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
  const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
  
-
-+type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'trial-expired'
+type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'trial-expired'
  
  const DEMO_PROFILE_TRAINER: UserProfile = {
    uid: DEMO_TRAINER_ID, email: 'demo@panelfit.app', displayName: 'Alex Trainer',
@@ -131,7 +130,7 @@
    if (view === 'loading') return <LoadingScreen />
  
    const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
-// -102,50 +140,57 @@ export default function App() {
+@@ -102,50 +140,57 @@ export default function App() {
        <Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
          if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
        })} onDemo={() => setView('demo')} />
