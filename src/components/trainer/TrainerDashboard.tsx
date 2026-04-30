@@ -90,7 +90,7 @@
    const noActivity7d = clients.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS).length
    const alerts = clients.filter(c => !c.hasPlan || (c.lastActive && new Date(c.lastActive) < haceUnaS))
  
-
+@@ -188,51 +191,51 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
          {NAV_GROUPS.map(group => (
            <div key={group.label}>
              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
@@ -143,7 +143,7 @@
            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
            <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
            <button onClick={() => setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
-
+@@ -346,52 +349,52 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                    <div className="p-3 space-y-1.5">
                      {alerts.slice(0, 3).map(c => (
                        <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
@@ -197,7 +197,7 @@
                    {filteredClients.map(client => (
                      <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }} onClick={() => onSelectClient(client)}>
                        <div className="flex items-center gap-3 mb-4">
-
+@@ -401,51 +404,51 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                          </div>
                          <div className="min-w-0 flex-1">
                            <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
