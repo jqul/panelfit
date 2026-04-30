@@ -11,8 +11,8 @@
    approved: boolean
    rol: string
    createdAt?: string
-  profile?: { planName?: 'free' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number }
-  clientsCount?: number
++  profile?: { planName?: 'free' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number }
++  clientsCount?: number
  }
  
  interface Props {
@@ -23,7 +23,7 @@
    const [entrenadores, setEntrenadores] = useState<Entrenador[]>([])
    const [loading, setLoading] = useState(true)
    const [tab, setTab] = useState<'pendientes' | 'activos' | 'todos'>('pendientes')
-  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null)
++  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null)
  
    useEffect(() => { loadEntrenadores() }, [])
  
@@ -35,16 +35,16 @@
        .order('createdAt', { ascending: false })
      if (error) { toast('Error al cargar entrenadores', 'warn') }
 
-    else {
-      const entrenadoresRaw = (data || []) as Entrenador[]
-      const ids = entrenadoresRaw.map(e => e.uid)
-      const { data: clientesData } = ids.length
-        ? await supabase.from('clientes').select('trainerId').in('trainerId', ids)
-        : { data: [] as Array<{ trainerId: string }> }
-      const counts: Record<string, number> = {}
-      ;(clientesData || []).forEach(c => { counts[c.trainerId] = (counts[c.trainerId] || 0) + 1 })
-      setEntrenadores(entrenadoresRaw.map(e => ({ ...e, clientsCount: counts[e.uid] || 0 })))
-    }
++    else {
++      const entrenadoresRaw = (data || []) as Entrenador[]
++      const ids = entrenadoresRaw.map(e => e.uid)
++      const { data: clientesData } = ids.length
++        ? await supabase.from('clientes').select('trainerId').in('trainerId', ids)
++        : { data: [] as Array<{ trainerId: string }> }
++      const counts: Record<string, number> = {}
++      ;(clientesData || []).forEach(c => { counts[c.trainerId] = (counts[c.trainerId] || 0) + 1 })
++      setEntrenadores(entrenadoresRaw.map(e => ({ ...e, clientsCount: counts[e.uid] || 0 })))
++    }
      setLoading(false)
    }
  
@@ -63,20 +63,20 @@
      toast('Entrenador eliminado', 'ok')
    }
  
-  const savePlan = async (e: Entrenador, planName: 'free' | 'trial' | 'pro' | 'studio', clientLimit: number, trialDays: number) => {
-    setUpdatingPlan(e.uid)
-    const now = Date.now()
-    const trialEndsAt = planName === 'trial' ? now + (trialDays * 86400000) : undefined
-    const profile = { ...(e.profile || {}), planName, clientLimit, trialEndsAt, updatedAt: now }
-    const { error } = await supabase.from('entrenadores').update({ profile }).eq('uid', e.uid)
-    if (error) toast('No se pudo guardar plan', 'warn')
-    else {
-      setEntrenadores(prev => prev.map(x => x.uid === e.uid ? { ...x, profile } : x))
-      toast('Plan actualizado ✓', 'ok')
-    }
-    setUpdatingPlan(null)
-  }
-
++  const savePlan = async (e: Entrenador, planName: 'free' | 'trial' | 'pro' | 'studio', clientLimit: number, trialDays: number) => {
++    setUpdatingPlan(e.uid)
++    const now = Date.now()
++    const trialEndsAt = planName === 'trial' ? now + (trialDays * 86400000) : undefined
++    const profile = { ...(e.profile || {}), planName, clientLimit, trialEndsAt, updatedAt: now }
++    const { error } = await supabase.from('entrenadores').update({ profile }).eq('uid', e.uid)
++    if (error) toast('No se pudo guardar plan', 'warn')
++    else {
++      setEntrenadores(prev => prev.map(x => x.uid === e.uid ? { ...x, profile } : x))
++      toast('Plan actualizado ✓', 'ok')
++    }
++    setUpdatingPlan(null)
++  }
++
    const pendientes = entrenadores.filter(e => !e.approved)
    const activos = entrenadores.filter(e => e.approved)
    const filtered = tab === 'pendientes' ? pendientes : tab === 'activos' ? activos : entrenadores
@@ -102,7 +102,7 @@
                <RefreshCw className="w-4 h-4" />
              </button>
              <button onClick={onLogout}
-
+//-123,65 +149,71 @@ export function SuperAdminPanel({ onLogout }: Props) {
              <p className="font-serif text-lg">
                {tab === 'pendientes' ? 'No hay solicitudes pendientes' : 'Sin entrenadores'}
              </p>
@@ -129,12 +129,12 @@
                      </span>
                    </div>
 
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
++                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                      <p className="text-xs text-muted flex items-center gap-1">
                        <Mail className="w-3 h-3" />{e.email}
                      </p>
-                    <p className="text-xs text-muted">👥 {e.clientsCount || 0} clientes</p>
-                    <p className="text-xs text-muted">Plan: {(e.profile?.planName || 'free').toUpperCase()} · Límite {e.profile?.clientLimit ?? 5}</p>
++                    <p className="text-xs text-muted">👥 {e.clientsCount || 0} clientes</p>
++                    <p className="text-xs text-muted">Plan: {(e.profile?.planName || 'free').toUpperCase()} · Límite {e.profile?.clientLimit ?? 5}</p>
                      {e.createdAt && (
                        <p className="text-xs text-muted flex items-center gap-1">
                          <Clock className="w-3 h-3" />
@@ -146,10 +146,10 @@
  
                  {/* Acciones */}
                  <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => savePlan(e, 'free', 5, 0)} disabled={updatingPlan === e.uid}
-                    className="px-2.5 py-1.5 border border-border rounded-lg text-[11px] font-bold text-muted hover:text-ink">Free 5</button>
-                  <button onClick={() => savePlan(e, 'trial', 9999, 15)} disabled={updatingPlan === e.uid}
-                    className="px-2.5 py-1.5 border border-accent/30 bg-accent/5 rounded-lg text-[11px] font-bold text-accent hover:bg-accent hover:text-white">Demo 15d</button>
++                  <button onClick={() => savePlan(e, 'free', 5, 0)} disabled={updatingPlan === e.uid}
++                    className="px-2.5 py-1.5 border border-border rounded-lg text-[11px] font-bold text-muted hover:text-ink">Free 5</button>
++                  <button onClick={() => savePlan(e, 'trial', 9999, 15)} disabled={updatingPlan === e.uid}
++                    className="px-2.5 py-1.5 border border-accent/30 bg-accent/5 rounded-lg text-[11px] font-bold text-accent hover:bg-accent hover:text-white">Demo 15d</button>
                    {!e.approved ? (
                      <button onClick={() => setActivo(e.uid, true)}
                        className="flex items-center gap-1.5 px-3 py-2 bg-ok text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
