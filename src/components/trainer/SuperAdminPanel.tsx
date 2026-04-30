@@ -102,7 +102,7 @@
                <RefreshCw className="w-4 h-4" />
              </button>
              <button onClick={onLogout}
-//-123,65 +149,71 @@ export function SuperAdminPanel({ onLogout }: Props) {
+@@ -123,65 +149,71 @@ export function SuperAdminPanel({ onLogout }: Props) {
              <p className="font-serif text-lg">
                {tab === 'pendientes' ? 'No hay solicitudes pendientes' : 'Sin entrenadores'}
              </p>
