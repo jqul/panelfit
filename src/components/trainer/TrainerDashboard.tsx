@@ -1,5 +1,5 @@
 
-  lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
+   lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
  }
  
  interface Props {
@@ -24,8 +24,8 @@
    const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
    const [logsMap, setLogsMap] = useState<Record<string, any>>({})
    const library = useExerciseLibrary(userProfile.uid)
-  const clientLimit = userProfile.clientLimit ??
-    const limitReached = !demoClients && clients.length >= clientLimit
++  const clientLimit = userProfile.clientLimit ?? 5
++  const limitReached = !demoClients && clients.length >= clientLimit
  
    const fetchClients = async () => {
      setLoading(true)
@@ -64,7 +64,7 @@
  
    const handleAdd = async () => {
      if (!newClient.name.trim()) return
-    if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
++    if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
      setAdding(true)
      const token = Math.random().toString(36).slice(2, 14)
      const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), token, createdAt: Date.now() })
@@ -90,7 +90,7 @@
    const noActivity7d = clients.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS).length
    const alerts = clients.filter(c => !c.hasPlan || (c.lastActive && new Date(c.lastActive) < haceUnaS))
  
-// -188,51 +191,51 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
+
          {NAV_GROUPS.map(group => (
            <div key={group.label}>
              <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
@@ -117,7 +117,7 @@
            </button>
          )}
 
-        <button onClick={() => { if (!limitReached) setShowAdd(true); setSidebarOpen(false) }}
++        <button onClick={() => { if (!limitReached) setShowAdd(true); setSidebarOpen(false) }}
            className="w-full flex items-center gap-2 px-3 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">
            <UserPlus className="w-3.5 h-3.5" /> Nuevo cliente
          </button>
@@ -169,8 +169,9 @@
            {activeTab === 'clients' && (
              <div className="animate-fade-in space-y-5 max-w-5xl">
                <div className="flex items-center justify-between">
-                <div><h2 className="text-3xl font-serif font-bold">Clientes</h2><p className="text-muted text-sm mt-1">{clients.length}/{clientLimit} alumnos {limitReached ? '· límite alcanzado' : ''}</p></div>
-               <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo</Button>
+
++                <div><h2 className="text-3xl font-serif font-bold">Clientes</h2><p className="text-muted text-sm mt-1">{clients.length}/{clientLimit} alumnos {limitReached ? '· límite alcanzado' : ''}</p></div>
++                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo</Button>
                </div>
                <div className="flex gap-3 flex-wrap">
                  <div className="relative flex-1 min-w-40">
@@ -222,8 +223,8 @@
                        )}
                      </div>
                    ))}
-                  
-                  <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached} className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
+
++                  <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached} className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
                      <UserPlus className="w-6 h-6" /><span className="text-sm font-medium">Añadir cliente</span>
                    </button>
                  </div>
@@ -249,6 +250,3 @@
              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
            <div className="flex gap-3 pt-2">
              <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
- 
-EOF
-)
