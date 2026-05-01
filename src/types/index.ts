@@ -3,6 +3,8 @@ import { Especialidad } from '../lib/especialidades'
 export interface UserProfile {
   uid: string; email: string; displayName: string; photoURL?: string
   role: 'super_admin' | 'trainer' | 'client'; approved?: boolean; trainerId?: string; createdAt: number
+  clientLimit?: number
+  planName?: 'free' | 'trial' | 'pro' | 'studio'
 }
 
 // ── CLIENTES ──────────────────────────────────────────
