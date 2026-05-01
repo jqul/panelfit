@@ -12,6 +12,7 @@ export interface ClientData {
   id: string; name: string; surname: string; weight: number; fatPercentage: number
   muscleMass: number; totalLifted: number; planDescription: string
   trainerId: string; token: string; createdAt: number; isActive?: boolean
+  phone?: string  // WhatsApp del cliente
   objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
 }
 
