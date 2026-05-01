@@ -566,6 +566,50 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
           placeholder="Mensaje motivacional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
       </div>
 
+      {/* Teléfono WhatsApp */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h4 className="text-sm font-semibold">📱 WhatsApp del cliente</h4>
+        <div className="flex gap-2">
+          <input
+            type="tel"
+            defaultValue={(client as any).phone || ''}
+            placeholder="+34 600 000 000"
+            id="client-phone-input"
+            className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+          />
+          <button
+            onClick={async () => {
+              const input = document.getElementById('client-phone-input') as HTMLInputElement
+              const phone = input?.value?.trim()
+              if (!phone) return
+              const { error } = await supabase.from('clientes').update({ phone }).eq('id', client.id)
+              if (error) toast('Error al guardar', 'warn')
+              else { (client as any).phone = phone; toast('Teléfono guardado ✓', 'ok') }
+            }}
+            className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            Guardar
+          </button>
+        </div>
+        {(client as any).phone && (
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}?c=${client.token}`
+              const phone = (client as any).phone.replace(/\s+/g, '').replace(/^\+/, '')
+              const msg = encodeURIComponent(`Hola ${client.name} 👋
+
+Te comparto tu panel:
+
+${url}
+
+💪`)
+              window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">
+            📱 Abrir WhatsApp con {client.name}
+          </button>
+        )}
+      </div>
+
       {/* Acceso */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <h4 className="text-sm font-semibold">Acceso del cliente</h4>
