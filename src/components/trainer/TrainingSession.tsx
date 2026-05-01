@@ -379,7 +379,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
 
       <header className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center h-14 px-4 gap-3">
-          <button onClick={onBack} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+          <button onClick={onBack} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors" title="Minimizar">
             <X className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
@@ -391,6 +391,11 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
               <span className="text-xs text-muted flex-shrink-0">{totalDone}/{exercises.length}</span>
             </div>
           </div>
+          <button
+            onClick={() => setView('finish')}
+            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-ok/10 text-ok border border-ok/20 hover:bg-ok hover:text-white transition-all mr-1">
+            Terminar
+          </button>
           <button onClick={() => setView(v => v === 'map' ? 'action' : 'map')}
             className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
             {view === 'map' ? <ChevronRight className="w-5 h-5" /> : <List className="w-5 h-5" />}
