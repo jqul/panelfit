@@ -201,18 +201,42 @@ export function SuperAdminPanel({ onLogout }: Props) {
                 {/* Acciones */}
                 <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                   {/* Botones plan */}
-                  <button
-                    onClick={() => savePlan(e, 'free', 5, 0)}
-                    disabled={updatingPlan === e.uid}
-                    className="px-2.5 py-1.5 border border-border rounded-lg text-[11px] font-bold text-muted hover:text-ink disabled:opacity-40 transition-colors">
-                    Free 5
-                  </button>
-                  <button
-                    onClick={() => savePlan(e, 'trial', 9999, 15)}
-                    disabled={updatingPlan === e.uid}
-                    className="px-2.5 py-1.5 border border-accent/30 bg-accent/5 rounded-lg text-[11px] font-bold text-accent hover:bg-accent hover:text-white disabled:opacity-40 transition-colors">
-                    Demo 15d
-                  </button>
+                  {/* Selector de plan */}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => savePlan(e, 'free', 5, 0)}
+                      disabled={updatingPlan === e.uid}
+                      title="Plan gratuito — máximo 5 clientes"
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-40 ${
+                        e.profile?.planName === 'free'
+                          ? 'bg-border text-ink border-border'
+                          : 'border-border text-muted hover:text-ink'
+                      }`}>
+                      Free·5
+                    </button>
+                    <button
+                      onClick={() => savePlan(e, 'trial', 9999, 15)}
+                      disabled={updatingPlan === e.uid}
+                      title="Demo 15 días — acceso ilimitado temporal"
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-40 ${
+                        e.profile?.planName === 'trial'
+                          ? 'bg-accent text-white border-accent'
+                          : 'border-accent/30 text-accent hover:bg-accent hover:text-white'
+                      }`}>
+                      Demo·15d
+                    </button>
+                    <button
+                      onClick={() => savePlan(e, 'pro', 9999, 0)}
+                      disabled={updatingPlan === e.uid}
+                      title="Pro — sin límite de clientes"
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-40 ${
+                        e.profile?.planName === 'pro'
+                          ? 'bg-ok text-white border-ok'
+                          : 'border-ok/30 text-ok hover:bg-ok hover:text-white'
+                      }`}>
+                      Pro·∞
+                    </button>
+                  </div>
 
                   {/* Aprobar / Desactivar */}
                   {!e.approved ? (
