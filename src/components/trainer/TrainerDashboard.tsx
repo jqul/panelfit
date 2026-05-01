@@ -42,7 +42,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '' })
+  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general' })
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
@@ -93,9 +93,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), token, createdAt: Date.now() })
+    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: newClient.phone.trim(), objetivo: newClient.objetivo, token, createdAt: Date.now() })
     if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '' }); fetchClients() }
+    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general' }); fetchClients() }
     setAdding(false)
   }
 
@@ -463,10 +463,34 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
         <div className="space-y-4">
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-            <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-            <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
+              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
+              📱 WhatsApp
+            </label>
+            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))}
+              placeholder="+34 600 000 000"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            <p className="text-[10px] text-muted mt-1">Para enviar encuestas y mensajes automáticos</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
+            <select value={newClient.objetivo} onChange={e => setNewClient(p => ({ ...p, objetivo: e.target.value }))}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none">
+              <option value="general">General</option>
+              <option value="hipertrofia">💪 Hipertrofia</option>
+              <option value="fuerza">🏋️ Fuerza</option>
+              <option value="perdida_grasa">🔥 Pérdida de grasa</option>
+              <option value="resistencia">🏃 Resistencia</option>
+              <option value="rehabilitacion">🩺 Rehabilitación</option>
+              <option value="rendimiento">⚡ Rendimiento</option>
+            </select>
+          </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
             <Button className="flex-1" onClick={handleAdd} disabled={adding}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
