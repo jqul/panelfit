@@ -50,9 +50,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const library = useExerciseLibrary(userProfile.uid)
-  const clientLimit = (userProfile as any).clientLimit ?? 999
-  const limitReached = !demoClients && clients.length >= clientLimit
-  const clientLimit = (userProfile as any).clientLimit ?? 999
+  const clientLimit = userProfile.clientLimit ?? 999
   const limitReached = !demoClients && clients.length >= clientLimit
 
   const fetchClients = async () => {
