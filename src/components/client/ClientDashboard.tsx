@@ -53,6 +53,7 @@ function estimateMinutes(exercises: any[]): number {
 
 export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
+  const [sessionMinimized, setSessionMinimized] = useState(false)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [newWeight, setNewWeight] = useState('')
@@ -96,9 +97,53 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
     : -1
   const nextEx = nextExIdx >= 0 ? todaySession?.day.exercises[nextExIdx] : null
 
-  if (session) return (
-    <TrainingSession day={session.day} dayKey={session.dayKey} plan={plan}
-      logs={logs} onLogsChange={onLogsChange} onFinish={() => setSession(null)} onBack={() => setSession(null)} />
+  // Entreno activo — puede estar minimizado o a pantalla completa
+  const sessionOverlay = session && (
+    <>
+      {/* Pantalla completa cuando no está minimizado */}
+      {!sessionMinimized && (
+        <TrainingSession
+          day={session.day}
+          dayKey={session.dayKey}
+          plan={plan}
+          logs={logs}
+          onLogsChange={onLogsChange}
+          onFinish={() => { setSession(null); setSessionMinimized(false) }}
+          onBack={() => setSessionMinimized(true)}
+        />
+      )}
+      {/* Barra flotante cuando está minimizado — como Spotify */}
+      {sessionMinimized && (
+        <div className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1">
+          <div
+            className="bg-ink text-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl cursor-pointer active:scale-[0.98] transition-transform"
+            onClick={() => setSessionMinimized(false)}>
+            {/* Indicador animado */}
+            <div className="w-3 h-3 rounded-full bg-ok flex-shrink-0 animate-pulse" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate">{session.day.title}</p>
+              <p className="text-xs text-white/60">
+                {(() => {
+                  const done = session.day.exercises.filter((_: any, ri: number) => logs[`ex_${session.dayKey}_r${ri}`]?.done).length
+                  const total = session.day.exercises.length
+                  return `${done}/${total} ejercicios · Toca para continuar`
+                })()}
+              </p>
+            </div>
+            {/* Botón terminar */}
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                setSession(null)
+                setSessionMinimized(false)
+              }}
+              className="flex-shrink-0 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-semibold transition-colors">
+              Terminar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 
   const hora = new Date().getHours()
@@ -106,6 +151,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
 
   return (
     <div className="max-w-xl mx-auto" style={{paddingTop: brandBg ? 8 : 0}}>
+      {sessionOverlay}
       {/* Offline banner */}
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
