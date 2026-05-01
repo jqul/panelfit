@@ -164,6 +164,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <div className="min-w-0">
               <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
               <p className="text-[10px] text-muted capitalize truncate">{plan?.type || 'Sin tipo'}</p>
+            {(client as any).phone && (
+              <p className="text-[10px] text-[#25D366] truncate">📱 {(client as any).phone}</p>
+            )}
             </div>
           </div>
         </div>
@@ -208,9 +211,14 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-muted border border-border rounded-xl hover:border-accent hover:text-accent transition-colors">
             <Link className="w-3.5 h-3.5" /> Copiar enlace
           </button>
-          <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)}`, '_blank')}
+          <button onClick={() => {
+              const phone = (client as any).phone?.replace(/\s+/g, '').replace(/^\+/, '')
+              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)
+              const url = phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`
+              window.open(url, '_blank')
+            }}
             className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-xl hover:bg-[#25D366]/5 transition-colors">
-            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+            <MessageCircle className="w-3.5 h-3.5" /> {(client as any).phone ? 'WhatsApp directo' : 'WhatsApp'}
           </button>
         </div>
       </aside>
