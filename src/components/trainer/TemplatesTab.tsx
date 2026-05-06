@@ -71,6 +71,11 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
   const [editType, setEditType] = useState('')
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [addingType, setAddingType] = useState(false)
+  const [newTypeInput, setNewTypeInput] = useState('')
+  const [customTypes, setCustomTypes] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`pf_custom_types_${trainerId}`) || '[]') } catch { return [] }
+  })
 
   useEffect(() => {
     if (!trainerId) return
@@ -152,6 +157,7 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
   const handleSave = async () => {
     if (!editing || !editingPlan) return
     setSaving(true)
+    setAddingType(false)
     try {
       const saved = planToTmpl(
         { ...editing, name: editName.trim() || editing.name, type: editType || editing.type },
@@ -217,25 +223,99 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
             className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex-1 min-w-0 flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={() => { setEditing(null); setEditingPlan(null); setAddingType(false) }}
+              className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             <input
               value={editName}
               onChange={e => setEditName(e.target.value)}
               placeholder="Nombre de la plantilla"
               className="flex-1 px-3 py-2 bg-bg border border-border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-accent/20"
             />
-            <select
-              value={editType}
-              onChange={e => setEditType(e.target.value)}
-              className="px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none">
-              <option value="hipertrofia">💪 Hipertrofia</option>
-              <option value="fuerza">🏋️ Fuerza</option>
-              <option value="perdida_grasa">🔥 Pérdida de grasa</option>
-              <option value="resistencia">🏃 Resistencia</option>
-              <option value="rehabilitacion">🩺 Rehabilitación</option>
-              <option value="rendimiento">⚡ Rendimiento</option>
-              <option value="general">🎯 General</option>
-            </select>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex-shrink-0">
+              <Save className="w-3.5 h-3.5" />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+            <div className="flex flex-col gap-1.5 w-full mt-1">
+              {/* Tipos predefinidos + personalizados */}
+              {!addingType ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Hipertrofia','Fuerza','Pérdida de grasa','Resistencia',
+                    'Rehabilitación','Rendimiento','General','Test inicial',
+                    'Iniciación','Mantenimiento','Peaking','Volumen','Definición',
+                    ...customTypes
+                  ].map(tipo => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => setEditType(tipo)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                        editType === tipo
+                          ? 'bg-ink text-white border-ink'
+                          : 'border-border text-muted hover:border-accent hover:text-accent'
+                      }`}>
+                      {tipo}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAddingType(true)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all">
+                    + Nuevo tipo
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={newTypeInput}
+                    onChange={e => setNewTypeInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newTypeInput.trim()) {
+                        const tipo = newTypeInput.trim()
+                        const updated = [...customTypes, tipo]
+                        setCustomTypes(updated)
+                        localStorage.setItem(`pf_custom_types_${trainerId}`, JSON.stringify(updated))
+                        setEditType(tipo)
+                        setNewTypeInput('')
+                        setAddingType(false)
+                      }
+                      if (e.key === 'Escape') { setAddingType(false); setNewTypeInput('') }
+                    }}
+                    placeholder="Nombre del nuevo tipo..."
+                    className="flex-1 px-3 py-2 bg-bg border border-accent/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tipo = newTypeInput.trim()
+                      if (!tipo) return
+                      const updated = [...customTypes, tipo]
+                      setCustomTypes(updated)
+                      localStorage.setItem(`pf_custom_types_${trainerId}`, JSON.stringify(updated))
+                      setEditType(tipo)
+                      setNewTypeInput('')
+                      setAddingType(false)
+                    }}
+                    className="px-3 py-2 bg-ink text-white rounded-xl text-sm font-semibold">
+                    Crear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAddingType(false); setNewTypeInput('') }}
+                    className="px-3 py-2 border border-border rounded-xl text-sm text-muted">
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <button
             onClick={handleSave}
