@@ -1,39 +1,89 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { ClientData, TrainingTemplate } from '../../types'
+import { ClientData, TrainingTemplate, TrainingPlan, UserProfile } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, X, ArrowLeft, Save } from 'lucide-react'
+import { TrainingPlanEditor } from './TrainingPlanEditor'
 
 interface Props {
   trainerId: string
   clients: ClientData[]
+  userProfile?: UserProfile
 }
 
-const LS_KEY = (uid: string) => `pf_templates_${uid}`
+const LS_KEY      = (uid: string) => `pf_templates_${uid}`
 const LS_MIGRATED = (uid: string) => `pf_tmpl_migrated_${uid}`
 
-export function TemplatesTab({ trainerId, clients }: Props) {
+// Plantilla vacía para empezar desde cero
+function emptyTemplate(trainerId: string): TrainingTemplate {
+  return {
+    id: `tmpl_${Date.now()}`,
+    trainerId,
+    name: 'Nueva plantilla',
+    type: 'hipertrofia',
+    description: '',
+    weeks: [
+      {
+        label: 'Semana 1',
+        rpe: '',
+        isCurrent: false,
+        days: [
+          { title: 'Día A', focus: '', exercises: [] },
+          { title: 'Día B', focus: '', exercises: [] },
+          { title: 'Día C', focus: '', exercises: [] },
+        ]
+      }
+    ],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  }
+}
+
+// Convertir TrainingTemplate a TrainingPlan para el editor
+function tmplToPlan(tmpl: TrainingTemplate): TrainingPlan {
+  return {
+    clientId: 'template',
+    type: tmpl.type,
+    weeks: tmpl.weeks,
+    message: '',
+    restMain: 180,
+    restAcc: 90,
+    restWarn: 30,
+  } as TrainingPlan
+}
+
+// Convertir TrainingPlan de vuelta a template
+function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan): TrainingTemplate {
+  return {
+    ...tmpl,
+    type: plan.type || tmpl.type,
+    weeks: plan.weeks || tmpl.weeks,
+    updatedAt: Date.now(),
+  }
+}
+
+export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
   const [templates, setTemplates] = useState<TrainingTemplate[]>([])
   const [loading, setLoading] = useState(true)
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [newName, setNewName] = useState('')
+  const [editing, setEditing] = useState<TrainingTemplate | null>(null)
+  const [editingPlan, setEditingPlan] = useState<TrainingPlan | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editType, setEditType] = useState('')
   const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     if (!trainerId) return
-
-    // Cargar caché local inmediatamente
+    // Caché local inmediata
     try {
       const cached = localStorage.getItem(LS_KEY(trainerId))
       if (cached) setTemplates(JSON.parse(cached))
     } catch {}
-
     loadFromSupabase()
   }, [trainerId])
 
   const loadFromSupabase = async () => {
     setLoading(true)
-
     // Migrar desde localStorage si no se ha hecho
     const migrated = localStorage.getItem(LS_MIGRATED(trainerId))
     if (!migrated) {
@@ -41,18 +91,18 @@ export function TemplatesTab({ trainerId, clients }: Props) {
         const local: TrainingTemplate[] = JSON.parse(localStorage.getItem(LS_KEY(trainerId)) || '[]')
         if (local.length > 0) {
           const rows = local.map(t => ({
-            id: t.id || `tmpl_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+            id: t.id || `tmpl_${Date.now()}`,
             trainer_id: trainerId,
             name: t.name || 'Plantilla',
-            description: (t as any).description || '',
+            description: t.description || '',
             plan: t,
-            created_at: Date.now(),
-            updated_at: Date.now(),
+            created_at: t.createdAt || Date.now(),
+            updated_at: t.updatedAt || Date.now(),
           }))
           const { error } = await supabase.from('plan_templates').upsert(rows, { onConflict: 'id' })
           if (!error) {
             localStorage.setItem(LS_MIGRATED(trainerId), '1')
-            console.log(`[PanelFit] ${local.length} plantillas migradas a Supabase ✓`)
+            console.log(`[PanelFit] ${local.length} plantillas migradas ✓`)
           }
         } else {
           localStorage.setItem(LS_MIGRATED(trainerId), '1')
@@ -60,7 +110,6 @@ export function TemplatesTab({ trainerId, clients }: Props) {
       } catch {}
     }
 
-    // Cargar desde Supabase
     const { data, error } = await supabase
       .from('plan_templates')
       .select('*')
@@ -72,7 +121,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
         ...r.plan,
         id: r.id,
         name: r.name,
-        description: r.description,
+        description: r.description || '',
       }))
       setTemplates(parsed)
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(parsed))
@@ -80,26 +129,41 @@ export function TemplatesTab({ trainerId, clients }: Props) {
     setLoading(false)
   }
 
-  const saveTemplate = async (tmpl: TrainingTemplate) => {
-    setSaving(true)
+  const persistTemplate = async (tmpl: TrainingTemplate) => {
     const row = {
       id: tmpl.id,
       trainer_id: trainerId,
-      name: tmpl.name || 'Plantilla',
-      description: (tmpl as any).description || '',
+      name: tmpl.name,
+      description: tmpl.description || '',
       plan: tmpl,
-      created_at: Date.now(),
+      created_at: tmpl.createdAt || Date.now(),
       updated_at: Date.now(),
     }
     const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
-    if (error) { toast('Error al guardar plantilla', 'warn'); setSaving(false); return }
+    if (error) throw error
 
     const updated = templates.find(t => t.id === tmpl.id)
       ? templates.map(t => t.id === tmpl.id ? tmpl : t)
       : [tmpl, ...templates]
     setTemplates(updated)
     localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
-    toast('Plantilla guardada ✓', 'ok')
+  }
+
+  const handleSave = async () => {
+    if (!editing || !editingPlan) return
+    setSaving(true)
+    try {
+      const saved = planToTmpl(
+        { ...editing, name: editName.trim() || editing.name, type: editType || editing.type },
+        editingPlan
+      )
+      await persistTemplate(saved)
+      toast('Plantilla guardada ✓', 'ok')
+      setEditing(null)
+      setEditingPlan(null)
+    } catch {
+      toast('Error al guardar', 'warn')
+    }
     setSaving(false)
   }
 
@@ -117,75 +181,141 @@ export function TemplatesTab({ trainerId, clients }: Props) {
       ...tmpl,
       id: `tmpl_${Date.now()}`,
       name: `${tmpl.name} (copia)`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     }
-    await saveTemplate(copy)
+    try {
+      await persistTemplate(copy)
+      toast('Plantilla duplicada ✓', 'ok')
+    } catch {
+      toast('Error al duplicar', 'warn')
+    }
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  const startNew = () => {
+    const tmpl = emptyTemplate(trainerId)
+    setEditing(tmpl)
+    setEditName(tmpl.name)
+    setEditType(tmpl.type)
+    setEditingPlan(tmplToPlan(tmpl))
+  }
 
+  const startEdit = (tmpl: TrainingTemplate) => {
+    setEditing(tmpl)
+    setEditName(tmpl.name)
+    setEditType(tmpl.type)
+    setEditingPlan(tmplToPlan(tmpl))
+  }
+
+  // ── VISTA EDITOR ────────────────────────────────────
+  if (editing && editingPlan) {
+    return (
+      <div className="animate-fade-in flex flex-col h-full min-h-0">
+        {/* Header del editor */}
+        <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+          <button onClick={() => { setEditing(null); setEditingPlan(null) }}
+            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="flex-1 min-w-0 flex items-center gap-3">
+            <input
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              placeholder="Nombre de la plantilla"
+              className="flex-1 px-3 py-2 bg-bg border border-border rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            <select
+              value={editType}
+              onChange={e => setEditType(e.target.value)}
+              className="px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none">
+              <option value="hipertrofia">💪 Hipertrofia</option>
+              <option value="fuerza">🏋️ Fuerza</option>
+              <option value="perdida_grasa">🔥 Pérdida de grasa</option>
+              <option value="resistencia">🏃 Resistencia</option>
+              <option value="rehabilitacion">🩺 Rehabilitación</option>
+              <option value="rendimiento">⚡ Rendimiento</option>
+              <option value="general">🎯 General</option>
+            </select>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex-shrink-0">
+            <Save className="w-3.5 h-3.5" />
+            {saving ? 'Guardando...' : 'Guardar plantilla'}
+          </button>
+        </div>
+
+        {/* Editor de plan reutilizado */}
+        <div className="flex-1 overflow-hidden">
+          <TrainingPlanEditor
+            plan={editingPlan}
+            onChange={setEditingPlan}
+            trainerId={trainerId}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // ── VISTA LISTA ──────────────────────────────────────
   return (
     <div className="animate-fade-in space-y-5 max-w-2xl">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-serif font-bold">Plantillas</h2>
-          <p className="text-muted text-sm mt-1">
-            Planes reutilizables que puedes aplicar a cualquier cliente
-          </p>
+          <p className="text-muted text-sm mt-1">Planes reutilizables para aplicar a cualquier cliente</p>
         </div>
-        <span className="text-sm text-muted">{templates.length} plantilla{templates.length !== 1 ? 's' : ''}</span>
+        <button onClick={startNew}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+          <Plus className="w-4 h-4" /> Nueva plantilla
+        </button>
       </div>
 
-      {/* Info */}
-      <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 flex items-start gap-2">
-        <ClipboardCheck className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-muted">
-          Las plantillas se guardan en la nube y están disponibles en cualquier dispositivo.
-          Para crear una plantilla, ve al plan de un cliente y usa el botón <strong>"Guardar como plantilla"</strong>.
-        </p>
-      </div>
-
-      {templates.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}
+        </div>
+      ) : templates.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
           <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="font-serif text-lg font-bold">Sin plantillas</p>
-          <p className="text-sm mt-1 max-w-xs mx-auto">
-            Crea el plan de un cliente, pulsa <strong>"Guardar como plantilla"</strong> y aparecerá aquí.
-          </p>
+          <p className="text-sm mt-1">Crea tu primera plantilla y aplícala a cualquier cliente en segundos</p>
+          <button onClick={startNew}
+            className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
+            Crear plantilla
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
           {templates.map(tmpl => (
             <div key={tmpl.id} className="bg-card border border-border rounded-2xl overflow-hidden">
-              {/* Header */}
               <div className="flex items-center gap-3 px-5 py-4">
-                <div className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => setExpanded(expanded === tmpl.id ? null : tmpl.id)}>
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold truncate">{tmpl.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <p className="text-xs text-muted">
-                      {(tmpl as any).weeks?.length || 0} semanas
-                      {' · '}
-                      {(tmpl as any).diasSemana || 0} días/semana
-                    </p>
-                    {(tmpl as any).type && (
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {tmpl.type && (
                       <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold capitalize">
-                        {(tmpl as any).type}
+                        {tmpl.type}
                       </span>
                     )}
+                    <p className="text-xs text-muted">
+                      {tmpl.weeks?.length || 0} semana{(tmpl.weeks?.length || 0) !== 1 ? 's' : ''}
+                      {' · '}
+                      {tmpl.weeks?.[0]?.days?.length || 0} días/semana
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => duplicateTemplate(tmpl)}
-                    title="Duplicar"
+                  <button onClick={() => startEdit(tmpl)} title="Editar"
+                    className="p-1.5 text-muted hover:text-accent rounded-lg transition-colors">
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => duplicateTemplate(tmpl)} title="Duplicar"
                     className="p-1.5 text-muted hover:text-accent rounded-lg transition-colors">
                     <Copy className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => deleteTemplate(tmpl.id)}
-                    title="Eliminar"
+                  <button onClick={() => deleteTemplate(tmpl.id)} title="Eliminar"
                     className="p-1.5 text-muted hover:text-warn rounded-lg transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -198,38 +328,23 @@ export function TemplatesTab({ trainerId, clients }: Props) {
                 </div>
               </div>
 
-              {/* Detalle expandido */}
               {expanded === tmpl.id && (
                 <div className="border-t border-border px-5 py-4 space-y-3">
-                  {/* Semanas */}
-                  {((tmpl as any).weeks || []).map((week: any, wi: number) => (
-                    <div key={wi} className="space-y-1">
-                      <p className="text-xs font-bold text-muted uppercase tracking-wider">{week.label}</p>
+                  {(tmpl.weeks || []).map((week, wi) => (
+                    <div key={wi}>
+                      <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5">{week.label}</p>
                       <div className="grid grid-cols-2 gap-1.5">
-                        {(week.days || []).map((day: any, di: number) => (
+                        {(week.days || []).map((day, di) => (
                           <div key={di} className="bg-bg border border-border rounded-lg px-3 py-2">
                             <p className="text-xs font-semibold truncate">{day.title}</p>
-                            <p className="text-[10px] text-muted">{day.exercises?.length || 0} ejercicios</p>
+                            <p className="text-[10px] text-muted">
+                              {day.exercises?.length || 0} ejercicio{(day.exercises?.length || 0) !== 1 ? 's' : ''}
+                            </p>
                           </div>
                         ))}
                       </div>
                     </div>
                   ))}
-
-                  {/* Clientes que la usan */}
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-[10px] text-muted uppercase tracking-wider mb-2 font-semibold">
-                      Aplicar a cliente
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {clients.map(c => (
-                        <button key={c.id}
-                          className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
-                          {c.name} {c.surname}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
