@@ -40,8 +40,71 @@ const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] 
   { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
 ]
 
-function loadTemplates(trainerId: string): TrainingTemplate[] {
-  try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
+function useTemplates(trainerId: string) {
+  const [templates, setTemplates] = useState<TrainingTemplate[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
+  })
+
+  useEffect(() => {
+    if (!trainerId) return
+    // Migrar desde localStorage a Supabase si no se ha hecho
+    const migrated = localStorage.getItem(`pf_tmpl_migrated_${trainerId}`)
+    const local: TrainingTemplate[] = (() => {
+      try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
+    })()
+
+    const syncFromSupabase = async () => {
+      const { data } = await supabase.from('plan_templates')
+        .select('*').eq('trainer_id', trainerId).order('created_at')
+      if (data && data.length > 0) {
+        const parsed = data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description }))
+        setTemplates(parsed)
+        localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(parsed))
+      } else if (!migrated && local.length > 0) {
+        // Migrar localStorage a Supabase
+        const rows = local.map(t => ({
+          id: t.id || `tmpl_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+          trainer_id: trainerId,
+          name: t.name || 'Plantilla',
+          description: (t as any).description || '',
+          plan: t,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+        }))
+        await supabase.from('plan_templates').upsert(rows, { onConflict: 'id' })
+        localStorage.setItem(`pf_tmpl_migrated_${trainerId}`, '1')
+      }
+    }
+    syncFromSupabase()
+  }, [trainerId])
+
+  const saveTemplate = async (tmpl: TrainingTemplate) => {
+    const updated = templates.find(t => t.id === tmpl.id)
+      ? templates.map(t => t.id === tmpl.id ? tmpl : t)
+      : [...templates, tmpl]
+    setTemplates(updated)
+    localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
+
+    const row = {
+      id: tmpl.id,
+      trainer_id: trainerId,
+      name: tmpl.name || 'Plantilla',
+      description: (tmpl as any).description || '',
+      plan: tmpl,
+      created_at: Date.now(),
+      updated_at: Date.now(),
+    }
+    await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+  }
+
+  const deleteTemplate = async (id: string) => {
+    const updated = templates.filter(t => t.id !== id)
+    setTemplates(updated)
+    localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
+    await supabase.from('plan_templates').delete().eq('id', id)
+  }
+
+  return { templates, saveTemplate, deleteTemplate }
 }
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
@@ -64,7 +127,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
   const otherClients = allClients.filter(c => c.id !== client.id)
-  const templates = loadTemplates(userProfile.uid)
+  const { templates, saveTemplate, deleteTemplate: deleteTemplateFromDB } = useTemplates(userProfile.uid)
   const trainerEsp: Especialidad[] = (() => {
     try {
       const p = JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}')
