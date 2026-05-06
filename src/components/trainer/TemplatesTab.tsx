@@ -251,7 +251,6 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
           <TrainingPlanEditor
             plan={editingPlan}
             onChange={setEditingPlan}
-            trainerId={trainerId}
           />
         </div>
       </div>
