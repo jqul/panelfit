@@ -4,6 +4,7 @@ import { ClientData, TrainingTemplate, TrainingPlan, UserProfile } from '../../t
 import { toast } from '../shared/Toast'
 import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, X, ArrowLeft, Save } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
+import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
 interface Props {
   trainerId: string
@@ -71,6 +72,7 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
   const [editType, setEditType] = useState('')
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const library = useExerciseLibrary(trainerId)
   const [addingType, setAddingType] = useState(false)
   const [newTypeInput, setNewTypeInput] = useState('')
   const [customTypes, setCustomTypes] = useState<string[]>(() => {
@@ -331,6 +333,7 @@ export function TemplatesTab({ trainerId, clients, userProfile }: Props) {
           <TrainingPlanEditor
             plan={editingPlan}
             onChange={setEditingPlan}
+            library={library.exercises}
           />
         </div>
       </div>
