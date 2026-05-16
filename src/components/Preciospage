@@ -1,0 +1,302 @@
+import { useState } from 'react'
+import { Check, X, Zap, Shield, Star } from 'lucide-react'
+
+const PLANES = [
+  {
+    id: 'starter',
+    nombre: 'Starter',
+    desc: 'Para empezar a profesionalizar tu trabajo',
+    precio_mes: 19,
+    precio_anual: 14,
+    limite: '15 clientes',
+    color: 'border-border',
+    badge: null,
+    cta: 'Empezar gratis 15 días',
+    features: [
+      'Hasta 15 clientes',
+      'Panel cliente móvil completo',
+      'Planes de entrenamiento',
+      'Timer + seguimiento de series',
+      'Biblioteca de ejercicios y vídeos',
+      'Fotos y peso de progreso',
+      'Encuestas de bienestar',
+      'Programación envíos WhatsApp',
+      'Exportar datos CSV',
+    ],
+    noFeatures: [
+      'Informe PDF del cliente',
+      'Marca propia (logo/color)',
+      'Dashboard de negocio',
+      'Página pública de captación',
+    ]
+  },
+  {
+    id: 'pro',
+    nombre: 'Pro',
+    desc: 'Para entrenadores con cartera consolidada',
+    precio_mes: 39,
+    precio_anual: 29,
+    limite: 'Clientes ilimitados',
+    color: 'border-accent',
+    badge: '⭐ Más popular',
+    cta: 'Empezar gratis 15 días',
+    features: [
+      'Clientes ilimitados',
+      'Todo lo del plan Starter',
+      'Informe PDF del cliente',
+      'Marca propia (logo y color)',
+      'Dashboard de negocio',
+      'Página pública de captación',
+      'Soporte prioritario por WhatsApp',
+    ],
+    noFeatures: [
+      'Subdominio personalizado',
+      'Multi-entrenador',
+      'Onboarding individual',
+    ]
+  },
+  {
+    id: 'studio',
+    nombre: 'Studio',
+    desc: 'Para centros y entrenadores con equipo',
+    precio_mes: 79,
+    precio_anual: 59,
+    limite: 'Clientes ilimitados',
+    color: 'border-border',
+    badge: null,
+    cta: 'Contactar',
+    features: [
+      'Clientes ilimitados',
+      'Todo lo del plan Pro',
+      'Subdominio personalizado',
+      'Varios entrenadores en una cuenta',
+      'Onboarding individual con Javier',
+      'Acceso prioritario a nuevas features',
+    ],
+    noFeatures: []
+  },
+]
+
+const COMPARATIVA = [
+  { label: 'Panel cliente móvil', starter: true, pro: true, studio: true },
+  { label: 'Planes de entrenamiento', starter: true, pro: true, studio: true },
+  { label: 'Timer + seguimiento series', starter: true, pro: true, studio: true },
+  { label: 'Biblioteca ejercicios/vídeos', starter: true, pro: true, studio: true },
+  { label: 'Fotos y peso progreso', starter: true, pro: true, studio: true },
+  { label: 'Encuestas de bienestar', starter: true, pro: true, studio: true },
+  { label: 'Programación envíos WhatsApp', starter: true, pro: true, studio: true },
+  { label: 'Exportar datos CSV', starter: true, pro: true, studio: true },
+  { label: 'Informe PDF del cliente', starter: false, pro: true, studio: true },
+  { label: 'Marca propia (logo/color)', starter: false, pro: true, studio: true },
+  { label: 'Dashboard de negocio', starter: false, pro: true, studio: true },
+  { label: 'Página pública de captación', starter: false, pro: true, studio: true },
+  { label: 'Subdominio personalizado', starter: false, pro: false, studio: true },
+  { label: 'Multi-entrenador', starter: false, pro: false, studio: true },
+  { label: 'Onboarding individual', starter: false, pro: false, studio: true },
+]
+
+export function PreciosPage() {
+  const [anual, setAnual] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-bg py-16 px-4">
+      <div className="max-w-5xl mx-auto space-y-16">
+
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-5xl font-serif font-bold">
+            Panel<span className="text-accent italic">Fit</span>
+          </h1>
+          <p className="text-xl text-muted max-w-xl mx-auto">
+            Software de gestión para entrenadores personales. Simple, rápido y pensado para móvil.
+          </p>
+
+          {/* Toggle anual/mensual */}
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <span className={`text-sm font-medium ${!anual ? 'text-ink' : 'text-muted'}`}>Mensual</span>
+            <button
+              onClick={() => setAnual(!anual)}
+              className={`w-12 h-6 rounded-full flex items-center px-0.5 transition-colors ${anual ? 'bg-accent' : 'bg-border'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${anual ? 'translate-x-6' : ''}`} />
+            </button>
+            <span className={`text-sm font-medium ${anual ? 'text-ink' : 'text-muted'}`}>
+              Anual <span className="text-ok font-bold">-25%</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Demo banner */}
+        <div className="bg-accent/5 border border-accent/20 rounded-2xl px-6 py-4 flex items-center gap-4 max-w-2xl mx-auto">
+          <Zap className="w-5 h-5 text-accent flex-shrink-0" />
+          <div>
+            <p className="text-sm font-bold">Prueba gratuita de 15 días</p>
+            <p className="text-xs text-muted">Acceso completo al plan Pro sin tarjeta de crédito. Cancela cuando quieras.</p>
+          </div>
+          <a href="mailto:javier.quinones.lopez@gmail.com?subject=Quiero probar PanelFit"
+            className="flex-shrink-0 px-4 py-2 bg-accent text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
+            Solicitar demo
+          </a>
+        </div>
+
+        {/* Cards de planes */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {PLANES.map(plan => (
+            <div key={plan.id}
+              className={`bg-card border-2 rounded-2xl overflow-hidden flex flex-col ${plan.color} ${plan.id === 'pro' ? 'shadow-xl scale-[1.02]' : ''}`}>
+
+              {/* Badge */}
+              <div className="h-8 flex items-center justify-center">
+                {plan.badge && (
+                  <span className="text-xs font-bold bg-accent text-white px-3 py-1 rounded-full">
+                    {plan.badge}
+                  </span>
+                )}
+              </div>
+
+              <div className="px-6 pb-6 space-y-5 flex-1 flex flex-col">
+                {/* Nombre y descripción */}
+                <div>
+                  <h2 className="text-xl font-serif font-bold">{plan.nombre}</h2>
+                  <p className="text-xs text-muted mt-1">{plan.desc}</p>
+                </div>
+
+                {/* Precio */}
+                <div>
+                  <div className="flex items-end gap-1">
+                    <span className="text-4xl font-serif font-bold">
+                      {anual ? plan.precio_anual : plan.precio_mes}€
+                    </span>
+                    <span className="text-muted text-sm mb-1">/mes</span>
+                  </div>
+                  {anual && (
+                    <p className="text-xs text-ok font-semibold">
+                      Facturado anual · {plan.precio_anual * 12}€/año
+                    </p>
+                  )}
+                  <p className="text-xs text-muted mt-1 font-semibold">{plan.limite}</p>
+                </div>
+
+                {/* CTA */}
+                <a
+                  href={plan.id === 'studio'
+                    ? 'mailto:javier.quinones.lopez@gmail.com?subject=Consulta plan Studio'
+                    : 'mailto:javier.quinones.lopez@gmail.com?subject=Quiero probar PanelFit ' + plan.nombre}
+                  className={`block text-center py-3 rounded-xl text-sm font-bold transition-all ${
+                    plan.id === 'pro'
+                      ? 'bg-accent text-white hover:opacity-90'
+                      : 'border border-border text-ink hover:border-accent hover:text-accent'
+                  }`}>
+                  {plan.cta}
+                </a>
+
+                {/* Features incluidas */}
+                <div className="space-y-2 flex-1">
+                  {plan.features.map(f => (
+                    <div key={f} className="flex items-start gap-2">
+                      <Check className="w-3.5 h-3.5 text-ok flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-ink">{f}</p>
+                    </div>
+                  ))}
+                  {plan.noFeatures.map(f => (
+                    <div key={f} className="flex items-start gap-2 opacity-40">
+                      <X className="w-3.5 h-3.5 text-muted flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted">{f}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tabla comparativa completa */}
+        <div className="space-y-4">
+          <h2 className="text-2xl font-serif font-bold text-center">Comparativa completa</h2>
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            {/* Header */}
+            <div className="grid grid-cols-4 bg-ink text-white">
+              <div className="px-4 py-3 text-sm font-semibold">Funcionalidad</div>
+              {['Starter', 'Pro', 'Studio'].map(p => (
+                <div key={p} className="px-4 py-3 text-sm font-semibold text-center">{p}</div>
+              ))}
+            </div>
+            {/* Filas */}
+            {COMPARATIVA.map((row, i) => (
+              <div key={row.label} className={`grid grid-cols-4 border-t border-border ${i % 2 === 0 ? 'bg-bg-alt/30' : ''}`}>
+                <div className="px-4 py-3 text-sm text-ink">{row.label}</div>
+                {[row.starter, row.pro, row.studio].map((has, j) => (
+                  <div key={j} className="px-4 py-3 flex items-center justify-center">
+                    {has
+                      ? <Check className="w-4 h-4 text-ok" />
+                      : <span className="text-border text-lg leading-none">—</span>
+                    }
+                  </div>
+                ))}
+              </div>
+            ))}
+            {/* Precios footer */}
+            <div className="grid grid-cols-4 border-t-2 border-border bg-card">
+              <div className="px-4 py-4 text-sm font-bold">
+                {anual ? 'Precio anual (-25%)' : 'Precio mensual'}
+              </div>
+              {[[19,14],[39,29],[79,59]].map(([mes, año], j) => (
+                <div key={j} className="px-4 py-4 text-center">
+                  <p className="text-lg font-serif font-bold text-ink">
+                    {anual ? año : mes}€<span className="text-xs text-muted font-normal">/mes</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* FAQs */}
+        <div className="max-w-2xl mx-auto space-y-4">
+          <h2 className="text-2xl font-serif font-bold text-center">Preguntas frecuentes</h2>
+          {[
+            {
+              q: '¿Puedo cambiar de plan en cualquier momento?',
+              a: 'Sí. Puedes subir o bajar de plan cuando quieras. El cambio es inmediato y se prorratea el coste si pagas anual.'
+            },
+            {
+              q: '¿Mis clientes necesitan descargar una app?',
+              a: 'No. El panel del cliente funciona como una web en el móvil — el entrenador manda un enlace por WhatsApp y el cliente lo abre directamente en el navegador. Puede añadirlo a su pantalla de inicio como si fuera una app.'
+            },
+            {
+              q: '¿Qué pasa con mis datos si cancelo?',
+              a: 'Tienes 30 días para exportar todos tus datos antes de que se eliminen. Siempre puedes exportar CSV en cualquier momento mientras tengas cuenta activa.'
+            },
+            {
+              q: '¿El plan Demo es realmente gratis?',
+              a: 'Sí. 15 días con acceso completo al plan Pro, sin tarjeta de crédito. Al terminar puedes elegir el plan que mejor se adapte a tu negocio.'
+            },
+            {
+              q: '¿Cuánto tarda en configurarse?',
+              a: 'Menos de 10 minutos. Creas tu cuenta, añades un cliente y le mandas el enlace. No hay instalaciones ni configuraciones complicadas.'
+            },
+          ].map(({ q, a }) => (
+            <div key={q} className="bg-card border border-border rounded-xl p-5">
+              <p className="font-semibold text-sm mb-1.5">{q}</p>
+              <p className="text-sm text-muted leading-relaxed">{a}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA final */}
+        <div className="bg-ink text-white rounded-2xl px-8 py-10 text-center space-y-4">
+          <Shield className="w-8 h-8 mx-auto opacity-60" />
+          <h2 className="text-2xl font-serif font-bold">Empieza gratis hoy</h2>
+          <p className="text-white/70 max-w-md mx-auto text-sm">
+            15 días con acceso completo. Sin tarjeta. Sin compromiso. Si no te convence, no pagas nada.
+          </p>
+          <a href="mailto:javier.quinones.lopez@gmail.com?subject=Quiero probar PanelFit"
+            className="inline-block px-8 py-3 bg-white text-ink rounded-xl font-bold text-sm hover:opacity-90 transition-opacity">
+            Solicitar acceso demo
+          </a>
+          <p className="text-white/40 text-xs">o escríbeme a javier.quinones.lopez@gmail.com</p>
+        </div>
+
+      </div>
+    </div>
+  )
+}
