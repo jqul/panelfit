@@ -6,8 +6,8 @@ const PLANES = [
     id: 'starter',
     nombre: 'Starter',
     desc: 'Para empezar a profesionalizar tu trabajo',
-    precio_mes: 19,
-    precio_anual: 14,
+    precio_mes: 15,
+    precio_anual: 10,
     limite: '15 clientes',
     color: 'border-border',
     badge: null,
@@ -34,8 +34,8 @@ const PLANES = [
     id: 'pro',
     nombre: 'Pro',
     desc: 'Para entrenadores con cartera consolidada',
-    precio_mes: 39,
-    precio_anual: 29,
+    precio_mes: 30,
+    precio_anual: 25,
     limite: 'Clientes ilimitados',
     color: 'border-accent',
     badge: '⭐ Más popular',
@@ -59,8 +59,8 @@ const PLANES = [
     id: 'studio',
     nombre: 'Studio',
     desc: 'Para centros y entrenadores con equipo',
-    precio_mes: 79,
-    precio_anual: 59,
+    precio_mes: 50,
+    precio_anual: 45,
     limite: 'Clientes ilimitados',
     color: 'border-border',
     badge: null,
@@ -239,7 +239,7 @@ export function PreciosPage() {
               <div className="px-4 py-4 text-sm font-bold">
                 {anual ? 'Precio anual (-25%)' : 'Precio mensual'}
               </div>
-              {[[19,14],[39,29],[79,59]].map(([mes, año], j) => (
+              {[[15,10],[30,25],[50,45]].map(([mes, año], j) => (
                 <div key={j} className="px-4 py-4 text-center">
                   <p className="text-lg font-serif font-bold text-ink">
                     {anual ? año : mes}€<span className="text-xs text-muted font-normal">/mes</span>
