@@ -10,7 +10,7 @@ const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m
 const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 
-type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo'
+type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending'
 
 const DEMO_PROFILE_TRAINER: UserProfile = {
   uid: DEMO_TRAINER_ID, email: 'demo@panelfit.app', displayName: 'Alex Trainer',
