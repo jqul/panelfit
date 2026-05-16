@@ -20,7 +20,7 @@ import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
-type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
+type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config' | 'perfil'
 
 interface Props {
   client: ClientData
@@ -368,6 +368,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           )}
         </main>
       </div>
+
+      {/* Pestaña Perfil */}
+      {activeTab === 'perfil' && <PerfilTab client={client} logs={logs} onUpdate={async (updates) => {
+        await supabase.from('clientes').update(updates).eq('id', client.id)
+        Object.assign(client, updates)
+        toast('Datos actualizados ✓', 'ok')
+      }} />}
 
       {/* Informe PDF */}
       {showInforme && (
@@ -1117,6 +1124,204 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
             onMacrosChange={m=>updateMacros(m)}/>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Pestaña Perfil del cliente ────────────────────────
+function PerfilTab({ client, logs, onUpdate }: {
+  client: ClientData
+  logs: TrainingLogs
+  onUpdate: (updates: Record<string, any>) => Promise<void>
+}) {
+  const c = client as any
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: c.name || '',
+    surname: c.surname || '',
+    phone: c.phone || '',
+    objetivo: c.objetivo || '',
+    altura: c.altura || '',
+    weight: c.weight || '',
+    genero: c.genero || '',
+    fechanacimiento: c.fechanacimiento || '',
+    notas_privadas: c.notas_privadas || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  // Calcular edad
+  const edad = (() => {
+    if (!c.fechanacimiento) return null
+    const birth = new Date(c.fechanacimiento)
+    const today = new Date()
+    return today.getFullYear() - birth.getFullYear() -
+      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+  })()
+
+  // Estadísticas del cliente
+  const totalSessions = new Set(
+    Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone)
+  ).size
+
+  const lastSession = Object.values(logs)
+    .filter((l: any) => l.done && l.dateDone)
+    .map((l: any) => l.dateDone as string)
+    .sort().reverse()[0]
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onUpdate({
+      name: form.name,
+      surname: form.surname,
+      phone: form.phone,
+      objetivo: form.objetivo,
+      altura: form.altura ? parseFloat(form.altura) : null,
+      weight: form.weight ? parseFloat(form.weight) : 0,
+      genero: form.genero || null,
+      fechanacimiento: form.fechanacimiento || null,
+    })
+    setEditing(false)
+    setSaving(false)
+  }
+
+  return (
+    <div className="animate-fade-in space-y-5 max-w-xl">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-2xl font-serif font-bold text-accent">
+            {c.name?.[0]?.toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-serif font-bold">{c.name} {c.surname}</h2>
+            <p className="text-sm text-muted capitalize">{c.objetivo || 'Sin objetivo'}{edad ? ` · ${edad} años` : ''}</p>
+          </div>
+        </div>
+        <button onClick={() => setEditing(!editing)}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${editing ? 'border-accent text-accent bg-accent/5' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
+          {editing ? 'Cancelar' : '✏️ Editar'}
+        </button>
+      </div>
+
+      {/* Stats rápidas */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Sesiones', value: totalSessions, color: 'text-accent' },
+          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', color: 'text-ok' },
+          { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', color: 'text-ink' },
+        ].map(s => (
+          <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Datos del cliente */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
+        </div>
+        {!editing ? (
+          <div className="divide-y divide-border">
+            {[
+              { label: 'Nombre', value: `${c.name || '—'} ${c.surname || ''}` },
+              { label: 'WhatsApp', value: c.phone || '—' },
+              { label: 'Objetivo', value: c.objetivo || '—' },
+              { label: 'Altura', value: c.altura ? `${c.altura} cm` : '—' },
+              { label: 'Peso', value: c.weight ? `${c.weight} kg` : '—' },
+              { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
+              { label: 'Fecha nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center px-5 py-3">
+                <p className="text-xs font-semibold text-muted w-32 flex-shrink-0">{row.label}</p>
+                <p className="text-sm text-ink">{row.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-5 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Nombre</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Apellido</label>
+                <input value={form.surname} onChange={e => setForm(f => ({ ...f, surname: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1">WhatsApp</label>
+              <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+34 600 000 000"
+                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1">Objetivo</label>
+              <input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
+                placeholder="Hipertrofia, fuerza, déficit..."
+                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Altura (cm)</label>
+                <input type="number" value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Peso (kg)</label>
+                <input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Género</label>
+                <select value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none">
+                  <option value="">Sin especificar</option>
+                  <option value="h">Masculino</option>
+                  <option value="m">Femenino</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1">Fecha nacimiento</label>
+                <input type="date" value={form.fechanacimiento} onChange={e => setForm(f => ({ ...f, fechanacimiento: e.target.value }))}
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+            </div>
+            <button onClick={handleSave} disabled={saving}
+              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Notas privadas del entrenador */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas (solo tú las ves)</p>
+        </div>
+        <div className="p-4">
+          <textarea
+            defaultValue={c.notas_privadas || ''}
+            onBlur={async e => {
+              const val = e.target.value
+              await onUpdate({ notas_privadas: val })
+            }}
+            placeholder="Observaciones, lesiones, preferencias, historial médico..."
+            rows={4}
+            className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
+          />
+          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
+        </div>
+      </div>
+
     </div>
   )
 }
