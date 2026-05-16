@@ -45,7 +45,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general' })
+  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechaNacimiento: '' })
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
@@ -61,7 +61,15 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (demoClients) { setClients(demoClients as ClientWithStats[]); setLoading(false); return }
     const { data, error } = await supabase.from('clientes').select('*').eq('trainerId', userProfile.uid)
     if (error) { console.error('Error:', error); setLoading(false); return }
-    const mapped = mapClientes(data || [])
+    // mapClientes base + asegurar que phone y otros campos extras llegan
+    const mapped = mapClientes(data || []).map((c, i) => ({
+      ...c,
+      phone: (data || [])[i]?.phone || '',
+      objetivo: (data || [])[i]?.objetivo || 'general',
+      altura: (data || [])[i]?.altura || null,
+      genero: (data || [])[i]?.genero || null,
+      fechaNacimiento: (data || [])[i]?.fechaNacimiento || null,
+    }))
     const hoy = new Date().toISOString().split('T')[0]
     const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
     if (mapped.length) {
@@ -96,9 +104,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: newClient.phone.trim(), objetivo: newClient.objetivo, token, createdAt: Date.now() })
+    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: newClient.phone.trim(), objetivo: newClient.objetivo, token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechaNacimiento: newClient.fechaNacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
     if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general' }); fetchClients() }
+    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechaNacimiento: '' }); fetchClients() }
     setAdding(false)
   }
 
@@ -493,16 +501,59 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-            <select value={newClient.objetivo} onChange={e => setNewClient(p => ({ ...p, objetivo: e.target.value }))}
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none">
-              <option value="general">General</option>
-              <option value="hipertrofia">💪 Hipertrofia</option>
-              <option value="fuerza">🏋️ Fuerza</option>
-              <option value="perdida_grasa">🔥 Pérdida de grasa</option>
-              <option value="resistencia">🏃 Resistencia</option>
-              <option value="rehabilitacion">🩺 Rehabilitación</option>
-              <option value="rendimiento">⚡ Rendimiento</option>
-            </select>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {[
+                { v: 'hipertrofia', label: '💪 Hipertrofia' },
+                { v: 'fuerza', label: '🏋️ Fuerza' },
+                { v: 'perdida_grasa', label: '🔥 Pérdida de grasa' },
+                { v: 'resistencia', label: '🏃 Resistencia' },
+                { v: 'rehabilitacion', label: '🩺 Rehabilitación' },
+                { v: 'rendimiento', label: '⚡ Rendimiento' },
+                { v: 'general', label: '🎯 General' },
+              ].map(opt => (
+                <button key={opt.v} type="button"
+                  onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                value={!['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo) ? newClient.objetivo : ''}
+                onChange={e => setNewClient(p => ({ ...p, objetivo: e.target.value }))}
+                placeholder="✏️ Otro objetivo personalizado..."
+                className="flex-1 px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
+              <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))}
+                placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso inicial (kg)</label>
+              <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))}
+                placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
+              <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+                <option value="">Sin especificar</option>
+                <option value="h">Masculino</option>
+                <option value="m">Femenino</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
+              <input type="date" value={newClient.fechaNacimiento} onChange={e => setNewClient(p => ({ ...p, fechaNacimiento: e.target.value }))}
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
