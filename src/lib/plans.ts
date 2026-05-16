@@ -27,7 +27,7 @@ export const PLANS: Record<PlanName, PlanConfig> = {
   free: {
     name: 'free',
     label: 'Free',
-    clientLimit: 5,
+    clientLimit: 3,
     color: 'text-muted',
     features: ['video_library'],
   },
