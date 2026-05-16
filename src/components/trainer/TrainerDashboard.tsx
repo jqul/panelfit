@@ -104,7 +104,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechaNacimiento: newClient.fechaNacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
+    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechaNacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
     if (error) toast('Error: ' + error.message, 'warn')
     else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechaNacimiento: '' }); fetchClients() }
     setAdding(false)
