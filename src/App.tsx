@@ -33,6 +33,7 @@ function LoadingScreen() {
 export default function App() {
   const [view, setView] = useState<AppView>('loading')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
   const [clientToken, setClientToken] = useState<string | null>(null)
@@ -60,14 +61,20 @@ export default function App() {
     const { data } = await supabase.from('entrenadores').select('"displayName", approved, rol, profile').eq('uid', uid).maybeSingle()
     if (!data || data.approved === false) { await supabase.auth.signOut(); setView('auth'); return }
     const profile = data.profile || {}
-    setUserProfile({
+    const up = {
       uid, email,
       displayName: data.displayName || email.split('@')[0],
       role: data.rol === 'super_admin' ? 'super_admin' : 'trainer',
       approved: true, createdAt: Date.now(),
       clientLimit: profile.clientLimit,
       planName: profile.planName,
-    })
+    }
+    setUserProfile(up as any)
+    // Mostrar onboarding si es la primera vez (solo trainers)
+    if (data.rol !== 'super_admin') {
+      const done = localStorage.getItem(`pf_onboarding_done_${uid}`)
+      if (!done) setShowOnboarding(true)
+    }
     setView('trainer')
   }
 
