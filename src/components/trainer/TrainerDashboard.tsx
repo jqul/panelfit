@@ -582,6 +582,23 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 // ── Settings ──────────────────────────────────────────────
 const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
 
+const TEMAS = [
+  { id: 'bosque',    nombre: 'Bosque',     color: '#1a6038', bg: '#f0f7f4' },
+  { id: 'marino',    nombre: 'Marino',     color: '#1e3a5f', bg: '#f0f4f9' },
+  { id: 'energia',   nombre: 'Energía',    color: '#c0392b', bg: '#fdf5f5' },
+  { id: 'naranja',   nombre: 'Naranja',    color: '#e67e22', bg: '#fdf7f0' },
+  { id: 'morado',    nombre: 'Púrpura',    color: '#6c3483', bg: '#f7f0fd' },
+  { id: 'elite',     nombre: 'Élite',      color: '#1a1a1a', bg: '#f5f5f5' },
+  { id: 'cielo',     nombre: 'Cielo',      color: '#2980b9', bg: '#f0f6fd' },
+  { id: 'rosa',      nombre: 'Rosa',       color: '#c0516a', bg: '#fdf0f3' },
+  { id: 'tierra',    nombre: 'Tierra',     color: '#8b5e3c', bg: '#fdf8f4' },
+  { id: 'menta',     nombre: 'Menta',      color: '#2e7d6b', bg: '#f0faf7' },
+  { id: 'grafito',   nombre: 'Grafito',    color: '#455a64', bg: '#f4f6f7' },
+  { id: 'dorado',    nombre: 'Dorado',     color: '#b8860b', bg: '#fdfaf0' },
+]
+
+const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
+
 function EmojiBar({ onPick }: { onPick: (e: string) => void }) {
   return (
     <div className="flex flex-wrap gap-1 mb-2 p-2 bg-bg-alt rounded-xl border border-border/50">
@@ -601,19 +618,25 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [brandName, setBrandName] = useState(saved.brandName || '')
   const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
   const [brandBg, setBrandBg] = useState(saved.brandBg || '')
-  const [brandColor, setBrandColor] = useState(saved.brandColor || '#6e5438')
+  const [brandColor, setBrandColor] = useState(saved.brandColor || '#1a6038')
+  const [brandBgColor, setBrandBgColor] = useState(saved.brandBgColor || '#f0f7f4')
   const [phone, setPhone] = useState(saved.phone || '')
   const [bio, setBio] = useState(saved.bio || '')
   const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
   const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
   const [restDayMsg, setRestDayMsg] = useState(saved.restDayMsg || '')
+  const [temaId, setTemaId] = useState(saved.temaId || 'bosque')
   const [saving, setSaving] = useState(false)
 
-  const PRESET_COLORS = ['#6e5438','#1a1a2e','#0f4c75','#1b4332','#7b2d8b','#c0392b','#e67e22','#2c3e50']
+  const applyTema = (tema: typeof TEMAS[0]) => {
+    setTemaId(tema.id)
+    setBrandColor(tema.color)
+    setBrandBgColor(tema.bg)
+  }
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandBg, brandColor, phone, bio, welcomeMsg, motivMsg, restDayMsg, updatedAt: Date.now() }
+    const profile = { displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, welcomeMsg, motivMsg, restDayMsg, updatedAt: Date.now() }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
@@ -640,112 +663,202 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     <div className="animate-fade-in space-y-6 max-w-2xl">
       <div>
         <h2 className="text-3xl font-serif font-bold">Personalización</h2>
-        <p className="text-muted text-sm mt-1">Todo lo que configures aquí aparecerá en el panel de tus clientes.</p>
+        <p className="text-muted text-sm mt-1">Todo lo que configures aparecerá en el panel de tus clientes.</p>
       </div>
 
-      {/* Preview */}
+      {/* Preview en tiempo real */}
       <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
         <div className="px-4 py-3 flex items-center gap-3" style={{ backgroundColor: brandColor }}>
           {brandLogo
-            ? <img src={brandLogo} className="w-8 h-8 rounded-full object-cover border-2 border-white/30 flex-shrink-0" alt="" />
-            : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>
+            ? <img src={brandLogo} className="w-9 h-9 rounded-full object-cover border-2 border-white/40 flex-shrink-0" alt="" />
+            : <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                {(brandName || displayName || 'T')[0]?.toUpperCase()}
+              </div>
           }
-          <span className="font-bold text-white text-base">{brandName || displayName || 'Tu marca'}</span>
-          <span className="ml-auto text-white/60 text-xs">Preview cliente</span>
+          <div>
+            <p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>
+            {bio && <p className="text-white/60 text-[10px] truncate max-w-xs">{bio}</p>}
+          </div>
+          <span className="ml-auto text-white/40 text-[10px]">Preview</span>
         </div>
-        {brandBg
-          ? <div className="relative h-20 overflow-hidden"><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 flex items-center px-4"><p className="text-white font-semibold text-sm drop-shadow">{welcomeMsg || 'Tu mensaje aquí'}</p></div></div>
-          : <div className="px-4 py-3 bg-[#f5f0ea] text-sm text-muted">{welcomeMsg ? <p className="italic">"{welcomeMsg}"</p> : <p className="opacity-40">Tu mensaje de bienvenida aquí</p>}</div>
-        }
+        <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
+          {welcomeMsg
+            ? <p className="font-medium" style={{ color: brandColor }}>{welcomeMsg}</p>
+            : <p className="text-muted/60 italic text-xs">Tu mensaje de bienvenida aquí</p>
+          }
+        </div>
       </div>
 
-      {/* Identidad */}
+      {/* IDENTIDAD */}
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">🏷️ Identidad de marca</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Identidad</h3>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
-            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
-            <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: Carlos Training" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
+            <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label>
+            <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)}
+              placeholder="Ej: AlexFit Training"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
         </div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Teléfono / WhatsApp</label>
-          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio</label>
-          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label>
+          <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label>
+          <textarea rows={2} value={bio} onChange={e => setBio(e.target.value)}
+            placeholder="Entrenador personal especializado en..."
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+        </div>
       </div>
 
-      {/* Aspecto visual */}
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">🎨 Aspecto visual</h3>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Logo / foto de perfil</label>
-          <div className="flex items-center gap-4">
+      {/* FOTO DE PERFIL */}
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">📷 Foto de perfil</h3>
+        <div className="flex items-center gap-5">
+          {/* Avatar grande */}
+          <div className="relative flex-shrink-0">
             {brandLogo
-              ? <div className="relative flex-shrink-0"><img src={brandLogo} className="w-16 h-16 rounded-full object-cover border-2 border-border" alt="" /><button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-5 h-5 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center">×</button></div>
-              : <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center text-2xl font-bold flex-shrink-0" style={{ backgroundColor: brandColor + '20', color: brandColor }}>{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>
+              ? <>
+                  <img src={brandLogo} className="w-20 h-20 rounded-full object-cover border-4 border-border shadow" alt="" />
+                  <button onClick={() => setBrandLogo('')}
+                    className="absolute -top-1 -right-1 w-6 h-6 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center shadow">×</button>
+                </>
+              : <div className="w-20 h-20 rounded-full border-4 border-dashed border-border flex items-center justify-center text-3xl font-bold shadow-inner"
+                  style={{ backgroundColor: brandColor + '20', color: brandColor }}>
+                  {(brandName || displayName || 'T')[0]?.toUpperCase()}
+                </div>
             }
-            <div className="space-y-1">
-              <label className="block px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent cursor-pointer transition-colors w-fit">
-                {brandLogo ? 'Cambiar logo' : 'Subir logo'}
-                <input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
-              </label>
-              <p className="text-[10px] text-muted">Aparece en el header del cliente. Máx 2MB.</p>
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
+              📁 {brandLogo ? 'Cambiar foto' : 'Subir foto'}
+              <input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
+            </label>
+            <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB · Aparece en el header de tus clientes</p>
+          </div>
+        </div>
+      </div>
+
+      {/* TEMA DE COLORES */}
+      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🎨 Tema de colores</h3>
+
+        {/* Temas predefinidos */}
+        <div>
+          <p className="text-xs text-muted mb-3">Elige un tema base</p>
+          <div className="grid grid-cols-4 gap-2">
+            {TEMAS.map(tema => (
+              <button key={tema.id} onClick={() => applyTema(tema)}
+                className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${
+                  temaId === tema.id ? 'border-ink shadow-md scale-95' : 'border-transparent hover:border-border'
+                }`}
+                style={{ backgroundColor: tema.bg }}>
+                <div className="w-8 h-8 rounded-full shadow-sm" style={{ backgroundColor: tema.color }} />
+                <span className="text-[10px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
+                {temaId === tema.id && <span className="text-[9px] font-bold text-ink">✓ Activo</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Personalización avanzada */}
+        <div className="border-t border-border pt-4 space-y-3">
+          <p className="text-xs text-muted">O personaliza los colores manualmente</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-muted mb-2">Color principal</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }}
+                  className="w-12 h-12 rounded-xl border border-border cursor-pointer" />
+                <div>
+                  <p className="text-sm font-mono font-bold">{brandColor}</p>
+                  <p className="text-[10px] text-muted">Header y botones</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-muted mb-2">Color de fondo</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }}
+                  className="w-12 h-12 rounded-xl border border-border cursor-pointer" />
+                <div>
+                  <p className="text-sm font-mono font-bold">{brandBgColor}</p>
+                  <p className="text-[10px] text-muted">Fondo del panel</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Imagen de fondo del panel</label>
-          <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
-            {brandBg
-              ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white transition-colors">Cambiar fondo<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
-              : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Se muestra detrás del contenido del cliente · Máx 3MB</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>
-            }
-          </div>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Color principal</label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {PRESET_COLORS.map(c => (
-              <button key={c} onClick={() => setBrandColor(c)} className="w-8 h-8 rounded-full border-4 transition-all" style={{ backgroundColor: c, borderColor: brandColor === c ? '#1a1a1a' : 'transparent' }} />
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} className="w-10 h-10 rounded-xl border border-border cursor-pointer" />
-            <span className="text-sm text-muted font-mono">{brandColor}</span>
-          </div>
+      </div>
+
+      {/* IMAGEN DE FONDO */}
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🖼️ Imagen de fondo</h3>
+        <p className="text-xs text-muted">Se muestra detrás del contenido en el panel del cliente. Opcional.</p>
+        <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
+          {brandBg
+            ? <>
+                <img src={brandBg} className="w-full h-full object-cover" alt="" />
+                <div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3">
+                  <label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">
+                    Cambiar
+                    <input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} />
+                  </label>
+                  <button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button>
+                </div>
+              </>
+            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg">
+                <span className="text-3xl">🖼️</span>
+                <span className="text-sm font-medium">Subir imagen de fondo</span>
+                <span className="text-[10px]">Máx 3MB · JPG o PNG</span>
+                <input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} />
+              </label>
+          }
         </div>
       </div>
 
-      {/* Mensajes */}
+      {/* MENSAJES */}
       <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label>
           <EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} />
-          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
-          <p className="text-[10px] text-muted mt-1">Se muestra en la pantalla de inicio cada día.</p>
+          <textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)}
+            placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+          <p className="text-[10px] text-muted mt-1">Se muestra cada día en la pantalla de inicio.</p>
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label>
           <EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} />
-          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
-          <p className="text-[10px] text-muted mt-1">Se muestra cuando no hay sesión programada.</p>
+          <textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)}
+            placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días seguidos)</label>
           <EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} />
-          <input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-          <p className="text-[10px] text-muted mt-1">Se muestra con 3+ días seguidos entrenando.</p>
+          <input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)}
+            placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥"
+            className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
         </div>
       </div>
 
-      {/* Cuenta */}
+      {/* CUENTA */}
       <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-2">👤 Cuenta</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">👤 Cuenta</h3>
         <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
+        <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 pb-8">
         <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}>
           <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar cambios'}
         </Button>
