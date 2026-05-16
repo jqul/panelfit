@@ -10,7 +10,7 @@ interface Entrenador {
   approved: boolean
   rol: string
   createdAt?: string
-  profile?: { planName?: 'free' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number }
+  profile?: { planName?: 'free' | 'starter' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number }
   clientsCount?: number
 }
 
@@ -63,7 +63,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
 
   const savePlan = async (
     e: Entrenador,
-    planName: 'free' | 'trial' | 'pro' | 'studio',
+    planName: 'free' | 'starter' | 'trial' | 'pro' | 'studio',
     clientLimit: number,
     trialDays: number
   ) => {
