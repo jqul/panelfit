@@ -173,7 +173,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
   }
 
-  const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
+  const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean, appendMode: boolean = false) => {
     if (!plan) return
     const inicio = new Date(fechaInicio + 'T00:00:00')
     const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
