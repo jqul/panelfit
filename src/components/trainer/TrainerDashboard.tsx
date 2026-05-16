@@ -45,7 +45,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechaNacimiento: '' })
+  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
@@ -68,7 +68,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       objetivo: (data || [])[i]?.objetivo || 'general',
       altura: (data || [])[i]?.altura || null,
       genero: (data || [])[i]?.genero || null,
-      fechaNacimiento: (data || [])[i]?.fechaNacimiento || null,
+      fechanacimiento: (data || [])[i]?.fechanacimiento || null,
     }))
     const hoy = new Date().toISOString().split('T')[0]
     const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
@@ -104,9 +104,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechaNacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
+    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
     if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechaNacimiento: '' }); fetchClients() }
+    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
     setAdding(false)
   }
 
@@ -552,7 +552,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
-              <input type="date" value={newClient.fechaNacimiento} onChange={e => setNewClient(p => ({ ...p, fechaNacimiento: e.target.value }))}
+              <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
             </div>
           </div>
