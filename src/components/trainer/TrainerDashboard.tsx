@@ -580,7 +580,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 }
 
 // ── Settings ──────────────────────────────────────────────
-const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
 
 const TEMAS = [
   { id: 'bosque',    nombre: 'Bosque',     color: '#1a6038', bg: '#f0f7f4' },
