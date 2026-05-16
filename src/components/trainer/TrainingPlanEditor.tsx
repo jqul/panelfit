@@ -530,7 +530,7 @@ export function TrainingPlanEditor({
       </div>
 
       {/* Modales */}
-      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-lg">
+      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl">
         {pickerFor && (
           <ExercisePicker library={library}
             onSelect={ex => addExercise(activeWeek, pickerFor.dayIdx, ex)}
