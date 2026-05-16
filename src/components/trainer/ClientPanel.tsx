@@ -734,10 +734,19 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
 
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null)
   const [showCalc, setShowCalc] = useState(false)
-  const [peso, setPeso] = useState(String(client.weight || ''))
-  const [altura, setAltura] = useState('')
-  const [edad, setEdad] = useState('')
-  const [sexo, setSexo] = useState<'h' | 'm'>('h')
+  const getEdadFromClient = (c: any) => {
+    const fn = c.fechanacimiento
+    if (!fn) return ''
+    const birth = new Date(fn)
+    const today = new Date()
+    const age = today.getFullYear() - birth.getFullYear() -
+      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+    return isNaN(age) ? '' : String(age)
+  }
+  const [peso, setPeso] = useState(() => String((client as any).weight || ''))
+  const [altura, setAltura] = useState(() => String((client as any).altura || ''))
+  const [edad, setEdad] = useState(() => getEdadFromClient(client as any))
+  const [sexo, setSexo] = useState<'h' | 'm'>(() => (client as any).genero === 'm' ? 'm' : 'h')
   const [actividad, setActividad] = useState(1.55)
   const [objetivo, setObjetivo] = useState<'deficit' | 'mantenimiento' | 'superavit'>('superavit')
   const [ratio, setRatio] = useState(2.0)
@@ -963,17 +972,17 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
                   <div>
                     <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Peso (kg)</p>
-                    <input type="number" value={peso} onChange={e=>setPeso(e.target.value)} placeholder={String(client.weight||80)}
+                    <input type="number" value={peso} onChange={e=>setPeso(e.target.value)} placeholder={String((client as any).weight||"kg")}
                       className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
                   </div>
                   <div>
                     <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Altura (cm)</p>
-                    <input type="number" value={altura} onChange={e=>setAltura(e.target.value)} placeholder="175"
+                    <input type="number" value={altura} onChange={e=>setAltura(e.target.value)} placeholder={String((client as any).altura||"cm")}
                       className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
                   </div>
                   <div>
                     <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Edad</p>
-                    <input type="number" value={edad} onChange={e=>setEdad(e.target.value)} placeholder="30"
+                    <input type="number" value={edad} onChange={e=>setEdad(e.target.value)} placeholder={getEdadFromClient(client as any)||"años"}
                       className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
                   </div>
                   <div>
