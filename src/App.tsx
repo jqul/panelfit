@@ -34,6 +34,7 @@ export default function App() {
   const [view, setView] = useState<AppView>('loading')
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [pendingUser, setPendingUser] = useState<{uid:string;email:string;displayName:string} | null>(null)
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
   const [clientToken, setClientToken] = useState<string | null>(null)
@@ -59,7 +60,13 @@ export default function App() {
 
   const loadProfile = async (uid: string, email: string) => {
     const { data } = await supabase.from('entrenadores').select('"displayName", approved, rol, profile').eq('uid', uid).maybeSingle()
-    if (!data || data.approved === false) { await supabase.auth.signOut(); setView('auth'); return }
+    if (!data) { await supabase.auth.signOut(); setView('auth'); return }
+    if (data.approved === false) {
+      // Mostrar pantalla de perfil pendiente sin hacer signOut
+      setPendingUser({ uid, email, displayName: data.displayName || email.split('@')[0] })
+      setView('pending')
+      return
+    }
     const profile = data.profile || {}
     const up = {
       uid, email,
