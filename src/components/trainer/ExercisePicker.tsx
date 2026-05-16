@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Video, Check, Plus, Filter } from 'lucide-react'
+import { Search, Video, Check, Plus, Filter, ChevronDown } from 'lucide-react'
 import { LibraryExercise, Exercise } from '../../types'
 import { EXERCISE_CATEGORIES } from '../../lib/constants'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
@@ -188,7 +188,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-48">
+          <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-72">
             {filtered.map(ex => {
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
@@ -218,6 +218,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                       <Video className="w-3 h-3" />{ex.videos!.length}
                     </span>
                   )}
+                  <ChevronDown className={`w-3.5 h-3.5 text-muted/50 flex-shrink-0 transition-transform ${isSelected ? 'rotate-180 text-accent' : ''}`} />
                   {isSelected && <Check className="w-4 h-4 text-accent flex-shrink-0" />}
                 </button>
               )
