@@ -17,7 +17,7 @@ interface Entrenador {
 interface Props { onLogout: () => void }
 
 const PLANES = [
-  { plan: 'free'    as const, limit: 5,    days: 0,  label: 'Free',    title: 'Máximo 5 clientes',             active: 'bg-gray-200 text-gray-700 border-gray-300',         inactive: 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300' },
+  { plan: 'free'    as const, limit: 3,    days: 0,  label: 'Free',    title: 'Máximo 5 clientes',             active: 'bg-gray-200 text-gray-700 border-gray-300',         inactive: 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300' },
   { plan: 'starter' as const, limit: 15,   days: 0,  label: 'Starter', title: 'Máximo 15 clientes',            active: 'bg-accent text-white border-accent',                  inactive: 'border-accent/30 text-accent hover:bg-accent hover:text-white' },
   { plan: 'trial'   as const, limit: 9999, days: 15, label: 'Demo',    title: 'Ilimitado 15 días',             active: 'bg-warn text-white border-warn',                      inactive: 'border-warn/30 text-warn hover:bg-warn hover:text-white' },
   { plan: 'pro'     as const, limit: 9999, days: 0,  label: 'Pro',     title: 'Clientes ilimitados',           active: 'bg-ok text-white border-ok',                          inactive: 'border-ok/30 text-ok hover:bg-ok hover:text-white' },
