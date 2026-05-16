@@ -3,7 +3,7 @@ import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings,
   ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
   CheckCircle2, ClipboardCheck, Link, MessageCircle,
-  LayoutDashboard
+  LayoutDashboard, User
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
@@ -20,7 +20,7 @@ import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
-type Tab = 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config' | 'perfil'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
 
 interface Props {
   client: ClientData
@@ -32,6 +32,7 @@ interface Props {
 }
 
 const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] = [
+  { id: 'perfil',   icon: User,          label: 'Perfil',    desc: 'Datos y estadísticas' },
   { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
   { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
   { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
@@ -48,7 +49,6 @@ function useTemplates(trainerId: string) {
 
   useEffect(() => {
     if (!trainerId) return
-    // Migrar desde localStorage a Supabase si no se ha hecho
     const migrated = localStorage.getItem(`pf_tmpl_migrated_${trainerId}`)
     const local: TrainingTemplate[] = (() => {
       try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
@@ -62,7 +62,6 @@ function useTemplates(trainerId: string) {
         setTemplates(parsed)
         localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(parsed))
       } else if (!migrated && local.length > 0) {
-        // Migrar localStorage a Supabase
         const rows = local.map(t => ({
           id: t.id || `tmpl_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
           trainer_id: trainerId,
@@ -85,7 +84,6 @@ function useTemplates(trainerId: string) {
       : [...templates, tmpl]
     setTemplates(updated)
     localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
-
     const row = {
       id: tmpl.id,
       trainer_id: trainerId,
@@ -111,7 +109,7 @@ function useTemplates(trainerId: string) {
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
 export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan, demoLogs }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>('plan')
+  const [activeTab, setActiveTab] = useState<Tab>('perfil')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [loading, setLoading] = useState(true)
@@ -129,12 +127,6 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const library = useExerciseLibrary(userProfile.uid)
   const otherClients = allClients.filter(c => c.id !== client.id)
   const { templates, saveTemplate, deleteTemplate: deleteTemplateFromDB } = useTemplates(userProfile.uid)
-  const trainerEsp: Especialidad[] = (() => {
-    try {
-      const p = JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}')
-      return p.especialidades || []
-    } catch { return [] }
-  })()
 
   useEffect(() => { loadData() }, [client.id])
 
@@ -163,7 +155,6 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     const p = planToSave || pendingPlan.current || plan; if (!p) return
     setSaveState('saving')
     if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
-    // Upsert — funciona tanto si existe la fila como si no
     const { error } = await supabase.from('planes')
       .upsert(
         { clientId: client.id, plan: { P: p }, updatedAt: Date.now() },
@@ -208,8 +199,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   return (
     <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden" style={{flexDirection:'row'}}>
 
-      {/* ── SIDEBAR IZQUIERDO ── */}
-      {/* Overlay móvil */}
+      {/* SIDEBAR */}
       {mobileShowSidebar && (
         <div className="fixed inset-0 bg-ink/40 z-10 lg:hidden" onClick={() => setMobileShowSidebar(false)} />
       )}
@@ -221,18 +211,21 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm">
             <ChevronLeft className="w-4 h-4" /> Volver
           </button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent font-bold flex-shrink-0">
+          <button
+            onClick={() => { setActiveTab('perfil'); setMobileShowSidebar(false) }}
+            className="flex items-center gap-3 w-full text-left group hover:opacity-80 transition-opacity"
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-lg font-bold flex-shrink-0 transition-colors ${activeTab === 'perfil' ? 'bg-ink text-white' : 'bg-accent/10 text-accent'}`}>
               {client.name?.[0]?.toUpperCase()}
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || 'Sin tipo'}</p>
-            {(client as any).phone && (
-              <p className="text-[10px] text-[#25D366] truncate">📱 {(client as any).phone}</p>
-            )}
+              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || (client as any).objetivo || 'Sin tipo'}</p>
+              {(client as any).phone && (
+                <p className="text-[10px] text-[#25D366] truncate">📱 {(client as any).phone}</p>
+              )}
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Stats cliente */}
@@ -255,9 +248,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           {TABS.map(({ id, icon: Icon, label, desc }) => (
             <button key={id} onClick={() => { setActiveTab(id); setMobileShowSidebar(false) }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${
-                activeTab === id
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:bg-bg-alt hover:text-ink'
+                activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'
               }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -287,7 +278,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         </div>
       </aside>
 
-      {/* ── CONTENIDO PRINCIPAL ── */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
         <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-3 lg:px-6">
@@ -328,9 +319,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
               </button>
             )}
-            <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
-              <Save className="w-3.5 h-3.5" /> Guardar
-            </Button>
+            {activeTab !== 'perfil' && (
+              <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
+                <Save className="w-3.5 h-3.5" /> Guardar
+              </Button>
+            )}
             <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <X className="w-4 h-4" />
             </button>
@@ -347,6 +340,15 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </div>
           ) : (
             <div className="p-6 flex-1 overflow-hidden flex flex-col min-h-0">
+              {activeTab === 'perfil' && (
+                <div className="flex-1 overflow-y-auto">
+                  <PerfilTab client={client} logs={logs} onUpdate={async (updates) => {
+                    await supabase.from('clientes').update(updates).eq('id', client.id)
+                    Object.assign(client, updates)
+                    toast('Datos actualizados ✓', 'ok')
+                  }} />
+                </div>
+              )}
               {activeTab === 'plan' && plan && (
                 <div className="flex-1 overflow-hidden">
                   <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
@@ -368,13 +370,6 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           )}
         </main>
       </div>
-
-      {/* Pestaña Perfil */}
-      {activeTab === 'perfil' && <PerfilTab client={client} logs={logs} onUpdate={async (updates) => {
-        await supabase.from('clientes').update(updates).eq('id', client.id)
-        Object.assign(client, updates)
-        toast('Datos actualizados ✓', 'ok')
-      }} />}
 
       {/* Informe PDF */}
       {showInforme && (
@@ -476,6 +471,219 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   )
 }
 
+// ── PerfilTab ─────────────────────────────────────────────────────────────────
+function PerfilTab({ client, logs, onUpdate }: {
+  client: ClientData
+  logs: TrainingLogs
+  onUpdate: (updates: Record<string, any>) => Promise<void>
+}) {
+  const c = client as any
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: c.name || '',
+    surname: c.surname || '',
+    phone: c.phone || '',
+    objetivo: c.objetivo || '',
+    altura: c.altura || '',
+    weight: c.weight || '',
+    genero: c.genero || '',
+    fechanacimiento: c.fechanacimiento || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  const edad = (() => {
+    if (!c.fechanacimiento) return null
+    const birth = new Date(c.fechanacimiento)
+    const today = new Date()
+    return today.getFullYear() - birth.getFullYear() -
+      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+  })()
+
+  const totalSessions = new Set(
+    Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone)
+  ).size
+
+  const lastSession = Object.values(logs)
+    .filter((l: any) => l.done && l.dateDone)
+    .map((l: any) => l.dateDone as string)
+    .sort().reverse()[0]
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onUpdate({
+      name: form.name,
+      surname: form.surname,
+      phone: form.phone,
+      objetivo: form.objetivo,
+      altura: form.altura ? parseFloat(form.altura) : null,
+      weight: form.weight ? parseFloat(form.weight) : 0,
+      genero: form.genero || null,
+      fechanacimiento: form.fechanacimiento || null,
+    })
+    setEditing(false)
+    setSaving(false)
+  }
+
+  return (
+    <div className="animate-fade-in space-y-5 max-w-xl">
+
+      {/* Header del cliente */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center text-2xl font-serif font-bold text-accent flex-shrink-0">
+            {c.name?.[0]?.toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-serif font-bold">{c.name} {c.surname}</h2>
+            <p className="text-sm text-muted capitalize">
+              {c.objetivo || 'Sin objetivo'}{edad ? ` · ${edad} años` : ''}
+            </p>
+            {c.phone && (
+              <p className="text-xs text-[#25D366] mt-0.5">📱 {c.phone}</p>
+            )}
+          </div>
+        </div>
+        <button onClick={() => setEditing(!editing)}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${editing ? 'border-accent text-accent bg-accent/5' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
+          {editing ? 'Cancelar' : '✏️ Editar'}
+        </button>
+      </div>
+
+      {/* Stats rápidas */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
+          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ok' },
+          { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <p className="text-xl mb-1">{s.icon}</p>
+            <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Datos personales */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
+        </div>
+        {!editing ? (
+          <div className="divide-y divide-border/50">
+            {[
+              { label: 'Nombre completo', value: `${c.name || '—'} ${c.surname || ''}`.trim() },
+              { label: 'WhatsApp', value: c.phone || '—' },
+              { label: 'Objetivo', value: c.objetivo || '—' },
+              { label: 'Altura', value: c.altura ? `${c.altura} cm` : '—' },
+              { label: 'Peso', value: c.weight ? `${c.weight} kg` : '—' },
+              { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
+              { label: 'Fecha de nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+              { label: 'Edad', value: edad ? `${edad} años` : '—' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center px-5 py-3 hover:bg-bg-alt/30 transition-colors">
+                <p className="text-xs font-semibold text-muted w-36 flex-shrink-0">{row.label}</p>
+                <p className="text-sm text-ink">{row.value}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-5 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Nombre</label>
+                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Apellido</label>
+                <input value={form.surname} onChange={e => setForm(f => ({ ...f, surname: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1.5">📱 WhatsApp</label>
+              <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="+34 600 000 000"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1.5">Objetivo</label>
+              <input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
+                placeholder="Hipertrofia, fuerza, déficit..."
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Altura (cm)</label>
+                <input type="number" value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Peso (kg)</label>
+                <input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Género</label>
+                <select value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+                  <option value="">Sin especificar</option>
+                  <option value="h">Masculino</option>
+                  <option value="m">Femenino</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-muted mb-1.5">Fecha nacimiento</label>
+                <input type="date" value={form.fechanacimiento} onChange={e => setForm(f => ({ ...f, fechanacimiento: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+              </div>
+            </div>
+            <button onClick={handleSave} disabled={saving}
+              className="w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity">
+              {saving ? 'Guardando...' : '✓ Guardar cambios'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Notas privadas */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas <span className="font-normal normal-case">(solo tú las ves)</span></p>
+        </div>
+        <div className="p-4">
+          <textarea
+            defaultValue={c.notas_privadas || ''}
+            onBlur={async e => { await onUpdate({ notas_privadas: e.target.value }) }}
+            placeholder="Observaciones, lesiones, preferencias, historial médico..."
+            rows={4}
+            className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
+          />
+          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
+        </div>
+      </div>
+
+      {/* Acceso rápido WhatsApp si tiene teléfono */}
+      {c.phone && (
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}?c=${client.token}`
+            const phone = c.phone.replace(/\s+/g, '').replace(/^\+/, '')
+            const msg = encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)
+            window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
+          }}
+          className="w-full flex items-center justify-center gap-3 py-3.5 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
+          📱 Abrir WhatsApp con {c.name}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── VistaTab ──────────────────────────────────────────────────────────────────
 function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
   if (!plan?.weeks?.length) return (
     <div className="text-center py-16 text-muted">
@@ -530,6 +738,7 @@ function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLog
   )
 }
 
+// ── EntrenosTab ───────────────────────────────────────────────────────────────
 function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | null }) {
   const byDate: Record<string, { exName: string; sets: any; key: string }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
@@ -585,6 +794,7 @@ function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | 
   )
 }
 
+// ── NotasTab ──────────────────────────────────────────────────────────────────
 function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   if (!plan) return null
   const TAGS = ['⚠️ Lesión', '🔥 Alta intensidad', '🐢 Progreso lento', '⭐ Cliente VIP', '📞 Llamar esta semana']
@@ -604,11 +814,11 @@ function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p:
   )
 }
 
+// ── ConfigTab ─────────────────────────────────────────────────────────────────
 function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
-  const [pin, setPin] = useState((plan as any)?.pin || '')
 
   const revokeToken = async () => {
     setRevoking(true)
@@ -630,9 +840,9 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
         <div><h4 className="text-sm font-semibold">Automatizaciones</h4><p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p></div>
         {[
-          { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
-          { key: 'autoCheckin', label: 'Check-in semanal', desc: 'Recordatorio de encuesta al cerrar semana', emoji: '📋' },
-          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: '+3 días sin entrenar → WhatsApp', emoji: '⚠️' },
+          { key: 'autoWelcome',    label: 'Mensaje de bienvenida',  desc: 'WhatsApp al asignar un plan nuevo',           emoji: '👋' },
+          { key: 'autoCheckin',    label: 'Check-in semanal',       desc: 'Recordatorio de encuesta al cerrar semana',    emoji: '📋' },
+          { key: 'autoInactividad',label: 'Alerta de inactividad',  desc: '+3 días sin entrenar → WhatsApp',              emoji: '⚠️' },
         ].map(a => (
           <div key={a.key} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(plan as any)[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
             onClick={() => onChange({ ...plan, [a.key]: !(plan as any)[a.key] } as TrainingPlan)}>
@@ -645,57 +855,11 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
         ))}
       </div>
 
-      {/* Tiempos de descanso eliminados — ahora se configuran por ejercicio en el plan */}
-
-      {/* Mensaje */}
+      {/* Mensaje motivacional */}
       <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
         <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
         <textarea rows={3} value={plan.message || ''} onChange={e => onChange({ ...plan, message: e.target.value })}
           placeholder="Mensaje motivacional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
-      </div>
-
-      {/* Teléfono WhatsApp */}
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-        <h4 className="text-sm font-semibold">📱 WhatsApp del cliente</h4>
-        <div className="flex gap-2">
-          <input
-            type="tel"
-            defaultValue={(client as any).phone || ''}
-            placeholder="+34 600 000 000"
-            id="client-phone-input"
-            className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
-          />
-          <button
-            onClick={async () => {
-              const input = document.getElementById('client-phone-input') as HTMLInputElement
-              const phone = input?.value?.trim()
-              if (!phone) return
-              const { error } = await supabase.from('clientes').update({ phone }).eq('id', client.id)
-              if (error) toast('Error al guardar', 'warn')
-              else { (client as any).phone = phone; toast('Teléfono guardado ✓', 'ok') }
-            }}
-            className="px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-            Guardar
-          </button>
-        </div>
-        {(client as any).phone && (
-          <button
-            onClick={() => {
-              const url = `${window.location.origin}?c=${client.token}`
-              const phone = (client as any).phone.replace(/\s+/g, '').replace(/^\+/, '')
-              const msg = encodeURIComponent(`Hola ${client.name} 👋
-
-Te comparto tu panel:
-
-${url}
-
-💪`)
-              window.open(`https://wa.me/${phone}?text=${msg}`, '_blank')
-            }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">
-            📱 Abrir WhatsApp con {client.name}
-          </button>
-        )}
       </div>
 
       {/* Acceso */}
@@ -727,6 +891,7 @@ ${url}
   )
 }
 
+// ── DietaTabEntrenador ────────────────────────────────────────────────────────
 function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData; trainerId: string }) {
   const [subtab, setSubtab] = useState<'macros' | 'plan'>('macros')
   const macros = (plan as any)?.macros || { kcal: 0, protein: 0, carbs: 0, fats: 0, notaMacros: '' }
@@ -772,9 +937,9 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
   const [equivs, setEquivs] = useState<{ food: string; per100: number }[]>(
     (plan as any)?.macros?.equivs || [
       { food: 'Pechuga de pollo', per100: 31 },
-      { food: 'Pechuga collo', per100: 12 },
-      { food: 'Pechuga', per100: 12 },
-      { food: 'Pechuga de pollo', per100: 12 },
+      { food: 'Atún en lata', per100: 25 },
+      { food: 'Huevos', per100: 12 },
+      { food: 'Queso cottage', per100: 11 },
     ]
   )
 
@@ -795,7 +960,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
     const protG = Math.round(p * ratio)
     const fatG = Math.round(p * 1.0)
     const carbsG = Math.max(0, Math.round((kcalObj - protG * 4 - fatG * 9) / 4))
-    // Actualizar macros directamente en el plan
     if (!plan) { window.alert('No hay plan cargado'); return }
     const newMacros = { ...(macros || {}), kcal: kcalObj, protein: protG, carbs: carbsG, fats: fatG }
     onChange({ ...plan, macros: newMacros } as any)
@@ -811,7 +975,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
     { label: 'Grasas',   val: macros.fats*9,    color: COLORS.fats,    g: macros.fats },
   ] : []
 
-  // Donut grande centrado con etiquetas flotantes
   const DonutChart = () => {
     const W = 220; const cx = 110; const cy = 110; const r = 90; const ri = 58
     if (!slices.length) return (
@@ -833,7 +996,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
       paths.push({d,color:s.color,label:s.label,g:s.g,pct:Math.round(pct*100),midAngle:mid})
     })
     const hov = hoveredSlice !== null ? paths[hoveredSlice] : null
-    // Etiquetas flotantes fuera del donut
     const labelR = r + 28
     return (
       <div style={{position:'relative',width:W+80,height:W}}>
@@ -858,17 +1020,12 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
             </>
           )}
         </svg>
-        {/* Etiquetas flotantes */}
         {paths.map((p,i) => {
           const lx = 40 + cx + labelR * Math.cos(p.midAngle)
           const ly = cy + labelR * Math.sin(p.midAngle)
           const isRight = Math.cos(p.midAngle) > 0
           return (
-            <div key={i} style={{
-              position:'absolute', left:lx, top:ly,
-              transform:`translate(${isRight?'0%':'-100%'},-50%)`,
-              textAlign: isRight?'left':'right', pointerEvents:'none'
-            }}>
+            <div key={i} style={{position:'absolute',left:lx,top:ly,transform:`translate(${isRight?'0%':'-100%'},-50%)`,textAlign:isRight?'left':'right',pointerEvents:'none'}}>
               <div style={{fontSize:11,color:p.color,fontWeight:700}}>{p.label}</div>
               <div style={{fontSize:13,fontWeight:800,color:'#1a1a1a'}}>{p.pct}%</div>
             </div>
@@ -897,13 +1054,9 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
 
       {subtab==='macros' && (
         <div style={{display:'grid',gridTemplateColumns:'1fr 260px',gap:16,flex:1,minHeight:0,overflow:'hidden'}}>
-
-          {/* COLUMNA IZQUIERDA */}
           <div style={{overflowY:'auto',display:'flex',flexDirection:'column',gap:12,minWidth:0}}>
             <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 16px rgba(0,0,0,0.07)',padding:24,flexShrink:0}}>
               <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em',color:'#8a8278',marginBottom:16}}>Objetivos diarios</p>
-
-              {/* Donut centrado */}
               <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:20}}>
                 <DonutChart />
                 <div style={{display:'flex',alignItems:'center',gap:8,marginTop:12}}>
@@ -925,8 +1078,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
                   ))}
                 </div>
               </div>
-
-              {/* 3 macros grid igual */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
                 {MACRO_CFG.map(({key,label,icon,color,per})=>{
                   const pct = total>0?Math.round(macros[key]*per/total*100):0
@@ -952,62 +1103,27 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
                   )
                 })}
               </div>
-
-              {/* Nota nutricional */}
               <div style={{marginTop:16,paddingTop:14,borderTop:'1px solid #ece9e3'}}>
-                <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278',marginBottom:8}}>Nota nutricional...</p>
+                <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278',marginBottom:8}}>Nota nutricional</p>
                 <textarea rows={3} value={macros.notaMacros||''} onChange={e=>updateMacros({notaMacros:e.target.value})}
-                  placeholder={`Instructivos para ${client.name}:
-• Distribuye en 4-5 comidas al día
-• Prioriza proteína en cada comida (mínimo 30g)
-• Fuentes recomendadas, incluidos de tahini...`}
+                  placeholder={`Instrucciones para ${client.name}...`}
                   style={{width:'100%',padding:'10px 12px',background:'#f8f6f2',border:'1px solid #ece9e3',borderRadius:10,fontSize:13,resize:'none',outline:'none',lineHeight:1.6,color:'#5a5650',fontFamily:'inherit',boxSizing:'border-box'}}/>
               </div>
             </div>
-
-            {/* Calculadora */}
             {showCalc && (
               <div className="bg-white rounded-2xl p-5" style={{boxShadow:'0 2px 16px rgba(0,0,0,0.07)',flexShrink:0}}>
                 <p className="font-semibold text-sm mb-3">Calculadora TDEE — Harris-Benedict</p>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-                  <div>
-                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Peso (kg)</p>
-                    <input type="number" value={peso} onChange={e=>setPeso(e.target.value)} placeholder={String((client as any).weight||"kg")}
-                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                  </div>
-                  <div>
-                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Altura (cm)</p>
-                    <input type="number" value={altura} onChange={e=>setAltura(e.target.value)} placeholder={String((client as any).altura||"cm")}
-                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                  </div>
-                  <div>
-                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Edad</p>
-                    <input type="number" value={edad} onChange={e=>setEdad(e.target.value)} placeholder={getEdadFromClient(client as any)||"años"}
-                      className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                  </div>
-                  <div>
-                    <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Sexo</p>
-                    <div className="flex gap-1">
-                      {[{v:'h',l:'♂ Hombre'},{v:'m',l:'♀ Mujer'}].map(s=>(
-                        <button key={s.v} onClick={()=>setSexo(s.v as any)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-medium border ${sexo===s.v?'bg-ink text-white border-ink':'border-border text-muted'}`}>{s.l}</button>
-                      ))}
-                    </div>
-                  </div>
+                  <div><p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Peso (kg)</p><input type="number" value={peso} onChange={e=>setPeso(e.target.value)} className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/></div>
+                  <div><p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Altura (cm)</p><input type="number" value={altura} onChange={e=>setAltura(e.target.value)} className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/></div>
+                  <div><p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Edad</p><input type="number" value={edad} onChange={e=>setEdad(e.target.value)} className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none"/></div>
+                  <div><p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Sexo</p><div className="flex gap-1">{[{v:'h',l:'♂ Hombre'},{v:'m',l:'♀ Mujer'}].map(s=>(<button key={s.v} onClick={()=>setSexo(s.v as any)} className={`flex-1 py-2 rounded-lg text-xs font-medium border ${sexo===s.v?'bg-ink text-white border-ink':'border-border text-muted'}`}>{s.l}</button>))}</div></div>
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4,marginBottom:12}}>
-                  {[{val:1.2,l:'Sedentario'},{val:1.375,l:'Ligero'},{val:1.55,l:'Moderado'},{val:1.725,l:'Activo'},{val:1.9,l:'Muy activo'}].map(a=>(
-                    <button key={a.val} onClick={()=>setActividad(a.val)}
-                      className={`py-2 rounded-lg text-[9px] font-bold border ${actividad===a.val?'bg-ink text-white border-ink':'border-border text-muted'}`}>{a.l}</button>
-                  ))}
+                  {[{val:1.2,l:'Sedentario'},{val:1.375,l:'Ligero'},{val:1.55,l:'Moderado'},{val:1.725,l:'Activo'},{val:1.9,l:'Muy activo'}].map(a=>(<button key={a.val} onClick={()=>setActividad(a.val)} className={`py-2 rounded-lg text-[9px] font-bold border ${actividad===a.val?'bg-ink text-white border-ink':'border-border text-muted'}`}>{a.l}</button>))}
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
-                  {[{v:'deficit',l:'🔥 Déficit',d:'-400 kcal'},{v:'mantenimiento',l:'⚖️ Mant.',d:'TDEE'},{v:'superavit',l:'💪 Superávit',d:'+300 kcal'}].map(o=>(
-                    <button key={o.v} onClick={()=>setObjetivo(o.v as any)}
-                      className={`py-2.5 rounded-xl border text-center ${objetivo===o.v?'bg-ink text-white border-ink':'border-border text-muted'}`}>
-                      <p className="text-xs font-semibold">{o.l}</p><p className="text-[9px] opacity-70">{o.d}</p>
-                    </button>
-                  ))}
+                  {[{v:'deficit',l:'🔥 Déficit',d:'-400 kcal'},{v:'mantenimiento',l:'⚖️ Mant.',d:'TDEE'},{v:'superavit',l:'💪 Superávit',d:'+300 kcal'}].map(o=>(<button key={o.v} onClick={()=>setObjetivo(o.v as any)} className={`py-2.5 rounded-xl border text-center ${objetivo===o.v?'bg-ink text-white border-ink':'border-border text-muted'}`}><p className="text-xs font-semibold">{o.l}</p><p className="text-[9px] opacity-70">{o.d}</p></button>))}
                 </div>
                 <div style={{marginBottom:12}}>
                   <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color:'#8a8278',marginBottom:4}}>Proteína: <span style={{color:'#6e5438'}}>{ratio}g/kg</span></p>
@@ -1030,10 +1146,7 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
             )}
           </div>
 
-          {/* COLUMNA DERECHA — sin scroll, todo visible */}
           <div style={{display:'flex',flexDirection:'column',gap:8,overflow:'hidden'}}>
-
-            {/* Distribución por comidas */}
             <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:openDist?10:0,cursor:'pointer'}} onClick={()=>setOpenDist(!openDist)}>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Distribución por comidas</p>
@@ -1045,12 +1158,9 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
               {openDist && dist.map((m,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,padding:'4px 6px',background:'#f8f6f2',borderRadius:8}}>
                   <span style={{fontSize:14}}>{m.icon}</span>
-                  <input value={m.label} onChange={e=>{const d=[...dist];d[i]={...d[i],label:e.target.value};setDist(d)}}
-                    style={{flex:1,fontSize:11,fontWeight:600,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
-                  <input value={m.time||''} onChange={e=>{const d=[...dist];d[i]={...d[i],time:e.target.value};setDist(d)}}
-                    style={{width:40,fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none',textAlign:'right'}}/>
-                  <input type="number" min={0} max={100} value={m.pct} onChange={e=>{const d=[...dist];d[i]={...d[i],pct:Number(e.target.value)};setDist(d)}}
-                    style={{width:28,fontSize:10,textAlign:'center',background:'white',border:'1px solid #e5e2dc',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
+                  <input value={m.label} onChange={e=>{const d=[...dist];d[i]={...d[i],label:e.target.value};setDist(d)}} style={{flex:1,fontSize:11,fontWeight:600,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
+                  <input value={m.time||''} onChange={e=>{const d=[...dist];d[i]={...d[i],time:e.target.value};setDist(d)}} style={{width:40,fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none',textAlign:'right'}}/>
+                  <input type="number" min={0} max={100} value={m.pct} onChange={e=>{const d=[...dist];d[i]={...d[i],pct:Number(e.target.value)};setDist(d)}} style={{width:28,fontSize:10,textAlign:'center',background:'white',border:'1px solid #e5e2dc',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
                   <span style={{fontSize:9,color:'#8a8278'}}>%</span>
                   <button onClick={()=>setDist(dist.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:12,lineHeight:1}}>×</button>
                 </div>
@@ -1058,36 +1168,29 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
               {openDist && <p style={{fontSize:9,color:dist.reduce((a,d)=>a+d.pct,0)===100?'#4caf7d':'#e07b54',textAlign:'right'}}>Total: {dist.reduce((a,d)=>a+d.pct,0)}%</p>}
             </div>
 
-            {/* Suplementación */}
             <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:openSups?10:0,cursor:'pointer'}} onClick={()=>setOpenSups(!openSups)}>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'#8a8278'}}>Suplementación básica</p>
                 <div style={{display:'flex',gap:8,alignItems:'center'}}>
                   {openSups && <button onClick={e=>{e.stopPropagation();setSups([...sups,{name:'Suplemento',desc:'',visible:true}])}} style={{fontSize:10,color:'#6e5438',background:'none',border:'none',cursor:'pointer'}}>Añadir</button>}
                   <span style={{fontSize:10,color:'#8a8278'}}>{openSups?'▲':'▼'}</span>
-                  <div onClick={()=>setShowSups(!showSups)} style={{width:28,height:16,borderRadius:8,background:showSups?'#4caf7d':'#d0ccc6',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}>
+                  <div onClick={e=>{e.stopPropagation();setShowSups(!showSups)}} style={{width:28,height:16,borderRadius:8,background:showSups?'#4caf7d':'#d0ccc6',cursor:'pointer',position:'relative',transition:'background 0.2s',flexShrink:0}}>
                     <div style={{position:'absolute',top:2,left:showSups?12:2,width:12,height:12,borderRadius:6,background:'white',transition:'left 0.2s'}}/>
                   </div>
                 </div>
               </div>
               {openSups && sups.map((s,i)=>(
                 <div key={i} style={{display:'flex',alignItems:'flex-start',gap:6,marginBottom:8,padding:'6px 8px',background:s.visible?'rgba(76,175,125,0.08)':'#f8f6f2',borderRadius:8}}>
-                  <div style={{width:28,height:28,borderRadius:8,background:s.visible?'rgba(76,175,125,0.15)':'#ece9e3',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}
-                    onClick={()=>{const ss=[...sups];ss[i]={...ss[i],visible:!ss[i].visible};setSups(ss)}}>
-                    <span style={{fontSize:11}}>{s.visible?'👁️':'🙈'}</span>
-                  </div>
+                  <div style={{width:28,height:28,borderRadius:8,background:s.visible?'rgba(76,175,125,0.15)':'#ece9e3',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}} onClick={()=>{const ss=[...sups];ss[i]={...ss[i],visible:!ss[i].visible};setSups(ss)}}><span style={{fontSize:11}}>{s.visible?'👁️':'🙈'}</span></div>
                   <div style={{flex:1,minWidth:0}}>
-                    <input value={s.name} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],name:e.target.value};setSups(ss)}}
-                      style={{display:'block',width:'100%',fontSize:11,fontWeight:700,background:'transparent',border:'none',outline:'none',marginBottom:2}}/>
-                    <input value={s.desc} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],desc:e.target.value};setSups(ss)}}
-                      style={{display:'block',width:'100%',fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none'}}/>
+                    <input value={s.name} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],name:e.target.value};setSups(ss)}} style={{display:'block',width:'100%',fontSize:11,fontWeight:700,background:'transparent',border:'none',outline:'none',marginBottom:2}}/>
+                    <input value={s.desc} onChange={e=>{const ss=[...sups];ss[i]={...ss[i],desc:e.target.value};setSups(ss)}} style={{display:'block',width:'100%',fontSize:10,color:'#8a8278',background:'transparent',border:'none',outline:'none'}}/>
                   </div>
                   <button onClick={()=>setSups(sups.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:12,lineHeight:1}}>×</button>
                 </div>
               ))}
             </div>
 
-            {/* Equivalencias proteína */}
             {macros.protein > 0 && (
               <div className="bg-white rounded-2xl" style={{boxShadow:'0 2px 12px rgba(0,0,0,0.06)',padding:14,flexShrink:0}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -1100,10 +1203,8 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
                   return (
                     <div key={i} style={{marginBottom:8}}>
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
-                        <input value={f.food} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],food:e.target.value};setEquivs(eq)}}
-                          style={{flex:1,fontSize:11,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
-                        <input type="number" value={f.per100} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],per100:Number(e.target.value)};setEquivs(eq)}}
-                          style={{width:24,fontSize:10,textAlign:'center',background:'#f0ede8',border:'none',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
+                        <input value={f.food} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],food:e.target.value};setEquivs(eq)}} style={{flex:1,fontSize:11,background:'transparent',border:'none',outline:'none',minWidth:0}}/>
+                        <input type="number" value={f.per100} onChange={e=>{const eq=[...equivs];eq[i]={...eq[i],per100:Number(e.target.value)};setEquivs(eq)}} style={{width:24,fontSize:10,textAlign:'center',background:'#f0ede8',border:'none',borderRadius:4,padding:'1px 2px',outline:'none'}}/>
                         <span style={{fontSize:10,fontWeight:700,color:COLORS.protein,width:36,textAlign:'right'}}>{g}g</span>
                         <button onClick={()=>setEquivs(equivs.filter((_,idx)=>idx!==i))} style={{color:'#8a8278',background:'none',border:'none',cursor:'pointer',fontSize:11,lineHeight:1}}>×</button>
                       </div>
@@ -1133,204 +1234,6 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
             onMacrosChange={m=>updateMacros(m)}/>
         </div>
       )}
-    </div>
-  )
-}
-
-// ── Pestaña Perfil del cliente ────────────────────────
-function PerfilTab({ client, logs, onUpdate }: {
-  client: ClientData
-  logs: TrainingLogs
-  onUpdate: (updates: Record<string, any>) => Promise<void>
-}) {
-  const c = client as any
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({
-    name: c.name || '',
-    surname: c.surname || '',
-    phone: c.phone || '',
-    objetivo: c.objetivo || '',
-    altura: c.altura || '',
-    weight: c.weight || '',
-    genero: c.genero || '',
-    fechanacimiento: c.fechanacimiento || '',
-    notas_privadas: c.notas_privadas || '',
-  })
-  const [saving, setSaving] = useState(false)
-
-  // Calcular edad
-  const edad = (() => {
-    if (!c.fechanacimiento) return null
-    const birth = new Date(c.fechanacimiento)
-    const today = new Date()
-    return today.getFullYear() - birth.getFullYear() -
-      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
-  })()
-
-  // Estadísticas del cliente
-  const totalSessions = new Set(
-    Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone)
-  ).size
-
-  const lastSession = Object.values(logs)
-    .filter((l: any) => l.done && l.dateDone)
-    .map((l: any) => l.dateDone as string)
-    .sort().reverse()[0]
-
-  const handleSave = async () => {
-    setSaving(true)
-    await onUpdate({
-      name: form.name,
-      surname: form.surname,
-      phone: form.phone,
-      objetivo: form.objetivo,
-      altura: form.altura ? parseFloat(form.altura) : null,
-      weight: form.weight ? parseFloat(form.weight) : 0,
-      genero: form.genero || null,
-      fechanacimiento: form.fechanacimiento || null,
-    })
-    setEditing(false)
-    setSaving(false)
-  }
-
-  return (
-    <div className="animate-fade-in space-y-5 max-w-xl">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center text-2xl font-serif font-bold text-accent">
-            {c.name?.[0]?.toUpperCase()}
-          </div>
-          <div>
-            <h2 className="text-xl font-serif font-bold">{c.name} {c.surname}</h2>
-            <p className="text-sm text-muted capitalize">{c.objetivo || 'Sin objetivo'}{edad ? ` · ${edad} años` : ''}</p>
-          </div>
-        </div>
-        <button onClick={() => setEditing(!editing)}
-          className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${editing ? 'border-accent text-accent bg-accent/5' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
-          {editing ? 'Cancelar' : '✏️ Editar'}
-        </button>
-      </div>
-
-      {/* Stats rápidas */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Sesiones', value: totalSessions, color: 'text-accent' },
-          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', color: 'text-ok' },
-          { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', color: 'text-ink' },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Datos del cliente */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border bg-bg-alt/30">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
-        </div>
-        {!editing ? (
-          <div className="divide-y divide-border">
-            {[
-              { label: 'Nombre', value: `${c.name || '—'} ${c.surname || ''}` },
-              { label: 'WhatsApp', value: c.phone || '—' },
-              { label: 'Objetivo', value: c.objetivo || '—' },
-              { label: 'Altura', value: c.altura ? `${c.altura} cm` : '—' },
-              { label: 'Peso', value: c.weight ? `${c.weight} kg` : '—' },
-              { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
-              { label: 'Fecha nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
-            ].map(row => (
-              <div key={row.label} className="flex items-center px-5 py-3">
-                <p className="text-xs font-semibold text-muted w-32 flex-shrink-0">{row.label}</p>
-                <p className="text-sm text-ink">{row.value}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-5 space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Nombre</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Apellido</label>
-                <input value={form.surname} onChange={e => setForm(f => ({ ...f, surname: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-muted mb-1">WhatsApp</label>
-              <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                placeholder="+34 600 000 000"
-                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-muted mb-1">Objetivo</label>
-              <input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
-                placeholder="Hipertrofia, fuerza, déficit..."
-                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Altura (cm)</label>
-                <input type="number" value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Peso (kg)</label>
-                <input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Género</label>
-                <select value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none">
-                  <option value="">Sin especificar</option>
-                  <option value="h">Masculino</option>
-                  <option value="m">Femenino</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-muted mb-1">Fecha nacimiento</label>
-                <input type="date" value={form.fechanacimiento} onChange={e => setForm(f => ({ ...f, fechanacimiento: e.target.value }))}
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
-              </div>
-            </div>
-            <button onClick={handleSave} disabled={saving}
-              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">
-              {saving ? 'Guardando...' : 'Guardar cambios'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Notas privadas del entrenador */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border bg-bg-alt/30">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas (solo tú las ves)</p>
-        </div>
-        <div className="p-4">
-          <textarea
-            defaultValue={c.notas_privadas || ''}
-            onBlur={async e => {
-              const val = e.target.value
-              await onUpdate({ notas_privadas: val })
-            }}
-            placeholder="Observaciones, lesiones, preferencias, historial médico..."
-            rows={4}
-            className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
-          />
-          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
-        </div>
-      </div>
-
     </div>
   )
 }
