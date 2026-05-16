@@ -14,6 +14,7 @@ import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { DietEditor } from '../shared/DietEditor'
 import { ProgresoTab } from './ProgresoTab'
 import { InformePDF } from './InformePDF'
+import { PlanGate } from '../shared/PlanGate'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { BLOQUES_POR_ESPECIALIDAD, Especialidad } from '../../lib/especialidades'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
@@ -308,10 +309,18 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
             {activeTab === 'progreso' && (
-              <button onClick={() => setShowInforme(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
-                📄 Informe PDF
-              </button>
+              <PlanGate feature="pdf_report" planName={userProfile.planName}
+                fallback={
+                  <button disabled title="Requiere plan Pro"
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted/40 cursor-not-allowed">
+                    🔒 Informe PDF
+                  </button>
+                }>
+                <button onClick={() => setShowInforme(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+                  📄 Informe PDF
+                </button>
+              </PlanGate>
             )}
             {activeTab === 'plan' && templates.length > 0 && (
               <button onClick={() => setShowTemplates(true)}
