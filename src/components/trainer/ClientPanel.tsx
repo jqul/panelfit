@@ -145,7 +145,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     if (planErr) logError('loadPlan', planErr)
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
-    else setPlan({ clientId: client.id, type: 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
+    else setPlan({ clientId: client.id, type: (client as any).objetivo || 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
     const { data: regData, error: regErr } = await supabase.from('registros').select('logs').eq('clientId', client.id).maybeSingle()
     if (regErr) logError('loadRegistros', regErr)
     const regRow = regData as RegistroRow | null
@@ -450,8 +450,17 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </div>
             <div className="flex gap-2">
               <button onClick={() => setWizardStep(2)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
-              <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin)}
-                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
+              {plan?.weeks?.length ? (
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin, true)}
+                    className="w-full py-2 bg-accent text-white rounded-xl text-xs font-bold">+ Añadir semanas al plan</button>
+                  <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin, false)}
+                    className="w-full py-2 bg-warn/10 text-warn border border-warn/20 rounded-xl text-xs font-bold">↺ Reemplazar plan completo</button>
+                </div>
+              ) : (
+                <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin, false)}
+                  className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
+              )}
             </div>
           </div>
         )}
