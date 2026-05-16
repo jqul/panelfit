@@ -19,9 +19,12 @@ import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
 import { EncuestasTab } from './EncuestasTab'
+import { BusinessDashboard } from './BusinessDashboard'
+import { PlanGate, PlanBadge } from '../shared/PlanGate'
+import { canUse } from '../../lib/plans'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface ClientWithStats extends ClientData {
@@ -154,6 +157,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
       { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
       { id: 'encuestas' as Tab, icon: ClipboardList, label: 'Encuestas' },
+      { id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio' },
     ]},
     { label: 'Contenido', items: [
       { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
@@ -457,7 +461,16 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'encuestas' && <EncuestasTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'encuestas' && (
+            <PlanGate feature="surveys" planName={userProfile.planName}>
+              <EncuestasTab trainerId={userProfile.uid} clients={clients} />
+            </PlanGate>
+          )}
+          {activeTab === 'negocio' && (
+            <PlanGate feature="business_dashboard" planName={userProfile.planName}>
+              <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
+            </PlanGate>
+          )}
         </div>
       </main>
 
