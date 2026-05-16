@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
-import { Check, X, Users, LogOut, RefreshCw, Shield, Mail, Clock } from 'lucide-react'
+import { Check, X, Users, LogOut, RefreshCw, Shield, Mail, Clock, Zap } from 'lucide-react'
 
 interface Entrenador {
   uid: string
@@ -17,10 +17,10 @@ interface Entrenador {
 interface Props { onLogout: () => void }
 
 const PLANES = [
-  { plan: 'free'    as const, limit: 3,    days: 0,  label: 'Free',    title: 'Máximo 5 clientes',             active: 'bg-gray-200 text-gray-700 border-gray-300',         inactive: 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300' },
-  { plan: 'starter' as const, limit: 15,   days: 0,  label: 'Starter', title: 'Máximo 15 clientes',            active: 'bg-accent text-white border-accent',                  inactive: 'border-accent/30 text-accent hover:bg-accent hover:text-white' },
-  { plan: 'trial'   as const, limit: 9999, days: 15, label: 'Demo',    title: 'Ilimitado 15 días',             active: 'bg-warn text-white border-warn',                      inactive: 'border-warn/30 text-warn hover:bg-warn hover:text-white' },
-  { plan: 'pro'     as const, limit: 9999, days: 0,  label: 'Pro',     title: 'Clientes ilimitados',           active: 'bg-ok text-white border-ok',                          inactive: 'border-ok/30 text-ok hover:bg-ok hover:text-white' },
+  { plan: 'free'    as const, limit: 3,    days: 0,  label: 'Free',    title: 'Máximo 3 clientes',              active: 'bg-gray-200 text-gray-700 border-gray-300',         inactive: 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300' },
+  { plan: 'starter' as const, limit: 15,   days: 0,  label: 'Starter', title: 'Máximo 15 clientes',             active: 'bg-accent text-white border-accent',                  inactive: 'border-accent/30 text-accent hover:bg-accent hover:text-white' },
+  { plan: 'trial'   as const, limit: 9999, days: 15, label: 'Demo',    title: 'Ilimitado 15 días',              active: 'bg-warn text-white border-warn',                      inactive: 'border-warn/30 text-warn hover:bg-warn hover:text-white' },
+  { plan: 'pro'     as const, limit: 9999, days: 0,  label: 'Pro',     title: 'Clientes ilimitados',            active: 'bg-ok text-white border-ok',                          inactive: 'border-ok/30 text-ok hover:bg-ok hover:text-white' },
   { plan: 'studio'  as const, limit: 9999, days: 0,  label: 'Studio',  title: 'Ilimitado + todas las features', active: 'bg-purple-500 text-white border-purple-500',          inactive: 'border-purple-200 text-purple-500 hover:bg-purple-500 hover:text-white' },
 ]
 
@@ -28,7 +28,9 @@ export function SuperAdminPanel({ onLogout }: Props) {
   const [entrenadores, setEntrenadores] = useState<Entrenador[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'pendientes' | 'activos' | 'todos'>('pendientes')
-  const [updatingPlan, setUpdatingPlan] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+  // Plan seleccionado por entrenador pendiente antes de aprobar
+  const [selectedPlan, setSelectedPlan] = useState<Record<string, 'free' | 'starter' | 'trial' | 'pro' | 'studio'>>({})
 
   useEffect(() => { loadEntrenadores() }, [])
 
@@ -54,11 +56,34 @@ export function SuperAdminPanel({ onLogout }: Props) {
     setLoading(false)
   }
 
+  /** Aprueba el entrenador y guarda el plan en el mismo update */
+  const aprobarConPlan = async (e: Entrenador) => {
+    const planKey = selectedPlan[e.uid] || 'free'
+    const planData = PLANES.find(p => p.plan === planKey)!
+    setUpdatingId(e.uid)
+    const now = Date.now()
+    const trialEndsAt = planKey === 'trial' ? now + (planData.days * 86400000) : undefined
+    const profile = { ...(e.profile || {}), planName: planKey, clientLimit: planData.limit, trialEndsAt, updatedAt: now }
+    const { error } = await supabase
+      .from('entrenadores')
+      .update({ approved: true, profile })
+      .eq('uid', e.uid)
+    if (error) {
+      toast('Error al aprobar', 'warn')
+    } else {
+      setEntrenadores(prev => prev.map(x => x.uid === e.uid ? { ...x, approved: true, profile } : x))
+      toast(`✓ ${e.displayName} activado con plan ${planData.label}`, 'ok')
+    }
+    setUpdatingId(null)
+  }
+
   const setActivo = async (id: string, activo: boolean) => {
+    setUpdatingId(id)
     const { error } = await supabase.from('entrenadores').update({ approved: activo }).eq('uid', id)
-    if (error) { toast('Error al actualizar', 'warn'); return }
+    if (error) { toast('Error al actualizar', 'warn'); setUpdatingId(null); return }
     setEntrenadores(prev => prev.map(e => e.uid === id ? { ...e, approved: activo } : e))
     toast(activo ? 'Entrenador activado ✓' : 'Entrenador desactivado', 'ok')
+    setUpdatingId(null)
   }
 
   const deleteEntrenador = async (id: string) => {
@@ -75,7 +100,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
     clientLimit: number,
     trialDays: number
   ) => {
-    setUpdatingPlan(e.uid)
+    setUpdatingId(e.uid)
     const now = Date.now()
     const trialEndsAt = planName === 'trial' ? now + (trialDays * 86400000) : undefined
     const profile = { ...(e.profile || {}), planName, clientLimit, trialEndsAt, updatedAt: now }
@@ -86,7 +111,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
       setEntrenadores(prev => prev.map(x => x.uid === e.uid ? { ...x, profile } : x))
       toast('Plan actualizado ✓', 'ok')
     }
-    setUpdatingPlan(null)
+    setUpdatingId(null)
   }
 
   const pendientes = entrenadores.filter(e => !e.approved)
@@ -164,18 +189,21 @@ export function SuperAdminPanel({ onLogout }: Props) {
           <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
             {filtered.map(e => {
               const currentPlan = e.profile?.planName || 'free'
+              const isPending = !e.approved
+              const pendingPlanKey = selectedPlan[e.uid] || 'starter' // default starter para nuevos
+
               return (
-                <div key={e.uid} className="px-5 py-4 space-y-3">
-                  {/* Fila superior: avatar + info + aprobar/eliminar */}
+                <div key={e.uid} className={`px-5 py-4 space-y-3 ${isPending ? 'bg-warn/5' : ''}`}>
+                  {/* Fila superior: avatar + info + acciones */}
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-sm font-bold flex-shrink-0 ${e.approved ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-sm font-bold flex-shrink-0 ${isPending ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
                       {e.displayName?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold truncate">{e.displayName || 'Sin nombre'}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${e.approved ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
-                          {e.approved ? 'Activo' : 'Pendiente'}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPending ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+                          {isPending ? '⏳ En modo demo' : '✓ Activo'}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
@@ -190,43 +218,72 @@ export function SuperAdminPanel({ onLogout }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {!e.approved ? (
-                        <button onClick={() => setActivo(e.uid, true)}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-ok text-white rounded-lg text-xs font-bold hover:opacity-90">
-                          <Check className="w-3.5 h-3.5" /> Aprobar
-                        </button>
-                      ) : (
+                      {isPending ? null : (
                         <button onClick={() => setActivo(e.uid, false)}
-                          className="flex items-center gap-1.5 px-3 py-2 bg-warn/10 text-warn border border-warn/20 rounded-lg text-xs font-bold hover:bg-warn hover:text-white transition-all">
+                          disabled={updatingId === e.uid}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-warn/10 text-warn border border-warn/20 rounded-lg text-xs font-bold hover:bg-warn hover:text-white transition-all disabled:opacity-50">
                           <X className="w-3.5 h-3.5" /> Desactivar
                         </button>
                       )}
-                      <button onClick={() => deleteEntrenador(e.uid)} className="p-2 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors">
+                      <button onClick={() => deleteEntrenador(e.uid)}
+                        disabled={updatingId === e.uid}
+                        className="p-2 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors disabled:opacity-50">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Fila inferior: selector de plan */}
-                  <div className="flex items-center gap-2 pl-13 flex-wrap">
-                    <span className="text-[10px] text-muted uppercase tracking-wider font-semibold mr-1">Plan:</span>
-                    {PLANES.map(({ plan, limit, days, label, title, active, inactive }) => {
-                      const isActive = currentPlan === plan
-                      return (
-                        <button
-                          key={plan}
-                          onClick={() => savePlan(e, plan, limit, days)}
-                          disabled={updatingPlan === e.uid || isActive}
-                          title={title}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all disabled:cursor-default ${isActive ? active : inactive}`}>
-                          {isActive ? '✓ ' : ''}{label}
-                        </button>
-                      )
-                    })}
-                    {updatingPlan === e.uid && (
-                      <div className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                    )}
-                  </div>
+                  {/* Para pendientes: selector de plan + botón aprobar juntos */}
+                  {isPending ? (
+                    <div className="bg-warn/10 border border-warn/20 rounded-xl px-4 py-3 space-y-3">
+                      <p className="text-xs font-semibold text-warn">Selecciona el plan antes de aprobar:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {PLANES.map(({ plan, label, title }) => (
+                          <button
+                            key={plan}
+                            onClick={() => setSelectedPlan(prev => ({ ...prev, [e.uid]: plan }))}
+                            title={title}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${
+                              pendingPlanKey === plan
+                                ? 'bg-ink text-white border-ink'
+                                : 'border-border text-muted hover:border-ink hover:text-ink'
+                            }`}>
+                            {pendingPlanKey === plan ? '✓ ' : ''}{label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => aprobarConPlan(e)}
+                        disabled={updatingId === e.uid}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-ok text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+                        {updatingId === e.uid
+                          ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Activando...</>
+                          : <><Zap className="w-4 h-4" /> Aprobar y activar con plan {PLANES.find(p => p.plan === pendingPlanKey)?.label}</>
+                        }
+                      </button>
+                    </div>
+                  ) : (
+                    /* Para activos: selector de plan normal */
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-muted uppercase tracking-wider font-semibold mr-1">Plan:</span>
+                      {PLANES.map(({ plan, limit, days, label, title, active, inactive }) => {
+                        const isActive = currentPlan === plan
+                        return (
+                          <button
+                            key={plan}
+                            onClick={() => savePlan(e, plan, limit, days)}
+                            disabled={updatingId === e.uid || isActive}
+                            title={title}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all disabled:cursor-default ${isActive ? active : inactive}`}>
+                            {isActive ? '✓ ' : ''}{label}
+                          </button>
+                        )
+                      })}
+                      {updatingId === e.uid && (
+                        <div className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
