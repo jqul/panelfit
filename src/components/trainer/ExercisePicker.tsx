@@ -115,7 +115,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
   const cats = ['Todos', ...EXERCISE_CATEGORIES]
 
   return (
-    <div className="flex flex-col max-h-[80vh]">
+    <div className="flex flex-col" style={{minHeight: "60vh", maxHeight: "80vh"}}>
       <div className="flex gap-1 mb-4 bg-bg rounded-xl p-1">
         <button onClick={() => setMode('library')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'library' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
@@ -188,7 +188,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto space-y-1 min-h-0 max-h-72">
+          <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
             {filtered.map(ex => {
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
