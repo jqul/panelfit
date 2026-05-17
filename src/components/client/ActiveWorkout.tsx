@@ -168,12 +168,13 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       const key = `ex_${dayKey}_r${ri}`
       const log = logs[key]
       const { numSets, numReps } = parseSet(ex.sets)
+      const totalSaved = Math.max(numSets, Object.keys(log?.sets || {}).length)
       initial[ri] = {}
-      for (let si = 0; si < numSets; si++) {
+      for (let si = 0; si < totalSaved; si++) {
         initial[ri][si] = {
           weight: log?.sets?.[si]?.weight || '',
           reps: log?.sets?.[si]?.reps || String(numReps),
-          done: false,
+          done: log?.sets?.[si]?.done || false,
         }
       }
     })
@@ -226,7 +227,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
       const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } } }
-      const allDone = Array.from({ length: numSets }, (_, i) => updated[ri][i]?.done).every(Boolean)
+      const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
       const setsData: Record<number, { weight: string; reps: string }> = {}
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
@@ -282,7 +283,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const allComplete = pct === 100
 
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col">
+    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
       {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
 
@@ -342,7 +343,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       )}
 
       {/* Ejercicios */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
         {day.exercises.map((ex, ri) => {
           const { numSets, numReps } = parseSet(ex.sets)
           const exSets = sets[ri] || {}
