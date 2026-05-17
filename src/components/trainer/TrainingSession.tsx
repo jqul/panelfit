@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy, MessageSquare, AlertTriangle } from 'lucide-react'
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
@@ -8,6 +8,7 @@ import { VideoModal } from '../client/VideoModal'
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void; onFinish: () => void; onBack: () => void
+  clientId?: string; clientName?: string
 }
 
 function getYTId(url: string) {
@@ -17,8 +18,91 @@ function getYTId(url: string) {
 
 function vibrate(p: number | number[]) { if ('vibrate' in navigator) navigator.vibrate(p) }
 
-export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack }: Props) {
-  const [view, setView] = useState<'map' | 'action' | 'finish'>('map')
+// ── Popup de confirmación al terminar con incompletos ──────────────────────
+function FinishConfirmModal({ incomplete, onConfirm, onCancel }: {
+  incomplete: { name: string; seriesPending: number }[]
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center p-4">
+      <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-warn/10 rounded-full flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-5 h-5 text-warn" />
+          </div>
+          <div>
+            <h3 className="font-serif font-bold text-base">¿Terminar sin completar?</h3>
+            <p className="text-xs text-muted mt-0.5">Te quedan ejercicios pendientes</p>
+          </div>
+        </div>
+        <div className="bg-warn/5 border border-warn/20 rounded-2xl p-3 space-y-1.5">
+          {incomplete.map((item, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="text-warn text-xs">⚠</span>
+              <span className="flex-1 truncate font-medium">{item.name}</span>
+              <span className="text-xs text-warn flex-shrink-0">
+                {item.seriesPending > 0 ? `${item.seriesPending} series` : 'sin completar'}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted text-center">¿Seguro que quieres terminar el entrenamiento?</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-3 border border-border rounded-2xl text-sm font-semibold text-muted hover:bg-bg-alt transition-colors">
+            Seguir entrenando
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-3 bg-warn text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
+            Terminar igual
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Pantalla de comentario antes del resumen final ─────────────────────────
+function CommentScreen({ onSubmit, clientName }: {
+  onSubmit: (comment: string) => void
+  clientName?: string
+}) {
+  const [comment, setComment] = useState('')
+  return (
+    <div className="fixed inset-0 bg-bg z-50 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm space-y-5">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="w-8 h-8 text-accent" />
+          </div>
+          <h2 className="text-2xl font-serif font-bold">¿Algo que comentar?</h2>
+          <p className="text-muted text-sm mt-1">Tu entrenador lo verá al revisar la sesión</p>
+        </div>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          placeholder="Ej: Me notaba cansado, el hombro izquierdo me molestó un poco en press banca..."
+          rows={5}
+          autoFocus
+          className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
+        />
+        <div className="space-y-2">
+          <button onClick={() => onSubmit(comment)}
+            className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
+            {comment.trim() ? 'Enviar y terminar' : 'Terminar sin comentario'}
+          </button>
+          {!comment.trim() && (
+            <p className="text-center text-xs text-muted">Puedes dejarlo en blanco</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, clientId, clientName }: Props) {
+  const [view, setView] = useState<'map' | 'action' | 'comment' | 'finish'>('map')
   const [activeIdx, setActiveIdx] = useState(0)
   const [timer, setTimer] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
@@ -28,6 +112,9 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [uploadedVideos, setUploadedVideos] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [sessionComment, setSessionComment] = useState('')
+  const [savingComment, setSavingComment] = useState(false)
   const exercises = day.exercises
 
   useEffect(() => {
@@ -77,7 +164,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const allDone = Object.keys(sets).length >= total
     updateLog(ri, { sets, done: allDone, dateDone: allDone ? new Date().toISOString().split('T')[0] : undefined })
     vibrate(50)
-    // Usar restSets del ejercicio si existe, si no el global del plan
     const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
     startTimer(restTime)
     if (allDone && ri < exercises.length - 1) setTimeout(() => setActiveIdx(ri + 1), 600)
@@ -92,46 +178,140 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const totalDone = exercises.filter((_, ri) => getLog(ri).done).length
   const pct = exercises.length ? Math.round((totalDone / exercises.length) * 100) : 0
 
+  // Calcular incompletos para el popup
+  const getIncomplete = () => {
+    const incomplete: { name: string; seriesPending: number }[] = []
+    exercises.forEach((ex, ri) => {
+      const log = getLog(ri)
+      if (!log.done) {
+        const total = parseInt(ex.sets?.split('×')[0] || '3')
+        const done = Object.keys(log.sets).length
+        incomplete.push({ name: ex.name, seriesPending: total - done })
+      }
+    })
+    return incomplete
+  }
+
+  // Intentar terminar — mostrar popup si hay incompletos
+  const tryFinish = () => {
+    const incomplete = getIncomplete()
+    if (incomplete.length > 0) {
+      setShowConfirm(true)
+    } else {
+      setView('comment')
+    }
+  }
+
+  // Guardar comentario en Supabase y notificar al entrenador
+  const submitComment = async (comment: string) => {
+    setSessionComment(comment)
+    setSavingComment(true)
+    if (clientId && comment.trim()) {
+      try {
+        // Guardar comentario en la tabla registros junto con los logs
+        const today = new Date().toISOString().split('T')[0]
+        const sessionNote = {
+          date: today,
+          dayKey,
+          dayTitle: day.title,
+          comment: comment.trim(),
+          completedAt: Date.now(),
+          clientName: clientName || '',
+        }
+        // Guardamos en el campo session_notes del registro
+        const { data: existing } = await supabase
+          .from('registros')
+          .select('session_notes')
+          .eq('clientId', clientId)
+          .maybeSingle()
+
+        const prevNotes = (existing as any)?.session_notes || []
+        await supabase
+          .from('registros')
+          .upsert(
+            { clientId, session_notes: [...prevNotes, sessionNote], updatedAt: Date.now() },
+            { onConflict: 'clientId' }
+          )
+      } catch (e) {
+        console.error('Error saving comment', e)
+      }
+    }
+    setSavingComment(false)
+    setView('finish')
+  }
+
+  if (view === 'comment') {
+    return <CommentScreen onSubmit={submitComment} clientName={clientName} />
+  }
+
   if (view === 'finish') {
     const mejores = exercises.map((ex, ri) => {
       const mejor = Object.values(getLog(ri).sets || {}).reduce((max: number, s: any) => Math.max(max, parseFloat(s.weight) || 0), 0)
       return { name: ex.name, mejor }
     }).filter(x => x.mejor > 0).sort((a, b) => b.mejor - a.mejor)
     const mins = Math.round((Date.now() - sessionStart) / 60000)
+
     return (
-      <div className="fixed inset-0 bg-bg z-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-ok/10 rounded-full flex items-center justify-center mb-5">
-          <Trophy className="w-10 h-10 text-ok" />
-        </div>
-        <h2 className="text-4xl font-serif font-bold mb-1">¡Sesión completada!</h2>
-        <p className="text-muted text-sm mb-7">{day.title}</p>
-        <div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-5">
-          {[
-            { v: totalDone, l: 'Ejercicios', c: 'text-ok' },
-            { v: `${mins}m`, l: 'Tiempo', c: 'text-accent' },
-            { v: '🔥', l: 'Racha +1', c: 'text-warn' },
-          ].map(s => (
-            <div key={s.l} className="bg-card border border-border rounded-2xl p-4 text-center">
-              <p className={`text-2xl font-serif font-bold ${s.c}`}>{s.v}</p>
-              <p className="text-[10px] text-muted uppercase tracking-wider mt-1">{s.l}</p>
-            </div>
-          ))}
-        </div>
-        {mejores.length > 0 && (
-          <div className="w-full max-w-sm bg-card border border-border rounded-2xl p-4 mb-5 text-left">
-            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-3">Mejores pesos hoy</p>
-            {mejores.slice(0, 3).map((m, i) => (
-              <div key={i} className="flex justify-between py-1.5">
-                <p className="text-sm truncate flex-1">{m.name}</p>
-                <p className="text-sm font-bold text-accent ml-3">{m.mejor} kg</p>
+      <div className="fixed inset-0 bg-bg z-50 flex flex-col items-center justify-center p-6 text-center overflow-y-auto">
+        <div className="w-full max-w-sm py-6 space-y-5">
+          <div className="w-20 h-20 bg-ok/10 rounded-full flex items-center justify-center mx-auto">
+            <Trophy className="w-10 h-10 text-ok" />
+          </div>
+          <div>
+            <h2 className="text-4xl font-serif font-bold mb-1">¡Sesión completada!</h2>
+            <p className="text-muted text-sm">{day.title}</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { v: totalDone, l: 'Ejercicios', c: 'text-ok' },
+              { v: `${mins}m`, l: 'Tiempo', c: 'text-accent' },
+              { v: '🔥', l: 'Racha +1', c: 'text-warn' },
+            ].map(s => (
+              <div key={s.l} className="bg-card border border-border rounded-2xl p-4 text-center">
+                <p className={`text-2xl font-serif font-bold ${s.c}`}>{s.v}</p>
+                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">{s.l}</p>
               </div>
             ))}
           </div>
-        )}
-        <button onClick={onFinish} style={{ minHeight: '52px' }}
-          className="w-full max-w-sm bg-ink text-white rounded-2xl font-bold text-base">
-          Volver al inicio
-        </button>
+
+          {mejores.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-4 text-left">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-3">Mejores pesos hoy</p>
+              {mejores.slice(0, 3).map((m, i) => (
+                <div key={i} className="flex justify-between py-1.5">
+                  <p className="text-sm truncate flex-1">{m.name}</p>
+                  <p className="text-sm font-bold text-accent ml-3">{m.mejor} kg</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Comentario enviado */}
+          {sessionComment.trim() && (
+            <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4 text-left">
+              <p className="text-[10px] uppercase tracking-wider text-accent font-semibold mb-2 flex items-center gap-1.5">
+                <MessageSquare className="w-3 h-3" /> Comentario enviado al entrenador
+              </p>
+              <p className="text-sm text-muted italic">"{sessionComment}"</p>
+            </div>
+          )}
+
+          {/* Ejercicios incompletos si los hay */}
+          {getIncomplete().length > 0 && (
+            <div className="bg-warn/5 border border-warn/20 rounded-2xl p-4 text-left">
+              <p className="text-[10px] uppercase tracking-wider text-warn font-semibold mb-2">Sin completar</p>
+              {getIncomplete().map((item, i) => (
+                <p key={i} className="text-sm text-muted">• {item.name}</p>
+              ))}
+            </div>
+          )}
+
+          <button onClick={onFinish} style={{ minHeight: '52px' }}
+            className="w-full bg-ink text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
+            Volver al inicio
+          </button>
+        </div>
       </div>
     )
   }
@@ -167,6 +347,20 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           </div>
         )
       })}
+
+      {/* Botón finalizar flotante abajo del mapa */}
+      <div className="pt-2">
+        <button
+          onClick={tryFinish}
+          style={{ minHeight: '52px' }}
+          className={`w-full rounded-2xl font-bold text-base active:scale-[0.98] transition-all ${
+            pct === 100
+              ? 'bg-ok text-white'
+              : 'bg-ink/80 text-white'
+          }`}>
+          {pct === 100 ? '🏆 ¡Finalizar entrenamiento!' : `Terminar (${totalDone}/${exercises.length} completados)`}
+        </button>
+      </div>
     </div>
   )
 
@@ -198,10 +392,9 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             {ex.comment && <p className="text-xs text-muted italic mt-1.5 leading-relaxed">"{ex.comment}"</p>}
           </div>
 
-          {/* ── VÍDEOS — modal in-app, sin salir ── */}
+          {/* Vídeos */}
           {allVideos.length > 0 && (
             <div className="space-y-2">
-              {/* Vídeo principal */}
               <button onClick={() => setVideoUrl(allVideos[0] as string)}
                 className="w-full flex items-center gap-3 bg-card border border-border rounded-xl p-3 active:scale-[0.98] transition-transform text-left">
                 {getYTId(allVideos[0] as string) ? (
@@ -220,8 +413,6 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                   <Play className="w-4 h-4 text-white ml-0.5" />
                 </div>
               </button>
-
-              {/* Si hay varios vídeos, mostrar miniaturas */}
               {allVideos.length > 1 && (
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {allVideos.slice(1).map((vurl, vi) => {
@@ -241,6 +432,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           )}
 
+          {/* Timer descanso */}
           {timerRunning && (
             <div className="bg-ink text-white rounded-2xl p-4 flex items-center gap-4">
               <div className="relative w-14 h-14 flex-shrink-0">
@@ -274,6 +466,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           )}
 
+          {/* Series */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
               <p className="text-xs font-bold uppercase tracking-widest text-muted">
@@ -328,6 +521,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           </div>
 
+          {/* Vídeo de ejecución requerido */}
           {exercises[activeIdx]?.requiresVideo && (
             <div className={`border-2 rounded-2xl p-4 space-y-2 ${uploadedVideos[`r${activeIdx}`] ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
               <div className="flex items-center gap-2">
@@ -354,6 +548,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           )}
 
+          {/* Botón completar serie */}
           {!timerRunning && (
             <button
               onClick={() => doneSeries < totalSeries ? markSeriesDone(activeIdx) : toggleExDone(activeIdx)}
@@ -374,12 +569,20 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
 
   return (
     <div className="fixed inset-0 bg-bg z-50 flex flex-col">
-      {/* Modal vídeo in-app */}
       {videoUrl && <VideoModal url={videoUrl} onClose={() => setVideoUrl(null)} />}
+
+      {/* Popup confirmación */}
+      {showConfirm && (
+        <FinishConfirmModal
+          incomplete={getIncomplete()}
+          onConfirm={() => { setShowConfirm(false); setView('comment') }}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
 
       <header className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center h-14 px-4 gap-3">
-          <button onClick={onBack} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors" title="Minimizar">
+          <button onClick={onBack} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
             <X className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
@@ -392,9 +595,13 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
             </div>
           </div>
           <button
-            onClick={() => setView('finish')}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-ok/10 text-ok border border-ok/20 hover:bg-ok hover:text-white transition-all mr-1">
-            Terminar
+            onClick={tryFinish}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all mr-1 ${
+              pct === 100
+                ? 'bg-ok text-white border border-ok'
+                : 'bg-ok/10 text-ok border border-ok/20 hover:bg-ok hover:text-white'
+            }`}>
+            {pct === 100 ? '🏆 Finalizar' : 'Terminar'}
           </button>
           <button onClick={() => setView(v => v === 'map' ? 'action' : 'map')}
             className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
@@ -419,7 +626,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
               Siguiente <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={() => setView('finish')}
+            <button onClick={tryFinish}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-ok text-white rounded-xl text-sm font-medium"
               style={{ minHeight: '48px' }}>
               <CheckCircle2 className="w-4 h-4" /> Finalizar
