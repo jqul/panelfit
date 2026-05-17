@@ -164,8 +164,11 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const allDone = Object.keys(sets).length >= total
     updateLog(ri, { sets, done: allDone, dateDone: allDone ? new Date().toISOString().split('T')[0] : undefined })
     vibrate(50)
-    const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-    startTimer(restTime)
+    // Solo iniciar timer si el entrenador no lo ocultó
+    if (!(ex as any).hideRest) {
+      const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+      startTimer(restTime)
+    }
     if (allDone && ri < exercises.length - 1) setTimeout(() => setActiveIdx(ri + 1), 600)
   }
 
