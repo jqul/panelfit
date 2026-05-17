@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Flame, Dumbbell, Trophy, TrendingUp, Play, CheckCircle2, MessageSquare, Scale, Clock, ChevronRight, Zap } from 'lucide-react'
+import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { Exercise } from '../../types'
 import { TrainingSession } from '../trainer/TrainingSession'
-import { getConsejo, Objetivo } from '../../lib/nudges'
+import { CalculadoraDiscos } from './CalculadoraDiscos'
+import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface Props {
   plan: TrainingPlan
@@ -18,6 +19,7 @@ interface Props {
   restDayMsg?: string
   brandBg?: string
   brandColor?: string
+  seriesTypes?: SeriesTypeDef[]
 }
 
 function calcStreak(logs: TrainingLogs): number {
@@ -51,13 +53,14 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438', seriesTypes }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [showCalc, setShowCalc] = useState(false)
 
   useEffect(() => {
     try { setWeights(JSON.parse(localStorage.getItem(`pf_weight_${clientId}`) || '[]')) } catch {}
@@ -91,16 +94,13 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const todayPct = todayTotal ? Math.round((todayDone / todayTotal) * 100) : 0
   const estimatedMin = todaySession ? Math.round(estimateMinutes(todaySession.day.exercises)) : 0
 
-  // Siguiente ejercicio pendiente
   const nextExIdx = todaySession
     ? todaySession.day.exercises.findIndex((_: any, ri: number) => !logs[`ex_${todaySession.dayKey}_r${ri}`]?.done)
     : -1
   const nextEx = nextExIdx >= 0 ? todaySession?.day.exercises[nextExIdx] : null
 
-  // Entreno activo — puede estar minimizado o a pantalla completa
   const sessionOverlay = session && (
     <>
-      {/* Pantalla completa cuando no está minimizado */}
       {!sessionMinimized && (
         <TrainingSession
           day={session.day}
@@ -110,15 +110,15 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           onLogsChange={onLogsChange}
           onFinish={() => { setSession(null); setSessionMinimized(false) }}
           onBack={() => setSessionMinimized(true)}
+          clientId={clientId}
+          clientName={clientName}
         />
       )}
-      {/* Barra flotante cuando está minimizado — como Spotify */}
       {sessionMinimized && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1">
           <div
             className="bg-ink text-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl cursor-pointer active:scale-[0.98] transition-transform"
             onClick={() => setSessionMinimized(false)}>
-            {/* Indicador animado */}
             <div className="w-3 h-3 rounded-full bg-ok flex-shrink-0 animate-pulse" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate">{session.day.title}</p>
@@ -130,13 +130,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
                 })()}
               </p>
             </div>
-            {/* Botón terminar */}
             <button
-              onClick={e => {
-                e.stopPropagation()
-                setSession(null)
-                setSessionMinimized(false)
-              }}
+              onClick={e => { e.stopPropagation(); setSession(null); setSessionMinimized(false) }}
               className="flex-shrink-0 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-semibold transition-colors">
               Terminar
             </button>
@@ -150,9 +145,17 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
-    <div className="max-w-xl mx-auto" style={{paddingTop: brandBg ? 8 : 0}}>
+    <div className="max-w-xl mx-auto" style={{ paddingTop: brandBg ? 8 : 0 }}>
       {sessionOverlay}
-      {/* Offline banner */}
+
+      {/* Calculadora de discos */}
+      {showCalc && (
+        <CalculadoraDiscos
+          pesoObjetivo={pesoActual || undefined}
+          onClose={() => setShowCalc(false)}
+        />
+      )}
+
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
           <p className="text-xs font-semibold text-warn">Sin conexión — los datos se guardarán cuando vuelvas a conectarte</p>
@@ -160,7 +163,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
       )}
 
       <div className="px-4 pt-6 space-y-5">
-        {/* Saludo + mensaje */}
+        {/* Saludo */}
         <div>
           <h2 className="text-2xl font-serif font-bold">{saludo}, {clientName.split(' ')[0]} 👋</h2>
           {(welcomeMsg || plan.message) && (
@@ -172,12 +175,17 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           )}
         </div>
 
-        {/* Stats compactos */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha' },
-            { icon: <CheckCircle2 className="w-4 h-4 text-ok" />, value: totalExDone, label: 'Hechos' },
-            { icon: <Scale className="w-4 h-4 text-accent" />, value: pesoActual ?? '—', label: 'kg', onClick: () => setShowWeightInput(v => !v) },
+            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha', onClick: undefined },
+            { icon: <CheckCircle2 className="w-4 h-4 text-ok" />, value: totalExDone, label: 'Hechos', onClick: undefined },
+            {
+              icon: <Scale className="w-4 h-4 text-accent" />,
+              value: pesoActual ?? '—',
+              label: 'kg',
+              onClick: () => setShowWeightInput(v => !v)
+            },
           ].map((s, i) => (
             <button key={i} onClick={s.onClick}
               className={`bg-card border border-border rounded-2xl p-3 text-center ${s.onClick ? 'hover:border-accent transition-colors' : ''}`}>
@@ -190,31 +198,37 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           ))}
         </div>
 
-        {/* Input peso inline */}
+        {/* Input peso + botón calculadora */}
         {showWeightInput && (
-          <div className="flex gap-2 animate-fade-in">
-            <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && saveWeight()}
-              placeholder="Tu peso hoy (kg)" autoFocus
-              className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-            />
-            <button onClick={saveWeight} style={{ minHeight: '44px' }}
-              className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-              OK
+          <div className="space-y-2 animate-fade-in">
+            <div className="flex gap-2">
+              <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && saveWeight()}
+                placeholder="Tu peso hoy (kg)" autoFocus
+                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              />
+              <button onClick={saveWeight} style={{ minHeight: '44px' }}
+                className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                OK
+              </button>
+            </div>
+            {/* Botón calculadora de discos */}
+            <button
+              onClick={() => setShowCalc(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
+              🏋️ Calculadora de discos
             </button>
           </div>
         )}
 
-        {/* CARD PRINCIPAL — Sesión de hoy */}
+        {/* Card sesión de hoy */}
         {todaySession ? (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            {/* Info sesión */}
             <div className="px-5 pt-5 pb-4">
               <p className="text-[10px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
               <h3 className="font-serif font-bold text-xl leading-tight">{todaySession.day.title}</h3>
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
 
-              {/* Metadatos */}
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted">
                   <Dumbbell className="w-3.5 h-3.5" />
@@ -232,7 +246,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
                 )}
               </div>
 
-              {/* Barra de progreso */}
               {todayDone > 0 && (
                 <div className="mt-3">
                   <div className="flex justify-between text-xs text-muted mb-1">
@@ -245,7 +258,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
                 </div>
               )}
 
-              {/* Siguiente ejercicio */}
               {nextEx && (
                 <div className="mt-3 flex items-center gap-2 bg-bg border border-border rounded-xl px-3 py-2">
                   <Zap className="w-3.5 h-3.5 text-accent flex-shrink-0" />
@@ -255,7 +267,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
               )}
             </div>
 
-            {/* CTA sticky */}
             <div className="px-4 pb-4">
               <button onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
                 style={{ minHeight: '52px' }}
@@ -277,7 +288,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           </div>
         )}
 
-        {/* Historial últimos 7 días */}
+        {/* Historial 7 días */}
         <div className="bg-card border border-border rounded-2xl p-4">
           <h4 className="font-serif font-bold text-sm mb-4">Esta semana</h4>
           <div className="flex gap-1.5 justify-between">
@@ -298,7 +309,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           </div>
         </div>
 
-        {/* Macros del día */}
+        {/* Macros */}
         {(() => {
           const macros = (plan as any)?.macros
           if (!macros?.kcal) return null
@@ -328,7 +339,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           )
         })()}
 
-        {/* Mensaje motivacional si hay racha */}
+        {/* Racha */}
         {streak >= 3 && (
           <div className="bg-warn/5 border border-warn/20 rounded-2xl p-4 flex items-center gap-3">
             <span className="text-2xl">🔥</span>
@@ -347,24 +358,18 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   )
 }
 
-// ── Selector de días del cliente ──────────────────────
 export function SelectorDias({ plan, clientId, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
   const diasSemana = plan?.diasSemana || 0
   const diasElegidos: number[] = plan?.diasElegidos || []
   const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
   if (!diasSemana) return null
-
   const toggle = (d: number) => {
     let nuevos: number[]
-    if (diasElegidos.includes(d)) {
-      nuevos = diasElegidos.filter(x => x !== d)
-    } else if (diasElegidos.length < diasSemana) {
-      nuevos = [...diasElegidos, d].sort()
-    } else return
+    if (diasElegidos.includes(d)) { nuevos = diasElegidos.filter(x => x !== d) }
+    else if (diasElegidos.length < diasSemana) { nuevos = [...diasElegidos, d].sort() }
+    else return
     onUpdate(nuevos)
   }
-
   return (
     <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -387,12 +392,8 @@ export function SelectorDias({ plan, clientId, onUpdate }: { plan: any; clientId
           )
         })}
       </div>
-      {diasElegidos.length === diasSemana && (
-        <p className="text-xs text-ok font-semibold text-center">✓ Días confirmados</p>
-      )}
-      {diasElegidos.length < diasSemana && (
-        <p className="text-xs text-muted text-center">Elige {diasSemana - diasElegidos.length} día{diasSemana - diasElegidos.length > 1 ? 's' : ''} más</p>
-      )}
+      {diasElegidos.length === diasSemana && <p className="text-xs text-ok font-semibold text-center">✓ Días confirmados</p>}
+      {diasElegidos.length < diasSemana && <p className="text-xs text-muted text-center">Elige {diasSemana - diasElegidos.length} día{diasSemana - diasElegidos.length > 1 ? 's' : ''} más</p>}
     </div>
   )
 }
