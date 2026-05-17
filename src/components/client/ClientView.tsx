@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, Wifi, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
@@ -11,6 +11,7 @@ import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 import { NotFound } from '../shared/NotFound'
+import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -29,7 +30,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [trainerProfile, setTrainerProfile] = useState<Record<string,any>>({})
+  const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
+  const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
 
   useEffect(() => {
     loadData()
@@ -48,11 +50,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
 
-    // Cargar logs desde localStorage primero (offline-first)
     const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
-    if (localLogs) {
-      try { setLogs(JSON.parse(localLogs)) } catch {}
-    }
+    if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
 
     const { data: planData, error: planErr } = await supabase
       .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
@@ -60,7 +59,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) {
       const p = planRow.plan.P as TrainingPlan
-      // Avance automático de semana según fecha de inicio
       if (p.fechaInicio && p.weeks?.length) {
         const inicio = new Date(p.fechaInicio + 'T00:00:00')
         const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
@@ -76,19 +74,22 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
 
-    // Cargar perfil del entrenador desde Supabase
+    // Cargar perfil del entrenador — incluye seriesTypes
     if (clientData.trainerId) {
       const { data: trainerData } = await supabase
         .from('entrenadores').select('profile').eq('uid', clientData.trainerId).maybeSingle()
       if (trainerData?.profile && Object.keys(trainerData.profile).length > 0) {
         setTrainerProfile(trainerData.profile)
-        // Sincronizar al localStorage para acceso offline
         localStorage.setItem(`pf_trainer_profile_${clientData.trainerId}`, JSON.stringify(trainerData.profile))
+        // Cargar tipos de serie personalizados del entrenador
+        if (trainerData.profile.seriesTypes?.length) {
+          setSeriesTypes(trainerData.profile.seriesTypes)
+        }
       } else {
-        // Fallback a localStorage si Supabase no tiene datos
         try {
           const local = JSON.parse(localStorage.getItem(`pf_trainer_profile_${clientData.trainerId}`) || '{}')
           setTrainerProfile(local)
+          if (local.seriesTypes?.length) setSeriesTypes(local.seriesTypes)
         } catch {}
       }
     }
@@ -100,7 +101,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (!plan) return
     const newPlan = { ...plan, diasElegidos: dias }
     setPlan(newPlan)
-    // Guardar en Supabase
     if (client?.id) {
       await supabase.from('planes')
         .update({ plan: { P: newPlan }, updatedAt: Date.now() })
@@ -112,9 +112,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     setLogs(newLogs)
     setSyncState('saving')
     if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-
     if (!navigator.onLine) { setSyncState('offline'); return }
-
     if (client?.id) {
       const { error: updateErr } = await supabase.from('registros')
         .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
@@ -143,7 +141,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   if (error) return <NotFound />
 
-  // PIN
   const planPin = (plan as unknown as { pin?: string })?.pin
   if (!loading && !error && planPin && !pinVerified) {
     const checkPin = () => {
@@ -191,14 +188,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     { id: 'mas' as Tab,      icon: MoreHorizontal, label: 'Más' },
   ]
 
-  // Indicador de sync
   const SyncIndicator = () => {
     if (syncState === 'idle') return null
     return (
       <div className={`fixed top-16 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold transition-all ${
         syncState === 'saving' ? 'bg-accent/10 text-accent' :
         syncState === 'saved' ? 'bg-ok/10 text-ok' :
-        syncState === 'offline' ? 'bg-warn/10 text-warn' :
         'bg-warn/10 text-warn'
       }`}>
         {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
@@ -210,8 +205,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col" style={{backgroundImage:brandBg?`url(${brandBg})`:"none",backgroundSize:"cover",backgroundPosition:"center",backgroundAttachment:"fixed",backgroundColor:"#f5f0ea"}}>
-      {/* Header */}
+    <div className="min-h-[100dvh] flex flex-col"
+      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', backgroundColor: '#f5f0ea' }}>
+
       <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2.5">
@@ -223,12 +219,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             <span className="font-serif font-bold text-base">{brandName}</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* Indicador online/offline compacto */}
-            {!isOnline && (
-              <div className="flex items-center gap-1 text-warn">
-                <WifiOff className="w-4 h-4" />
-              </div>
-            )}
+            {!isOnline && <WifiOff className="w-4 h-4 text-warn" />}
             <div className="text-right">
               <p className="text-xs font-semibold">{clientName}</p>
               {plan?.type && <p className="text-[10px] text-muted capitalize">{plan.type}</p>}
@@ -237,12 +228,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </header>
 
-      {/* Sync banner */}
       <SyncIndicator />
       <PWAInstallBanner />
 
-      {/* Contenido */}
-      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10 pb-20" style={{paddingBottom:"calc(56px + env(safe-area-inset-bottom, 0px))"}}>
+      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10"
+        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
@@ -253,15 +243,22 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
               plan
                 ? <>
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
-                    <ClientDashboard plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                      weightHistory={weightHistory} clientName={clientName} clientId={client.id} objetivo={client.objetivo}
-                      welcomeMsg={welcomeMsg} motivMsg={motivMsg} restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor} />
+                    <ClientDashboard
+                      plan={plan} logs={logs} onLogsChange={handleLogsChange}
+                      weightHistory={weightHistory} clientName={clientName} clientId={client.id}
+                      objetivo={client.objetivo} welcomeMsg={welcomeMsg} motivMsg={motivMsg}
+                      restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
+                      seriesTypes={seriesTypes}
+                    />
                   </>
                 : <NoPlanView />
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} />
+                ? <TrainingPlanView
+                    plan={plan} logs={logs} onLogsChange={handleLogsChange}
+                    seriesTypes={seriesTypes}
+                  />
                 : <NoPlanView />
             )}
             {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} plan={plan} />}
@@ -272,8 +269,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         )}
       </main>
 
-      {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border z-20" style={{paddingBottom:"env(safe-area-inset-bottom, 0px)"}}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border z-20"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="flex max-w-2xl mx-auto">
           {TABS.map(({ id, icon: Icon, label }) => (
             <button key={id} onClick={() => setActiveTab(id)}
