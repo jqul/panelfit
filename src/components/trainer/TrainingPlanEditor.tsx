@@ -715,6 +715,24 @@ export function TrainingPlanEditor({
                                           ))}
                                         </div>
                                       </div>
+                                      {/* Toggle mostrar/ocultar timer al cliente */}
+                                      <div
+                                        onClick={() => updateExercise(activeWeek, di, ri, { hideRest: !(ex as any).hideRest } as any)}
+                                        className={`flex items-center justify-between px-3 py-2 rounded-xl border cursor-pointer transition-all mt-1 ${
+                                          (ex as any).hideRest
+                                            ? 'bg-warn/5 border-warn/30'
+                                            : 'bg-ok/5 border-ok/20'
+                                        }`}>
+                                        <div>
+                                          <p className="text-[10px] font-bold text-ink">Mostrar timer al cliente</p>
+                                          <p className="text-[9px] text-muted">
+                                            {(ex as any).hideRest ? 'Oculto — el cliente no verá la cuenta atrás' : 'Visible — el cliente verá el descanso'}
+                                          </p>
+                                        </div>
+                                        <div className={`w-8 h-5 rounded-full flex items-center px-0.5 transition-all flex-shrink-0 ${(ex as any).hideRest ? 'bg-warn/40' : 'bg-ok'}`}>
+                                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${(ex as any).hideRest ? 'translate-x-0' : 'translate-x-3'}`} />
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
