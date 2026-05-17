@@ -1,850 +1,877 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, ChevronRight,
-  MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp,
-  StickyNote, Activity, Zap, ArrowRight, Send
+  X, Save, ChevronLeft, FileText, Dumbbell, Settings,
+  ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
+  CheckCircle2, ClipboardCheck, Link, MessageCircle,
+  User, Bell, Plus, Trash2, Calendar
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
-import { mapClientes } from '../../lib/mappers'
-import { ClientData, UserProfile } from '../../types'
+import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { ExercisesTab } from './ExercisesTab'
-import { TemplatesTab } from './TemplatesTab'
-import { MensajesTab } from './MensajesTab'
-import { InsightsTab } from './InsightsTab'
-import { AdherenciaTab } from './AdherenciaTab'
-import { EncuestasTab } from './EncuestasTab'
-import { BusinessDashboard } from './BusinessDashboard'
+import { TrainingPlanEditor } from './TrainingPlanEditor'
+import { DietEditor } from '../shared/DietEditor'
+import { ProgresoTab } from './ProgresoTab'
+import { InformePDF } from './InformePDF'
 import { PlanGate } from '../shared/PlanGate'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { PlanRow, RegistroRow } from '../../lib/supabase-types'
+import { logError } from '../../lib/errors'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
 
-interface ClientWithStats extends ClientData {
-  lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
+interface ClientAlert {
+  id: string
+  type: 'llamar' | 'revision' | 'valoracion' | 'otro'
+  note: string
+  date: string
+  done: boolean
+  createdAt: number
 }
 
 interface Props {
+  client: ClientData
   userProfile: UserProfile
-  onLogout: () => void
-  onSelectClient: (client: ClientData) => void
-  demoClients?: ClientData[]
+  allClients: ClientData[]
+  onClose: () => void
+  demoPlan?: any
+  demoLogs?: any
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
-  const [clients, setClients] = useState<ClientWithStats[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const [search, setSearch] = useState('')
-  const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
-  const [showAdd, setShowAdd] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
-  const [adding, setAdding] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [linkModal, setLinkModal] = useState<ClientData | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
-  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
-  const library = useExerciseLibrary(userProfile.uid)
-  const clientLimit = userProfile.clientLimit ?? 999
-  const limitReached = !demoClients && clients.length >= clientLimit
+const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] = [
+  { id: 'perfil',   icon: User,          label: 'Perfil',    desc: 'Datos y estadísticas' },
+  { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
+  { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
+  { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
+  { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
+  { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
+  { id: 'notas',    icon: StickyNote,    label: 'Notas',     desc: 'Notas privadas' },
+  { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
+]
 
-  const fetchClients = async () => {
+const ALERT_TYPES = [
+  { id: 'llamar',    label: 'Llamar',     emoji: '📞', color: 'text-blue-500',  bg: 'bg-blue-50',   border: 'border-blue-200' },
+  { id: 'revision',  label: 'Revisión',   emoji: '📋', color: 'text-ok',        bg: 'bg-ok/10',     border: 'border-ok/30' },
+  { id: 'valoracion',label: 'Valoración', emoji: '⭐', color: 'text-warn',      bg: 'bg-warn/10',   border: 'border-warn/30' },
+  { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
+] as const
+
+function useTemplates(trainerId: string) {
+  const [templates, setTemplates] = useState<TrainingTemplate[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
+  })
+
+  useEffect(() => {
+    if (!trainerId) return
+    const syncFromSupabase = async () => {
+      const { data } = await supabase.from('plan_templates')
+        .select('*').eq('trainer_id', trainerId).order('created_at')
+      if (data && data.length > 0) {
+        const parsed = data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description }))
+        setTemplates(parsed)
+        localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(parsed))
+      }
+    }
+    syncFromSupabase()
+  }, [trainerId])
+
+  const saveTemplate = async (tmpl: TrainingTemplate) => {
+    const updated = templates.find(t => t.id === tmpl.id)
+      ? templates.map(t => t.id === tmpl.id ? tmpl : t)
+      : [...templates, tmpl]
+    setTemplates(updated)
+    localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
+    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name || 'Plantilla', description: (tmpl as any).description || '', plan: tmpl, created_at: Date.now(), updated_at: Date.now() }
+    await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+  }
+
+  const deleteTemplate = async (id: string) => {
+    const updated = templates.filter(t => t.id !== id)
+    setTemplates(updated)
+    localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
+    await supabase.from('plan_templates').delete().eq('id', id)
+  }
+
+  return { templates, saveTemplate, deleteTemplate }
+}
+
+type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
+
+export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan, demoLogs }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('perfil')
+  const [plan, setPlan] = useState<TrainingPlan | null>(null)
+  const [logs, setLogs] = useState<TrainingLogs>({})
+  const [loading, setLoading] = useState(true)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [showInforme, setShowInforme] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
+  const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
+  const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
+  const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
+  const [alerts, setAlerts] = useState<ClientAlert[]>([])
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const pendingPlan = useRef<TrainingPlan | null>(null)
+  const library = useExerciseLibrary(userProfile.uid)
+  const otherClients = allClients.filter(c => c.id !== client.id)
+  const { templates } = useTemplates(userProfile.uid)
+
+  useEffect(() => { loadData() }, [client.id])
+
+  const loadData = async () => {
     setLoading(true)
-    if (demoClients) { setClients(demoClients as ClientWithStats[]); setLoading(false); return }
-    const { data, error } = await supabase.from('clientes').select('*').eq('trainerId', userProfile.uid)
-    if (error) { console.error('Error:', error); setLoading(false); return }
-    const mapped = mapClientes(data || []).map((c, i) => ({
-      ...c,
-      phone: (data || [])[i]?.phone || '',
-      objetivo: (data || [])[i]?.objetivo || 'general',
-      altura: (data || [])[i]?.altura || null,
-      genero: (data || [])[i]?.genero || null,
-      fechanacimiento: (data || [])[i]?.fechanacimiento || null,
-    }))
-    const hoy = new Date().toISOString().split('T')[0]
-    const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-    if (mapped.length) {
-      const ids = mapped.map(c => c.id)
-      const { data: regs } = await supabase.from('registros').select('clientId,logs').in('clientId', ids)
-      const { data: planes } = await supabase.from('planes').select('clientId,plan').in('clientId', ids)
-      const planMap: Record<string, boolean> = {}
-      ;(planes || []).forEach((p: any) => { planMap[p.clientId] = !!(p.plan?.P?.weeks?.length) })
-      const lm: Record<string, any> = {}
-      ;(regs || []).forEach((r: any) => { lm[r.clientId] = r.logs || {} })
-      setLogsMap(lm)
-      setClients(mapped.map(c => {
-        const reg = (regs || []).find((r: any) => r.clientId === c.id)
-        const logs = reg?.logs || {}
-        const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-        return { ...c, lastActive: dates[0], doneToday: dates[0] === hoy, hasPlan: planMap[c.id] || false, weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length }
-      }))
-    } else setClients([])
+    if (demoPlan) { setPlan(demoPlan); if (demoLogs) setLogs(demoLogs); setLoading(false); return }
+    const { data: planData } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+    const planRow = planData as PlanRow | null
+    if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
+    else setPlan({ clientId: client.id, type: (client as any).objetivo || 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
+    const { data: regData } = await supabase.from('registros').select('logs').eq('clientId', client.id).maybeSingle()
+    const regRow = regData as RegistroRow | null
+    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
+    // Cargar alertas
+    const { data: clientData } = await supabase.from('clientes').select('alerts').eq('id', client.id).maybeSingle()
+    if (clientData?.alerts) setAlerts(clientData.alerts)
     setLoading(false)
   }
 
-  useEffect(() => {
-    fetchClients()
-    const channel = supabase.channel('clientes-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [userProfile.uid])
-
-  const handleAdd = async () => {
-    if (!newClient.name.trim()) return
-    if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
-    setAdding(true)
-    const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
-    if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
-    setAdding(false)
+  const handlePlanChange = (newPlan: TrainingPlan) => {
+    setPlan(newPlan); pendingPlan.current = newPlan
+    clearTimeout(saveTimer.current); setSaveState('pending')
+    saveTimer.current = setTimeout(() => savePlan(newPlan), 1500)
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
-    setDeletingId(null); fetchClients(); toast('Cliente eliminado', 'ok')
+  const savePlan = async (planToSave?: TrainingPlan) => {
+    const p = planToSave || pendingPlan.current || plan; if (!p) return
+    setSaveState('saving')
+    if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
+    const { error } = await supabase.from('planes').upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    if (error) { logError('savePlan', error); setSaveState('error'); return }
+    setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
   }
 
-  const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
-  const sendWhatsApp = (c: ClientData) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n💪`)}`, '_blank')
+  const saveAlerts = async (newAlerts: ClientAlert[]) => {
+    setAlerts(newAlerts)
+    await supabase.from('clientes').update({ alerts: newAlerts }).eq('id', client.id)
   }
 
-  const hoy = new Date().toISOString().split('T')[0]
-  const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-  const haceDosSemanas = new Date(); haceDosSemanas.setDate(haceDosSemanas.getDate() - 14)
-
-  const activeToday = clients.filter(c => c.doneToday).length
-  const noPlan = clients.filter(c => !c.hasPlan).length
-  const noActivity7d = clients.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS).length
-  const alerts = clients.filter(c => !c.hasPlan || (!c.lastActive || new Date(c.lastActive) < haceUnaS))
-
-  const activePrevWeek = useMemo(() => {
-    let count = 0
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string)
-      if (dates.some(d => new Date(d) >= haceDosSemanas && new Date(d) < haceUnaS)) count++
-    })
-    return count
-  }, [clients, logsMap])
-
-  const adherenciaMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    clients.forEach(c => { map[c.id] = Math.min(100, Math.round(((c.weeklyDays || 0) / 4) * 100)) })
-    return map
-  }, [clients])
-
-  const filteredClients = useMemo(() => {
-    let list = [...clients]
-    if (clientFilter === 'active') list = list.filter(c => c.doneToday)
-    else if (clientFilter === 'no-plan') list = list.filter(c => !c.hasPlan)
-    else if (clientFilter === 'no-activity') list = list.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS)
-    if (search) list = list.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase()))
-    return list
-  }, [clients, clientFilter, search])
-
-  const chartData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().split('T')[0]
-    return { label: d.toLocaleDateString('es-ES', { weekday: 'short' }), count: clients.filter(c => c.lastActive === key).length, key }
-  }), [clients])
-
-  const formatLastActive = (date?: string) => {
-    if (!date) return 'Nunca'
-    const diff = Math.round((new Date().setHours(0,0,0,0) - new Date(date + 'T00:00:00').getTime()) / 86400000)
-    if (diff === 0) return 'Hoy'; if (diff === 1) return 'Ayer'; if (diff < 7) return `Hace ${diff}d`
-    return new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
+    if (!plan) return
+    const inicio = new Date(fechaInicio + 'T00:00:00')
+    const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
+    const semanaActual = Math.min(Math.floor(dias / 7), template.weeks.length - 1)
+    const weeks = JSON.parse(JSON.stringify(template.weeks))
+    weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
+    const newPlan: TrainingPlan = { ...plan, type: template.type, weeks, fechaInicio, autoCheckin } as any
+    setPlan(newPlan); savePlan(newPlan)
+    if (autoWelcome) {
+      const url = `${window.location.origin}?c=${client.token}`
+      const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa:\n\n${url}\n\n💪`)
+      setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
+    }
+    setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
+    toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
   }
 
-  const activityFeed = useMemo(() => {
-    const events: { clientName: string; text: string; date: string }[] = []
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-      if (dates[0]) events.push({ clientName: `${c.name} ${c.surname}`, text: 'completó una sesión', date: dates[0] })
-    })
-    return events.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
-  }, [clients, logsMap])
+  const importFromClient = async (clientId: string): Promise<TrainingPlan | null> => {
+    const { data } = await supabase.from('planes').select('plan').eq('clientId', clientId).maybeSingle()
+    if ((data as any)?.plan?.P?.weeks?.length) return (data as any).plan.P as TrainingPlan
+    return null
+  }
 
-  const QUICK_ACTIONS = [
-    { icon: UserPlus,  label: 'Nuevo cliente',   color: 'text-accent',      bg: 'bg-accent/10',   action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,  label: 'Crear plantilla',  color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('templates') },
-    { icon: Send,      label: 'Encuesta',          color: 'text-purple-500',  bg: 'bg-purple-50',   action: () => handleTabChange('encuestas') },
-    { icon: BarChart2, label: 'Adherencia',        color: 'text-warn',        bg: 'bg-warn/10',     action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes',      color: 'text-blue-500',    bg: 'bg-blue-50',     action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp, label: 'Insights',         color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('insights') },
-  ]
+  const clientUrl = `${window.location.origin}?c=${client.token}`
+  const totalExs = plan?.weeks?.reduce((a, w) => a + w.days.reduce((b, d) => b + d.exercises.length, 0), 0) || 0
+  const completedExs = Object.values(logs).filter(l => l.done).length
+  const adherencia = plan?.weeks?.length ? Math.round(completedExs / Math.max(totalExs, 1) * 100) : 0
+  const pendingAlerts = alerts.filter(a => !a.done)
 
-  const NAV_GROUPS = [
-    { label: 'Gestión', items: [
-      { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-      { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
-      { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
-      { id: 'encuestas' as Tab, icon: ClipboardList, label: 'Encuestas' },
-      { id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio' },
-    ]},
-    { label: 'Contenido', items: [
-      { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: ClipboardList, label: 'Plantillas' },
-    ]},
-    { label: 'Análisis', items: [
-      { id: 'insights' as Tab, icon: BarChart2, label: 'Insights' },
-      { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
-    ]},
-    { label: 'Configuración', items: [
-      { id: 'settings' as Tab, icon: SettingsIcon, label: 'Ajustes' },
-    ]},
-  ]
+  return (
+    <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden">
 
-  const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
-
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
-        <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
-      </div>
-      <div className="px-4 py-3 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center font-bold text-accent text-sm flex-shrink-0">
-            {userProfile.displayName?.[0]?.toUpperCase() || '?'}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-            <p className="text-[10px] text-muted truncate">{userProfile.email}</p>
-          </div>
+      {/* Sidebar */}
+      {mobileShowSidebar && (
+        <div className="fixed inset-0 bg-ink/40 z-10 lg:hidden" onClick={() => setMobileShowSidebar(false)} />
+      )}
+      <aside className={`flex-shrink-0 bg-card border-r border-border flex flex-col transition-all z-20 ${mobileShowSidebar ? 'fixed inset-y-0 left-0 w-64' : 'hidden lg:flex lg:w-56'}`}>
+        <div className="px-4 py-4 border-b border-border">
+          <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm">
+            <ChevronLeft className="w-4 h-4" /> Volver
+          </button>
+          <button onClick={() => { setActiveTab('perfil'); setMobileShowSidebar(false) }}
+            className="flex items-center gap-3 w-full text-left group hover:opacity-80 transition-opacity">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-serif text-lg font-bold flex-shrink-0 transition-colors ${activeTab === 'perfil' ? 'bg-ink text-white' : 'bg-accent/10 text-accent'}`}>
+              {client.name?.[0]?.toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
+              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || (client as any).objetivo || 'Sin tipo'}</p>
+              {(client as any).phone && <p className="text-[10px] text-[#25D366] truncate">📱 {(client as any).phone}</p>}
+            </div>
+          </button>
         </div>
-      </div>
 
-      {/* Accesos rápidos en sidebar */}
-      <div className="px-3 py-3 border-b border-border">
-        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-2 mb-2">Accesos rápidos</p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
-            <button key={label} onClick={action} disabled={disabled}
-              className={`flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
-              <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${color}`} />
-              <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
-            </button>
+        {/* Stats */}
+        <div className="px-4 py-3 border-b border-border grid grid-cols-2 gap-2">
+          {[
+            { label: 'Semanas', value: plan?.weeks?.length || 0 },
+            { label: 'Ejercicios', value: totalExs },
+            { label: 'Completados', value: completedExs },
+            { label: 'Adherencia', value: `${adherencia}%` },
+          ].map(s => (
+            <div key={s.label} className="bg-bg rounded-xl p-2 text-center">
+              <p className="font-serif font-bold text-base text-ink">{s.value}</p>
+              <p className="text-[9px] text-muted uppercase tracking-wider">{s.label}</p>
+            </div>
           ))}
         </div>
+
+        {/* Nav */}
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          {TABS.map(({ id, icon: Icon, label, desc }) => (
+            <button key={id} onClick={() => { setActiveTab(id); setMobileShowSidebar(false) }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-tight">{label}</p>
+                <p className={`text-[10px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
+              </div>
+              {/* Badge alertas en pestaña perfil */}
+              {id === 'perfil' && pendingAlerts.length > 0 && (
+                <span className="ml-auto text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full flex-shrink-0">
+                  {pendingAlerts.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Acciones rápidas */}
+        <div className="p-3 border-t border-border space-y-2">
+          <button onClick={() => { navigator.clipboard.writeText(clientUrl); toast('Enlace copiado ✓', 'ok') }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-muted border border-border rounded-xl hover:border-accent hover:text-accent transition-colors">
+            <Link className="w-3.5 h-3.5" /> Copiar enlace
+          </button>
+          <button onClick={() => {
+              const phone = (client as any).phone?.replace(/\s+/g, '').replace(/^\+/, '')
+              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)
+              window.open(phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank')
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-xl hover:bg-[#25D366]/5 transition-colors">
+            <MessageCircle className="w-3.5 h-3.5" /> {(client as any).phone ? 'WhatsApp directo' : 'WhatsApp'}
+          </button>
+        </div>
+      </aside>
+
+      {/* Contenido principal */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top bar */}
+        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-3 lg:px-6">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden p-2 rounded-lg hover:bg-bg-alt text-muted">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <div>
+              <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
+              <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
+              {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
+            </span>
+            {activeTab === 'progreso' && (
+              <PlanGate feature="pdf_report" planName={userProfile.planName} fallback={
+                <button disabled className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted/40 cursor-not-allowed">🔒 Informe PDF</button>
+              }>
+                <button onClick={() => setShowInforme(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">📄 Informe PDF</button>
+              </PlanGate>
+            )}
+            {activeTab === 'plan' && templates.length > 0 && (
+              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+                <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
+              </button>
+            )}
+            {activeTab !== 'perfil' && (
+              <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
+                <Save className="w-3.5 h-3.5" /> Guardar
+              </Button>
+            )}
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-hidden flex flex-col">
+          {loading ? (
+            <div className="p-6 space-y-4">
+              <div className="h-8 w-48 bg-card border border-border rounded-lg animate-pulse" />
+              <div className="h-48 bg-card border border-border rounded-2xl animate-pulse" />
+            </div>
+          ) : (
+            <div className="p-6 flex-1 overflow-hidden flex flex-col min-h-0">
+              {activeTab === 'perfil' && (
+                <div className="flex-1 overflow-y-auto">
+                  <PerfilTab
+                    client={client} logs={logs} alerts={alerts}
+                    onUpdate={async (updates) => {
+                      await supabase.from('clientes').update(updates).eq('id', client.id)
+                      Object.assign(client, updates)
+                      toast('Datos actualizados ✓', 'ok')
+                    }}
+                    onSaveAlerts={saveAlerts}
+                  />
+                </div>
+              )}
+              {activeTab === 'plan' && plan && (
+                <div className="flex-1 overflow-hidden">
+                  <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
+                    allClients={otherClients} library={library.exercises}
+                    onImportFromClient={importFromClient} logs={logs}
+                    clientName={`${client.name} ${client.surname}`}
+                    trainerId={userProfile.uid} />
+                </div>
+              )}
+              {activeTab === 'dieta' && (
+                <div className="flex-1 overflow-hidden min-h-0">
+                  <DietaTabEntrenador clientId={client.id} plan={plan} onChange={handlePlanChange} client={client} trainerId={userProfile.uid} />
+                </div>
+              )}
+              {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
+              {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} /></div>}
+              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} /></div>}
+              {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
+              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
+            </div>
+          )}
+        </main>
       </div>
 
-      <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map(({ id, icon: Icon, label, badge }) => (
-                <button key={id} onClick={() => handleTabChange(id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{label}</span>
-                  {badge !== undefined && badge > 0 && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
-                  )}
+      {/* Informe PDF */}
+      {showInforme && (
+        <InformePDF client={client} plan={plan} logs={logs}
+          trainerProfile={(() => { try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}') } catch { return {} } })()}
+          onClose={() => setShowInforme(false)} />
+      )}
+
+      {/* Wizard plantilla */}
+      <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
+        title={wizardStep === 1 ? 'Elegir plantilla' : wizardStep === 2 ? 'Fecha de inicio' : 'Automatizaciones'}>
+        <div className="flex gap-1.5 mb-5">
+          {[1,2,3].map(s => <div key={s} className={`flex-1 h-1 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />)}
+        </div>
+        {wizardStep === 1 && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted mb-3">Selecciona la plantilla base para este cliente.</p>
+            {templates.map(t => (
+              <button key={t.id} onClick={() => { setWizardTemplate(t); setWizardStep(2) }}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
+                <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0"><ClipboardList className="w-4 h-4 text-accent" /></div>
+                <div className="flex-1 min-w-0"><p className="text-sm font-semibold">{t.name}</p><p className="text-xs text-muted">{t.weeks.length} sem · {t.type}</p></div>
+              </button>
+            ))}
+          </div>
+        )}
+        {wizardStep === 2 && wizardTemplate && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fecha de inicio</label>
+              <input type="date" value={wizardFechaInicio} onChange={e => setWizardFechaInicio(e.target.value)}
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => setWizardStep(3)} className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Siguiente →</button>
+            </div>
+          </div>
+        )}
+        {wizardStep === 3 && wizardTemplate && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted">Activa las automatizaciones para este cliente.</p>
+            {[
+              { label: 'Mensaje de bienvenida', desc: 'Abre WhatsApp al asignar el plan', val: wizardAutoWelcome, set: setWizardAutoWelcome, emoji: '👋' },
+              { label: 'Check-in semanal', desc: 'Recordatorio de encuesta semanal', val: wizardAutoCheckin, set: setWizardAutoCheckin, emoji: '📋' },
+            ].map(a => (
+              <div key={a.label} className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${a.val ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+                onClick={() => a.set(!a.val)}>
+                <span className="text-xl">{a.emoji}</span>
+                <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
+                <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${a.val ? 'bg-ok' : 'bg-border'}`}>
+                  <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <button onClick={() => setWizardStep(2)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
+              <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin)}
+                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+// ── PerfilTab con alertas ─────────────────────────────────
+function PerfilTab({ client, logs, alerts, onUpdate, onSaveAlerts }: {
+  client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
+  onUpdate: (updates: Record<string, any>) => Promise<void>
+  onSaveAlerts: (alerts: ClientAlert[]) => Promise<void>
+}) {
+  const c = client as any
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({ name: c.name || '', surname: c.surname || '', phone: c.phone || '', objetivo: c.objetivo || '', altura: c.altura || '', weight: c.weight || '', genero: c.genero || '', fechanacimiento: c.fechanacimiento || '' })
+  const [saving, setSaving] = useState(false)
+  const [showNewAlert, setShowNewAlert] = useState(false)
+  const [newAlert, setNewAlert] = useState<{ type: ClientAlert['type']; note: string; date: string }>({
+    type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  })
+
+  const edad = (() => {
+    if (!c.fechanacimiento) return null
+    const birth = new Date(c.fechanacimiento)
+    const today = new Date()
+    return today.getFullYear() - birth.getFullYear() - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+  })()
+
+  const totalSessions = new Set(Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone)).size
+  const lastSession = Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone as string).sort().reverse()[0]
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onUpdate({ name: form.name, surname: form.surname, phone: form.phone, objetivo: form.objetivo, altura: form.altura ? parseFloat(form.altura) : null, weight: form.weight ? parseFloat(form.weight) : 0, genero: form.genero || null, fechanacimiento: form.fechanacimiento || null })
+    setEditing(false); setSaving(false)
+  }
+
+  const addAlert = async () => {
+    if (!newAlert.note.trim()) return
+    const alert: ClientAlert = {
+      id: crypto.randomUUID().replace(/-/g, ''),
+      type: newAlert.type, note: newAlert.note.trim(),
+      date: newAlert.date, done: false, createdAt: Date.now()
+    }
+    await onSaveAlerts([...alerts, alert])
+    setNewAlert({ type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0] })
+    setShowNewAlert(false)
+    toast('Recordatorio añadido ✓', 'ok')
+  }
+
+  const toggleAlert = async (id: string) => {
+    await onSaveAlerts(alerts.map(a => a.id === id ? { ...a, done: !a.done } : a))
+  }
+
+  const deleteAlert = async (id: string) => {
+    await onSaveAlerts(alerts.filter(a => a.id !== id))
+  }
+
+  const pendingAlerts = alerts.filter(a => !a.done).sort((a, b) => a.date.localeCompare(b.date))
+  const doneAlerts = alerts.filter(a => a.done)
+
+  const today = new Date().toISOString().split('T')[0]
+
+  return (
+    <div className="animate-fade-in space-y-5 max-w-xl">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center text-2xl font-serif font-bold text-accent flex-shrink-0">
+            {c.name?.[0]?.toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-serif font-bold">{c.name} {c.surname}</h2>
+            <p className="text-sm text-muted capitalize">{c.objetivo || 'Sin objetivo'}{edad ? ` · ${edad} años` : ''}</p>
+            {c.phone && <p className="text-xs text-[#25D366] mt-0.5">📱 {c.phone}</p>}
+          </div>
+        </div>
+        <button onClick={() => setEditing(!editing)}
+          className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${editing ? 'border-accent text-accent bg-accent/5' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
+          {editing ? 'Cancelar' : '✏️ Editar'}
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
+          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ok' },
+          { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
+        ].map(s => (
+          <div key={s.label} className="bg-white border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+            <p className="text-xl mb-1">{s.icon}</p>
+            <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── RECORDATORIOS / ALERTAS ── */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-warn" />
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">Recordatorios</p>
+            {pendingAlerts.length > 0 && (
+              <span className="text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full">{pendingAlerts.length}</span>
+            )}
+          </div>
+          <button onClick={() => setShowNewAlert(!showNewAlert)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+            <Plus className="w-3 h-3" /> Añadir
+          </button>
+        </div>
+
+        {/* Form nuevo recordatorio */}
+        {showNewAlert && (
+          <div className="px-5 py-4 border-b border-border/50 bg-warn/5 space-y-3">
+            {/* Tipo */}
+            <div className="flex gap-2 flex-wrap">
+              {ALERT_TYPES.map(t => (
+                <button key={t.id} onClick={() => setNewAlert(a => ({ ...a, type: t.id }))}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newAlert.type === t.id ? `${t.bg} ${t.border} ${t.color}` : 'border-border text-muted hover:border-accent'}`}>
+                  <span>{t.emoji}</span> {t.label}
                 </button>
               ))}
             </div>
+            {/* Nota */}
+            <input value={newAlert.note} onChange={e => setNewAlert(a => ({ ...a, note: e.target.value }))}
+              placeholder="Descripción del recordatorio..."
+              className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              onKeyDown={e => e.key === 'Enter' && addAlert()}
+            />
+            {/* Fecha */}
+            <div className="flex gap-2 items-center">
+              <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+              <input type="date" value={newAlert.date} onChange={e => setNewAlert(a => ({ ...a, date: e.target.value }))}
+                className="flex-1 px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none" />
+              <button onClick={addAlert}
+                className="px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                Guardar
+              </button>
+            </div>
           </div>
-        ))}
-      </nav>
-
-      <div className="p-3 border-t border-border space-y-1.5">
-        {alerts.length > 0 && (
-          <button onClick={() => { setActiveTab('clients'); setClientFilter('no-activity'); setSidebarOpen(false) }}
-            className="w-full flex items-center gap-2 px-3 py-2 bg-warn/5 border border-warn/20 rounded-lg text-xs font-semibold text-warn hover:bg-warn/10">
-            <Bell className="w-3.5 h-3.5" /> {alerts.length} alerta{alerts.length > 1 ? 's' : ''}
-          </button>
         )}
-        <button onClick={() => { if (!limitReached) { setShowAdd(true); setSidebarOpen(false) } }} disabled={limitReached}
-          className="w-full flex items-center gap-2 px-3 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
-          <UserPlus className="w-3.5 h-3.5" /> Nuevo cliente
-        </button>
-        <button onClick={onLogout} className="w-full flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
-          <LogOut className="w-3.5 h-3.5" /> Cerrar sesión
-        </button>
+
+        {/* Lista alertas pendientes */}
+        <div className="divide-y divide-border/40">
+          {pendingAlerts.length === 0 && !showNewAlert && (
+            <div className="px-5 py-6 text-center">
+              <p className="text-xs text-muted">Sin recordatorios pendientes</p>
+              <button onClick={() => setShowNewAlert(true)} className="mt-2 text-accent text-xs hover:underline">+ Añadir recordatorio</button>
+            </div>
+          )}
+          {pendingAlerts.map(alert => {
+            const meta = ALERT_TYPES.find(t => t.id === alert.type)!
+            const isOverdue = alert.date < today
+            const isToday = alert.date === today
+            return (
+              <div key={alert.id} className={`flex items-start gap-3 px-5 py-3.5 ${isOverdue ? 'bg-warn/5' : ''}`}>
+                <button onClick={() => toggleAlert(alert.id)}
+                  className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${meta.border} hover:bg-ok hover:border-ok`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color} ${meta.border} border`}>
+                      {meta.emoji} {meta.label}
+                    </span>
+                    <span className={`text-[10px] font-semibold ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
+                      {isOverdue ? '⚠ ' : isToday ? '📅 Hoy · ' : ''}{new Date(alert.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                  <p className="text-sm mt-0.5">{alert.note}</p>
+                </div>
+                <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )
+          })}
+
+          {/* Completados colapsados */}
+          {doneAlerts.length > 0 && (
+            <details className="group">
+              <summary className="px-5 py-2.5 text-[10px] text-muted uppercase tracking-wider font-semibold cursor-pointer hover:bg-bg-alt/30 flex items-center gap-2">
+                <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
+                {doneAlerts.length} completado{doneAlerts.length > 1 ? 's' : ''}
+              </summary>
+              {doneAlerts.map(alert => {
+                const meta = ALERT_TYPES.find(t => t.id === alert.type)!
+                return (
+                  <div key={alert.id} className="flex items-center gap-3 px-5 py-2.5 opacity-50">
+                    <button onClick={() => toggleAlert(alert.id)}
+                      className="w-5 h-5 rounded border-2 border-ok bg-ok flex-shrink-0 flex items-center justify-center">
+                      <CheckCircle2 className="w-3 h-3 text-white" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs line-through text-muted">{meta.emoji} {alert.note}</p>
+                    </div>
+                    <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn flex-shrink-0">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              })}
+            </details>
+          )}
+        </div>
       </div>
-    </div>
-  )
 
-  return (
-    <div className="flex min-h-[100dvh] overflow-hidden bg-bg">
-      <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border"><SidebarContent /></div>
-      {sidebarOpen && (
-        <>
-          <div className="fixed inset-0 bg-ink/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <div className="fixed inset-y-0 left-0 z-40 w-52 bg-card border-r border-border lg:hidden"><SidebarContent /></div>
-        </>
-      )}
-      <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
-        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
-          <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => !limitReached && setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
+      {/* Datos personales */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
         </div>
-
-        <div className="p-4 lg:p-6">
-
-          {/* DASHBOARD */}
-          {activeTab === 'dashboard' && (
-            <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
-              <div className="flex-1 min-w-0 space-y-5">
-
-                {/* Header con % de entrenados */}
-                <div className="flex items-end justify-between">
-                  <div>
-                    <h2 className="text-4xl font-serif font-bold">Resumen</h2>
-                    <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                  </div>
-                  {clients.length > 0 && (
-                    <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-border/50 text-xs text-muted">
-                      <Activity className="w-3.5 h-3.5 text-ok" />
-                      <span><strong className="text-ink">{Math.round((activeToday / Math.max(clients.length, 1)) * 100)}%</strong> entrenaron hoy</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Stats con comparativa semana anterior */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Clientes', value: clients.length, prev: undefined, icon: Users, color: 'text-ink', accent: '#6e5438', onClick: () => handleTabChange('clients') },
-                    { label: 'Entrenaron hoy', value: activeToday, prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
-                    { label: 'Sin plan', value: noPlan, prev: undefined, icon: AlertCircle, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
-                    { label: 'Sin actividad', value: noActivity7d, prev: undefined, icon: Clock, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
-                  ].map(({ label, value, prev, icon: Icon, color, accent, onClick }) => (
-                    <button key={label} onClick={onClick} className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
-                          <Icon className={`w-4 h-4 ${color}`} />
-                        </div>
-                        {prev !== undefined && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
-                            {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)} vs sem. ant.
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-muted font-medium mt-0.5">{label}</p>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Gráfica */}
-                <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="font-serif font-bold text-lg">Actividad semanal</h3>
-                      <p className="text-xs text-muted mt-0.5">Sesiones completadas por día</p>
-                    </div>
-                    <button onClick={() => handleTabChange('insights')} className="text-xs text-accent hover:underline font-semibold flex items-center gap-1">
-                      Ver insights <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="h-40 lg:h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                        <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6e5438" stopOpacity={0.2} /><stop offset="95%" stopColor="#6e5438" stopOpacity={0} /></linearGradient></defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'white', border: 'none', borderRadius: 12, fontSize: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }} />
-                        <Area type="monotone" dataKey="count" name="Clientes" stroke="#6e5438" strokeWidth={2.5} fill="url(#grad)" dot={{ fill: '#6e5438', r: 3 }} activeDot={{ r: 5 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                {/* Cumplimiento semanal — NUEVO */}
-                {clients.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
-                      <div>
-                        <h3 className="font-serif font-bold">Cumplimiento semanal</h3>
-                        <p className="text-xs text-muted mt-0.5">Adherencia de cada cliente esta semana</p>
-                      </div>
-                      <button onClick={() => handleTabChange('adherencia')} className="text-xs text-accent hover:underline font-semibold flex items-center gap-1">
-                        Ver adherencia <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="divide-y divide-border/40">
-                      {clients.slice(0, 6).map(c => {
-                        const pct = adherenciaMap[c.id] ?? 0
-                        const barColor = pct >= 75 ? '#4caf7d' : pct >= 40 ? '#e0a854' : '#e07b54'
-                        return (
-                          <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-5 py-3 hover:bg-bg-alt/50 transition-colors text-left">
-                            <div className="relative w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
-                              {c.name[0]?.toUpperCase()}
-                              {c.doneToday && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-ok rounded-full border-2 border-white" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
-                                </div>
-                                <span className="text-[10px] font-bold w-8 text-right flex-shrink-0" style={{ color: barColor }}>{pct}%</span>
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-muted flex-shrink-0 hidden sm:block">{formatLastActive(c.lastActive)}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Clientes recientes */}
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
-                    <h3 className="font-serif font-bold">Clientes recientes</h3>
-                    <button onClick={() => handleTabChange('clients')} className="text-xs text-accent hover:underline font-semibold">Ver todos →</button>
-                  </div>
-                  <div className="divide-y divide-border/50">
-                    {clients.slice(0, 5).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-bg-alt/50 text-left group transition-colors">
-                        <div className="relative w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">
-                          {c.name[0]?.toUpperCase()}
-                          {c.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-ok rounded-full border-2 border-white" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {!c.hasPlan && <span className="text-[10px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
-                            {c.hasPlan && <span className="text-[10px] text-muted">{formatLastActive(c.lastActive)}</span>}
-                            {!!c.weeklyDays && <span className="text-[10px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
-                          </div>
-                        </div>
-                        <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                    {!clients.length && (
-                      <div className="px-5 py-10 text-center text-muted">
-                        <Users className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                        <p className="text-sm">Sin clientes aún.</p>
-                        <button onClick={() => setShowAdd(true)} className="mt-2 text-accent text-sm hover:underline">Añadir el primero →</button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+        {!editing ? (
+          <div className="divide-y divide-border/50">
+            {[
+              { label: 'Nombre completo', value: `${c.name || '—'} ${c.surname || ''}`.trim() },
+              { label: 'WhatsApp', value: c.phone || '—' },
+              { label: 'Objetivo', value: c.objetivo || '—' },
+              { label: 'Altura', value: c.altura ? `${c.altura} cm` : '—' },
+              { label: 'Peso', value: c.weight ? `${c.weight} kg` : '—' },
+              { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
+              { label: 'Fecha de nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+              { label: 'Edad', value: edad ? `${edad} años` : '—' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center px-5 py-3 hover:bg-bg-alt/30 transition-colors">
+                <p className="text-xs font-semibold text-muted w-36 flex-shrink-0">{row.label}</p>
+                <p className="text-sm text-ink">{row.value}</p>
               </div>
-
-              {/* Columna derecha */}
-              <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
-
-                {alerts.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                      <Bell className="w-3.5 h-3.5 text-warn" />
-                      <h3 className="text-sm font-semibold">Requieren atención</h3>
-                      <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{alerts.length}</span>
-                    </div>
-                    <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
-                      {alerts.slice(0, 5).map(c => (
-                        <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
-                          <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : 'Sin actividad reciente'}</p>
-                          </div>
-                          <ChevronRight className="w-3 h-3 text-muted" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Actividad reciente</h3>
-                  </div>
-                  <div className="divide-y divide-border/50">
-                    {activityFeed.length === 0
-                      ? <div className="px-4 py-8 text-center"><Activity className="w-8 h-8 text-muted/20 mx-auto mb-2" /><p className="text-xs text-muted">Sin actividad reciente</p></div>
-                      : activityFeed.map((ev, i) => (
-                        <div key={i} className="flex items-start gap-3 px-4 py-3">
-                          <div className="w-7 h-7 rounded-full bg-ok/10 flex items-center justify-center text-xs font-bold text-ok flex-shrink-0 mt-0.5">{ev.clientName[0]}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs leading-tight"><span className="font-semibold">{ev.clientName}</span><span className="text-muted"> {ev.text}</span></p>
-                            <p className="text-[10px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
-                          </div>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-ok flex-shrink-0 mt-0.5" />
-                        </div>
-                      ))
-                    }
-                  </div>
-                </div>
-
-                {/* Acciones rápidas en columna derecha */}
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Acciones rápidas</h3>
-                  </div>
-                  <div className="p-3 grid grid-cols-2 gap-2">
-                    {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
-                      <button key={label} onClick={action} disabled={disabled}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
-                        <Icon className={`w-4 h-4 ${color}`} />
-                        <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Tareas de hoy</h3>
-                  </div>
-                  <div className="p-3 space-y-1.5">
-                    {alerts.slice(0, 3).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
-                        <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : `Revisar progreso de ${c.name}`}</p>
-                      </button>
-                    ))}
-                    {alerts.length === 0 && (
-                      <div className="px-3 py-4 text-center">
-                        <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
-                        <p className="text-xs text-muted">Todo al día ✓</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <StickyNote className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Notas rápidas</h3>
-                  </div>
-                  <div className="p-3">
-                    <textarea value={quickNote} onChange={e => { setQuickNote(e.target.value); localStorage.setItem('pf_quick_note', e.target.value) }}
-                      placeholder="Anota algo al vuelo..." rows={4}
-                      className="w-full text-xs text-muted bg-bg-alt/50 border border-border/50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
-                  </div>
-                </div>
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-5 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Nombre</label><input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Apellido</label><input value={form.surname} onChange={e => setForm(f => ({ ...f, surname: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
             </div>
-          )}
-
-          {/* CLIENTES */}
-          {activeTab === 'clients' && (
-            <div className="animate-fade-in space-y-5 max-w-5xl">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-3xl font-serif font-bold">Clientes</h2>
-                  <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} alumnos{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
-                </div>
-                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo</Button>
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <div className="relative flex-1 min-w-40">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }] as const).map(f => (
-                    <button key={f.id} onClick={() => setClientFilter(f.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
-              ) : filteredClients.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => (
-                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }} onClick={() => onSelectClient(client)}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                          {client.name[0]?.toUpperCase()}
-                          {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                          <p className="text-[10px] text-muted mt-0.5">{client.doneToday ? <span className="text-ok font-bold">✓ Entrenó hoy</span> : formatLastActive(client.lastActive)}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 mb-4 flex-wrap">
-                        {!client.hasPlan && <span className="text-[10px] font-bold bg-warn/10 text-warn px-2 py-0.5 rounded-full">Sin plan</span>}
-                        {client.hasPlan && <span className="text-[10px] font-bold bg-ok/10 text-ok px-2 py-0.5 rounded-full">Plan ✓</span>}
-                        {!!client.weeklyDays && <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">{client.weeklyDays}d semana</span>}
-                      </div>
-                      {deletingId === client.id ? (
-                        <div className="flex gap-2">
-                          <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}><MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar</Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}><Trash2 className="w-3.5 h-3.5 text-warn" /></Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
-                    className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
-                    <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Límite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
-                  </button>
-                </div>
-              )}
+            <div><label className="block text-xs font-bold text-muted mb-1.5">📱 WhatsApp</label><input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+            <div><label className="block text-xs font-bold text-muted mb-1.5">Objetivo</label><input value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} placeholder="Hipertrofia, fuerza..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Altura (cm)</label><input type="number" value={form.altura} onChange={e => setForm(f => ({ ...f, altura: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Peso (kg)</label><input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Género</label>
+                <select value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+                  <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
+                </select></div>
+              <div><label className="block text-xs font-bold text-muted mb-1.5">Fecha nacimiento</label><input type="date" value={form.fechanacimiento} onChange={e => setForm(f => ({ ...f, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+            </div>
+            <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity">
+              {saving ? 'Guardando...' : '✓ Guardar cambios'}
+            </button>
+          </div>
+        )}
+      </div>
 
-          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
-          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'encuestas' && (
-            <PlanGate feature="surveys" planName={userProfile.planName}>
-              <EncuestasTab trainerId={userProfile.uid} clients={clients} />
-            </PlanGate>
-          )}
-          {activeTab === 'negocio' && (
-            <PlanGate feature="business_dashboard" planName={userProfile.planName}>
-              <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
-            </PlanGate>
-          )}
+      {/* Notas privadas */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas</p>
         </div>
-      </main>
-
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">📱 WhatsApp</label>
-            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-            <p className="text-[10px] text-muted mt-1">Para enviar encuestas y mensajes automáticos</p>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {[{ v: 'hipertrofia', label: '💪 Hipertrofia' },{ v: 'fuerza', label: '🏋️ Fuerza' },{ v: 'perdida_grasa', label: '🔥 Pérdida de grasa' },{ v: 'resistencia', label: '🏃 Resistencia' },{ v: 'rehabilitacion', label: '🩺 Rehabilitación' },{ v: 'rendimiento', label: '⚡ Rendimiento' },{ v: 'general', label: '🎯 General' }].map(opt => (
-                <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>{opt.label}</button>
-              ))}
-            </div>
-            <input value={(['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) ? '' : (newClient.objetivo || '')}
-              onChange={e => { if (e.target.value) setNewClient(p => ({ ...p, objetivo: e.target.value })) }}
-              onFocus={() => { if (['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) setNewClient(p => ({ ...p, objetivo: '' })) }}
-              placeholder="✏️ Otro objetivo personalizado..." className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
-              <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso inicial (kg)</label>
-              <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
-              <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
-                <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
-              </select></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
-              <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
-          </div>
+        <div className="p-4">
+          <textarea defaultValue={c.notas_privadas || ''}
+            onBlur={async e => { await onUpdate({ notas_privadas: e.target.value }) }}
+            placeholder="Observaciones, lesiones, preferencias, historial médico..."
+            rows={4}
+            className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
+          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
         </div>
-      </Modal>
+      </div>
 
-      {linkModal && (
-        <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
-          <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace. El cliente no necesita contraseña.</p>
-            <div className="flex gap-2">
-              <input readOnly value={getClientUrl(linkModal)} className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted font-mono outline-none" />
-              <button onClick={() => { navigator.clipboard.writeText(getClientUrl(linkModal)); toast('Copiado ✓', 'ok') }} className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0"><Copy className="w-3.5 h-3.5" /> Copiar</button>
-            </div>
-            <button onClick={() => { sendWhatsApp(linkModal); setLinkModal(null) }} className="w-full flex items-center justify-center gap-3 py-4 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90"><MessageCircle className="w-5 h-5" /> Enviar por WhatsApp</button>
-          </div>
-        </Modal>
+      {/* WhatsApp directo */}
+      {c.phone && (
+        <button onClick={() => {
+            const url = `${window.location.origin}?c=${client.token}`
+            const phone = c.phone.replace(/\s+/g, '').replace(/^\+/, '')
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)}`, '_blank')
+          }}
+          className="w-full flex items-center justify-center gap-3 py-3.5 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
+          📱 Abrir WhatsApp con {c.name}
+        </button>
       )}
     </div>
   )
 }
 
-// ── Settings ─────────────────────────────────────────────────────────────────
+// ── Resto de tabs (VistaTab, EntrenosTab, NotasTab, ConfigTab, DietaTabEntrenador) ──
+// Se mantienen igual que en la versión anterior — no las reescribo para ahorrar espacio
+// Importa el ClientPanel.tsx anterior para estas funciones o cópialas aquí
 
-const TEMAS = [
-  { id: 'bosque',  nombre: 'Bosque',  color: '#1a6038', bg: '#f0f7f4' },
-  { id: 'marino',  nombre: 'Marino',  color: '#1e3a5f', bg: '#f0f4f9' },
-  { id: 'energia', nombre: 'Energía', color: '#c0392b', bg: '#fdf5f5' },
-  { id: 'naranja', nombre: 'Naranja', color: '#e67e22', bg: '#fdf7f0' },
-  { id: 'morado',  nombre: 'Púrpura', color: '#6c3483', bg: '#f7f0fd' },
-  { id: 'elite',   nombre: 'Élite',   color: '#1a1a1a', bg: '#f5f5f5' },
-  { id: 'cielo',   nombre: 'Cielo',   color: '#2980b9', bg: '#f0f6fd' },
-  { id: 'rosa',    nombre: 'Rosa',    color: '#c0516a', bg: '#fdf0f3' },
-  { id: 'tierra',  nombre: 'Tierra',  color: '#8b5e3c', bg: '#fdf8f4' },
-  { id: 'menta',   nombre: 'Menta',   color: '#2e7d6b', bg: '#f0faf7' },
-  { id: 'grafito', nombre: 'Grafito', color: '#455a64', bg: '#f4f6f7' },
-  { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
-]
-
-const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
-
-function EmojiBar({ onPick }: { onPick: (e: string) => void }) {
+function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
+  if (!plan?.weeks?.length) return <div className="text-center py-16 text-muted"><Eye className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin plan asignado</p></div>
+  const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
+  const weekIdx = plan.weeks.indexOf(currentWeek)
   return (
-    <div className="flex flex-wrap gap-1 mb-2 p-2 bg-bg-alt rounded-xl border border-border/50">
-      {EMOJIS.map(em => (
-        <button key={em} type="button" onClick={() => onPick(em)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-base transition-colors">{em}</button>
+    <div className="max-w-2xl space-y-4">
+      <div><h3 className="font-serif font-bold text-lg">Vista del cliente</h3><p className="text-xs text-muted mt-0.5">Semana activa: <span className="font-semibold text-ink">{currentWeek.label}</span></p></div>
+      {currentWeek.days.map((day, di) => {
+        const dayKey = `w${weekIdx}_d${di}`
+        const done = day.exercises.filter((_, ri) => logs[`ex_${dayKey}_r${ri}`]?.done).length
+        const total = day.exercises.length
+        const pct = total ? Math.round(done / total * 100) : 0
+        return (
+          <div key={di} className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${pct === 100 ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>{pct === 100 ? '✓' : `${pct}%`}</div>
+              <div className="flex-1"><p className="font-semibold text-sm">{day.title}</p>{day.focus && <p className="text-xs text-muted">{day.focus}</p>}</div>
+              <span className="text-xs text-muted">{done}/{total}</span>
+            </div>
+            <div className="divide-y divide-border">
+              {day.exercises.map((ex, ri) => {
+                const log = logs[`ex_${dayKey}_r${ri}`]
+                return (
+                  <div key={ri} className={`flex items-center gap-3 px-4 py-2.5 ${log?.done ? 'opacity-50' : ''}`}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>{log?.done ? '✓' : ri + 1}</div>
+                    <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{ex.name}</p><p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p></div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | null }) {
+  const byDate: Record<string, { exName: string; sets: any; key: string }[]> = {}
+  Object.entries(logs).forEach(([key, log]) => {
+    if (!log.dateDone) return
+    const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
+    if (!m) return
+    const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
+    const exName = plan?.weeks?.[wi]?.days?.[di]?.exercises?.[ri]?.name || key
+    if (!byDate[log.dateDone]) byDate[log.dateDone] = []
+    byDate[log.dateDone].push({ exName, sets: log.sets, key })
+  })
+  const dates = Object.keys(byDate).sort().reverse()
+  if (!dates.length) return <div className="text-center py-16 text-muted"><ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin entrenamientos aún</p></div>
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div><h3 className="font-serif font-bold text-lg">Historial</h3><p className="text-xs text-muted">{dates.length} días con actividad</p></div>
+      {dates.map(fecha => (
+        <div key={fecha} className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-bg-alt/30">
+            <CheckCircle2 className="w-4 h-4 text-ok flex-shrink-0" />
+            <p className="text-sm font-semibold capitalize flex-1">{new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+            <span className="text-xs text-muted">{byDate[fecha].length} ejercicios</span>
+          </div>
+          <div className="divide-y divide-border">
+            {byDate[fecha].map(({ exName, sets, key }) => {
+              const setsArr = Object.values(sets || {}) as any[]
+              const mejor = setsArr.reduce((max: number, s: any) => Math.max(max, parseFloat(s.weight) || 0), 0)
+              return (
+                <div key={key} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0"><Dumbbell className="w-3.5 h-3.5 text-muted" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{exName}</p>
+                    <div className="flex gap-1.5 mt-0.5 flex-wrap">{setsArr.map((s: any, si: number) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}</span>)}</div>
+                  </div>
+                  {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[9px] text-muted">mejor</p></div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       ))}
     </div>
   )
 }
 
-function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
-  const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
-  const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
-  const [brandName, setBrandName] = useState(saved.brandName || '')
-  const [brandLogo, setBrandLogo] = useState(saved.brandLogo || '')
-  const [brandBg, setBrandBg] = useState(saved.brandBg || '')
-  const [brandColor, setBrandColor] = useState(saved.brandColor || '#1a6038')
-  const [brandBgColor, setBrandBgColor] = useState(saved.brandBgColor || '#f0f7f4')
-  const [phone, setPhone] = useState(saved.phone || '')
-  const [bio, setBio] = useState(saved.bio || '')
-  const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
-  const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
-  const [restDayMsg, setRestDayMsg] = useState(saved.restDayMsg || '')
-  const [temaId, setTemaId] = useState(saved.temaId || 'bosque')
-  const [saving, setSaving] = useState(false)
+function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  if (!plan) return null
+  const TAGS = ['⚠️ Lesión', '🔥 Alta intensidad', '🐢 Progreso lento', '⭐ Cliente VIP', '📞 Llamar esta semana']
+  return (
+    <div className="max-w-lg space-y-4">
+      <div><h3 className="font-serif font-bold text-lg">Notas privadas</h3><p className="text-xs text-muted">Solo las ves tú.</p></div>
+      <textarea rows={10} value={plan.coachNotes || ''} onChange={e => onChange({ ...plan, coachNotes: e.target.value })}
+        placeholder="Ej: Cuidado con la rodilla izquierda..."
+        className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
+      <div className="flex flex-wrap gap-2">
+        {TAGS.map(tag => (
+          <button key={tag} onClick={() => onChange({ ...plan, coachNotes: (plan.coachNotes || '') + '\n[' + tag + '] ' })}
+            className="px-3 py-1.5 text-xs border border-border rounded-lg hover:border-accent hover:text-accent transition-colors">{tag}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const applyTema = (tema: typeof TEMAS[0]) => { setTemaId(tema.id); setBrandColor(tema.color); setBrandBgColor(tema.bg) }
+function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+  const [revoking, setRevoking] = useState(false)
+  const [newToken, setNewToken] = useState(client.token)
+  const [showRevoke, setShowRevoke] = useState(false)
 
-  const handleSave = async () => {
-    setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, welcomeMsg, motivMsg, restDayMsg, updatedAt: Date.now() }
-    localStorage.setItem(LS_KEY, JSON.stringify(profile))
-    if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
-    const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
-    if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaving(false); return }
-    toast('Perfil guardado ✓ Los clientes verán los cambios al recargar.', 'ok')
-    setSaving(false)
+  const revokeToken = async () => {
+    setRevoking(true)
+    const token = crypto.randomUUID().replace(/-/g, '')
+    const { error } = await supabase.from('clientes').update({ token }).eq('id', client.id)
+    if (error) toast('Error al regenerar enlace', 'warn')
+    else { setNewToken(token); toast('Enlace regenerado ✓', 'ok'); setShowRevoke(false) }
+    setRevoking(false)
   }
 
-  const uploadImage = (field: string, maxMB: number, onDone: (url: string) => void) => async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > maxMB * 1024 * 1024) { toast(`Máximo ${maxMB}MB`, 'warn'); return }
-    toast('Subiendo imagen...', 'info')
-    const ext = file.name.split('.').pop()
-    const path = `${userProfile.uid}/${field}_${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('trainer-assets').upload(path, file, { upsert: true })
-    if (error) { toast('Error al subir imagen', 'warn'); return }
-    const { data } = supabase.storage.from('trainer-assets').getPublicUrl(path)
-    onDone(data.publicUrl)
-    toast('Imagen subida ✓', 'ok')
-  }
+  const currentUrl = `${window.location.origin}?c=${newToken}`
+  if (!plan) return null
 
   return (
-    <div className="animate-fade-in space-y-6 max-w-2xl">
-      <div><h2 className="text-3xl font-serif font-bold">Personalización</h2><p className="text-muted text-sm mt-1">Todo lo que configures aparecerá en el panel de tus clientes.</p></div>
-      <div className="rounded-2xl overflow-hidden border border-border shadow-sm">
-        <div className="px-4 py-3 flex items-center gap-3" style={{ backgroundColor: brandColor }}>
-          {brandLogo ? <img src={brandLogo} className="w-9 h-9 rounded-full object-cover border-2 border-white/40 flex-shrink-0" alt="" />
-            : <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>}
-          <div><p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>{bio && <p className="text-white/60 text-[10px] truncate max-w-xs">{bio}</p>}</div>
-          <span className="ml-auto text-white/40 text-[10px]">Preview</span>
-        </div>
-        <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
-          {welcomeMsg ? <p className="font-medium" style={{ color: brandColor }}>{welcomeMsg}</p> : <p className="text-muted/60 italic text-xs">Tu mensaje de bienvenida aquí</p>}
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Identidad</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label><input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label><input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: AlexFit Training" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        </div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-      </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">📷 Foto de perfil</h3>
-        <div className="flex items-center gap-5">
-          <div className="relative flex-shrink-0">
-            {brandLogo ? <><img src={brandLogo} className="w-20 h-20 rounded-full object-cover border-4 border-border shadow" alt="" /><button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-6 h-6 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center shadow">×</button></>
-              : <div className="w-20 h-20 rounded-full border-4 border-dashed border-border flex items-center justify-center text-3xl font-bold shadow-inner" style={{ backgroundColor: brandColor + '20', color: brandColor }}>{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>}
+    <div className="max-w-lg space-y-5">
+      <h3 className="font-serif font-bold text-lg">Configuración</h3>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div><h4 className="text-sm font-semibold">Automatizaciones</h4><p className="text-xs text-muted mt-0.5">Acciones automáticas para este cliente</p></div>
+        {[
+          { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
+          { key: 'autoCheckin', label: 'Check-in semanal', desc: 'Recordatorio de encuesta al cerrar semana', emoji: '📋' },
+          { key: 'autoInactividad', label: 'Alerta de inactividad', desc: '+3 días sin entrenar → WhatsApp', emoji: '⚠️' },
+        ].map(a => (
+          <div key={a.key} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${(plan as any)[a.key] ? 'bg-ok/5 border-ok/30' : 'bg-bg border-border'}`}
+            onClick={() => onChange({ ...plan, [a.key]: !(plan as any)[a.key] } as TrainingPlan)}>
+            <span className="text-lg">{a.emoji}</span>
+            <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
+            <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${(plan as any)[a.key] ? 'bg-ok' : 'bg-border'}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${(plan as any)[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
-              📁 {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
-            </label>
-            <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB</p>
-          </div>
+        ))}
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
+        <textarea rows={3} value={plan.message || ''} onChange={e => onChange({ ...plan, message: e.target.value })}
+          placeholder="Mensaje motivacional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h4 className="text-sm font-semibold">Acceso del cliente</h4>
+        <div className="flex gap-2">
+          <input readOnly value={currentUrl} className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs text-muted outline-none font-mono" />
+          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(currentUrl); toast('Copiado ✓', 'ok') }}>Copiar</Button>
         </div>
+        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\n${currentUrl}\n\n💪`)}`, '_blank')}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">📱 Enviar por WhatsApp</button>
+        {!showRevoke
+          ? <button onClick={() => setShowRevoke(true)} className="w-full py-2.5 border border-warn/30 text-warn rounded-xl text-sm font-semibold hover:bg-warn/5">🔒 Regenerar enlace</button>
+          : <div className="bg-warn/5 border border-warn/20 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-warn">⚠️ El enlace actual dejará de funcionar</p>
+              <div className="flex gap-2">
+                <button onClick={() => setShowRevoke(false)} className="flex-1 py-2 border border-border rounded-lg text-sm text-muted">Cancelar</button>
+                <button onClick={revokeToken} disabled={revoking} className="flex-1 py-2 bg-warn text-white rounded-lg text-sm font-semibold disabled:opacity-50">{revoking ? 'Regenerando...' : 'Sí, revocar'}</button>
+              </div>
+            </div>
+        }
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🎨 Tema de colores</h3>
-        <div className="grid grid-cols-4 gap-2">
-          {TEMAS.map(tema => (
-            <button key={tema.id} onClick={() => applyTema(tema)}
-              className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${temaId === tema.id ? 'border-ink shadow-md scale-95' : 'border-transparent hover:border-border'}`}
-              style={{ backgroundColor: tema.bg }}>
-              <div className="w-8 h-8 rounded-full shadow-sm" style={{ backgroundColor: tema.color }} />
-              <span className="text-[10px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
-              {temaId === tema.id && <span className="text-[9px] font-bold text-ink">✓</span>}
-            </button>
-          ))}
-        </div>
-        <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-semibold text-muted mb-2">Color principal</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandColor}</p><p className="text-[10px] text-muted">Header y botones</p></div></div></div>
-          <div><label className="block text-xs font-semibold text-muted mb-2">Color de fondo</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[10px] text-muted">Fondo del panel</p></div></div></div>
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🖼️ Imagen de fondo</h3>
-        <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
-          {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
-            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label><EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} /><textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label><EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} /><textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label><EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} /><input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-      </div>
-      <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">👤 Cuenta</h3>
-        <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
-        <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>
-      </div>
-      <div className="flex gap-3 pb-8">
-        <Button className="flex-1 gap-2" onClick={handleSave} disabled={saving}><Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar cambios'}</Button>
-        <Button variant="outline" className="gap-2" onClick={onLogout}><LogOut className="w-4 h-4" />Salir</Button>
-      </div>
+    </div>
+  )
+}
+
+function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData; trainerId: string }) {
+  return (
+    <div className="flex-1 overflow-y-auto min-h-0">
+      <DietEditor clientId={clientId} isTrainer={true} trainerId={trainerId}
+        syncedMacros={{ kcal: (plan as any)?.macros?.kcal || 0, protein: (plan as any)?.macros?.protein || 0, carbs: (plan as any)?.macros?.carbs || 0, fats: (plan as any)?.macros?.fats || 0 }}
+        onMacrosChange={m => { if (!plan) return; onChange({ ...plan, macros: { ...(plan as any).macros, ...m } } as any) }} />
     </div>
   )
 }
