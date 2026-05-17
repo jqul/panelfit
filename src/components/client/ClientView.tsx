@@ -205,10 +205,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col"
-      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', backgroundColor: '#f5f0ea' }}>
+    <div className="h-[100dvh] overflow-hidden flex flex-col"
+      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: '#f5f0ea' }}>
 
-      <header className="bg-card/95 backdrop-blur-sm border-b border-border sticky top-0 z-20">
+      <header className="bg-card/95 backdrop-blur-sm border-b border-border flex-shrink-0 z-20">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-2.5">
             {brandLogo
@@ -231,8 +231,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <SyncIndicator />
       <PWAInstallBanner />
 
-      <main className="flex-1 max-w-2xl mx-auto w-full relative z-10"
-        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))' }}>
+      <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
+        style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom, 0px))", WebkitOverflowScrolling: "touch" }}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
