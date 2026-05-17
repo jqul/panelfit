@@ -174,7 +174,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         initial[ri][si] = {
           weight: log?.sets?.[si]?.weight || '',
           reps: log?.sets?.[si]?.reps || String(numReps),
-          done: log?.sets?.[si]?.done || false,
+          done: log?.done || false,
         }
       }
     })
