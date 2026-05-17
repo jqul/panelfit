@@ -22,7 +22,7 @@ const emptyExercise = (): Exercise => ({
   name: '', sets: '3×10', weight: '', isMain: false,
   comment: '', videoUrl: '', restSets: 90, restAfter: 120
 })
-const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmup: '' } as any)
+const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmupExercises: [] } as any)
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
 
 function getYTId(url: string) {
@@ -504,30 +504,32 @@ export function TrainingPlanEditor({
                   {openDays[di] && (
                     <div className="border-t border-border/50">
 
-                      {/* CALENTAMIENTO */}
-                      <div className="px-4 py-2 border-b border-border/30 bg-orange-50/40">
-                        <button onClick={() => setOpenWarmup(p => ({ ...p, [di]: !p[di] }))}
-                          className="flex items-center gap-2 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors w-full text-left">
-                          <Flame className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span>Calentamiento</span>
-                          {(day as any).warmup
-                            ? <span className="ml-auto text-[10px] text-orange-400 font-normal truncate max-w-[200px]">{(day as any).warmup.slice(0, 40)}{(day as any).warmup.length > 40 ? '…' : ''}</span>
-                            : <span className="ml-auto text-[10px] text-orange-300 font-normal">Sin definir</span>}
-                          {openWarmup[di] ? <ChevronUp className="w-3 h-3 flex-shrink-0 ml-1" /> : <ChevronDown className="w-3 h-3 flex-shrink-0 ml-1" />}
-                        </button>
-                        {openWarmup[di] && (
-                          <div className="mt-2 space-y-2">
-                            <textarea
-                              value={(day as any).warmup || ''}
-                              onChange={e => updateDay(activeWeek, di, { warmup: e.target.value } as any)}
-                              placeholder={`Ej:\n• 5 min bici estática al 60%\n• 2×15 rotaciones de hombro\n• 2×10 sentadillas con peso corporal`}
-                              rows={4}
-                              className="w-full text-xs bg-white border border-orange-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-orange-300/40 resize-none leading-relaxed text-gray-700 placeholder:text-orange-200"
-                            />
-                            <p className="text-[10px] text-orange-400">El cliente lo verá antes de empezar los ejercicios</p>
-                          </div>
-                        )}
-                      </div>
+                      {/* CALENTAMIENTO — lista de ejercicios real */}
+                      <WarmupSection
+                        warmupExercises={(day as any).warmupExercises || []}
+                        isOpen={!!openWarmup[di]}
+                        onToggle={() => setOpenWarmup(p => ({ ...p, [di]: !p[di] }))}
+                        library={library}
+                        onAdd={(ex) => {
+                          const warmupExercises = [...((day as any).warmupExercises || []), ex]
+                          updateDay(activeWeek, di, { warmupExercises } as any)
+                        }}
+                        onUpdate={(ri, u) => {
+                          const warmupExercises = [...((day as any).warmupExercises || [])]
+                          warmupExercises[ri] = { ...warmupExercises[ri], ...u }
+                          updateDay(activeWeek, di, { warmupExercises } as any)
+                        }}
+                        onDelete={(ri) => {
+                          const warmupExercises = ((day as any).warmupExercises || []).filter((_: any, i: number) => i !== ri)
+                          updateDay(activeWeek, di, { warmupExercises } as any)
+                        }}
+                        onMove={(fromRi, toRi) => {
+                          const warmupExercises = [...((day as any).warmupExercises || [])]
+                          const [moved] = warmupExercises.splice(fromRi, 1)
+                          warmupExercises.splice(toRi, 0, moved)
+                          updateDay(activeWeek, di, { warmupExercises } as any)
+                        }}
+                      />
 
                       {/* Cabecera tabla */}
                       {day.exercises.length > 0 && (
@@ -802,6 +804,122 @@ export function TrainingPlanEditor({
             </button>
           ))}
         </div>
+      </Modal>
+    </div>
+  )
+}
+
+
+// ── WarmupSection ────────────────────────────────────────
+interface WarmupSectionProps {
+  warmupExercises: Exercise[]
+  isOpen: boolean
+  onToggle: () => void
+  library: LibraryExercise[]
+  onAdd: (ex: Exercise) => void
+  onUpdate: (ri: number, updates: Partial<Exercise>) => void
+  onDelete: (ri: number) => void
+  onMove: (fromRi: number, toRi: number) => void
+}
+
+function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAdd, onUpdate, onDelete, onMove }: WarmupSectionProps) {
+  const [showPicker, setShowPicker] = useState(false)
+
+  return (
+    <div className="border-b border-border/30 bg-orange-50/40">
+      {/* Header */}
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-2 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors w-full text-left px-4 py-2.5">
+        <Flame className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>Calentamiento</span>
+        {warmupExercises.length > 0
+          ? <span className="ml-1 text-[10px] bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded-full font-bold">{warmupExercises.length} ejerc.</span>
+          : <span className="ml-auto text-[10px] text-orange-300 font-normal">Sin definir</span>
+        }
+        {isOpen
+          ? <ChevronUp className="w-3 h-3 flex-shrink-0 ml-auto" />
+          : <ChevronDown className="w-3 h-3 flex-shrink-0 ml-auto" />
+        }
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-3 space-y-1.5">
+          {/* Lista de ejercicios */}
+          {warmupExercises.length > 0 && (
+            <div className="space-y-1">
+              {warmupExercises.map((ex, ri) => (
+                <div key={ri} className="flex items-center gap-2 bg-white/80 border border-orange-100 rounded-xl px-3 py-2 group">
+                  <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[9px] font-bold text-orange-500 flex-shrink-0">
+                    {ri + 1}
+                  </div>
+                  <input
+                    value={ex.name}
+                    onChange={e => onUpdate(ri, { name: e.target.value })}
+                    placeholder="Nombre del ejercicio"
+                    className="flex-1 text-xs font-medium bg-transparent outline-none min-w-0 text-gray-700"
+                  />
+                  <input
+                    value={ex.sets}
+                    onChange={e => onUpdate(ri, { sets: e.target.value })}
+                    placeholder="2×10"
+                    className="w-14 text-[10px] font-bold text-center bg-orange-50 border border-orange-100 rounded-lg px-1.5 py-1 outline-none"
+                  />
+                  <input
+                    value={ex.weight || ''}
+                    onChange={e => onUpdate(ri, { weight: e.target.value })}
+                    placeholder="Peso"
+                    className="w-16 text-[10px] text-center bg-orange-50 border border-orange-100 rounded-lg px-1.5 py-1 outline-none"
+                  />
+                  <input
+                    value={ex.videoUrl || ''}
+                    onChange={e => onUpdate(ri, { videoUrl: e.target.value })}
+                    placeholder="URL vídeo..."
+                    className="w-24 text-[10px] bg-orange-50 border border-orange-100 rounded-lg px-1.5 py-1 outline-none hidden sm:block"
+                  />
+                  <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => ri > 0 && onMove(ri, ri - 1)}
+                      disabled={ri === 0}
+                      className="p-0.5 text-orange-300 hover:text-orange-600 disabled:opacity-20">
+                      <ChevronUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => ri < warmupExercises.length - 1 && onMove(ri, ri + 1)}
+                      disabled={ri === warmupExercises.length - 1}
+                      className="p-0.5 text-orange-300 hover:text-orange-600 disabled:opacity-20">
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(ri)}
+                      className="p-0.5 text-orange-300 hover:text-warn ml-0.5">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Botón añadir */}
+          <button
+            onClick={() => setShowPicker(true)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-orange-200 rounded-xl text-[11px] text-orange-400 hover:border-orange-400 hover:text-orange-600 transition-all">
+            <Plus className="w-3.5 h-3.5" /> Añadir ejercicio de calentamiento
+          </button>
+          <p className="text-[10px] text-orange-300 text-center">
+            El cliente lo verá antes de empezar los ejercicios principales
+          </p>
+        </div>
+      )}
+
+      {/* Picker de ejercicios de la librería */}
+      <Modal open={showPicker} onClose={() => setShowPicker(false)} title="Añadir ejercicio de calentamiento" maxWidth="max-w-2xl">
+        <ExercisePicker
+          library={library}
+          onSelect={ex => { onAdd(ex); setShowPicker(false) }}
+          onClose={() => setShowPicker(false)}
+        />
       </Modal>
     </div>
   )
