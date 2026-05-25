@@ -11,19 +11,19 @@ import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 import { NotFound } from '../shared/NotFound'
+import { ClientRegister } from './ClientRegister'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
 type SyncState = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
+type AuthState = 'loading' | 'needs_register' | 'needs_login' | 'authenticated'
 
 export function ClientView({ token, showEncuesta }: ClientViewProps) {
+  const [authState, setAuthState] = useState<AuthState>('loading')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [client, setClient] = useState<ClienteRow | null>(null)
-  const [pinInput, setPinInput] = useState('')
-  const [pinError, setPinError] = useState(false)
-  const [pinVerified, setPinVerified] = useState(false)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [weightHistory] = useState<WeightEntry[]>([])
@@ -34,28 +34,67 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
 
   useEffect(() => {
-    loadData()
     const online = () => { setIsOnline(true); setSyncState('idle') }
     const offline = () => { setIsOnline(false); setSyncState('offline') }
     window.addEventListener('online', online)
     window.addEventListener('offline', offline)
-    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
+
+    // Escuchar cambios de auth — si el cliente inicia sesión, cargar datos
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && authState === 'needs_login') {
+        loadData(session.user.id)
+      }
+    })
+
+    checkAuth()
+
+    return () => {
+      window.removeEventListener('online', online)
+      window.removeEventListener('offline', offline)
+      subscription.unsubscribe()
+    }
   }, [token])
 
-  const loadData = async () => {
-    setLoading(true)
+  const checkAuth = async () => {
+    // 1. Cargar datos del cliente por token
     const { data: clientData, error: cErr } = await supabase
       .from('clientes').select('*').eq('token', token).maybeSingle()
     if (cErr) logError('ClientView:loadClient', cErr)
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
 
+    // 2. ¿El cliente tiene cuenta creada?
+    if (!clientData.auth_user_id) {
+      // Primera vez — mostrar registro
+      setAuthState('needs_register')
+      setLoading(false)
+      return
+    }
+
+    // 3. ¿Hay sesión activa?
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user && session.user.id === clientData.auth_user_id) {
+      // Sesión activa y coincide — cargar datos
+      await loadData(session.user.id, clientData)
+    } else {
+      // Tiene cuenta pero no sesión — mostrar login
+      setAuthState('needs_login')
+      setLoading(false)
+    }
+  }
+
+  const loadData = async (userId?: string, preloadedClient?: ClienteRow) => {
+    setLoading(true)
+    const clientData = preloadedClient || client
+    if (!clientData) { setLoading(false); return }
+
+    // Cargar logs desde localStorage (offline-first)
     const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
     if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
 
-    const { data: planData, error: planErr } = await supabase
+    // Plan
+    const { data: planData } = await supabase
       .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
-    if (planErr) logError('ClientView:loadPlan', planErr)
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) {
       const p = planRow.plan.P as TrainingPlan
@@ -68,23 +107,20 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       setPlan(p)
     }
 
-    const { data: regData, error: regErr } = await supabase
+    // Registros
+    const { data: regData } = await supabase
       .from('registros').select('logs').eq('clientId', clientData.id).maybeSingle()
-    if (regErr) logError('ClientView:loadRegistros', regErr)
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
 
-    // Cargar perfil del entrenador — incluye seriesTypes
+    // Perfil del entrenador
     if (clientData.trainerId) {
       const { data: trainerData } = await supabase
         .from('entrenadores').select('profile').eq('uid', clientData.trainerId).maybeSingle()
       if (trainerData?.profile && Object.keys(trainerData.profile).length > 0) {
         setTrainerProfile(trainerData.profile)
         localStorage.setItem(`pf_trainer_profile_${clientData.trainerId}`, JSON.stringify(trainerData.profile))
-        // Cargar tipos de serie personalizados del entrenador
-        if (trainerData.profile.seriesTypes?.length) {
-          setSeriesTypes(trainerData.profile.seriesTypes)
-        }
+        if (trainerData.profile.seriesTypes?.length) setSeriesTypes(trainerData.profile.seriesTypes)
       } else {
         try {
           const local = JSON.parse(localStorage.getItem(`pf_trainer_profile_${clientData.trainerId}`) || '{}')
@@ -94,19 +130,17 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       }
     }
 
+    setAuthState('authenticated')
     setLoading(false)
   }
 
-  const handleDiasUpdate = useCallback(async (dias: number[]) => {
-    if (!plan) return
-    const newPlan = { ...plan, diasElegidos: dias }
-    setPlan(newPlan)
-    if (client?.id) {
-      await supabase.from('planes')
-        .update({ plan: { P: newPlan }, updatedAt: Date.now() })
-        .eq('clientId', client.id)
+  const handleRegistered = async () => {
+    // Después del registro, refrescar sesión y cargar datos
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      await loadData(session.user.id)
     }
-  }, [plan, client?.id])
+  }
 
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
@@ -126,7 +160,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }, [client?.id])
 
-  if (loading) return (
+  const handleDiasUpdate = useCallback(async (dias: number[]) => {
+    if (!plan || !client?.id) return
+    const newPlan = { ...plan, diasElegidos: dias }
+    setPlan(newPlan)
+    await supabase.from('planes').update({ plan: { P: newPlan }, updatedAt: Date.now() }).eq('clientId', client.id)
+  }, [plan, client?.id])
+
+  // ── Pantalla de carga inicial ──
+  if (loading && authState === 'loading') return (
     <div className="min-h-[100dvh] bg-bg flex items-center justify-center">
       <div className="text-center space-y-3">
         <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
@@ -141,35 +183,40 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   if (error) return <NotFound />
 
-  const planPin = (plan as unknown as { pin?: string })?.pin
-  if (!loading && !error && planPin && !pinVerified) {
-    const checkPin = () => {
-      if (pinInput === planPin) { setPinVerified(true); setPinError(false) }
-      else { setPinError(true); setPinInput('') }
-    }
+  // ── Registro / Login ──
+  if (authState === 'needs_register' && client) {
+    const trainerProf = (() => {
+      try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
+    })()
     return (
-      <div className="min-h-[100dvh] bg-bg flex items-center justify-center p-4">
-        <div className="w-full max-w-xs text-center space-y-6">
-          <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <div className="space-y-3">
-            <input type="number" value={pinInput} onChange={e => { setPinInput(e.target.value); setPinError(false) }}
-              onKeyDown={e => e.key === 'Enter' && checkPin()}
-              placeholder="PIN de acceso"
-              className={`w-full px-4 py-4 bg-card border rounded-2xl text-center font-serif outline-none tracking-widest ${pinError ? 'border-warn' : 'border-border focus:border-accent'}`}
-              style={{ fontSize: '24px' }} autoFocus />
-            {pinError && <p className="text-sm text-warn">PIN incorrecto.</p>}
-            <button onClick={checkPin} style={{ minHeight: '52px' }}
-              className="w-full py-4 bg-ink text-white rounded-2xl font-bold hover:opacity-90">
-              Entrar
-            </button>
-          </div>
-          <p className="text-xs text-muted">Si no recuerdas tu PIN, contacta con tu entrenador.</p>
-        </div>
-      </div>
+      <ClientRegister
+        token={token}
+        clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
+        trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
+        brandColor={trainerProf.brandColor}
+        brandLogo={trainerProf.brandLogo}
+        onComplete={handleRegistered}
+      />
     )
   }
 
-  if (!client) return null
+  if (authState === 'needs_login' && client) {
+    const trainerProf = (() => {
+      try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
+    })()
+    return (
+      <ClientRegister
+        token={token}
+        clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
+        trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
+        brandColor={trainerProf.brandColor}
+        brandLogo={trainerProf.brandLogo}
+        onComplete={() => loadData()}
+      />
+    )
+  }
+
+  if (!client || authState !== 'authenticated') return null
 
   const clientName = `${client.name || ''} ${client.surname || ''}`.trim()
   const brandName = trainerProfile.brandName || 'PanelFit'
@@ -191,10 +238,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const SyncIndicator = () => {
     if (syncState === 'idle') return null
     return (
-      <div className={`fixed top-16 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold transition-all ${
+      <div className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${
         syncState === 'saving' ? 'bg-accent/10 text-accent' :
-        syncState === 'saved' ? 'bg-ok/10 text-ok' :
-        'bg-warn/10 text-warn'
+        syncState === 'saved' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
       }`}>
         {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
         {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
@@ -232,7 +278,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <PWAInstallBanner />
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
-        style={{ paddingBottom: "calc(56px + env(safe-area-inset-bottom, 0px))", WebkitOverflowScrolling: "touch" }}>
+        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', WebkitOverflowScrolling: 'touch' }}>
         {loading ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
@@ -255,16 +301,16 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView
-                    plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                    seriesTypes={seriesTypes}
-                  />
+                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} />
                 : <NoPlanView />
             )}
             {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} plan={plan} />}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
-            {activeTab === 'mas' && <MasTab client={client} plan={plan} />}
+            {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
+              await supabase.auth.signOut()
+              setAuthState('needs_login')
+            }} />}
           </>
         )}
       </main>
@@ -276,12 +322,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             <button key={id} onClick={() => setActiveTab(id)}
               className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
               style={{ minHeight: '56px' }}
-              aria-label={label}
-              aria-current={activeTab === id ? 'page' : undefined}>
+              aria-label={label}>
               <Icon className={`w-5 h-5 transition-colors ${activeTab === id ? 'text-ink' : 'text-muted'}`} />
-              <span className={`text-[10px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>
-                {label}
-              </span>
+              <span className={`text-[10px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>{label}</span>
             </button>
           ))}
         </div>
@@ -300,7 +343,7 @@ function NoPlanView() {
   )
 }
 
-function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | null }) {
+function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void }) {
   const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
   const waUrl = trainerPhone
     ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
@@ -328,21 +371,11 @@ function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | nul
       </div>
 
       {plan && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu programa</p>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted">Tipo</span>
-              <span className="font-semibold capitalize">{plan.type}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">Semanas</span>
-              <span className="font-semibold">{plan.weeks?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted">Descanso principal</span>
-              <span className="font-semibold">{plan.restMain}s</span>
-            </div>
+            <div className="flex justify-between"><span className="text-muted">Tipo</span><span className="font-semibold capitalize">{plan.type}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan.weeks?.length || 0}</span></div>
           </div>
         </div>
       )}
@@ -351,6 +384,12 @@ function MasTab({ client, plan }: { client: ClienteRow; plan: TrainingPlan | nul
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu cuenta</p>
         <p className="text-sm"><span className="text-muted">Nombre:</span> <span className="font-semibold">{client.name} {client.surname}</span></p>
       </div>
+
+      {/* Cerrar sesión */}
+      <button onClick={onLogout}
+        className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
+        Cerrar sesión
+      </button>
     </div>
   )
 }
