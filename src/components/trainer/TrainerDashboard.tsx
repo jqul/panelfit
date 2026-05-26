@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp,
+  Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar,
   StickyNote, Activity, Zap, ArrowRight, Send
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -16,6 +16,7 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
+import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
@@ -24,7 +25,7 @@ import { BusinessDashboard } from './BusinessDashboard'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface ClientWithStats extends ClientData {
@@ -178,7 +179,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
   const QUICK_ACTIONS = [
     { icon: UserPlus,  label: 'Nuevo cliente',   color: 'text-accent',      bg: 'bg-accent/10',   action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,  label: 'Crear plantilla',  color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('templates') },
+    { icon: Dumbbell,  label: 'Workouts',        color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('templates') },
     { icon: Send,      label: 'Encuesta',          color: 'text-purple-500',  bg: 'bg-purple-50',   action: () => handleTabChange('encuestas') },
     { icon: BarChart2, label: 'Adherencia',        color: 'text-warn',        bg: 'bg-warn/10',     action: () => handleTabChange('adherencia') },
     { icon: MessageCircle, label: 'Mensajes',      color: 'text-blue-500',    bg: 'bg-blue-50',     action: () => handleTabChange('mensajes') },
@@ -195,7 +196,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     ]},
     { label: 'Contenido', items: [
       { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: ClipboardList, label: 'Plantillas' },
+      { id: 'templates' as Tab, icon: Dumbbell, label: 'Workouts' },
+      { id: 'programas' as Tab, icon: Calendar, label: 'Programas' },
     ]},
     { label: 'Análisis', items: [
       { id: 'insights' as Tab, icon: BarChart2, label: 'Insights' },
@@ -617,6 +619,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
           {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'programas' && <ProgramasTab trainerId={userProfile.uid} />}
           {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
           {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
