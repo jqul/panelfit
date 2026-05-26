@@ -133,9 +133,10 @@ export function LabelSelector({ labels, selected, onChange }: {
 }
 
 // ── Modal añadir tarea ────────────────────────────────────
-function AddTaskModal({ dayIdx, weekIdx, surveyTemplates, onAdd, onClose }: {
+function AddTaskModal({ dayIdx, weekIdx, surveyTemplates, planTemplates, onAdd, onClose }: {
   dayIdx: number; weekIdx: number
   surveyTemplates: { id: string; name: string }[]
+  planTemplates: { id: string; name: string; type: string }[]
   onAdd: (task: ProgramTask) => void
   onClose: () => void
 }) {
@@ -143,6 +144,8 @@ function AddTaskModal({ dayIdx, weekIdx, surveyTemplates, onAdd, onClose }: {
   const [cardioType, setCardioType] = useState('Correr')
   const [cardioObjective, setCardioObjective] = useState('')
   const [evolucionItems, setEvolucionItems] = useState({ peso: true, fotos: false, medidas: false })
+  const [workoutSearch, setWorkoutSearch] = useState('')
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null)
   const [formularioId, setFormularioId] = useState(surveyTemplates[0]?.id || '')
   const [mensaje, setMensaje] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
@@ -205,20 +208,65 @@ function AddTaskModal({ dayIdx, weekIdx, surveyTemplates, onAdd, onClose }: {
                 {isOpen && (
                   <div className="px-6 pb-5 space-y-3 bg-gray-50/50">
 
-                    {/* WORKOUT — mensaje simple, el workout se asigna desde el plan */}
+                    {/* WORKOUT — selector de plantillas */}
                     {type.id === 'workout' && (
                       <div className="space-y-3">
-                        <p className="text-xs text-gray-500">Añade un día de entrenamiento. El cliente verá su rutina asignada.</p>
-                        <div className="flex gap-2">
-                          <input placeholder="Nombre del día (ej: Día de empuje)"
-                            id="workout-title" className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-200" />
-                          <button onClick={() => {
-                            const title = (document.getElementById('workout-title') as HTMLInputElement)?.value || 'Workout'
-                            onAdd({ id: `t_${Date.now()}`, type: 'workout', title, data: { title } }); onClose()
-                          }} className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600">
-                            Añadir
-                          </button>
-                        </div>
+                        {planTemplates.length === 0 ? (
+                          <p className="text-sm text-gray-500">No tienes plantillas de entrenamiento. Créalas primero en la pestaña Plantillas.</p>
+                        ) : (
+                          <>
+                            {/* Buscador */}
+                            <div className="relative">
+                              <input
+                                value={workoutSearch}
+                                onChange={e => setWorkoutSearch(e.target.value)}
+                                placeholder="Buscar por nombre..."
+                                className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-200"
+                              />
+                              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+
+                            {/* Lista de plantillas */}
+                            <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-100 rounded-xl p-2 bg-white">
+                              {planTemplates
+                                .filter(t => t.name.toLowerCase().includes(workoutSearch.toLowerCase()))
+                                .map(tmpl => (
+                                  <label key={tmpl.id}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedWorkoutId === tmpl.id ? 'bg-amber-50 border-amber-300' : 'border-transparent hover:bg-gray-50'}`}>
+                                    <div
+                                      onClick={() => setSelectedWorkoutId(tmpl.id)}
+                                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedWorkoutId === tmpl.id ? 'border-amber-500 bg-amber-500' : 'border-gray-300'}`}>
+                                      {selectedWorkoutId === tmpl.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium truncate">{tmpl.name}</p>
+                                      {tmpl.type && <p className="text-[10px] text-gray-400">{tmpl.type}</p>}
+                                    </div>
+                                  </label>
+                                ))}
+                              {planTemplates.filter(t => t.name.toLowerCase().includes(workoutSearch.toLowerCase())).length === 0 && (
+                                <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>
+                              )}
+                            </div>
+
+                            {/* Botones */}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  if (!selectedWorkoutId) return
+                                  const tmpl = planTemplates.find(t => t.id === selectedWorkoutId)!
+                                  onAdd({ id: `t_${Date.now()}`, type: 'workout', title: tmpl.name, data: { templateId: tmpl.id, templateName: tmpl.name } })
+                                  onClose()
+                                }}
+                                disabled={!selectedWorkoutId}
+                                className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 transition-colors">
+                                Añadir workout
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 
@@ -360,7 +408,7 @@ function TaskCard({ task, onDelete }: { task: ProgramTask; onDelete: () => void 
 }
 
 // ── Vista calendario del programa ─────────────────────────
-function ProgramEditor({ program: initialProgram, labels, surveyTemplates, onSave, onBack }: {
+function ProgramEditor({ program: initialProgram, labels, surveyTemplates, planTemplates, onSave, onBack }: {
   program: Program
   labels: TrainerLabel[]
   surveyTemplates: { id: string; name: string }[]
@@ -417,6 +465,7 @@ function ProgramEditor({ program: initialProgram, labels, surveyTemplates, onSav
           weekIdx={addTaskModal.weekIdx}
           dayIdx={addTaskModal.dayIdx}
           surveyTemplates={surveyTemplates}
+          planTemplates={planTemplates}
           onAdd={task => addTask(addTaskModal.weekIdx, addTaskModal.dayIdx, task)}
           onClose={() => setAddTaskModal(null)}
         />
@@ -635,6 +684,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
   const [programs, setPrograms]   = useState<Program[]>([])
   const [labels, setLabels]       = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<{ id: string; name: string }[]>([])
+  const [planTemplates, setPlanTemplates] = useState<{ id: string; name: string; type: string }[]>([])
   const [loading, setLoading]     = useState(true)
   const [editing, setEditing]     = useState<Program | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
@@ -645,14 +695,16 @@ export function TemplatesTab({ trainerId, clients }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
-    const [progRes, labelRes, surveyRes] = await Promise.all([
+    const [progRes, labelRes, surveyRes, planRes] = await Promise.all([
       supabase.from('programs').select('*').eq('trainer_id', trainerId).order('created_at', { ascending: false }),
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
       supabase.from('survey_templates').select('id, name').eq('trainer_id', trainerId),
+      supabase.from('plan_templates').select('id, name, plan').eq('trainer_id', trainerId).order('created_at', { ascending: false }),
     ])
     if (progRes.data) setPrograms(progRes.data)
     if (labelRes.data) setLabels(labelRes.data)
     if (surveyRes.data) setSurveyTemplates(surveyRes.data)
+    if (planRes.data) setPlanTemplates(planRes.data.map((r: any) => ({ id: r.id, name: r.name, type: r.plan?.type || 'General' })))
     setLoading(false)
   }
 
@@ -694,6 +746,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
         program={editing}
         labels={labels}
         surveyTemplates={surveyTemplates}
+          planTemplates={planTemplates}
         onSave={saveProgram}
         onBack={() => setEditing(null)}
       />
