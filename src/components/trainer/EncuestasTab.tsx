@@ -3,7 +3,7 @@ import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, Che
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
-import { TrainerLabel, LabelPill } from './TemplatesTab'
+import { TrainerLabel, LabelPill } from './labels'
 
 interface Question {
   id: string
