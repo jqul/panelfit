@@ -1,6 +1,7 @@
+import { TrainerLabel, LabelPill } from './labels'
 import { useState, useEffect, useRef } from 'react'
 import {
-  X, Save, ChevronLeft, FileText, Dumbbell, Settings,
+  X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
   ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
   CheckCircle2, ClipboardCheck, Link, MessageCircle,
   User, Bell, Plus, Trash2, Calendar
@@ -19,7 +20,7 @@ import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
-type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'notas' | 'config'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
 interface ClientAlert {
   id: string
@@ -46,6 +47,7 @@ const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] 
   { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
   { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
   { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
+  { id: 'valoracion',icon: Star,          label: 'Valoración',desc: 'Ficha de valoración' },
   { id: 'notas',    icon: StickyNote,    label: 'Notas',     desc: 'Notas privadas' },
   { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
 ]
@@ -113,6 +115,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
   const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
   const [alerts, setAlerts] = useState<ClientAlert[]>([])
+  const [programs, setPrograms] = useState<any[]>([])
+  const [labels, setLabels] = useState<any[]>([])
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -134,6 +138,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     // Cargar alertas
     const { data: clientData } = await supabase.from('clientes').select('alerts').eq('id', client.id).maybeSingle()
     if (clientData?.alerts) setAlerts(clientData.alerts)
+    // Cargar programas del entrenador
+    const { data: labelsData } = await supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at')
+    if (labelsData) setLabels(labelsData)
+    const { data: progsData } = await supabase.from('programs').select('*').eq('trainer_id', userProfile.uid).order('created_at', { ascending: false })
+    if (progsData) setPrograms(progsData)
     setLoading(false)
   }
 
@@ -321,17 +330,25 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                       Object.assign(client, updates)
                       toast('Datos actualizados ✓', 'ok')
                     }}
+                    labels={labels}
                     onSaveAlerts={saveAlerts}
                   />
                 </div>
               )}
               {activeTab === 'plan' && plan && (
-                <div className="flex-1 overflow-hidden">
-                  <TrainingPlanEditor plan={plan} onChange={handlePlanChange}
-                    allClients={otherClients} library={library.exercises}
-                    onImportFromClient={importFromClient} logs={logs}
-                    clientName={`${client.name} ${client.surname}`}
-                    trainerId={userProfile.uid} />
+                <div className="flex-1 overflow-hidden flex flex-col gap-4 min-h-0">
+                  <PlanTab
+                    client={client}
+                    plan={plan}
+                    programs={programs}
+                    labels={labels}
+                    onPlanChange={handlePlanChange}
+                    onImportFromClient={importFromClient}
+                    library={library.exercises}
+                    logs={logs}
+                    otherClients={otherClients}
+                    trainerId={userProfile.uid}
+                  />
                 </div>
               )}
               {activeTab === 'dieta' && (
@@ -342,9 +359,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
               {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} /></div>}
               {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} /></div>}
+              {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
               {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
               {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
-            </div>
           )}
         </main>
       </div>
@@ -416,9 +433,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 }
 
 // ── PerfilTab con alertas ─────────────────────────────────
-function PerfilTab({ client, logs, alerts, onUpdate, onSaveAlerts }: {
+function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts }: {
   client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
   onUpdate: (updates: Record<string, any>) => Promise<void>
+  labels?: TrainerLabel[]
   onSaveAlerts: (alerts: ClientAlert[]) => Promise<void>
 }) {
   const c = client as any
@@ -507,6 +525,38 @@ function PerfilTab({ client, logs, alerts, onUpdate, onSaveAlerts }: {
         ))}
       </div>
 
+      {/* ── ETIQUETAS ── */}
+      {labels && labels.length > 0 && (
+        <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Etiquetas</p>
+          </div>
+          <div className="p-4">
+            <div className="flex flex-wrap gap-2">
+              {labels.map(label => {
+                const clientLabelIds: string[] = (c.label_ids || [])
+                const active = clientLabelIds.includes(label.id)
+                return (
+                  <button key={label.id}
+                    onClick={async () => {
+                      const current: string[] = c.label_ids || []
+                      const updated = active ? current.filter((id: string) => id !== label.id) : [...current, label.id]
+                      await onUpdate({ label_ids: updated })
+                      ;(client as any).label_ids = updated
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+                    style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
+                    <span>{label.emoji}</span>
+                    <span>{label.name}</span>
+                    {active && <span className="ml-0.5">✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
+          </div>
+        </div>
+      )}
       {/* ── RECORDATORIOS / ALERTAS ── */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center justify-between">
@@ -872,6 +922,506 @@ function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { c
       <DietEditor clientId={clientId} isTrainer={true} trainerId={trainerId}
         syncedMacros={{ kcal: (plan as any)?.macros?.kcal || 0, protein: (plan as any)?.macros?.protein || 0, carbs: (plan as any)?.macros?.carbs || 0, fats: (plan as any)?.macros?.fats || 0 }}
         onMacrosChange={m => { if (!plan) return; onChange({ ...plan, macros: { ...(plan as any).macros, ...m } } as any) }} />
+    </div>
+  )
+}
+
+// ── PlanTab — selector de programa + editor ───────────────
+function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId }: {
+  client: ClientData
+  plan: TrainingPlan
+  programs: any[]
+  labels: any[]
+  onPlanChange: (p: TrainingPlan) => void
+  onImportFromClient: (id: string) => Promise<TrainingPlan | null>
+  library: any[]
+  logs: any
+  otherClients: ClientData[]
+  trainerId: string
+}) {
+  const [showProgramSelector, setShowProgramSelector] = useState(false)
+  const [filterTipo, setFilterTipo] = useState<string | null>(null)
+  const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [assigning, setAssigning] = useState(false)
+
+  // Etiquetas del cliente
+  const clientLabelIds: string[] = (client as any).label_ids || []
+  const clientLabels = labels.filter(l => clientLabelIds.includes(l.id))
+
+  // Tipos únicos de programas
+  const tiposDisponibles = [...new Set(programs.map(p => p.tipo))]
+
+  // Programas filtrados — por defecto muestra los que coinciden con etiquetas del cliente
+  const filteredPrograms = programs.filter(p => {
+    if (filterLabel && !p.label_ids?.includes(filterLabel)) return false
+    if (filterTipo && p.tipo !== filterTipo) return false
+    return true
+  })
+
+  // Programas sugeridos (coinciden con etiquetas del cliente)
+  const suggestedPrograms = programs.filter(p =>
+    p.label_ids?.some((id: string) => clientLabelIds.includes(id))
+  )
+
+  const assignProgram = async (prog: any) => {
+    setAssigning(true)
+    // Convertir programa a TrainingPlan
+    const weeks = (prog.weeks || []).map((w: any) => ({
+      label: w.label,
+      rpe: '',
+      isCurrent: false,
+      days: (w.days || []).map((d: any) => ({
+        title: d.tasks?.find((t: any) => t.type === 'workout')?.title || 'Día',
+        focus: d.tasks?.filter((t: any) => t.type !== 'workout').map((t: any) => t.title).join(', ') || '',
+        exercises: [],
+      }))
+    }))
+    // Marcar semana 1 como actual
+    if (weeks.length > 0) weeks[0].isCurrent = true
+
+    const newPlan: TrainingPlan = {
+      ...plan,
+      type: prog.tipo,
+      weeks,
+      programId: prog.id,
+      programName: prog.name,
+      fechaInicio: new Date().toISOString().split('T')[0],
+    } as any
+
+    onPlanChange(newPlan)
+    setShowProgramSelector(false)
+    setAssigning(false)
+    toast(`Programa "${prog.name}" asignado ✓`, 'ok')
+  }
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+      {/* Banner programa asignado + botón cambiar */}
+      <div className="flex-shrink-0 mb-3">
+        {(plan as any).programName ? (
+          <div className="flex items-center gap-3 px-4 py-3 bg-ok/5 border border-ok/20 rounded-2xl">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-ok uppercase tracking-wider">Programa asignado</p>
+              <p className="text-sm font-semibold text-ink truncate">{(plan as any).programName}</p>
+              <p className="text-xs text-muted">Tipo: {plan.type} · Inicio: {(plan as any).fechaInicio || '—'}</p>
+            </div>
+            <button onClick={() => setShowProgramSelector(true)}
+              className="flex-shrink-0 px-3 py-1.5 border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+              Cambiar
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-4 py-3 bg-accent/5 border border-accent/20 rounded-2xl">
+            <div className="flex-1">
+              <p className="text-sm font-semibold">Sin programa asignado</p>
+              {clientLabels.length > 0 && suggestedPrograms.length > 0 && (
+                <p className="text-xs text-muted mt-0.5">
+                  Hay {suggestedPrograms.length} programa{suggestedPrograms.length > 1 ? 's' : ''} sugerido{suggestedPrograms.length > 1 ? 's' : ''} para {clientLabels.map(l => l.name).join(', ')}
+                </p>
+              )}
+            </div>
+            <button onClick={() => setShowProgramSelector(true)}
+              className="flex-shrink-0 px-3 py-2 bg-ink text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity">
+              Asignar programa
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Modal selector de programa */}
+      {showProgramSelector && (
+        <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="px-6 py-5 border-b border-border flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-serif font-bold text-xl">Asignar programa</h3>
+                  <p className="text-sm text-muted mt-0.5">{client.name} {client.surname}</p>
+                </div>
+                <button onClick={() => setShowProgramSelector(false)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Filtros */}
+              <div className="mt-4 space-y-2">
+                {/* Etiquetas del cliente — filtro rápido */}
+                {clientLabels.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted font-semibold">Etiquetas del cliente:</span>
+                    {clientLabels.map(label => (
+                      <button key={label.id}
+                        onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${filterLabel === label.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+                        style={{ backgroundColor: filterLabel === label.id ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
+                        {label.emoji} {label.name}
+                        {filterLabel === label.id && <Check className="w-2.5 h-2.5 ml-0.5" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Filtro por tipo */}
+                {tiposDisponibles.length > 1 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    <button onClick={() => setFilterTipo(null)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${!filterTipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      Todos
+                    </button>
+                    {tiposDisponibles.map(tipo => (
+                      <button key={tipo} onClick={() => setFilterTipo(filterTipo === tipo ? null : tipo)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${filterTipo === tipo ? 'bg-accent text-white border-accent' : 'border-border text-muted hover:border-accent'}`}>
+                        {tipo}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Lista de programas */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {filteredPrograms.length === 0 ? (
+                <div className="text-center py-10 text-muted">
+                  <p className="text-sm">Sin programas con este filtro</p>
+                </div>
+              ) : (
+                filteredPrograms.map(prog => {
+                  const progLabels = labels.filter(l => prog.label_ids?.includes(l.id))
+                  const totalTasks = (prog.weeks || []).reduce((a: number, w: any) =>
+                    a + (w.days || []).reduce((b: number, d: any) => b + (d.tasks?.length || 0), 0), 0)
+                  const isSuggested = prog.label_ids?.some((id: string) => clientLabelIds.includes(id))
+
+                  return (
+                    <div key={prog.id}
+                      className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl border cursor-pointer hover:border-accent/40 transition-all ${isSuggested ? 'bg-ok/3 border-ok/20' : 'bg-bg border-border'}`}
+                      onClick={() => assignProgram(prog)}>
+                      {/* Preview mini calendario */}
+                      <div className="grid grid-cols-7 gap-0.5 flex-shrink-0 w-20">
+                        {(prog.weeks?.[0]?.days || Array(7).fill({ tasks: [] })).map((d: any, i: number) => (
+                          <div key={i} className={`h-4 rounded-sm ${(d.tasks?.length || 0) > 0 ? 'bg-accent/40' : 'bg-bg-alt'}`} />
+                        ))}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-sm truncate">{prog.name}</p>
+                          {isSuggested && <span className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">✓ Sugerido</span>}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
+                          <span className="text-[10px] text-muted">{(prog.weeks || []).length} sem · {totalTasks} tareas</span>
+                          {progLabels.map((l: any) => (
+                            <span key={l.id} className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border"
+                              style={{ backgroundColor: l.color + '15', borderColor: l.color + '40', color: l.color }}>
+                              {l.emoji} {l.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button className="flex-shrink-0 px-3 py-1.5 bg-ink text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
+                        disabled={assigning}>
+                        {assigning ? '...' : 'Asignar'}
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Editor del plan */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        <TrainingPlanEditor plan={plan} onChange={onPlanChange}
+          allClients={otherClients} library={library}
+          onImportFromClient={onImportFromClient} logs={logs}
+          clientName={`${client.name} ${client.surname}`}
+          trainerId={trainerId} />
+      </div>
+    </div>
+  )
+}
+
+// ── ValoracionTab ─────────────────────────────────────────
+interface Valoracion {
+  id: string
+  client_id: string
+  trainer_id: string
+  fecha: string
+  peso: number | null
+  imc: number | null
+  grasa_corporal: number | null
+  masa_muscular: number | null
+  cintura: number | null
+  cadera: number | null
+  pecho: number | null
+  brazo_d: number | null
+  brazo_i: number | null
+  muslo_d: number | null
+  muslo_i: number | null
+  notas: string
+  fotos: string[]
+  created_at: number
+}
+
+function emptyValoracion(clientId: string, trainerId: string): Valoracion {
+  return {
+    id: `val_${Date.now()}`,
+    client_id: clientId,
+    trainer_id: trainerId,
+    fecha: new Date().toISOString().split('T')[0],
+    peso: null, imc: null, grasa_corporal: null, masa_muscular: null,
+    cintura: null, cadera: null, pecho: null,
+    brazo_d: null, brazo_i: null, muslo_d: null, muslo_i: null,
+    notas: '', fotos: [],
+    created_at: Date.now(),
+  }
+}
+
+function ValoracionTab({ client, trainerId }: { client: ClientData; trainerId: string }) {
+  const [valoraciones, setValoraciones] = useState<Valoracion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<Valoracion | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadValoraciones()
+  }, [client.id])
+
+  const loadValoraciones = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('valoraciones')
+      .select('*')
+      .eq('client_id', client.id)
+      .order('fecha', { ascending: false })
+    if (data) setValoraciones(data)
+    setLoading(false)
+  }
+
+  const saveValoracion = async () => {
+    if (!editing) return
+    setSaving(true)
+    const { error } = await supabase.from('valoraciones').upsert(editing, { onConflict: 'id' })
+    if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
+    setValoraciones(vs => vs.find(v => v.id === editing.id)
+      ? vs.map(v => v.id === editing.id ? editing : v)
+      : [editing, ...vs])
+    setEditing(null)
+    toast('Valoración guardada ✓', 'ok')
+    setSaving(false)
+  }
+
+  const deleteValoracion = async (id: string) => {
+    await supabase.from('valoraciones').delete().eq('id', id)
+    setValoraciones(vs => vs.filter(v => v.id !== id))
+    toast('Eliminada', 'ok')
+  }
+
+  const updateField = (field: keyof Valoracion, value: any) => {
+    if (!editing) return
+    const updated = { ...editing, [field]: value }
+    // Calcular IMC automáticamente
+    if ((field === 'peso' || field === 'altura') && updated.peso) {
+      const altura = (client as any).altura
+      if (altura) updated.imc = Math.round((updated.peso / ((altura / 100) ** 2)) * 10) / 10
+    }
+    setEditing(updated)
+  }
+
+  const CAMPOS_COMPOSICION = [
+    { key: 'peso',           label: 'Peso',            unit: 'kg',  icon: '⚖️' },
+    { key: 'imc',            label: 'IMC',             unit: '',    icon: '📊' },
+    { key: 'grasa_corporal', label: '% Grasa corporal',unit: '%',   icon: '🔬' },
+    { key: 'masa_muscular',  label: 'Masa muscular',   unit: 'kg',  icon: '💪' },
+  ]
+
+  const CAMPOS_MEDIDAS = [
+    { key: 'cintura', label: 'Cintura', unit: 'cm' },
+    { key: 'cadera',  label: 'Cadera',  unit: 'cm' },
+    { key: 'pecho',   label: 'Pecho',   unit: 'cm' },
+    { key: 'brazo_d', label: 'Brazo D', unit: 'cm' },
+    { key: 'brazo_i', label: 'Brazo I', unit: 'cm' },
+    { key: 'muslo_d', label: 'Muslo D', unit: 'cm' },
+    { key: 'muslo_i', label: 'Muslo I', unit: 'cm' },
+  ]
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-16">
+      <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  // ── Editor ──
+  if (editing) return (
+    <div className="max-w-xl space-y-5 animate-fade-in">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setEditing(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
+        <div className="flex-1">
+          <h3 className="font-serif font-bold text-lg">Ficha de valoración</h3>
+          <p className="text-xs text-muted">{client.name} {client.surname}</p>
+        </div>
+        <button onClick={saveValoracion} disabled={saving}
+          className="flex items-center gap-1.5 px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">
+          <Save className="w-3.5 h-3.5" />
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
+
+      {/* Fecha */}
+      <div className="bg-card border border-border rounded-2xl p-4">
+        <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-2">Fecha de la valoración</label>
+        <input type="date" value={editing.fecha} onChange={e => updateField('fecha', e.target.value)}
+          className="px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+      </div>
+
+      {/* Composición corporal */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Composición corporal</p>
+        </div>
+        <div className="p-4 grid grid-cols-2 gap-3">
+          {CAMPOS_COMPOSICION.map(campo => (
+            <div key={campo.key}>
+              <label className="block text-xs font-semibold text-muted mb-1.5">
+                {campo.icon} {campo.label} {campo.unit && <span className="text-muted/60">({campo.unit})</span>}
+              </label>
+              <input
+                type="number" step="0.1"
+                value={(editing as any)[campo.key] || ''}
+                onChange={e => updateField(campo.key as keyof Valoracion, e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="—"
+                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 font-mono"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Medidas */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Medidas (cm)</p>
+        </div>
+        <div className="p-4 grid grid-cols-2 gap-3">
+          {CAMPOS_MEDIDAS.map(campo => (
+            <div key={campo.key}>
+              <label className="block text-xs font-semibold text-muted mb-1.5">{campo.label}</label>
+              <input
+                type="number" step="0.1"
+                value={(editing as any)[campo.key] || ''}
+                onChange={e => updateField(campo.key as keyof Valoracion, e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="—"
+                className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 font-mono"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Notas */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Observaciones</p>
+        </div>
+        <div className="p-4">
+          <textarea value={editing.notas} onChange={e => updateField('notas', e.target.value)}
+            placeholder="Observaciones, objetivos, notas del entrenador..."
+            rows={4}
+            className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
+        </div>
+      </div>
+    </div>
+  )
+
+  // ── Lista de valoraciones ──
+  return (
+    <div className="max-w-xl space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-serif font-bold text-lg">Fichas de valoración</h3>
+          <p className="text-xs text-muted mt-0.5">{valoraciones.length} valoración{valoraciones.length !== 1 ? 'es' : ''}</p>
+        </div>
+        <button onClick={() => setEditing(emptyValoracion(client.id, trainerId))}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+          <Plus className="w-4 h-4" /> Nueva valoración
+        </button>
+      </div>
+
+      {valoraciones.length === 0 ? (
+        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
+          <p className="text-3xl mb-3">📋</p>
+          <p className="font-serif text-lg font-bold">Sin valoraciones</p>
+          <p className="text-sm mt-1">Registra la primera valoración física del cliente</p>
+          <button onClick={() => setEditing(emptyValoracion(client.id, trainerId))}
+            className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
+            Nueva valoración
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {valoraciones.map(val => {
+            const isExpanded = expanded === val.id
+            const hasData = val.peso || val.grasa_corporal || val.cintura
+            return (
+              <div key={val.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="flex items-center gap-3 px-5 py-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">
+                      {new Date(val.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    {hasData && (
+                      <div className="flex gap-3 mt-1 flex-wrap">
+                        {val.peso && <span className="text-xs text-muted">⚖️ {val.peso}kg</span>}
+                        {val.grasa_corporal && <span className="text-xs text-muted">🔬 {val.grasa_corporal}% grasa</span>}
+                        {val.imc && <span className="text-xs text-muted">📊 IMC {val.imc}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => setEditing(val)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteValoracion(val.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setExpanded(isExpanded ? null : val.id)} className="p-1.5 text-muted rounded-lg">
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="border-t border-border px-5 py-4 space-y-3">
+                    {/* Composición */}
+                    <div className="grid grid-cols-4 gap-2">
+                      {CAMPOS_COMPOSICION.map(c => (val as any)[c.key] ? (
+                        <div key={c.key} className="bg-bg border border-border rounded-xl p-2.5 text-center">
+                          <p className="text-sm font-serif font-bold">{(val as any)[c.key]}{c.unit}</p>
+                          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{c.label}</p>
+                        </div>
+                      ) : null)}
+                    </div>
+                    {/* Medidas */}
+                    {CAMPOS_MEDIDAS.some(c => (val as any)[c.key]) && (
+                      <div className="flex flex-wrap gap-2">
+                        {CAMPOS_MEDIDAS.map(c => (val as any)[c.key] ? (
+                          <span key={c.key} className="text-xs bg-bg-alt border border-border px-2 py-1 rounded-lg font-medium">
+                            {c.label}: {(val as any)[c.key]}cm
+                          </span>
+                        ) : null)}
+                      </div>
+                    )}
+                    {/* Notas */}
+                    {val.notas && (
+                      <p className="text-xs text-muted leading-relaxed bg-bg-alt rounded-xl px-3 py-2">
+                        {val.notas}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
