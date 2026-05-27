@@ -16,6 +16,7 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
+import { TrainerLabel, LabelPill } from './labels'
 import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
@@ -47,10 +48,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+  const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [labels, setLabels] = useState<TrainerLabel[]>([])
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const library = useExerciseLibrary(userProfile.uid)
@@ -93,6 +96,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
   useEffect(() => {
     fetchClients()
+    supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at').then(({ data }) => { if (data) setLabels(data) })
     const channel = supabase.channel('clientes-rt')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
       .subscribe()
@@ -104,9 +108,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '' })
+    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '', label_ids: newClientLabelIds })
     if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
+    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClientLabelIds([]); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
     setAdding(false)
   }
 
@@ -677,6 +681,27 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
             <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
               <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
           </div>
+          {/* Selector de etiquetas */}
+          {labels.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">🏷️ Etiquetas</label>
+              <div className="flex flex-wrap gap-1.5">
+                {labels.map(label => {
+                  const active = newClientLabelIds.includes(label.id)
+                  return (
+                    <button key={label.id} type="button"
+                      onClick={() => setNewClientLabelIds(active ? newClientLabelIds.filter(id => id !== label.id) : [...newClientLabelIds, label.id])}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all"
+                      style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
+                      <span>{label.emoji}</span>
+                      <span>{label.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-muted mt-1.5">Filtra programas sugeridos al asignar plan</p>
+            </div>
+          )}
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
             <Button className="flex-1" onClick={handleAdd} disabled={adding}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
