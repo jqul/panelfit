@@ -12,6 +12,8 @@ interface Props {
   clients: ClientData[]
 }
 
+const LS_KEY      = (uid: string) => `pf_templates_${uid}`
+const LS_MIGRATED = (uid: string) => `pf_tmpl_migrated_${uid}`
 const LS_TYPES    = (uid: string) => `pf_custom_types_${uid}`
 
 const TIPOS_DEFAULT = [
