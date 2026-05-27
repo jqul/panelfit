@@ -6,8 +6,8 @@ import {
   Save, Tag, X, Check, Dumbbell, Timer, Camera, ClipboardList,
   MessageSquare, Video, Calendar
 } from 'lucide-react'
-import type { TrainerLabel } from './TemplatesTab'
-import { LabelPill, LabelSelector } from './TemplatesTab'
+import type { TrainerLabel } from './labels'
+import { LabelPill, LabelSelector } from './labels'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -375,7 +375,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         {labels.length > 0 && (
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Etiquetas</p>
-            <LabelSelector labels={labels} selected={program.label_ids} onChange={ids => update({ label_ids: ids })} />
+            <LabelSelector labels={labels} selected={program.label_ids} onChange={(ids: string[]) => update({ label_ids: ids })} />
           </div>
         )}
       </div>
