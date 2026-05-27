@@ -1,10 +1,10 @@
-import { TrainerLabel, LabelPill } from './labels'
+¡import { TrainerLabel, LabelPill } from './labels'
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
   ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
   CheckCircle2, ClipboardCheck, Link, MessageCircle,
-  User, Bell, Plus, Trash2, Calendar
+  User, Bell, Plus, Trash2, Calendar, Check, Edit2, ChevronUp, ChevronDown
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
@@ -1224,7 +1224,7 @@ function ValoracionTab({ client, trainerId }: { client: ClientData; trainerId: s
     if (!editing) return
     const updated = { ...editing, [field]: value }
     // Calcular IMC automáticamente
-    if ((field === 'peso' || field === 'altura') && updated.peso) {
+    if (field === 'peso' && updated.peso) {
       const altura = (client as any).altura
       if (altura) updated.imc = Math.round((updated.peso / ((altura / 100) ** 2)) * 10) / 10
     }
