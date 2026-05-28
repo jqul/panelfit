@@ -1,4 +1,4 @@
-¡import { TrainerLabel, LabelPill } from './labels'
+import { TrainerLabel, LabelPill } from './labels'
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
@@ -526,11 +526,11 @@ function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts }: {
         ))}
       </div>
 
-      {/* ── ETIQUETAS ── */}
+      {/* Etiquetas */}
       {labels && labels.length > 0 && (
         <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Etiquetas</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">Etiquetas</p>
           </div>
           <div className="p-4">
             <div className="flex flex-wrap gap-2">
@@ -549,7 +549,7 @@ function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts }: {
                     style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
                     <span>{label.emoji}</span>
                     <span>{label.name}</span>
-                    {active && <span className="ml-0.5">✓</span>}
+                    {active && <span className="ml-0.5 text-xs">ok</span>}
                   </button>
                 )
               })}
