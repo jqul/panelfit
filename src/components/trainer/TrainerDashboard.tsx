@@ -93,12 +93,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   }
 
   const QUICK_ACTIONS = [
-    { icon: UserPlus,  label: 'Nuevo cliente',   color: 'text-accent',      bg: 'bg-accent/10',   action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,  label: 'Workouts',        color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('templates') },
-    { icon: Send,      label: 'Encuesta',          color: 'text-purple-500',  bg: 'bg-purple-50',   action: () => handleTabChange('encuestas') },
-    { icon: BarChart2, label: 'Adherencia',        color: 'text-warn',        bg: 'bg-warn/10',     action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes',      color: 'text-blue-500',    bg: 'bg-blue-50',     action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp, label: 'Insights',         color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('insights') },
+    { icon: UserPlus,  label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8', action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
+    { icon: Dumbbell,  label: 'Workouts', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('templates') },
+    { icon: Send,      label: 'Encuesta', color: 'text-accent', bg: 'bg-accent/8', action: () => handleTabChange('encuestas') },
+    { icon: BarChart2, label: 'Adherencia', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('adherencia') },
+    { icon: MessageCircle, label: 'Mensajes', color: 'text-accent', bg: 'bg-accent/8', action: () => handleTabChange('mensajes') },
+    { icon: TrendingUp, label: 'Insights', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('insights') },
   ]
 
   const NAV_GROUPS = [
@@ -145,7 +145,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
       {/* Accesos rápidos en sidebar */}
       <div className="px-3 py-3 border-b border-border">
-        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-2 mb-2">Accesos rápidos</p>
+        <p className="text-[10px] font-semibold text-muted/50 px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
           {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
             <button key={label} onClick={action} disabled={disabled}
@@ -160,7 +160,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
         {NAV_GROUPS.map(group => (
           <div key={group.label}>
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
+            <p className="text-[10px] font-semibold text-muted/50 px-3 mb-1 tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
               {group.items.map(({ id, icon: Icon, label, badge }) => (
                 <button key={id} onClick={() => handleTabChange(id)}
@@ -233,28 +233,34 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 </div>
 
                 {/* Stats con comparativa semana anterior */}
+                {/* Stat cards mejoradas — borde de color + número prominente */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
-                    { label: 'Clientes', value: clients.length, prev: undefined, icon: Users, color: 'text-ink', accent: '#6e5438', onClick: () => handleTabChange('clients') },
-                    { label: 'Entrenaron hoy', value: activeToday, prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
-                    { label: 'Sin plan', value: noPlan, prev: undefined, icon: AlertCircle, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
-                    { label: 'Sin actividad', value: noActivity7d, prev: undefined, icon: Clock, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
-                  ].map(({ label, value, prev, icon: Icon, color, accent, onClick }) => (
-                    <button key={label} onClick={onClick} className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                    { label: 'Clientes', value: clients.length, prev: undefined, icon: Users, color: 'text-ink', accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
+                    { label: 'Entrenaron hoy', value: activeToday, prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
+                    { label: 'Sin plan', value: noPlan, prev: undefined, icon: AlertCircle, color: noPlan > 0 ? 'text-warn' : 'text-muted', accent: noPlan > 0 ? '#e07b54' : '#9ca3af', border: noPlan > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
+                    { label: 'Sin actividad', value: noActivity7d, prev: undefined, icon: Clock, color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
+                  ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
+                    <button key={label} onClick={onClick}
+                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative group"
+                      style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                      {/* Borde de color arriba */}
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl transition-all" style={{ backgroundColor: border }} />
+                      <div className="flex items-center justify-between mb-4 mt-1">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '15' }}>
                           <Icon className={`w-4 h-4 ${color}`} />
                         </div>
                         {prev !== undefined && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
-                            {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)} vs sem. ant.
+                            {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)}
                           </span>
                         )}
                       </div>
-                      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-muted font-medium mt-0.5">{label}</p>
+                      <p className={`text-4xl font-serif font-bold ${color}`}>{value}</p>
+                      <p className="text-xs text-muted font-medium mt-1">{label}</p>
                     </button>
                   ))}
+                </div>
                 </div>
 
                 {/* Gráfica */}
@@ -295,7 +301,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       </button>
                     </div>
                     <div className="divide-y divide-border/40">
-                      {clients.slice(0, 6).map(c => {
+                      {clients.every(c => (adherenciaMap[c.id] ?? 0) === 0) ? (
+                        <div className="px-5 py-8 text-center">
+                          <div className="text-3xl mb-2">💪</div>
+                          <p className="text-sm font-semibold text-ink">La semana acaba de empezar</p>
+                          <p className="text-xs text-muted mt-1">El cumplimiento se actualizará cuando tus clientes entrenen</p>
+                        </div>
+                      ) : clients.slice(0, 6).map(c => {
                         const pct = adherenciaMap[c.id] ?? 0
                         const barColor = pct >= 75 ? '#4caf7d' : pct >= 40 ? '#e0a854' : '#e07b54'
                         return (
