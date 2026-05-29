@@ -35,7 +35,6 @@ type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 // ClientWithStats viene de useTrainerClients
 // interface ClientWithStats extends ClientData {
 //   lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
-}
 
 interface Props {
   userProfile: UserProfile
