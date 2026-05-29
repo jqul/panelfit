@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar,
+  Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar, ChevronDown,
   StickyNote, Activity, Zap, ArrowRight, Send
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -580,23 +580,56 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => (
-                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }} onClick={() => onSelectClient(client)}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                  {filteredClients.map(client => {
+                    const adherencia = adherenciaMap[client.id] ?? 0
+                    const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
+                    return (
+                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                      {/* Header */}
+                      <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
+                        <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
                           {client.name[0]?.toUpperCase()}
                           {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                          <p className="text-[10px] text-muted mt-0.5">{client.doneToday ? <span className="text-ok font-bold">✓ Entrenó hoy</span> : formatLastActive(client.lastActive)}</p>
+                          <p className="text-[10px] text-muted mt-0.5">
+                            {client.doneToday
+                              ? <span className="text-ok font-bold">Entrenó hoy</span>
+                              : formatLastActive(client.lastActive)}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex gap-2 mb-4 flex-wrap">
-                        {!client.hasPlan && <span className="text-[10px] font-bold bg-warn/10 text-warn px-2 py-0.5 rounded-full">Sin plan</span>}
-                        {client.hasPlan && <span className="text-[10px] font-bold bg-ok/10 text-ok px-2 py-0.5 rounded-full">Plan ✓</span>}
-                        {!!client.weeklyDays && <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">{client.weeklyDays}d semana</span>}
-                      </div>
+
+                      {/* Seguimiento mínimo — siempre visible */}
+                      {client.hasPlan && (
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-muted">Cumplimiento semanal</span>
+                            <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
+                          </div>
+                          <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
+                          </div>
+                          {!!client.weeklyDays && (
+                            <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Sin plan — CTA prominente */}
+                      {!client.hasPlan && (
+                        <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
+                          <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
+                          <button
+                            onClick={() => onSelectClient(client)}
+                            className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90 transition-opacity">
+                            Asignar
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Acciones */}
                       {deletingId === client.id ? (
                         <div className="flex gap-2">
                           <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
@@ -604,17 +637,21 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                         </div>
                       ) : (
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}><MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar</Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}><Trash2 className="w-3.5 h-3.5 text-warn" /></Button>
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
+                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
+                            <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
+                          </Button>
+                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
+                            <Trash2 className="w-3.5 h-3.5 text-warn" />
+                          </Button>
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                   <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
                     className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
                     <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Límite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
+                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Anadir cliente'}</span>
                   </button>
                 </div>
               )}
@@ -641,50 +678,41 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
         </div>
       </main>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente">
         <div className="space-y-4">
+
+          {/* Campos esenciales */}
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">📱 WhatsApp</label>
-            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-            <p className="text-[10px] text-muted mt-1">Para enviar encuestas y mensajes automáticos</p>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {[{ v: 'hipertrofia', label: '💪 Hipertrofia' },{ v: 'fuerza', label: '🏋️ Fuerza' },{ v: 'perdida_grasa', label: '🔥 Pérdida de grasa' },{ v: 'resistencia', label: '🏃 Resistencia' },{ v: 'rehabilitacion', label: '🩺 Rehabilitación' },{ v: 'rendimiento', label: '⚡ Rendimiento' },{ v: 'general', label: '🎯 General' }].map(opt => (
-                <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>{opt.label}</button>
-              ))}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+              <input autoFocus type="text" value={newClient.name}
+                onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Nombre"
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
-            <input value={(['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) ? '' : (newClient.objetivo || '')}
-              onChange={e => { if (e.target.value) setNewClient(p => ({ ...p, objetivo: e.target.value })) }}
-              onFocus={() => { if (['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) setNewClient(p => ({ ...p, objetivo: '' })) }}
-              placeholder="✏️ Otro objetivo personalizado..." className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20" />
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
+              <input type="text" value={newClient.surname}
+                onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                placeholder="Apellido"
+                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
-              <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso inicial (kg)</label>
-              <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label>
+            <input type="tel" value={newClient.phone}
+              onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))}
+              placeholder="+34 600 000 000"
+              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
-              <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
-                <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
-              </select></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
-              <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-          </div>
-          {/* Selector de etiquetas */}
+
+          {/* Etiquetas — si existen */}
           {labels.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">🏷️ Etiquetas</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Etiquetas</label>
               <div className="flex flex-wrap gap-1.5">
                 {labels.map(label => {
                   const active = newClientLabelIds.includes(label.id)
@@ -699,17 +727,62 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   )
                 })}
               </div>
-              <p className="text-[10px] text-muted mt-1.5">Filtra programas sugeridos al asignar plan</p>
             </div>
           )}
-          <div className="flex gap-3 pt-2">
+
+          {/* Datos opcionales colapsados */}
+          <details className="group">
+            <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-ink select-none py-1 transition-colors">
+              <ChevronDown className="w-3.5 h-3.5 group-open:rotate-180 transition-transform" />
+              Mas datos (objetivo, medidas, genero...)
+            </summary>
+            <div className="mt-3 space-y-3 border-t border-border pt-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Perdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitacion' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' }].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
+                  <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso (kg)</label>
+                  <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Genero</label>
+                  <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+                    <option value="">Sin especificar</option>
+                    <option value="h">Masculino</option>
+                    <option value="m">Femenino</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label>
+                  <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div className="flex gap-3 pt-1">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
+            <Button className="flex-1" onClick={handleAdd} disabled={adding || !newClient.name.trim()}>
+              {adding ? 'Creando...' : 'Crear cliente'}
+            </Button>
           </div>
         </div>
       </Modal>
-
-      {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
           <div className="space-y-4">
             <p className="text-sm text-muted">Comparte este enlace. El cliente no necesita contraseña.</p>
