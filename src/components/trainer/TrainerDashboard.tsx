@@ -783,6 +783,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </div>
       </Modal>
+      {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
           <div className="space-y-4">
             <p className="text-sm text-muted">Comparte este enlace. El cliente no necesita contraseña.</p>
