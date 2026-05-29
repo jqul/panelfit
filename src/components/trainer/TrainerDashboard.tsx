@@ -1,5 +1,8 @@
 import { AlertasWidget } from './AlertasWidget'
-import { useState, useEffect, useMemo } from 'react'
+import { useTrainerClients } from '../../hooks/useTrainerClients'
+import { useClientStats } from '../../hooks/useClientStats'
+import { useLabels } from '../../hooks/useLabels'
+import { useState } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
@@ -9,7 +12,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
-import { mapClientes } from '../../lib/mappers'
+// mapClientes movido a useTrainerClients
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
@@ -29,8 +32,9 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
-interface ClientWithStats extends ClientData {
-  lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
+// ClientWithStats viene de useTrainerClients
+// interface ClientWithStats extends ClientData {
+//   lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
 }
 
 interface Props {
@@ -41,8 +45,14 @@ interface Props {
 }
 
 export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
-  const [clients, setClients] = useState<ClientWithStats[]>([])
-  const [loading, setLoading] = useState(true)
+  const clientLimit = userProfile.clientLimit ?? 999
+
+  // Hooks de datos
+  const { clients, logsMap, loading, addClient, deleteClient, limitReached } =
+    useTrainerClients({ trainerId: userProfile.uid, demoClients, clientLimit })
+  const { labels } = useLabels(userProfile.uid)
+
+  // UI state
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
@@ -53,133 +63,35 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [labels, setLabels] = useState<TrainerLabel[]>([])
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
-  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const library = useExerciseLibrary(userProfile.uid)
-  const clientLimit = userProfile.clientLimit ?? 999
-  const limitReached = !demoClients && clients.length >= clientLimit
 
-  const fetchClients = async () => {
-    setLoading(true)
-    if (demoClients) { setClients(demoClients as ClientWithStats[]); setLoading(false); return }
-    const { data, error } = await supabase.from('clientes').select('*').eq('trainerId', userProfile.uid)
-    if (error) { console.error('Error:', error); setLoading(false); return }
-    const mapped = mapClientes(data || []).map((c, i) => ({
-      ...c,
-      phone: (data || [])[i]?.phone || '',
-      objetivo: (data || [])[i]?.objetivo || 'general',
-      altura: (data || [])[i]?.altura || null,
-      genero: (data || [])[i]?.genero || null,
-      fechanacimiento: (data || [])[i]?.fechanacimiento || null,
-    }))
-    const hoy = new Date().toISOString().split('T')[0]
-    const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-    if (mapped.length) {
-      const ids = mapped.map(c => c.id)
-      const { data: regs } = await supabase.from('registros').select('clientId,logs').in('clientId', ids)
-      const { data: planes } = await supabase.from('planes').select('clientId,plan').in('clientId', ids)
-      const planMap: Record<string, boolean> = {}
-      ;(planes || []).forEach((p: any) => { planMap[p.clientId] = !!(p.plan?.P?.weeks?.length) })
-      const lm: Record<string, any> = {}
-      ;(regs || []).forEach((r: any) => { lm[r.clientId] = r.logs || {} })
-      setLogsMap(lm)
-      setClients(mapped.map(c => {
-        const reg = (regs || []).find((r: any) => r.clientId === c.id)
-        const logs = reg?.logs || {}
-        const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-        return { ...c, lastActive: dates[0], doneToday: dates[0] === hoy, hasPlan: planMap[c.id] || false, weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length }
-      }))
-    } else setClients([])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    fetchClients()
-    supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at').then(({ data }) => { if (data) setLabels(data) })
-    const channel = supabase.channel('clientes-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [userProfile.uid])
+  // Stats derivados
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, adherenciaMap,
+    filteredClients, chartData, activityFeed, alerts, formatLastActive } =
+    useClientStats({ clients, logsMap, search, clientFilter })
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
-    if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
-    const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '', label_ids: newClientLabelIds })
-    if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClientLabelIds([]); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
+    const ok = await addClient(newClient, newClientLabelIds)
+    if (ok) {
+      setShowAdd(false)
+      setNewClientLabelIds([])
+      setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+    }
     setAdding(false)
   }
 
   const handleDelete = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
-    setDeletingId(null); fetchClients(); toast('Cliente eliminado', 'ok')
+    await deleteClient(id)
+    setDeletingId(null)
   }
 
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n💪`)}`, '_blank')
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
-
-  const hoy = new Date().toISOString().split('T')[0]
-  const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-  const haceDosSemanas = new Date(); haceDosSemanas.setDate(haceDosSemanas.getDate() - 14)
-
-  const activeToday = clients.filter(c => c.doneToday).length
-  const noPlan = clients.filter(c => !c.hasPlan).length
-  const noActivity7d = clients.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS).length
-  const alerts = clients.filter(c => !c.hasPlan || (!c.lastActive || new Date(c.lastActive) < haceUnaS))
-
-  const activePrevWeek = useMemo(() => {
-    let count = 0
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string)
-      if (dates.some(d => new Date(d) >= haceDosSemanas && new Date(d) < haceUnaS)) count++
-    })
-    return count
-  }, [clients, logsMap])
-
-  const adherenciaMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    clients.forEach(c => { map[c.id] = Math.min(100, Math.round(((c.weeklyDays || 0) / 4) * 100)) })
-    return map
-  }, [clients])
-
-  const filteredClients = useMemo(() => {
-    let list = [...clients]
-    if (clientFilter === 'active') list = list.filter(c => c.doneToday)
-    else if (clientFilter === 'no-plan') list = list.filter(c => !c.hasPlan)
-    else if (clientFilter === 'no-activity') list = list.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS)
-    if (search) list = list.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase()))
-    return list
-  }, [clients, clientFilter, search])
-
-  const chartData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().split('T')[0]
-    return { label: d.toLocaleDateString('es-ES', { weekday: 'short' }), count: clients.filter(c => c.lastActive === key).length, key }
-  }), [clients])
-
-  const formatLastActive = (date?: string) => {
-    if (!date) return 'Nunca'
-    const diff = Math.round((new Date().setHours(0,0,0,0) - new Date(date + 'T00:00:00').getTime()) / 86400000)
-    if (diff === 0) return 'Hoy'; if (diff === 1) return 'Ayer'; if (diff < 7) return `Hace ${diff}d`
-    return new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-  }
-
-  const activityFeed = useMemo(() => {
-    const events: { clientName: string; text: string; date: string }[] = []
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-      if (dates[0]) events.push({ clientName: `${c.name} ${c.surname}`, text: 'completó una sesión', date: dates[0] })
-    })
-    return events.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
-  }, [clients, logsMap])
 
   const QUICK_ACTIONS = [
     { icon: UserPlus,  label: 'Nuevo cliente',   color: 'text-accent',      bg: 'bg-accent/10',   action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
