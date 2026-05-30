@@ -242,6 +242,39 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   ))}
                 </div>
 
+
+                {/* Onboarding — solo cuando no hay clientes */}
+                {clients.length === 0 && !loading && (
+                  <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+                    <div className="px-8 py-10 text-center">
+                      <div className="text-5xl mb-4">👋</div>
+                      <p className="font-serif text-2xl font-bold text-ink">Bienvenido a PanelFit</p>
+                      <p className="text-sm text-muted mt-2 max-w-sm mx-auto">Empieza añadiendo tu primer cliente. En menos de 2 minutos puedes tenerle con un plan asignado.</p>
+                      <button onClick={() => setShowAdd(true)} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                        Añadir primer cliente
+                      </button>
+                    </div>
+                    <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Primeros pasos</p>
+                      <div className="space-y-2.5">
+                        {[
+                          { label: "Añade tu primer cliente", action: "Nuevo cliente", onClick: () => setShowAdd(true) },
+                          { label: "Crea un workout en la librería", action: "Ir a Workouts", onClick: () => handleTabChange("templates") },
+                          { label: "Asigna un plan a tu cliente", action: "Ver clientes", onClick: () => handleTabChange("clients") },
+                        ].map(({ label, action, onClick }) => (
+                          <div key={label} className="flex items-center justify-between py-2 px-3 bg-white rounded-xl border border-border/50">
+                            <div className="flex items-center gap-3">
+                              <div className="w-5 h-5 rounded-full border-2 border-border flex-shrink-0" />
+                              <p className="text-sm text-ink">{label}</p>
+                            </div>
+                            <button onClick={onClick} className="text-xs font-semibold text-accent hover:underline flex-shrink-0">{action} →</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Gráfica actividad */}
                 <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
