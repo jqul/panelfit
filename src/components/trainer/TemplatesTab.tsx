@@ -254,12 +254,45 @@ export function TemplatesTab({ trainerId, clients }: Props) {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
-          <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-serif text-lg font-bold">{filterLabel ? 'Sin workouts con esta etiqueta' : 'Sin workouts'}</p>
-          <p className="text-sm mt-1">Crea tu primer workout y reutilízalo en tus programas</p>
-          {!filterLabel && <button onClick={startNew} className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Crear workout</button>}
-        </div>
+        filterLabel ? (
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
+            <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-serif text-lg font-bold">Sin workouts con esta etiqueta</p>
+            <p className="text-sm mt-1">Prueba otra etiqueta o crea un nuevo workout</p>
+            <button onClick={() => setFilterLabel(null)} className="mt-3 text-accent text-sm hover:underline">Ver todos</button>
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-ok/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ClipboardCheck className="w-8 h-8 text-ok opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu primer workout</p>
+              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Los workouts son rutinas con ejercicios completos que puedes reutilizar en múltiples clientes y programas.</p>
+              <button onClick={startNew} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                Crear workout
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>
+              <div className="flex items-start gap-6 flex-wrap">
+                {[
+                  { step: '1', label: 'Añade ejercicios', desc: 'Ve a Ejercicios y crea tu librería', color: 'bg-accent/10 text-accent' },
+                  { step: '2', label: 'Crea workouts', desc: 'Combina ejercicios en rutinas', color: 'bg-ok/10 text-ok' },
+                  { step: '3', label: 'Arma programas', desc: 'Asigna workouts a días de la semana', color: 'bg-ink/10 text-ink' },
+                ].map(({ step, label, desc, color }) => (
+                  <div key={step} className="flex items-start gap-3 flex-1 min-w-36">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{label}</p>
+                      <p className="text-xs text-muted">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           {filtered.map(tmpl => {
