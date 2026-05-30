@@ -12,14 +12,13 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
-// mapClientes movido a useTrainerClients
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
-import { TrainerLabel, LabelPill } from './labels'
+import { LabelPill } from './labels'
 import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
@@ -32,10 +31,6 @@ import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianG
 type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
-// ClientWithStats viene de useTrainerClients
-// interface ClientWithStats extends ClientData {
-//   lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
-
 interface Props {
   userProfile: UserProfile
   onLogout: () => void
@@ -45,13 +40,9 @@ interface Props {
 
 export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
   const clientLimit = userProfile.clientLimit ?? 999
-
-  // Hooks de datos
   const { clients, logsMap, loading, addClient, deleteClient, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, clientLimit })
   const { labels } = useLabels(userProfile.uid)
-
-  // UI state
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
@@ -65,7 +56,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const library = useExerciseLibrary(userProfile.uid)
 
-  // Stats derivados
   const { activeToday, noPlan, noActivity7d, activePrevWeek, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
@@ -82,48 +72,43 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     setAdding(false)
   }
 
-  const handleDelete = async (id: string) => {
-    await deleteClient(id)
-    setDeletingId(null)
-  }
-
+  const handleDelete = async (id: string) => { await deleteClient(id); setDeletingId(null) }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
+  const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
 
   const QUICK_ACTIONS = [
-    { icon: UserPlus,  label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8', action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,  label: 'Workouts', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('templates') },
-    { icon: Send,      label: 'Encuesta', color: 'text-accent', bg: 'bg-accent/8', action: () => handleTabChange('encuestas') },
-    { icon: BarChart2, label: 'Adherencia', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes', color: 'text-accent', bg: 'bg-accent/8', action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp, label: 'Insights', color: 'text-ink', bg: 'bg-ink/5', action: () => handleTabChange('insights') },
+    { icon: UserPlus,      label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8',  action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
+    { icon: Dumbbell,      label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('templates') },
+    { icon: Send,          label: 'Encuesta',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('encuestas') },
+    { icon: BarChart2,     label: 'Adherencia',    color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('adherencia') },
+    { icon: MessageCircle, label: 'Mensajes',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('mensajes') },
+    { icon: TrendingUp,    label: 'Insights',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('insights') },
   ]
 
   const NAV_GROUPS = [
     { label: 'Gestión', items: [
       { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-      { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
-      { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
-      { id: 'encuestas' as Tab, icon: ClipboardList, label: 'Encuestas' },
-      { id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio' },
+      { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
+      { id: 'mensajes'  as Tab, icon: MessageCircle,   label: 'Mensajes' },
+      { id: 'encuestas' as Tab, icon: ClipboardList,   label: 'Encuestas' },
+      { id: 'negocio'   as Tab, icon: TrendingUp,      label: 'Mi negocio' },
     ]},
     { label: 'Contenido', items: [
-      { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: Dumbbell, label: 'Workouts' },
-      { id: 'programas' as Tab, icon: Calendar, label: 'Programas' },
+      { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
+      { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
+      { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
     ]},
     { label: 'Análisis', items: [
-      { id: 'insights' as Tab, icon: BarChart2, label: 'Insights' },
+      { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
       { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
     ]},
     { label: 'Configuración', items: [
       { id: 'settings' as Tab, icon: SettingsIcon, label: 'Ajustes' },
     ]},
   ]
-
-  const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -142,8 +127,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </div>
       </div>
-
-      {/* Accesos rápidos en sidebar */}
       <div className="px-3 py-3 border-b border-border">
         <p className="text-[10px] font-semibold text-muted/50 px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
@@ -156,13 +139,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           ))}
         </div>
       </div>
-
       <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
         {NAV_GROUPS.map(group => (
           <div key={group.label}>
             <p className="text-[10px] font-semibold text-muted/50 px-3 mb-1 tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
-              {group.items.map(({ id, icon: Icon, label, badge }) => (
+              {group.items.map(({ id, icon: Icon, label, badge }: any) => (
                 <button key={id} onClick={() => handleTabChange(id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -176,7 +158,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         ))}
       </nav>
-
       <div className="p-3 border-t border-border space-y-1.5">
         {alerts.length > 0 && (
           <button onClick={() => { setActiveTab('clients'); setClientFilter('no-activity'); setSidebarOpen(false) }}
@@ -213,12 +194,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
         <div className="p-4 lg:p-6">
 
-          {/* DASHBOARD */}
+          {/* ── DASHBOARD ── */}
           {activeTab === 'dashboard' && (
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
+
+              {/* Columna izquierda */}
               <div className="flex-1 min-w-0 space-y-5">
 
-                {/* Header con % de entrenados */}
                 <div className="flex items-end justify-between">
                   <div>
                     <h2 className="text-4xl font-serif font-bold">Resumen</h2>
@@ -232,20 +214,18 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   )}
                 </div>
 
-                {/* Stats con comparativa semana anterior */}
-                {/* Stat cards mejoradas — borde de color + número prominente */}
+                {/* Stat cards — borde de color + número prominente */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   {[
-                    { label: 'Clientes', value: clients.length, prev: undefined, icon: Users, color: 'text-ink', accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
-                    { label: 'Entrenaron hoy', value: activeToday, prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
-                    { label: 'Sin plan', value: noPlan, prev: undefined, icon: AlertCircle, color: noPlan > 0 ? 'text-warn' : 'text-muted', accent: noPlan > 0 ? '#e07b54' : '#9ca3af', border: noPlan > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
-                    { label: 'Sin actividad', value: noActivity7d, prev: undefined, icon: Clock, color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
+                    { label: 'Clientes',       value: clients.length, prev: undefined,     icon: Users,        color: 'text-ink',  accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
+                    { label: 'Entrenaron hoy', value: activeToday,    prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok',   accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
+                    { label: 'Sin plan',       value: noPlan,         prev: undefined,     icon: AlertCircle,  color: noPlan > 0 ? 'text-warn' : 'text-muted',      accent: noPlan > 0 ? '#e07b54' : '#9ca3af',      border: noPlan > 0 ? '#e07b54' : '#e5e7eb',      onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
+                    { label: 'Sin actividad',  value: noActivity7d,  prev: undefined,     icon: Clock,        color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
                   ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
                     <button key={label} onClick={onClick}
-                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative group"
+                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
                       style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                      {/* Borde de color arriba */}
-                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl transition-all" style={{ backgroundColor: border }} />
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: border }} />
                       <div className="flex items-center justify-between mb-4 mt-1">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '15' }}>
                           <Icon className={`w-4 h-4 ${color}`} />
@@ -262,7 +242,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   ))}
                 </div>
 
-                {/* Gráfica */}
+                {/* Gráfica actividad */}
                 <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
@@ -287,7 +267,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 </div>
 
-                {/* Cumplimiento semanal — NUEVO */}
+                {/* Cumplimiento semanal */}
                 {clients.length > 0 && (
                   <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                     <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
@@ -366,10 +346,9 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     )}
                   </div>
                 </div>
-              </div>
 
-              </div>
-              </div>
+              </div>{/* fin columna izquierda */}
+
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
 
@@ -395,8 +374,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 )}
 
-
-                {/* Widget recordatorios pendientes */}
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
 
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -421,7 +398,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 </div>
 
-                {/* Acciones rápidas en columna derecha */}
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-accent" />
@@ -470,11 +446,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       className="w-full text-xs text-muted bg-bg-alt/50 border border-border/50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
                   </div>
                 </div>
-              </div>
+
+              </div>{/* fin columna derecha */}
+
             </div>
           )}
 
-          {/* CLIENTES */}
+          {/* ── CLIENTES ── */}
           {activeTab === 'clients' && (
             <div className="animate-fade-in space-y-5 max-w-5xl">
               <div className="flex items-center justify-between">
@@ -509,88 +487,74 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     const adherencia = adherenciaMap[client.id] ?? 0
                     const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
                     return (
-                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                      {/* Header */}
-                      <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
-                        <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
-                          {client.name[0]?.toUpperCase()}
-                          {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
+                      <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
+                          <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
+                            {client.name[0]?.toUpperCase()}
+                            {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
+                            <p className="text-[10px] text-muted mt-0.5">
+                              {client.doneToday ? <span className="text-ok font-bold">Entrenó hoy</span> : formatLastActive(client.lastActive)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                          <p className="text-[10px] text-muted mt-0.5">
-                            {client.doneToday
-                              ? <span className="text-ok font-bold">Entrenó hoy</span>
-                              : formatLastActive(client.lastActive)}
-                          </p>
-                        </div>
+                        {client.hasPlan && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] text-muted">Cumplimiento semanal</span>
+                              <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
+                            </div>
+                            <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
+                            </div>
+                            {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
+                          </div>
+                        )}
+                        {!client.hasPlan && (
+                          <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
+                            <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
+                            <button onClick={() => onSelectClient(client)} className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90">Asignar</button>
+                          </div>
+                        )}
+                        {deletingId === client.id ? (
+                          <div className="flex gap-2">
+                            <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
+                              <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
+                            </Button>
+                            <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
+                              <Trash2 className="w-3.5 h-3.5 text-warn" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Seguimiento mínimo — siempre visible */}
-                      {client.hasPlan && (
-                        <div className="mb-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-[10px] text-muted">Cumplimiento semanal</span>
-                            <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
-                          </div>
-                          <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
-                          </div>
-                          {!!client.weeklyDays && (
-                            <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Sin plan — CTA prominente */}
-                      {!client.hasPlan && (
-                        <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
-                          <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
-                          <button
-                            onClick={() => onSelectClient(client)}
-                            className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90 transition-opacity">
-                            Asignar
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Acciones */}
-                      {deletingId === client.id ? (
-                        <div className="flex gap-2">
-                          <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
-                            <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
-                          </Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
-                            <Trash2 className="w-3.5 h-3.5 text-warn" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )})}
+                    )
+                  })}
                   <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
                     className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
                     <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Anadir cliente'}</span>
+                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas' && <ProgramasTab trainerId={userProfile.uid} />}
-          {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
-          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} />}
+          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
+          {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
+          {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'encuestas' && (
+          {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
               <EncuestasTab trainerId={userProfile.uid} clients={clients} />
             </PlanGate>
@@ -600,45 +564,27 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
               <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
             </PlanGate>
           )}
-          </div>
-        </div>
-      </div>
-      </div>
+
         </div>
       </main>
 
+      {/* Modal nuevo cliente */}
       <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente">
         <div className="space-y-4">
-
-          {/* Campos esenciales */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-              <input autoFocus type="text" value={newClient.name}
-                onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                placeholder="Nombre"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-              <input type="text" value={newClient.surname}
-                onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                placeholder="Apellido"
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
           </div>
-
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label>
-            <input type="tel" value={newClient.phone}
-              onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))}
-              placeholder="+34 600 000 000"
-              className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
-
-          {/* Etiquetas — si existen */}
           {labels.length > 0 && (
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Etiquetas</label>
@@ -650,26 +596,23 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       onClick={() => setNewClientLabelIds(active ? newClientLabelIds.filter(id => id !== label.id) : [...newClientLabelIds, label.id])}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                       style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
-                      <span>{label.emoji}</span>
-                      <span>{label.name}</span>
+                      <span>{label.emoji}</span><span>{label.name}</span>
                     </button>
                   )
                 })}
               </div>
             </div>
           )}
-
-          {/* Datos opcionales colapsados */}
           <details className="group">
             <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-ink select-none py-1 transition-colors">
               <ChevronDown className="w-3.5 h-3.5 group-open:rotate-180 transition-transform" />
-              Mas datos (objetivo, medidas, genero...)
+              Más datos (objetivo, medidas, género...)
             </summary>
             <div className="mt-3 space-y-3 border-t border-border pt-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Perdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitacion' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' }].map(opt => (
+                <div className="flex flex-wrap gap-1.5">
+                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Pérdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitación' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' }].map(opt => (
                     <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                       {opt.label}
@@ -678,44 +621,31 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
-                  <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso (kg)</label>
-                  <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-                </div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label><input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso (kg)</label><input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Genero</label>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
                   <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
-                    <option value="">Sin especificar</option>
-                    <option value="h">Masculino</option>
-                    <option value="m">Femenino</option>
+                    <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label>
-                  <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-                </div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label><input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
               </div>
             </div>
           </details>
-
           <div className="flex gap-3 pt-1">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding || !newClient.name.trim()}>
-              {adding ? 'Creando...' : 'Crear cliente'}
-            </Button>
+            <Button className="flex-1" onClick={handleAdd} disabled={adding || !newClient.name.trim()}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
           </div>
         </div>
       </Modal>
+
       {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
           <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace. El cliente no necesita contraseña.</p>
+            <p className="text-sm text-muted">Comparte este enlace con tu cliente.</p>
             <div className="flex gap-2">
               <input readOnly value={getClientUrl(linkModal)} className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted font-mono outline-none" />
               <button onClick={() => { navigator.clipboard.writeText(getClientUrl(linkModal)); toast('Copiado ✓', 'ok') }} className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0"><Copy className="w-3.5 h-3.5" /> Copiar</button>
@@ -724,13 +654,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </Modal>
       )}
-    </div>
+
     </div>
   )
 }
 
-// ── Settings ─────────────────────────────────────────────────────────────────
-
+// ── Settings ──────────────────────────────────────────────
 const TEMAS = [
   { id: 'bosque',  nombre: 'Bosque',  color: '#1a6038', bg: '#f0f7f4' },
   { id: 'marino',  nombre: 'Marino',  color: '#1e3a5f', bg: '#f0f4f9' },
@@ -745,7 +674,6 @@ const TEMAS = [
   { id: 'grafito', nombre: 'Grafito', color: '#455a64', bg: '#f4f6f7' },
   { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
 ]
-
 const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
 
 function EmojiBar({ onPick }: { onPick: (e: string) => void }) {
@@ -784,7 +712,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaving(false); return }
-    toast('Perfil guardado ✓ Los clientes verán los cambios al recargar.', 'ok')
+    toast('Perfil guardado ✓', 'ok')
     setSaving(false)
   }
 
@@ -817,7 +745,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Identidad</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Identidad</h3>
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label><input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label><input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: AlexFit Training" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
@@ -826,7 +754,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">📷 Foto de perfil</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
             {brandLogo ? <><img src={brandLogo} className="w-20 h-20 rounded-full object-cover border-4 border-border shadow" alt="" /><button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-6 h-6 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center shadow">×</button></>
@@ -834,14 +762,14 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
           </div>
           <div className="space-y-2">
             <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
-              📁 {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
+              {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
             </label>
             <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB</p>
           </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🎨 Tema de colores</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tema de colores</h3>
         <div className="grid grid-cols-4 gap-2">
           {TEMAS.map(tema => (
             <button key={tema.id} onClick={() => applyTema(tema)}
@@ -861,20 +789,20 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🖼️ Imagen de fondo</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Imagen de fondo</h3>
         <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
           {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
             : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label><EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} /><textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label><EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} /><textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label><EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} /><input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label><EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} /><input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">👤 Cuenta</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>
         <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
         <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>
       </div>
