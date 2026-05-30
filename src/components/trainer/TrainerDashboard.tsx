@@ -301,13 +301,14 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       </button>
                     </div>
                     <div className="divide-y divide-border/40">
-                      {clients.every(c => (adherenciaMap[c.id] ?? 0) === 0) ? (
+                      {clients.every(c => (adherenciaMap[c.id] ?? 0) === 0) && (
                         <div className="px-5 py-8 text-center">
                           <div className="text-3xl mb-2">💪</div>
                           <p className="text-sm font-semibold text-ink">La semana acaba de empezar</p>
                           <p className="text-xs text-muted mt-1">El cumplimiento se actualizará cuando tus clientes entrenen</p>
                         </div>
-                      ) : clients.slice(0, 6).map(c => {
+                      )}
+                      {clients.some(c => (adherenciaMap[c.id] ?? 0) > 0) && clients.slice(0, 6).map(c => {
                         const pct = adherenciaMap[c.id] ?? 0
                         const barColor = pct >= 75 ? '#4caf7d' : pct >= 40 ? '#e0a854' : '#e07b54'
                         return (
@@ -329,6 +330,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                           </button>
                         )
                       })}
+                    </div>
                     </div>
                   </div>
                 )}
