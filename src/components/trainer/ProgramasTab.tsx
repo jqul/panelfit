@@ -538,15 +538,42 @@ export function ProgramasTab({ trainerId }: Props) {
           {[1,2,3,4].map(i => <div key={i} className="h-32 bg-card border border-border rounded-2xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl text-muted">
-          <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-serif text-lg font-bold">Sin programas</p>
-          <p className="text-sm mt-1">Crea programas semanales y asígnalos a tus clientes</p>
-          <button onClick={() => setEditing(emptyProgram(trainerId))}
-            className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
-            Crear programa
-          </button>
-        </div>
+        programs.length > 0 ? (
+          // Tiene programas pero el filtro no devuelve nada
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
+            <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-serif text-lg font-bold">Sin resultados</p>
+            <p className="text-sm mt-1">Prueba otro filtro</p>
+            <button onClick={() => { setFilterLabel(null); setFilterTipo(null) }} className="mt-3 text-accent text-sm hover:underline">Quitar filtros</button>
+          </div>
+        ) : (
+          // No tiene ningún programa
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-accent opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu primer programa</p>
+              <p className="text-sm text-muted mt-2 max-w-sm mx-auto">Un programa es un calendario semanal donde asignas workouts, cardio y tareas a cada día. Créalo una vez y asígnalo a varios clientes.</p>
+              <button onClick={() => setEditing(emptyProgram(trainerId))}
+                className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                Crear programa
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Ejemplo de estructura</p>
+              <div className="grid grid-cols-7 gap-1.5">
+                {['L','M','X','J','V','S','D'].map((d, i) => (
+                  <div key={d} className={`text-center rounded-lg py-2 text-xs font-semibold ${i < 5 ? 'bg-accent/8 text-accent' : 'bg-bg-alt text-muted'}`}>
+                    <p className="text-[10px] mb-1">{d}</p>
+                    {i < 5 ? <div className="w-1.5 h-1.5 bg-accent/40 rounded-full mx-auto" /> : <div className="w-1.5 h-1.5 rounded-full mx-auto" />}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted mt-2 text-center">5 días de entrenamiento + fin de semana libre</p>
+            </div>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filtered.map(prog => {
