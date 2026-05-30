@@ -261,7 +261,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     </button>
                   ))}
                 </div>
-                </div>
 
                 {/* Gráfica */}
                 <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -331,7 +330,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                         )
                       })}
                     </div>
-                    </div>
                   </div>
                 )}
 
@@ -370,6 +368,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 </div>
               </div>
 
+              </div>
+              </div>
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
 
@@ -600,6 +600,10 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
               <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
             </PlanGate>
           )}
+          </div>
+        </div>
+      </div>
+      </div>
         </div>
       </main>
 
@@ -720,6 +724,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </Modal>
       )}
+    </div>
     </div>
   )
 }
