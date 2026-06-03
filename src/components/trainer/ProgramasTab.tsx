@@ -47,7 +47,8 @@ const TASK_TYPES = [
   { id: 'video',      label: 'Vídeo',               color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: Video },
 ] as const
 
-const TIPOS = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
+const TIPOS_DEFAULT = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
+const LS_PROG_TYPES = (uid: string) => `pf_prog_types_${uid}`
 const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
 const CARDIO_TYPES = ['Correr','Caminar','Ciclismo','Elíptica','Nadar','Subir escaleras','Remo','HIIT']
 const EVOLUCION_LABELS: Record<string, string> = { peso: '⚖️ Peso corporal', fotos: '📸 Fotos de progreso', medidas: '📏 Medidas corporales' }
@@ -297,6 +298,23 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
   const [saving, setSaving] = useState(false)
   const [addTaskModal, setAddTaskModal] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [activeWeek, setActiveWeek] = useState(0)
+  const [addingType, setAddingType] = useState(false)
+  const [newTypeInput, setNewTypeInput] = useState('')
+  const [customTypes, setCustomTypes] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_PROG_TYPES(initial.trainer_id)) || '[]') } catch { return [] }
+  })
+  const allTipos = [...TIPOS_DEFAULT, ...customTypes]
+
+  const addCustomType = () => {
+    const tipo = newTypeInput.trim()
+    if (!tipo) return
+    const updated = [...customTypes, tipo]
+    setCustomTypes(updated)
+    localStorage.setItem(LS_PROG_TYPES(initial.trainer_id), JSON.stringify(updated))
+    update({ tipo })
+    setNewTypeInput('')
+    setAddingType(false)
+  }
 
   const update = (u: Partial<Program>) => setProgram(p => ({ ...p, ...u }))
 
@@ -364,12 +382,26 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Tipo</p>
           <div className="flex flex-wrap gap-1.5">
-            {TIPOS.map(tipo => (
+            {allTipos.map(tipo => (
               <button key={tipo} onClick={() => update({ tipo })}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${program.tipo === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
                 {tipo}
               </button>
             ))}
+            {addingType ? (
+              <div className="flex gap-1.5 items-center">
+                <input autoFocus value={newTypeInput} onChange={e => setNewTypeInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addCustomType(); if (e.key === 'Escape') { setAddingType(false); setNewTypeInput('') } }}
+                  placeholder="Nuevo tipo..." className="px-3 py-1 bg-bg border border-accent/40 rounded-lg text-xs outline-none w-32" />
+                <button onClick={addCustomType} className="px-2 py-1 bg-ink text-white rounded-lg text-xs font-semibold">Crear</button>
+                <button onClick={() => { setAddingType(false); setNewTypeInput('') }} className="px-2 py-1 border border-border rounded-lg text-xs text-muted">✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setAddingType(true)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent">
+                + Nuevo tipo
+              </button>
+            )}
           </div>
         </div>
         {labels.length > 0 && (
