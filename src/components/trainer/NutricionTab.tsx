@@ -197,19 +197,29 @@ export function NutricionTab({ client, trainerId }: Props) {
 
   const loadPlan = async () => {
     setLoading(true)
-    const { data } = await supabase.from('nutrition_plans')
-      .select('*').eq('client_id', client.id).maybeSingle()
-    if (data) { setPlan(data); setPlanName(data.name) }
-    setLoading(false)
+    try {
+      const { data, error } = await supabase.from('nutrition_plans')
+        .select('*').eq('client_id', client.id).maybeSingle()
+      if (error) console.error('NutricionTab error:', error)
+      if (data) { setPlan(data); setPlanName(data.name) }
+    } catch (e) {
+      console.error('NutricionTab catch:', e)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const savePlan = async () => {
     if (!plan) return
     setSaving(true)
     const updated = { ...plan, name: planName, updated_at: Date.now() }
-    const { error } = await supabase.from('nutrition_plans')
-      .upsert(updated, { onConflict: 'id' })
-    if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
+    // Intentar update primero, luego insert si no existe
+    const { error: updateError } = await supabase.from('nutrition_plans')
+      .update(updated).eq('id', updated.id)
+    if (updateError) {
+      const { error: insertError } = await supabase.from('nutrition_plans').insert(updated)
+      if (insertError) { toast('Error al guardar: ' + insertError.message, 'warn'); setSaving(false); return }
+    }
     setPlan(updated)
     toast('Plan guardado ✓', 'ok')
     setSaving(false)
