@@ -7,6 +7,7 @@ import {
   User, Bell, Plus, Trash2, Calendar, Check, Edit2, ChevronUp, ChevronDown
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { NutricionTab } from './NutricionTab'
 import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
@@ -20,7 +21,7 @@ import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 
-type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'nutricion' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
 interface ClientAlert {
   id: string
@@ -44,6 +45,7 @@ const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] 
   { id: 'perfil',   icon: User,          label: 'Perfil',    desc: 'Datos y estadísticas' },
   { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
   { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
+  { id: 'nutricion', icon: FileText,      label: 'Nutrición', desc: 'Plan de comidas' },
   { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
   { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
   { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
@@ -359,6 +361,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
               {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} /></div>}
               {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} /></div>}
+              {activeTab === 'nutricion' && <div className="flex-1 overflow-y-auto p-4"><NutricionTab client={client} trainerId={userProfile.uid} /></div>}
               {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
               {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
               {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
