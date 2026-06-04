@@ -124,8 +124,8 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-ink/50 flex items-end sm:items-center justify-center sm:p-4 p-0" onClick={onClose}>
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[92dvh] sm:max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
           <h3 className="font-bold text-lg">Añadir tarea — {DAY_NAMES[dayIdx]}</h3>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
