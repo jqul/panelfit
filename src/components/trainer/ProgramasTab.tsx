@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
@@ -123,7 +124,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
     if (task) { onAdd(task); onClose() }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{maxHeight:"85dvh",overflow:"hidden"}} onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
@@ -283,7 +284,8 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
