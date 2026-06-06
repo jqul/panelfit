@@ -1,4 +1,5 @@
 import { AlertasWidget } from './AlertasWidget'
+import { NutricionLibreria } from './NutricionLibreria'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useLabels } from '../../hooks/useLabels'
@@ -28,7 +29,7 @@ import { BusinessDashboard } from './BusinessDashboard'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'nutricion' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface Props {
@@ -100,6 +101,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
       { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
       { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
+      { id: 'nutricion' as Tab, icon: FileText,   label: 'Nutrición' },
     ]},
     { label: 'Análisis', items: [
       { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
@@ -583,6 +585,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} />}
+          {activeTab === 'nutricion'  && <NutricionLibreria trainerId={userProfile.uid} />}
           {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
