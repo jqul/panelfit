@@ -5,7 +5,7 @@ import { useClientStats } from '../../hooks/useClientStats'
 import { useLabels } from '../../hooks/useLabels'
 import { useState } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
+  LayoutDashboard, Users, Dumbbell, ClipboardList, FileText, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar, ChevronDown,
