@@ -31,6 +31,9 @@ export interface NutritionTemplate {
   days: NutriDay[]
   notes?: string
   label_ids: string[]
+  suplementos?: string
+  modo_macros?: boolean
+  macros_diarios?: { kcal: number; protein: number; carbs: number; fat: number }
   created_at: number
   updated_at: number
 }
@@ -39,7 +42,8 @@ interface Props { trainerId: string }
 
 const MEAL_PRESETS = ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena', 'Post-entreno']
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-const TIPOS = ['Volumen', 'Definición', 'Mantenimiento', 'Pérdida de grasa', 'Rendimiento', 'Cetogénica', 'Vegetariana', 'General']
+const TIPOS_DEFAULT = ['Volumen', 'Definición', 'Mantenimiento', 'Pérdida de grasa', 'Rendimiento', 'Cetogénica', 'Vegetariana', 'General']
+const LS_NUTR_TIPOS = (uid: string) => `pf_nutr_tipos_${uid}`
 const LABEL_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#6e5438','#64748b']
 const LS_KEY = (uid: string) => `pf_nutrition_templates_${uid}`
 
@@ -168,6 +172,29 @@ function TemplateEditor({ template: initial, labels, onSave, onBack }: {
   const [tmpl, setTmpl] = useState<NutritionTemplate>(JSON.parse(JSON.stringify(initial)))
   const [saving, setSaving] = useState(false)
   const [activeDay, setActiveDay] = useState(0)
+  const [addingTipo, setAddingTipo] = useState(false)
+  const [newTipoInput, setNewTipoInput] = useState('')
+  const [customTipos, setCustomTipos] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_NUTR_TIPOS(initial.trainer_id)) || '[]') } catch { return [] }
+  })
+  const allTipos = [...TIPOS_DEFAULT, ...customTipos]
+
+  const addCustomTipo = () => {
+    const tipo = newTipoInput.trim()
+    if (!tipo) return
+    const updated = [...customTipos, tipo]
+    setCustomTipos(updated)
+    localStorage.setItem(LS_NUTR_TIPOS(initial.trainer_id), JSON.stringify(updated))
+    setTmpl(t => ({ ...t, tipo }))
+    setNewTipoInput('')
+    setAddingTipo(false)
+  }
+
+  const deleteTipo = (tipo: string) => {
+    const updated = customTipos.filter(t => t !== tipo)
+    setCustomTipos(updated)
+    localStorage.setItem(LS_NUTR_TIPOS(initial.trainer_id), JSON.stringify(updated))
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -209,12 +236,35 @@ function TemplateEditor({ template: initial, labels, onSave, onBack }: {
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Tipo</p>
           <div className="flex flex-wrap gap-1.5">
-            {TIPOS.map(tipo => (
-              <button key={tipo} onClick={() => setTmpl({ ...tmpl, tipo })}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${tmpl.tipo === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-                {tipo}
-              </button>
+            {allTipos.map(tipo => (
+              <div key={tipo} className="flex items-center gap-0.5 group">
+                <button onClick={() => setTmpl(t => ({ ...t, tipo }))}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${tmpl.tipo === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                  {tipo}
+                </button>
+                {customTipos.includes(tipo) && (
+                  <button onClick={() => deleteTipo(tipo)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-muted hover:text-warn transition-all">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             ))}
+            {addingTipo ? (
+              <div className="flex gap-1.5 items-center">
+                <input autoFocus value={newTipoInput} onChange={e => setNewTipoInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addCustomTipo(); if (e.key === 'Escape') { setAddingTipo(false); setNewTipoInput('') } }}
+                  placeholder="Nuevo tipo..."
+                  className="px-3 py-1 bg-bg border border-accent/40 rounded-lg text-xs outline-none w-32" />
+                <button onClick={addCustomTipo} className="px-2 py-1 bg-ink text-white rounded-lg text-xs font-semibold">Crear</button>
+                <button onClick={() => { setAddingTipo(false); setNewTipoInput('') }} className="px-2 py-1 border border-border rounded-lg text-xs text-muted">✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setAddingTipo(true)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent">
+                + Nuevo tipo
+              </button>
+            )}
           </div>
         </div>
         {labels.length > 0 && (
@@ -238,6 +288,42 @@ function TemplateEditor({ template: initial, labels, onSave, onBack }: {
           )
         })}
       </div>
+
+      {/* Toggle modo macros */}
+      <div className="flex items-center gap-3 p-3 bg-bg-alt/50 rounded-xl border border-border/50">
+        <div className="flex-1">
+          <p className="text-sm font-semibold">Solo macros diarios</p>
+          <p className="text-xs text-muted">Define kcal y macros sin detallar comidas</p>
+        </div>
+        <button onClick={() => setTmpl(t => ({ ...t, modo_macros: !t.modo_macros }))}
+          className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${tmpl.modo_macros ? 'bg-accent' : 'bg-border'}`}>
+          <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${tmpl.modo_macros ? 'translate-x-4' : 'translate-x-0'}`} />
+        </button>
+      </div>
+
+      {/* Modo macros */}
+      {tmpl.modo_macros && (
+        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Objetivos diarios</p>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { key: 'kcal',    label: 'kcal',    color: 'text-accent' },
+              { key: 'protein', label: 'Prot (g)', color: 'text-ok' },
+              { key: 'carbs',   label: 'HC (g)',   color: 'text-warn' },
+              { key: 'fat',     label: 'Grasas',  color: 'text-muted' },
+            ].map(({ key, label, color }) => (
+              <div key={key}>
+                <p className={`text-[10px] font-bold uppercase mb-1 ${color}`}>{label}</p>
+                <input type="number"
+                  value={(tmpl.macros_diarios as any)?.[key] || ''}
+                  onChange={e => setTmpl(t => ({ ...t, macros_diarios: { ...(t.macros_diarios || { kcal: 0, protein: 0, carbs: 0, fat: 0 }), [key]: Number(e.target.value) } }))}
+                  placeholder="0"
+                  className="w-full px-2 py-2 bg-bg border border-border rounded-xl text-sm outline-none text-center font-mono" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Resumen macros */}
       {totalKcal > 0 && (
@@ -273,6 +359,23 @@ function TemplateEditor({ template: initial, labels, onSave, onBack }: {
       {/* Editor del día activo */}
       {tmpl.days[activeDay] && (
         <DayEditor day={tmpl.days[activeDay]} onChange={day => updateDay(activeDay, day)} />
+      )}
+
+      {/* Suplementos */}
+      {!tmpl.modo_macros && (
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border/50 bg-bg-alt/30">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted">Suplementación</p>
+          </div>
+          <div className="p-4">
+            <textarea
+              value={tmpl.suplementos || ''}
+              onChange={e => setTmpl(t => ({ ...t, suplementos: e.target.value }))}
+              placeholder="Ej: Creatina 5g post-entreno, Proteína 30g tras sesión, Vitamina D 2000UI con desayuno..."
+              rows={3}
+              className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-xs outline-none resize-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+        </div>
       )}
 
       {/* Notas generales */}
