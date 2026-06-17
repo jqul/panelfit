@@ -230,8 +230,8 @@ function SeriesInfoModal({ types, onClose, onManage }: {
 }) {
   return (
     <div className="fixed inset-0 z-[70] bg-ink/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-card rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-border flex-shrink-0">
           <h3 className="font-serif font-bold text-xl">Tipos de serie</h3>
           <div className="flex items-center gap-2">
             <button onClick={onManage} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
@@ -240,7 +240,7 @@ function SeriesInfoModal({ types, onClose, onManage }: {
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-3 p-6 pt-4 overflow-y-auto flex-1 min-h-0">
           {types.map(t => (
             <div key={t.id} className="bg-bg border border-border rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-1.5">
