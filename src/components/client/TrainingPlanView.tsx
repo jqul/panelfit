@@ -11,6 +11,7 @@ interface Props {
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
+  trainerId?: string
 }
 
 function getYTId(url: string) {
@@ -47,7 +48,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Props) {
+export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId }: Props) {
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -67,6 +68,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Prop
       logs={logs}
       onLogsChange={onLogsChange}
       onFinish={() => setActiveWorkout(null)}
+      trainerId={trainerId}
     />
   )
 
