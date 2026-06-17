@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import {
   ChevronDown, Check, Clock, Trophy,
   Play, Pause, SkipForward, ChevronLeft,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2
+  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap
 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
@@ -24,6 +24,25 @@ function getYTId(url: string) {
 function parseSet(sets: string) {
   const m = sets?.match(/(\d+)[×x](\d+)/)
   return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
+}
+
+// ── RIR (Repeticiones en Reserva) ─────────────────────────
+// 0 = al fallo, 1-2 = casi al fallo, 3-4 = moderado, 5+ = fácil
+const RIR_OPTIONS = [
+  { value: 0, label: '0', desc: 'Al fallo', color: '#ef4444' },
+  { value: 1, label: '1', desc: 'Casi al fallo', color: '#f97316' },
+  { value: 2, label: '2', desc: 'Muy duro', color: '#f59e0b' },
+  { value: 3, label: '3', desc: 'Duro', color: '#eab308' },
+  { value: 4, label: '4', desc: 'Moderado', color: '#84cc16' },
+  { value: 5, label: '5+', desc: 'Fácil', color: '#22c55e' },
+]
+
+function getSuggestedWeightChange(rir: number | undefined): { pct: number; label: string; color: string } | null {
+  if (rir === undefined || rir === null) return null
+  if (rir <= 1) return { pct: -5, label: 'Bajar peso la próxima', color: '#ef4444' }
+  if (rir <= 2) return { pct: 0, label: 'Mantener peso', color: '#f59e0b' }
+  if (rir <= 3) return { pct: 2.5, label: 'Subir ligero', color: '#84cc16' }
+  return { pct: 5, label: 'Subir peso', color: '#22c55e' }
 }
 
 function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
@@ -80,80 +99,145 @@ function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () =>
   )
 }
 
+// ── Selector RIR inline (aparece tras marcar check) ───────
+function RirSelector({ value, onSelect, onClose }: { value: number | undefined; onSelect: (rir: number) => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[55] bg-ink/60 flex items-end justify-center" onClick={onClose}>
+      <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3 animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="w-10 h-1 bg-border rounded-full mx-auto mb-1" />
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-accent" />
+          <p className="text-sm font-bold">¿Cuánto te quedaba? (RIR)</p>
+        </div>
+        <p className="text-xs text-muted">Repeticiones en reserva — cuántas más podrías haber hecho</p>
+        <div className="grid grid-cols-3 gap-2">
+          {RIR_OPTIONS.map(opt => (
+            <button key={opt.value} onClick={() => { onSelect(opt.value); onClose() }}
+              className="flex flex-col items-center gap-1 py-3 rounded-2xl border-2 transition-all active:scale-95"
+              style={{
+                borderColor: value === opt.value ? opt.color : '#e5e7eb',
+                backgroundColor: value === opt.value ? opt.color + '15' : 'transparent',
+              }}>
+              <span className="text-xl font-bold" style={{ color: opt.color }}>{opt.label}</span>
+              <span className="text-[10px] text-muted text-center leading-tight">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} className="w-full py-2.5 text-xs text-muted">Omitir</button>
+      </div>
+    </div>
+  )
+}
+
 interface SetRowProps {
   setNum: number
   initWeight: string
   initReps: string
   done: boolean
+  rir?: number
   prevWeight?: string
   prevReps?: string
+  prevRir?: number
   isMain: boolean
   onCommit: (weight: string, reps: string) => void
   onToggle: (weight: string, reps: string) => void
   onOpenCalc: (weight: string) => void
+  onSetRir: (rir: number) => void
 }
 
-const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps, isMain, onCommit, onToggle, onOpenCalc }: SetRowProps) => {
+const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prevReps, prevRir, isMain, onCommit, onToggle, onOpenCalc, onSetRir }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
+  const [showRir, setShowRir] = useState(false)
+
+  const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === rir) : null
+  const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir) : null
 
   return (
-    <div className={`grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
-      {/* Nº serie */}
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
-        done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-      }`}>{setNum}</div>
+    <>
+      {showRir && (
+        <RirSelector value={rir} onSelect={onSetRir} onClose={() => setShowRir(false)} />
+      )}
+      <div className={`px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
+        <div className="grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 items-center">
+          {/* Nº serie */}
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
+            done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+          }`}>{setNum}</div>
 
-      {/* Anterior */}
-      <p className="text-xs text-muted text-center leading-tight">
-        {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
-      </p>
+          {/* Anterior — con sugerencia de peso si hay RIR previo */}
+          <div className="text-center leading-tight">
+            <p className="text-xs text-muted">
+              {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
+            </p>
+            {suggestion && (
+              <p className="text-[9px] font-bold" style={{ color: suggestion.color }}>
+                {suggestion.pct > 0 ? '↑' : suggestion.pct < 0 ? '↓' : '='} {suggestion.label}
+              </p>
+            )}
+          </div>
 
-      {/* KG — con botón calculadora */}
-      <div className="relative">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={weight}
-          onChange={e => setWeight(e.target.value)}
-          onBlur={() => onCommit(weight, reps)}
-          placeholder={prevWeight || '0'}
-          className={`w-full text-center text-sm font-semibold py-2 pr-6 rounded-xl border outline-none ${
-            done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-          }`}
-        />
-        {/* Botón calculadora inline */}
-        <button
-          type="button"
-          onClick={() => onOpenCalc(weight)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
-          title="Calculadora de discos">
-          <Calculator className="w-3.5 h-3.5" />
-        </button>
+          {/* KG — con botón calculadora */}
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="decimal"
+              value={weight}
+              onChange={e => setWeight(e.target.value)}
+              onBlur={() => onCommit(weight, reps)}
+              placeholder={prevWeight || '0'}
+              className={`w-full text-center text-sm font-semibold py-2 pr-6 rounded-xl border outline-none ${
+                done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => onOpenCalc(weight)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
+              title="Calculadora de discos">
+              <Calculator className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Reps */}
+          <input
+            type="number"
+            inputMode="numeric"
+            value={reps}
+            onChange={e => setReps(e.target.value)}
+            onBlur={() => onCommit(weight, reps)}
+            placeholder={prevReps || '10'}
+            className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
+              done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+            }`}
+          />
+
+          {/* Check */}
+          <button
+            onClick={() => onToggle(weight, reps)}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
+              done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
+            }`}>
+            <Check className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Badge RIR — aparece debajo de la fila cuando la serie está marcada como hecha */}
+        {done && (
+          <div className="flex items-center justify-end mt-1 pr-1">
+            <button onClick={() => setShowRir(true)}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+              style={{
+                backgroundColor: rirMeta ? rirMeta.color + '15' : '#f3f4f6',
+                color: rirMeta ? rirMeta.color : '#9ca3af',
+              }}>
+              <Zap className="w-2.5 h-2.5" />
+              {rirMeta ? `RIR ${rirMeta.label} · ${rirMeta.desc}` : 'Añadir RIR'}
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Reps */}
-      <input
-        type="number"
-        inputMode="numeric"
-        value={reps}
-        onChange={e => setReps(e.target.value)}
-        onBlur={() => onCommit(weight, reps)}
-        placeholder={prevReps || '10'}
-        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
-          done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-        }`}
-      />
-
-      {/* Check */}
-      <button
-        onClick={() => onToggle(weight, reps)}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
-          done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
-        }`}>
-        <Check className="w-4 h-4" />
-      </button>
-    </div>
+    </>
   )
 })
 
@@ -161,7 +245,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
 
-  type SetState = { weight: string; reps: string; done: boolean }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -175,6 +259,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           weight: log?.sets?.[si]?.weight || '',
           reps: log?.sets?.[si]?.reps || String(numReps),
           done: log?.done || false,
+          rir: (log?.sets?.[si] as any)?.rir,
         }
       }
     })
@@ -208,13 +293,28 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
     const currentLogs = logsRef.current
+    const prevRir = (currentLogs[key]?.sets?.[si] as any)?.rir
     onLogsChange({
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}) } },
         done: currentLogs[key]?.done || false,
         dateDone: today,
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  const setRir = useCallback((ri: number, si: number, rir: number) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], rir } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...currentLogs[key],
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, rir } },
       }
     })
   }, [dayKey, onLogsChange])
@@ -226,12 +326,12 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } } }
+      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir } } }
       const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, { weight: string; reps: string }> = {}
+      const setsData: Record<number, { weight: string; reps: string; rir?: number }> = {}
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '' }
+        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}) }
       }
       onLogsChange({ ...logsRef.current, [key]: { sets: setsData, done: allDone, dateDone: today } })
       return updated
@@ -263,6 +363,10 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const totalVolume = Object.values(sets).reduce((acc, exSets) =>
     acc + Object.values(exSets).reduce((a, s) => a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
   const totalSetsDone = Object.values(sets).reduce((acc, exSets) => acc + Object.values(exSets).filter(s => s.done).length, 0)
+
+  // Promedio de RIR de la sesión — útil como indicador de fatiga
+  const allRirs = Object.values(sets).flatMap(exSets => Object.values(exSets).filter(s => s.done && s.rir !== undefined).map(s => s.rir as number))
+  const avgRir = allRirs.length ? Math.round((allRirs.reduce((a, b) => a + b, 0) / allRirs.length) * 10) / 10 : null
 
   const isNewRecord = (ri: number) => {
     const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
@@ -298,7 +402,6 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
           </div>
-          {/* Botón terminar — más visible cuando todo está completo */}
           <button
             onClick={() => setShowFinish(true)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -316,6 +419,9 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
           <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
           <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
+          {avgRir !== null && (
+            <div><p className="text-muted">RIR medio</p><p className="font-bold" style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</p></div>
+          )}
           <div className="flex-1 text-right">
             <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
             <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
@@ -413,12 +519,15 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     initWeight={s.weight}
                     initReps={s.reps}
                     done={s.done}
+                    rir={s.rir}
                     prevWeight={prev?.weight}
                     prevReps={prev?.reps}
+                    prevRir={prev?.rir}
                     isMain={ex.isMain}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+                    onSetRir={(rir) => setRir(ri, si, rir)}
                   />
                 )
               })}
@@ -477,6 +586,15 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               ))}
             </div>
+            {avgRir !== null && (
+              <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
+                <Zap className="w-4 h-4 text-accent flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-muted">RIR medio de la sesión</p>
+                  <p className="text-sm font-bold">{avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
+                </div>
+              </div>
+            )}
             <button onClick={onFinish}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
                 allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
