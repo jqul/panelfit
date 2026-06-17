@@ -55,7 +55,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
 
   if (view === 'landing') return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <nav className="border-b border-border bg-bg/90 backdrop-blur-sm sticky top-0 z-10">
+      <nav className="border-b border-border bg-bg/90 backdrop-blur-sm sticky top-0 z-10" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></span>
           <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
         <button onClick={() => setView('landing')} className="text-white/40 text-xs hover:text-white/70 transition-colors text-left">← Volver a la página principal</button>
       </div>
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 0px))' }}>
         <div className="w-full max-w-sm">
           <div className="lg:hidden text-center mb-8">
             <button onClick={() => setView('landing')} className="text-muted text-xs hover:text-ink mb-4 inline-block">← Volver</button>
