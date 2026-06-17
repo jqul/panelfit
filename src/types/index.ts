@@ -62,7 +62,7 @@ export interface LibraryExercise {
 }
 
 // ── REGISTROS ─────────────────────────────────────────
-export interface LogSet { weight: string; reps: string }
+export interface LogSet { weight: string; reps: string; rir?: number }
 export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string }
 export type TrainingLogs = Record<string, ExerciseLog>
 
