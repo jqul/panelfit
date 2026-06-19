@@ -12,6 +12,7 @@ interface Props {
   client: ClientData
   plan?: TrainingPlan | null
   logs?: TrainingLogs
+  library?: { name: string; category?: string }[]
 }
 
 // ── Helpers ───────────────────────────────────────────────
@@ -202,6 +203,71 @@ function VolumenChart({ logs }: { logs: TrainingLogs }) {
   )
 }
 
+// ── Volumen semanal por grupo muscular ─────────────────────
+const GROUP_COLORS: Record<string, string> = {
+  'Pecho': '#6e5438', 'Espalda': '#4caf7d', 'Piernas': '#e0a854', 'Hombros': '#e07b54',
+  'Bíceps': '#3b82f6', 'Tríceps': '#8b5cf6', 'Core': '#ec4899', 'Glúteos': '#06b6d4', 'Otros': '#94a3b8',
+}
+
+function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[] }) {
+  const libraryMap = useLibraryMuscleMap(library)
+
+  const { data, groups } = useMemo(() => {
+    const byWeek: Record<string, Record<string, number>> = {}
+    const groupSet = new Set<string>()
+    Object.entries(logs).forEach(([key, log]) => {
+      if (!log.done || !log.dateDone) return
+      const name = getExName(key, plan)
+      if (!name) return
+      const g = getMuscleGroup(name, libraryMap)
+      const setsDone = Object.values(log.sets || {}).filter((s: any) => (parseFloat(s.weight) || 0) > 0 || (parseInt(s.reps) || 0) > 0).length || 1
+      const d = new Date(log.dateDone + 'T00:00:00')
+      const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const lunes = new Date(d); lunes.setDate(diff)
+      const weekKey = lunes.toISOString().split('T')[0]
+      if (!byWeek[weekKey]) byWeek[weekKey] = {}
+      byWeek[weekKey][g] = (byWeek[weekKey][g] || 0) + setsDone
+      groupSet.add(g)
+    })
+    const groups = [...groupSet].sort()
+    const data = Object.entries(byWeek).sort(([a], [b]) => a.localeCompare(b)).slice(-8).map(([date, counts]) => ({
+      semana: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+      ...counts,
+    }))
+    return { data, groups }
+  }, [logs, plan, libraryMap])
+
+  if (data.length < 2) return <EmptyState icon={<Activity className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita actividad en al menos 2 semanas" />
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {groups.map(g => (
+          <span key={g} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: GROUP_COLORS[g] || '#94a3b8' }} />{g}
+          </span>
+        ))}
+      </div>
+      <div className="h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} label={{ value: 'series', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#8a8278' }} />
+            <Tooltip content={<CustomTooltip unit="series" />} />
+            {groups.map(g => (
+              <Bar key={g} dataKey={g} name={g} stackId="vol" fill={GROUP_COLORS[g] || '#94a3b8'} radius={groups.indexOf(g) === groups.length - 1 ? [4, 4, 0, 0] : undefined} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="text-[10px] text-muted">
+        {library?.length ? 'Grupos según la biblioteca de ejercicios (con fallback por nombre).' : 'Grupos estimados por el nombre del ejercicio — configura la biblioteca para mayor precisión.'}
+      </p>
+    </div>
+  )
+}
+
 // ── Adherencia ────────────────────────────────────────────
 function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const diasProgramados = plan?.weeks?.reduce((acc, w) => acc + w.days.filter(d => d.exercises.length > 0).length, 0) || 0
@@ -346,24 +412,35 @@ const MUSCLE_GROUPS: Record<string, string[]> = {
   'Core':      ['plancha','abdominales','crunch','core','oblicuos'],
   'Glúteos':   ['hip thrust','glúteo','gluteo','patada'],
 }
-function getMuscleGroup(name: string) {
+function getMuscleGroup(name: string, libraryMap?: Map<string, string>) {
+  const fromLibrary = libraryMap?.get(name.toLowerCase().trim())
+  if (fromLibrary) return fromLibrary
   const lower = name.toLowerCase()
   for (const [group, kws] of Object.entries(MUSCLE_GROUPS)) if (kws.some(k => lower.includes(k))) return group
   return 'Otros'
 }
 
-function DistribucionChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+function useLibraryMuscleMap(library?: { name: string; category?: string }[]) {
+  return useMemo(() => {
+    const map = new Map<string, string>()
+    library?.forEach(ex => { if (ex.category) map.set(ex.name.toLowerCase().trim(), ex.category) })
+    return map
+  }, [library])
+}
+
+function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[] }) {
+  const libraryMap = useLibraryMuscleMap(library)
   const data = useMemo(() => {
     const counts: Record<string, number> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done) return
       const name = getExName(key, plan)
       if (!name) return
-      const g = getMuscleGroup(name)
+      const g = getMuscleGroup(name, libraryMap)
       counts[g] = (counts[g] || 0) + 1
     })
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }))
-  }, [logs, plan])
+  }, [logs, plan, libraryMap])
 
   if (!data.length) return <div className="text-center py-8 text-muted text-sm">Sin datos de ejercicios aún</div>
   const total = data.reduce((a, d) => a + d.value, 0)
@@ -911,7 +988,7 @@ function EmptyState({ icon, text, sub }: { icon: React.ReactNode; text: string; 
 }
 
 // ── Main ──────────────────────────────────────────────────
-type Section = 'fuerza' | 'peso' | 'volumen' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos'
+type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos'
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
@@ -921,6 +998,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
   { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
+  { id: 'volumen_grupo', icon: '🧩', label: 'Volumen por grupo', desc: 'Series semanales por grupo muscular' },
   { id: 'comparativa',  icon: '↔️', label: 'Esta semana',   desc: 'Esta semana vs anterior' },
   { id: 'distribucion', icon: '🎯', label: 'Músculos',      desc: 'Distribución por grupos musculares' },
   { id: 'adherencia',   icon: '📅', label: 'Adherencia',    desc: '% días entrenados vs planificados' },
@@ -929,7 +1007,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
 ]
 
-export function ProgresoTab({ client, plan, logs = {} }: Props) {
+export function ProgresoTab({ client, plan, logs = {}, library }: Props) {
   const [section, setSection] = useState<Section>('fuerza')
   const current = SECTIONS.find(s => s.id === section)!
   return (
@@ -957,10 +1035,11 @@ export function ProgresoTab({ client, plan, logs = {} }: Props) {
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
+        {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
-        {section === 'distribucion' && <DistribucionChart  logs={logs} plan={plan} />}
+        {section === 'distribucion' && <DistribucionChart  logs={logs} plan={plan} library={library} />}
         {section === 'rm'           && <RMChart            logs={logs} plan={plan} />}
         {section === 'racha'        && <RachaStats         logs={logs} />}
         {section === 'fotos'        && <FotosTab           clientId={client.id} />}
