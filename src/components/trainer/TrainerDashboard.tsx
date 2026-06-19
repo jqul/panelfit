@@ -11,6 +11,7 @@ import {
   StickyNote, Activity, Zap, ArrowRight, Send, Users2
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { NotificacionesBell } from './NotificacionesBell'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
