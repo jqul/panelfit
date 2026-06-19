@@ -816,16 +816,15 @@ function VideoFeedbackTab({ client }: { client: ClientData }) {
       {/* Modal de revisión */}
       {activeVideo && (
         <div className="fixed inset-0 z-[60] bg-ink/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setActiveVideo(null)}>
-          <div className="bg-card rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-serif font-bold text-lg">{activeVideo.exercise_name}</p>
-                  <p className="text-[10px] text-muted">{new Date(activeVideo.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-                <button onClick={() => setActiveVideo(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
+          <div className="bg-card rounded-t-3xl sm:rounded-3xl w-full max-w-md flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
+              <div>
+                <p className="font-serif font-bold text-lg">{activeVideo.exercise_name}</p>
+                <p className="text-[10px] text-muted">{new Date(activeVideo.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
               </div>
-
+              <button onClick={() => setActiveVideo(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 pt-4 space-y-4 overflow-y-auto flex-1 min-h-0">
               <video src={activeVideo.video_url} controls className="w-full rounded-2xl bg-black max-h-80" />
 
               {activeVideo.client_note && (
