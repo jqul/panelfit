@@ -6,6 +6,7 @@ import {
 import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown, Camera, ChevronLeft, ChevronRight, X, Zap, AlertTriangle, Video, MessageCircle, Send, Clock } from 'lucide-react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
+import { estimate1RM } from '../../lib/strength'
 
 interface Props {
   client: ClientData
@@ -41,16 +42,27 @@ function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {
 
 // ── Fuerza por ejercicio ──────────────────────────────────
 function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const [metric, setMetric] = useState<'peso' | '1rm'>('1rm')
+
   const ejercicios = useMemo(() => {
-    const map: Record<string, Record<string, number>> = {}
+    const map: Record<string, Record<string, { peso: number; rm1: number }>> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.dateDone) return
       const name = getExName(key, plan)
       if (!name) return
-      const best = Math.max(0, ...Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight) || 0))
-      if (!best) return
+      let bestPeso = 0, bestRM = 0
+      Object.values(log.sets || {}).forEach((s: any) => {
+        const w = parseFloat(s.weight) || 0
+        const reps = parseFloat(s.reps) || 0
+        if (w > bestPeso) bestPeso = w
+        const rm = estimate1RM(w, reps)
+        if (rm > bestRM) bestRM = rm
+      })
+      if (!bestPeso) return
       if (!map[name]) map[name] = {}
-      if (!map[name][log.dateDone] || best > map[name][log.dateDone]) map[name][log.dateDone] = best
+      if (!map[name][log.dateDone] || bestPeso > map[name][log.dateDone].peso) {
+        map[name][log.dateDone] = { peso: bestPeso, rm1: bestRM || bestPeso }
+      }
     })
     return Object.entries(map).filter(([, d]) => Object.keys(d).length >= 2).sort((a, b) => Object.keys(b[1]).length - Object.keys(a[1]).length)
   }, [logs, plan])
@@ -59,8 +71,9 @@ function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan |
   if (!ejercicios.length) return <EmptyState icon={<Dumbbell className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita al menos 2 sesiones por ejercicio" />
 
   const [, dates] = ejercicios[selected]
-  const data = Object.entries(dates).sort(([a], [b]) => a.localeCompare(b)).map(([date, best]) => ({
-    fecha: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), kg: best
+  const data = Object.entries(dates).sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({
+    fecha: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    kg: Math.round((metric === '1rm' ? v.rm1 : v.peso) * 10) / 10,
   }))
   const min = Math.min(...data.map(d => d.kg))
   const max = Math.max(...data.map(d => d.kg))
@@ -75,9 +88,15 @@ function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan |
         </select>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
       </div>
+      <div className="flex gap-1.5 text-xs font-semibold">
+        <button onClick={() => setMetric('1rm')}
+          className={`flex-1 py-1.5 rounded-lg ${metric === '1rm' ? 'bg-ink text-white' : 'bg-bg text-muted'}`}>1RM estimado</button>
+        <button onClick={() => setMetric('peso')}
+          className={`flex-1 py-1.5 rounded-lg ${metric === 'peso' ? 'bg-ink text-white' : 'bg-bg text-muted'}`}>Peso máximo</button>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Mejor marca', value: `${max} kg`, color: 'text-accent' },
+          { label: metric === '1rm' ? '1RM estimado' : 'Mejor marca', value: `${max} kg`, color: 'text-accent' },
           { label: 'Progreso total', value: `${trend >= 0 ? '+' : ''}${trend.toFixed(1)} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
           { label: 'Sesiones', value: data.length, color: 'text-ink' },
         ].map((k, i) => (

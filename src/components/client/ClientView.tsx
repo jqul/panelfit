@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle, CalendarDays, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
@@ -288,6 +288,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <>
+                    <ProximasSesiones clientId={client.id} />
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
@@ -329,6 +330,57 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           ))}
         </div>
       </nav>
+    </div>
+  )
+}
+
+interface CitaCliente {
+  id: string; title: string; start_at: string; status: 'confirmada' | 'cancelada' | 'completada'
+}
+
+function ProximasSesiones({ clientId }: { clientId: string }) {
+  const [citas, setCitas] = useState<CitaCliente[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('citas')
+      .select('id, title, start_at, status')
+      .eq('client_id', clientId)
+      .eq('status', 'confirmada')
+      .gte('start_at', new Date().toISOString())
+      .order('start_at')
+      .limit(3)
+      .then(({ data }) => { setCitas((data || []) as CitaCliente[]); setLoading(false) })
+  }, [clientId])
+
+  const cancelar = async (id: string) => {
+    const { error } = await supabase.from('citas').update({ status: 'cancelada' }).eq('id', id)
+    if (!error) setCitas(prev => prev.filter(c => c.id !== id))
+  }
+
+  if (loading || !citas.length) return null
+
+  return (
+    <div className="px-4 pt-4">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-border flex items-center gap-2">
+          <CalendarDays className="w-3.5 h-3.5 text-muted" />
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Próximas sesiones</p>
+        </div>
+        <div className="divide-y divide-border">
+          {citas.map(c => (
+            <div key={c.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold">{c.title}</p>
+                <p className="text-xs text-muted">{new Date(c.start_at).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+              <button onClick={() => cancelar(c.id)} className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0" title="Cancelar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, X, Timer, Clock, Info, Flame, Pencil, Check } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, X, Timer, Clock, Info, Flame, Pencil, Check, BatteryLow } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
@@ -445,6 +445,7 @@ export function TrainingPlanEditor({
                 activeWeek === wi ? 'bg-ink text-white shadow-sm' : 'bg-card border border-border text-muted hover:border-accent hover:text-ink'
               }`}>
               {w.label}
+              {w.isDeload && <BatteryLow className="inline w-3 h-3 ml-1 -mt-0.5 text-warn" />}
               {w.isCurrent && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ok rounded-full border-2 border-bg" />}
             </button>
           ))}
@@ -462,6 +463,11 @@ export function TrainingPlanEditor({
               <input value={currentWeek.rpe} onChange={e => updateWeek(activeWeek, { rpe: e.target.value })}
                 placeholder="@7" title="RPE objetivo"
                 className="w-12 text-[11px] text-center font-mono bg-bg border border-border rounded-md px-1 py-0.5 outline-none" />
+              <button onClick={() => updateWeek(activeWeek, { isDeload: !currentWeek.isDeload })}
+                title="Marcar como semana de descarga (deload)"
+                className={`p-1.5 rounded-lg transition-colors ${currentWeek.isDeload ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn hover:bg-warn/5'}`}>
+                <BatteryLow className="w-3.5 h-3.5" />
+              </button>
               <button onClick={() => setCurrentWeek(activeWeek)}
                 className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/5'}`}>
                 <Star className="w-3.5 h-3.5" />

@@ -7,6 +7,7 @@ import {
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
+import { rpeToTargetRIR, suggestNextLoad } from '../../lib/strength'
 
 interface Props {
   plan: TrainingPlan
@@ -39,8 +40,21 @@ const RIR_OPTIONS = [
   { value: 5, label: '5+', desc: 'Fácil', color: '#22c55e' },
 ]
 
-function getSuggestedWeightChange(rir: number | undefined): { pct: number; label: string; color: string } | null {
+// Autoregulación: si conocemos el RPE objetivo de la semana, comparamos el RIR
+// real contra el RIR objetivo (igual que JuggernautAI). Sin RPE de plan, cae a
+// una banda fija simple.
+function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string): { pct: number; label: string; color: string } | null {
   if (rir === undefined || rir === null) return null
+
+  const targetRIR = rpeToTargetRIR(weekRpe)
+  const weight = parseFloat(prevWeight || '')
+  if (targetRIR !== null && weight) {
+    const s = suggestNextLoad(weight, rir, targetRIR)
+    const color = s.direction === 'up' ? '#22c55e' : s.direction === 'down' ? '#ef4444' : '#f59e0b'
+    const label = s.direction === 'up' ? `Subir +${s.deltaKg}kg` : s.direction === 'down' ? `Bajar -${s.deltaKg}kg` : 'Mantener peso'
+    return { pct: s.direction === 'up' ? 5 : s.direction === 'down' ? -5 : 0, label, color }
+  }
+
   if (rir <= 1) return { pct: -5, label: 'Bajar peso la próxima', color: '#ef4444' }
   if (rir <= 2) return { pct: 0, label: 'Mantener peso', color: '#f59e0b' }
   if (rir <= 3) return { pct: 2.5, label: 'Subir ligero', color: '#84cc16' }
@@ -243,6 +257,7 @@ interface SetRowProps {
   prevWeight?: string
   prevReps?: string
   prevRir?: number
+  weekRpe?: string
   isMain: boolean
   onCommit: (weight: string, reps: string) => void
   onToggle: (weight: string, reps: string) => void
@@ -250,13 +265,13 @@ interface SetRowProps {
   onSetRir: (rir: number) => void
 }
 
-const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prevReps, prevRir, isMain, onCommit, onToggle, onOpenCalc, onSetRir }: SetRowProps) => {
+const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prevReps, prevRir, weekRpe, isMain, onCommit, onToggle, onOpenCalc, onSetRir }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
 
   const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === rir) : null
-  const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir) : null
+  const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
 
   return (
     <>
@@ -635,6 +650,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     prevWeight={prev?.weight}
                     prevReps={prev?.reps}
                     prevRir={prev?.rir}
+                    weekRpe={plan.weeks?.[weekIdx]?.rpe}
                     isMain={ex.isMain}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}

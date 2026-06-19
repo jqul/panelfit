@@ -31,7 +31,7 @@ export interface ExerciseVideoUpload {
   uploadedAt: number
 }
 export interface DayPlan { title: string; focus: string; exercises: Exercise[] }
-export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
+export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
 
 export interface TrainingPlan {
   clientId: string; type: string; restMain: number; restAcc: number; restWarn: number

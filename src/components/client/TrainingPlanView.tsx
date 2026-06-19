@@ -92,6 +92,11 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
         <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
         {currentWeek.rpe && <p className="text-xs text-muted mt-0.5">Intensidad objetivo: {currentWeek.rpe}</p>}
+        {currentWeek.isDeload && (
+          <div className="mt-2 px-3 py-2 bg-warn/10 border border-warn/20 rounded-xl text-xs text-warn font-medium">
+            Semana de descarga: baja un poco la intensidad para recuperar antes del siguiente bloque.
+          </div>
+        )}
       </div>
 
       <div className="px-4 space-y-3">
