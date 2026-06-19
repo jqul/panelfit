@@ -14,6 +14,9 @@ export interface ClientData {
   trainerId: string; token: string; createdAt: number; isActive?: boolean
   phone?: string  // WhatsApp del cliente
   objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
+  altura?: number; genero?: string; fechanacimiento?: string
+  notas_privadas?: string  // notas privadas del entrenador, nunca se muestran al cliente
+  label_ids?: string[]
 }
 
 // ── PLAN ──────────────────────────────────────────────
@@ -48,6 +51,7 @@ export interface TrainingPlan {
   diasElegidos?: number[]  // 0=lun,1=mar...6=dom (elegidos por cliente)
   macros?: { kcal: number; protein: number; carbs: number; fats: number; notaMacros?: string }
   weeks: WeekPlan[]
+  programId?: string; programName?: string  // programa de plantilla asignado, si lo hay
 }
 
 // ── PLANTILLAS ────────────────────────────────────────
