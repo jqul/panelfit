@@ -37,11 +37,11 @@ function dbToLocal(row: DBExercise): LibraryExercise {
     name: row.name,
     description: row.description,
     category: row.category,
-    especialidades: (row.especialidades || []) as Especialidad[],
+    especialidades: row.especialidades || [],
     videos: row.videos || [],
     tags: row.tags || [],
     createdAt: row.created_at,
-  } as LibraryExercise & { tags: string[] }
+  }
 }
 
 function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'use_count' | 'video_use_count' | 'deleted_at'> {
@@ -51,9 +51,9 @@ function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'us
     name: ex.name,
     description: ex.description || '',
     category: ex.category || '',
-    especialidades: (ex.especialidades || []) as string[],
+    especialidades: ex.especialidades || [],
     videos: ex.videos || [],
-    tags: (ex as any).tags || [],
+    tags: ex.tags || [],
     created_at: ex.createdAt || Date.now(),
     updated_at: Date.now(),
   }
@@ -143,10 +143,10 @@ export function useExerciseLibrary(trainerId: string) {
     description = '',
     category = '',
     videos: LibraryVideo[] = [],
-    especialidades: Especialidad[] = [],
+    especialidades: string[] = [],
     tags: string[] = []
   ) => {
-    const ex: LibraryExercise & { tags: string[] } = {
+    const ex: LibraryExercise = {
       id: `ex_${Date.now()}`,
       trainerId,
       name: name.trim(),
@@ -229,9 +229,12 @@ export function useExerciseLibrary(trainerId: string) {
 
     // Incrementar contador en el ejercicio
     if (eventType === 'added_to_plan') {
-      supabase.from('exercise_library')
-        .update({ use_count: supabase.rpc('increment' as any, { x: 1 }) as any })
-        .eq('id', exerciseId)
+      supabase.from('exercise_library').select('use_count').eq('id', exerciseId).maybeSingle()
+        .then(({ data }) => {
+          supabase.from('exercise_library')
+            .update({ use_count: (data?.use_count || 0) + 1 })
+            .eq('id', exerciseId)
+        })
     }
   }, [trainerId])
 

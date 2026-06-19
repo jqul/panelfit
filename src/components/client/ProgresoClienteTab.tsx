@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar } from 'lucide-react'
-import { TrainingPlan, TrainingLogs } from '../../types'
+import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 
 interface Props {
@@ -164,7 +164,7 @@ function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {(ex.sets as any[]).map((s, si) => (
+                      {ex.sets.map((s, si) => (
                         <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
@@ -224,7 +224,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const sessions = useMemo(() => {
-    const byDate: Record<string, { exercises: { name: string; sets: any[]; best: number }[]; volume: number }> = {}
+    const byDate: Record<string, { exercises: { name: string; sets: LogSet[]; best: number }[]; volume: number }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.dateDone || !log.done) return
       if (!byDate[log.dateDone]) byDate[log.dateDone] = { exercises: [], volume: 0 }
@@ -290,7 +290,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {(ex.sets as any[]).map((s, si) => (
+                      {ex.sets.map((s, si) => (
                         <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
@@ -461,7 +461,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
     { id: 'records',    icon: '🏆', label: 'Récords' },
     { id: 'peso',       icon: '⚖️', label: 'Peso' },
     { id: 'fotos',      icon: '📸', label: 'Fotos' },
-  ]
+  ] as const
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
@@ -470,7 +470,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
       {/* Tabs — scroll horizontal en móvil */}
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setSubtab(t.id as any)}
+          <button key={t.id} onClick={() => setSubtab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
               subtab === t.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
             }`}

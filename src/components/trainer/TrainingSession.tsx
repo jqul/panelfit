@@ -146,7 +146,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     setUploadedVideos((prev: Record<string, string>) => ({ ...prev, [exerciseKey]: data.publicUrl }))
     const idx = parseInt(exerciseKey.replace('r', ''))
     const currentLog = getLog(idx)
-    updateLog(idx, { ...currentLog, videoEjecucion: data.publicUrl } as any)
+    updateLog(idx, { ...currentLog, videoEjecucion: data.publicUrl })
     setUploading(null)
   }
 
@@ -166,7 +166,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     updateLog(ri, { sets, done: allDone, dateDone: allDone ? new Date().toISOString().split('T')[0] : undefined })
     vibrate(50)
     // Solo iniciar timer si el entrenador no lo ocultó
-    if (!(ex as any).hideRest) {
+    if (!ex.hideRest) {
       const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
       startTimer(restTime)
     }
@@ -229,7 +229,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
           .eq('clientId', clientId)
           .maybeSingle()
 
-        const prevNotes = (existing as any)?.session_notes || []
+        const prevNotes = existing?.session_notes || []
         await supabase
           .from('registros')
           .upsert(

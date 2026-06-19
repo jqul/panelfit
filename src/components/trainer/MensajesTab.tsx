@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { ClientData, UserProfile } from '../../types'
+import { UserProfile } from '../../types'
+import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { toast } from '../shared/Toast'
 import { Send, MessageCircle, Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Props {
   userProfile: UserProfile
-  clients: ClientData[]
+  clients: ClientWithStats[]
 }
 
 interface SurveySchedule {
@@ -86,13 +87,13 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
   // Clientes sin teléfono registrado
   const clientsSinTelefono = useMemo(() =>
-    clients.filter(c => !(c as any).phone),
+    clients.filter(c => !c.phone),
   [clients])
 
   // Clientes inactivos (más de 5 días sin entreno)
   const clientesInactivos = useMemo(() =>
     clients.filter(c => {
-      const lastActive = (c as any).lastActive
+      const lastActive = c.lastActive
       if (!lastActive) return true
       const days = Math.floor((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
       return days > 4
@@ -115,10 +116,10 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
   const sendEncuesta = async (
     sched: SurveySchedule,
-    client: ClientData,
+    client: ClientWithStats,
     tmplName: string
   ) => {
-    const phone = (client as any).phone
+    const phone = client.phone
     if (!phone) {
       toast(`${client.name} no tiene teléfono guardado`, 'warn')
       return
@@ -138,8 +139,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
     toast(`Enviado a ${client.name} ✓`, 'ok')
   }
 
-  const sendAlerta = (client: ClientData, tipo: 'inactividad' | 'panel') => {
-    const phone = (client as any).phone
+  const sendAlerta = (client: ClientWithStats, tipo: 'inactividad' | 'panel') => {
+    const phone = client.phone
     if (!phone) { toast(`${client.name} no tiene teléfono`, 'warn'); return }
 
     const url = `${origin}?c=${client.token}`
@@ -227,7 +228,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                 {/* Un botón por cliente */}
                 <div className="space-y-2">
                   {targetClients.map(client => {
-                    const hasPhone = !!(client as any).phone
+                    const hasPhone = !!client.phone
                     const key = `${sched.id}_${client.id}`
                     return (
                       <div key={client.id} className="flex items-center gap-3 bg-bg rounded-xl px-3 py-2.5">
@@ -237,7 +238,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{client.name} {client.surname}</p>
                           <p className="text-xs text-muted">
-                            {hasPhone ? (client as any).phone : '⚠️ Sin teléfono'}
+                            {hasPhone ? client.phone : '⚠️ Sin teléfono'}
                           </p>
                         </div>
                         <button
@@ -290,8 +291,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
           ) : (
             <div className="divide-y divide-border">
               {clientesInactivos.map(client => {
-                const hasPhone = !!(client as any).phone
-                const lastActive = (client as any).lastActive
+                const hasPhone = !!client.phone
+                const lastActive = client.lastActive
                 const days = lastActive
                   ? Math.floor((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
                   : null
@@ -341,7 +342,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
         {showInactivos && (
           <div className="divide-y divide-border">
             {clients.map(client => {
-              const hasPhone = !!(client as any).phone
+              const hasPhone = !!client.phone
               return (
                 <div key={client.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
@@ -349,7 +350,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{client.name} {client.surname}</p>
-                    <p className="text-xs text-muted">{hasPhone ? (client as any).phone : '⚠️ Sin teléfono'}</p>
+                    <p className="text-xs text-muted">{hasPhone ? client.phone : '⚠️ Sin teléfono'}</p>
                   </div>
                   <div className="flex gap-1.5 flex-shrink-0">
                     <button

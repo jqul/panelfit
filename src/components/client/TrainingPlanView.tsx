@@ -107,8 +107,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
           const pct = total ? Math.round(done / total * 100) : 0
           const isOpen = openDays[dayKey]
           const isComplete = pct === 100
-          const warmup = (day as any).warmup as string | undefined
-          const warmupExercises = (day as any).warmupExercises as any[] | undefined
+          const warmup = day.warmup
+          const warmupExercises = day.warmupExercises
 
           return (
             <div key={di} className={`bg-card border rounded-2xl overflow-hidden transition-all ${isComplete ? 'border-ok/40' : 'border-border'}`}>
@@ -199,7 +199,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                     {day.exercises.map((ex, ri) => {
                       const log = logs[`ex_${dayKey}_r${ri}`]
                       const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
-                      const seriesTypeId = (ex as any).seriesType || 'normal'
+                      const seriesTypeId = ex.seriesType || 'normal'
                       const seriesMeta = allSeriesTypes.find(s => s.id === seriesTypeId)
                       const showSeriesType = seriesTypeId !== 'normal' && seriesMeta
 

@@ -592,7 +592,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
             </div>
           )}
 
-          {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}

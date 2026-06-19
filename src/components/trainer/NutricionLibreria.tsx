@@ -94,15 +94,15 @@ function MealEditor({ meal, onChange, onDelete }: {
             rows={2}
             className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none resize-none focus:ring-2 focus:ring-accent/20" />
           <div className="grid grid-cols-4 gap-1.5">
-            {[
+            {([
               { key: 'kcal', label: 'kcal', color: 'text-accent' },
               { key: 'protein', label: 'Prot (g)', color: 'text-ok' },
               { key: 'carbs', label: 'HC (g)', color: 'text-warn' },
               { key: 'fat', label: 'Grasas', color: 'text-muted' },
-            ].map(({ key, label, color }) => (
+            ] as const).map(({ key, label, color }) => (
               <div key={key}>
                 <p className={`text-[9px] font-bold uppercase mb-0.5 ${color}`}>{label}</p>
-                <input type="number" value={(meal as any)[key] || ''} onChange={e => onChange({ ...meal, [key]: e.target.value ? Number(e.target.value) : undefined })}
+                <input type="number" value={meal[key] || ''} onChange={e => onChange({ ...meal, [key]: e.target.value ? Number(e.target.value) : undefined })}
                   placeholder="—" className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none text-center" />
               </div>
             ))}
@@ -305,16 +305,16 @@ function TemplateEditor({ template: initial, labels, onSave, onBack }: {
         <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Objetivos diarios</p>
           <div className="grid grid-cols-4 gap-3">
-            {[
+            {([
               { key: 'kcal',    label: 'kcal',    color: 'text-accent' },
               { key: 'protein', label: 'Prot (g)', color: 'text-ok' },
               { key: 'carbs',   label: 'HC (g)',   color: 'text-warn' },
               { key: 'fat',     label: 'Grasas',  color: 'text-muted' },
-            ].map(({ key, label, color }) => (
+            ] as const).map(({ key, label, color }) => (
               <div key={key}>
                 <p className={`text-[10px] font-bold uppercase mb-1 ${color}`}>{label}</p>
                 <input type="number"
-                  value={(tmpl.macros_diarios as any)?.[key] || ''}
+                  value={tmpl.macros_diarios?.[key] || ''}
                   onChange={e => setTmpl(t => ({ ...t, macros_diarios: { ...(t.macros_diarios || { kcal: 0, protein: 0, carbs: 0, fat: 0 }), [key]: Number(e.target.value) } }))}
                   placeholder="0"
                   className="w-full px-2 py-2 bg-bg border border-border rounded-xl text-sm outline-none text-center font-mono" />

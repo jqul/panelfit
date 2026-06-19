@@ -125,7 +125,7 @@ export function TemplatesTab({ trainerId }: Props) {
   }
 
   const persist = async (tmpl: TrainingTemplate) => {
-    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: (tmpl as any).label_ids || [] }
+    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [] }
     const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
     if (error) throw error
     const updated = templates.find(t => t.id === tmpl.id) ? templates.map(t => t.id === tmpl.id ? tmpl : t) : [tmpl, ...templates]
@@ -136,7 +136,7 @@ export function TemplatesTab({ trainerId }: Props) {
     if (!editing || !editingPlan) return
     setSaving(true)
     try {
-      const saved = { ...planToTmpl(editing, editingPlan, editName, editType), label_ids: editLabelIds } as any
+      const saved = { ...planToTmpl(editing, editingPlan, editName, editType), label_ids: editLabelIds }
       await persist(saved)
       toast('Workout guardado ✓', 'ok')
       setEditing(null); setEditingPlan(null); setAddingType(false)
@@ -164,7 +164,7 @@ export function TemplatesTab({ trainerId }: Props) {
 
   const startEdit = (tmpl: TrainingTemplate) => {
     setEditing(tmpl); setEditName(tmpl.name); setEditType(tmpl.type)
-    setEditLabelIds((tmpl as any).label_ids || [])
+    setEditLabelIds(tmpl.label_ids || [])
     setEditingPlan(tmplToPlan(tmpl))
   }
 
@@ -176,7 +176,7 @@ export function TemplatesTab({ trainerId }: Props) {
   }
 
   const allTypes = [...TIPOS_DEFAULT, ...customTypes]
-  const filtered = filterLabel ? templates.filter(t => ((t as any).label_ids || []).includes(filterLabel)) : templates
+  const filtered = filterLabel ? templates.filter(t => (t.label_ids || []).includes(filterLabel)) : templates
 
   const createLabel = async () => {
     if (!newLabelName.trim()) return
@@ -321,7 +321,7 @@ export function TemplatesTab({ trainerId }: Props) {
             Todos ({templates.length})
           </button>
           {labels.map(label => {
-            const count = templates.filter(t => ((t as any).label_ids || []).includes(label.id)).length
+            const count = templates.filter(t => (t.label_ids || []).includes(label.id)).length
             return (
               <button key={label.id} onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
                 className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${filterLabel === label.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
@@ -378,7 +378,7 @@ export function TemplatesTab({ trainerId }: Props) {
       ) : (
         <div className="space-y-3">
           {filtered.map(tmpl => {
-            const tmplLabels = labels.filter(l => ((tmpl as any).label_ids || []).includes(l.id))
+            const tmplLabels = labels.filter(l => (tmpl.label_ids || []).includes(l.id))
             return (
               <div key={tmpl.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/30 transition-colors">
                 <div className="flex items-center gap-3 px-5 py-4">

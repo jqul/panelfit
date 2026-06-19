@@ -656,7 +656,7 @@ function PesosSugeridosChart({ logs, plan }: { logs: TrainingLogs; plan?: Traini
       if (!log.done || !log.dateDone) return
       const name = getExName(key, plan)
       if (!name) return
-      const setsArr = Object.values(log.sets || {}) as any[]
+      const setsArr = Object.values(log.sets || {})
       if (!setsArr.length) return
       // Tomar el set con mayor peso de esa sesión
       const best = setsArr.reduce((max, s) => (parseFloat(s.weight) || 0) > (parseFloat(max.weight) || 0) ? s : max, setsArr[0])
@@ -715,10 +715,10 @@ function FatigaChart({ logs }: { logs: TrainingLogs }) {
     let volLastWeek = 0
     let sesionesThisWeek = 0
 
-    Object.values(logs).forEach((log: any) => {
+    Object.values(logs).forEach(log => {
       if (!log.done || !log.dateDone) return
       const d = new Date(log.dateDone + 'T00:00:00')
-      const setsArr = Object.values(log.sets || {}) as any[]
+      const setsArr = Object.values(log.sets || {})
       const vol = setsArr.reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
       const rirs = setsArr.filter(s => s.rir !== undefined).map(s => s.rir as number)
 

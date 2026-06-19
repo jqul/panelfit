@@ -252,7 +252,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 
   const addVideo = () => {
     if (!newVideoUrl.trim()) return
-    const nv: LibraryVideo = { url:newVideoUrl.trim(), label:newVideoLabel.trim()||undefined, especialidades:newVideoEsps as any }
+    const nv: LibraryVideo = { url:newVideoUrl.trim(), label:newVideoLabel.trim()||undefined, especialidades:newVideoEsps }
     setForm(f => ({ ...f, videos:[...f.videos, nv] }))
     setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
   }
@@ -337,13 +337,13 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 <div className="flex flex-wrap gap-1">
                   <span className="text-[9px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
                   {allEsps.map(e => {
-                    const active = (v.especialidades||[]).includes(e.id as any)
+                    const active = (v.especialidades||[]).includes(e.id)
                     return (
                       <button key={e.id} type="button"
                         onClick={()=>{
                           const vs=[...form.videos]
-                          const esps=(vs[i].especialidades||[]) as string[]
-                          vs[i]={...vs[i],especialidades:(active?esps.filter(x=>x!==e.id):[...esps,e.id]) as any}
+                          const esps=vs[i].especialidades||[]
+                          vs[i]={...vs[i],especialidades:active?esps.filter(x=>x!==e.id):[...esps,e.id]}
                           setForm(f=>({...f,videos:vs}))
                         }}
                         className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
@@ -458,8 +458,8 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const filtered = exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false
     if (filterCat && ex.category !== filterCat) return false
-    if (filterEsp && !(ex.especialidades||[]).includes(filterEsp as any)) return false
-    if (filterTag && !((ex as any).tags||[]).includes(filterTag)) return false
+    if (filterEsp && !(ex.especialidades||[]).includes(filterEsp)) return false
+    if (filterTag && !(ex.tags||[]).includes(filterTag)) return false
     if (filterVideos === 'con_esp' && !(ex.videos||[]).some(v => v.especialidades?.length)) return false
     if (filterVideos === 'sin_esp' && !(ex.videos||[]).some(v => !v.especialidades?.length)) return false
     if (filterVideos === 'sin_video' && (ex.videos||[]).length > 0) return false
@@ -469,8 +469,8 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const startEdit = (ex: LibraryExercise) => {
     setEditInitial({
       name:ex.name, description:ex.description||'', category:ex.category||'',
-      especialidades:(ex.especialidades||[]) as string[],
-      videos:ex.videos||[], tags:(ex as any).tags||[],
+      especialidades:ex.especialidades||[],
+      videos:ex.videos||[], tags:ex.tags||[],
     })
     setEditId(ex.id); setShowNew(false)
   }
@@ -529,7 +529,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
           </select>
         )}
         {/* Filtro rápido vídeos */}
-        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as any)}
+        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as ''|'con_esp'|'sin_esp'|'sin_video')}
           className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
           <option value="">Todos los vídeos</option>
           <option value="con_esp">🎯 Con vídeos esp.</option>
@@ -556,12 +556,12 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
       ) : (
         <div className="space-y-2">
           {filtered.map(ex => {
-            const exTags = ((ex as any).tags||[]) as string[]
+            const exTags = ex.tags||[]
             return (
               <div key={ex.id}>
                 {editId===ex.id ? (
                   <ExForm key={`edit-${ex.id}`} initial={editInitial} trainerId={trainerId} title={`Editar: ${ex.name}`}
-                    onSave={f=>{onUpdate(ex.id,{...f,tags:f.tags} as any);setEditId(null)}}
+                    onSave={f=>{onUpdate(ex.id,f);setEditId(null)}}
                     onCancel={()=>setEditId(null)}/>
                 ) : (
                   <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">

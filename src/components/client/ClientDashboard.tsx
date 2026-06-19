@@ -311,7 +311,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
         {/* Macros */}
         {(() => {
-          const macros = (plan as any)?.macros
+          const macros = plan?.macros
           if (!macros?.kcal) return null
           return (
             <div className="bg-card border border-border rounded-2xl p-4">

@@ -239,11 +239,11 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
             )}
 
             {/* Notas del entrenador */}
-            {(plan as any)?.coachNotes && (
+            {plan?.coachNotes && (
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Notas del entrenador</h2>
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{(plan as any).coachNotes}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{plan.coachNotes}</p>
                 </div>
               </div>
             )}

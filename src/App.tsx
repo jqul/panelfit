@@ -18,7 +18,7 @@ const SuperAdminPanel  = lazy(() => import('./components/trainer/SuperAdminPanel
 const DEMO_PROFILE: UserProfile = {
   uid: DEMO_TRAINER_ID, email: 'demo@panelfit.app', displayName: 'Alex Trainer',
   role: 'trainer', approved: true, createdAt: Date.now(),
-} as any
+}
 
 // ── Componentes pequeños ──────────────────────────────────
 function LoadingScreen() {
@@ -79,7 +79,7 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }
           <ClientPanel
             client={selectedClient}
             userProfile={DEMO_PROFILE}
-            allClients={DEMO_CLIENTS as any}
+            allClients={DEMO_CLIENTS}
             onClose={() => setSelectedClient(null)}
             demoPlan={demoPlan(selectedClient.id)}
             demoLogs={demoLogs(selectedClient.id)}
@@ -88,7 +88,7 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }
           <TrainerDashboard
             userProfile={DEMO_PROFILE}
             onLogout={() => { window.location.href = '/' }}
-            demoClients={DEMO_CLIENTS as any}
+            demoClients={DEMO_CLIENTS}
             onSelectClient={(c: ClientData) => setSelectedClient(c)}
           />
         )}

@@ -618,7 +618,7 @@ export function ProgramasTab({ trainerId }: Props) {
               <div key={prog.id}
                 className="bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/40 hover:shadow-sm transition-all cursor-pointer group"
                 onClick={() => setEditing(prog)}>
-                <div className="h-1.5" style={{ background: taskTypes.length ? `linear-gradient(90deg, ${TASK_TYPES.filter(t => taskTypes.includes(t.id as any)).map(t => t.color).join(', ')})` : '#e5e7eb' }} />
+                <div className="h-1.5" style={{ background: taskTypes.length ? `linear-gradient(90deg, ${TASK_TYPES.filter(t => taskTypes.includes(t.id)).map(t => t.color).join(', ')})` : '#e5e7eb' }} />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">

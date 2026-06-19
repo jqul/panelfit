@@ -58,7 +58,7 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
 function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin'): string {
   const url = `${window.location.origin}?c=${client.token}`
   const encuestaUrl = `${window.location.origin}?c=${client.token}&encuesta=1`
-  const objetivo = ((client as any).objetivo || 'general') as Objetivo
+  const objetivo = (client.objetivo as Objetivo) || 'general'
   const ctx = { clientName: client.name, diasSinEntrenar: stats.diasSinEntrenar, racha: stats.racha, adherencia: stats.adherencia, url }
   if (tipo === 'recordatorio') return getNudge('recordatorio', objetivo, ctx)
   return getNudge('checkin', objetivo, { ...ctx, url: encuestaUrl })
@@ -146,12 +146,12 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
 
       {/* Filtros */}
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
-        {[
+        {([
           { id: 'todos', label: `Todos (${stats.length})` },
           { id: 'riesgo', label: `En riesgo (${enRiesgo.length})` },
           { id: 'ok', label: `Buena adherencia` },
-        ].map(f => (
-          <button key={f.id} onClick={() => setFiltro(f.id as any)}
+        ] as const).map(f => (
+          <button key={f.id} onClick={() => setFiltro(f.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filtro === f.id ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
             {f.label}
           </button>

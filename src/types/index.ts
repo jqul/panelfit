@@ -23,6 +23,8 @@ export interface Exercise {
   requiresVideo?: boolean  // el entrenador pide vídeo de ejecución
   restSets?: number        // descanso entre series (seg)
   restAfter?: number       // descanso tras el ejercicio (seg)
+  seriesType?: string      // id de SeriesTypeDef (normal, dropset, etc.)
+  hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
 }
 
 export interface ExerciseVideoUpload {
@@ -30,7 +32,7 @@ export interface ExerciseVideoUpload {
   videoUrl: string
   uploadedAt: number
 }
-export interface DayPlan { title: string; focus: string; exercises: Exercise[] }
+export interface DayPlan { title: string; focus: string; exercises: Exercise[]; warmup?: string; warmupExercises?: Exercise[] }
 export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
 
 export interface TrainingPlan {
@@ -51,19 +53,22 @@ export interface TrainingPlan {
 // ── PLANTILLAS ────────────────────────────────────────
 export interface TrainingTemplate {
   id: string; trainerId: string; name: string; type: string; description: string
-  weeks: WeekPlan[]; createdAt: number; updatedAt: number
+  weeks: WeekPlan[]; createdAt: number; updatedAt: number; label_ids?: string[]
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
-export interface LibraryVideo { url: string; label?: string; especialidades?: Especialidad[] }  // especialidades del vídeo — fuente de verdad
+// `especialidades` admite tanto los valores fijos de Especialidad como IDs de
+// especialidades personalizadas que el entrenador puede crear, por eso es string[].
+export interface LibraryVideo { url: string; label?: string; especialidades?: string[] }  // especialidades del vídeo — fuente de verdad
 export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
-  category?: string; especialidades?: Especialidad[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
+  category?: string; especialidades?: string[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
+  tags?: string[]
 }
 
 // ── REGISTROS ─────────────────────────────────────────
 export interface LogSet { weight: string; reps: string; rir?: number }
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string }
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string }
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────

@@ -379,7 +379,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           weight: log?.sets?.[si]?.weight || '',
           reps: log?.sets?.[si]?.reps || String(numReps),
           done: log?.done || false,
-          rir: (log?.sets?.[si] as any)?.rir,
+          rir: log?.sets?.[si]?.rir,
         }
       }
     })
@@ -413,7 +413,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     const key = `ex_${dayKey}_r${ri}`
     const today = new Date().toISOString().split('T')[0]
     const currentLogs = logsRef.current
-    const prevRir = (currentLogs[key]?.sets?.[si] as any)?.rir
+    const prevRir = currentLogs[key]?.sets?.[si]?.rir
     onLogsChange({
       ...currentLogs,
       [key]: {
@@ -458,8 +458,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
 
     // Iniciar timer de descanso solo si no tiene hideRest
-    if (!setsRef.current[ri]?.[si]?.done && !(ex as any).hideRest) {
-      const restSecs = (ex as any).restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+    if (!setsRef.current[ri]?.[si]?.done && !ex.hideRest) {
+      const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
       setRestTimer({ secs: restSecs })
     }
   }, [day, dayKey, onLogsChange, plan])
@@ -552,13 +552,13 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       </div>
 
       {/* Calentamiento si existe */}
-      {(day as any).warmupExercises?.length > 0 && (
+      {(day.warmupExercises?.length || 0) > 0 && (
         <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
           <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5" /> Calentamiento
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {(day as any).warmupExercises.map((ex: any, i: number) => (
+            {(day.warmupExercises || []).map((ex, i) => (
               <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
                 <p className="font-semibold text-gray-700">{ex.name}</p>
                 {ex.sets && <p className="text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
@@ -578,8 +578,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           const record = isNewRecord(ri)
           const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
-          const restSecs = (ex as any).restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-          const hideRest = (ex as any).hideRest || false
+          const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+          const hideRest = ex.hideRest || false
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
 
@@ -638,7 +638,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
-                const prev = prevSets[si] as any
+                const prev = prevSets[si]
                 return (
                   <SetRow
                     key={`${ri}-${si}`}
