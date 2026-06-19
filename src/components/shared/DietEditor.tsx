@@ -263,7 +263,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           </div>
         )}
         <div className="space-y-3">
-          {sortedMeals.map((meal, i) => (
+          {sortedMeals.map((meal) => (
             <div key={meal.id} className="bg-card border border-border rounded-2xl p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex items-center gap-2 text-muted"><Clock className="w-4 h-4" /><span className="text-sm font-bold">{meal.time}</span></div>

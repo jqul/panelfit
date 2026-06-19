@@ -42,7 +42,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // Escuchar cambios de auth — si el cliente inicia sesión, cargar datos
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user && authState === 'needs_login') {
-        loadData(session.user.id)
+        loadData()
       }
     })
 
@@ -75,7 +75,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user && session.user.id === clientData.auth_user_id) {
       // Sesión activa y coincide — cargar datos
-      await loadData(session.user.id, clientData)
+      await loadData(clientData)
     } else {
       // Tiene cuenta pero no sesión — mostrar login
       setAuthState('needs_login')
@@ -83,7 +83,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }
 
-  const loadData = async (userId?: string, preloadedClient?: ClienteRow) => {
+  const loadData = async (preloadedClient?: ClienteRow) => {
     setLoading(true)
     const clientData = preloadedClient || client
     if (!clientData) { setLoading(false); return }
@@ -138,7 +138,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // Después del registro, refrescar sesión y cargar datos
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
-      await loadData(session.user.id)
+      await loadData()
     }
   }
 

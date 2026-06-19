@@ -19,7 +19,6 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
-import { LabelPill } from './labels'
 import { ProgramasTab } from './ProgramasTab'
 import { NutricionLibreria } from './NutricionLibreria'
 import { MensajesTab } from './MensajesTab'
@@ -119,7 +118,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     <div className="flex flex-col h-full">
       <div className="px-5 py-5 border-b border-border flex items-center justify-between">
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
+        <div className="flex items-center gap-1">
+          <NotificacionesBell trainerId={userProfile.uid} onSelectClient={(clientId) => {
+            const client = clients.find(c => c.id === clientId)
+            if (client) onSelectClient(client)
+          }} />
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
+        </div>
       </div>
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { ClientData, TrainingLogs, TrainingPlan } from '../../types'
+import { ClientData, TrainingLogs } from '../../types'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
-import { TrendingUp, TrendingDown, Award, Users, Zap, AlertTriangle, BarChart2 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Award, Zap, BarChart2 } from 'lucide-react'
 
 interface Props {
   clients: ClientData[]

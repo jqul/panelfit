@@ -53,7 +53,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438', seriesTypes }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, welcomeMsg, motivMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
@@ -358,7 +358,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   )
 }
 
-export function SelectorDias({ plan, clientId, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
+export function SelectorDias({ plan, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
   const diasSemana = plan?.diasSemana || 0
   const diasElegidos: number[] = plan?.diasElegidos || []
   const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']

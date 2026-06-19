@@ -9,13 +9,6 @@ interface Props {
   onLogout: () => void
 }
 
-const PASOS = [
-  { id: 1, label: 'Bienvenida' },
-  { id: 2, label: 'Tu trabajo' },
-  { id: 3, label: 'Tu marca' },
-  { id: 4, label: 'Listo' },
-]
-
 const ESPECIALIDADES = [
   { v: 'entrenador',           emoji: '💪', label: 'Entrenador personal' },
   { v: 'nutricion',            emoji: '🥗', label: 'Nutricionista' },

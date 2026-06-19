@@ -18,10 +18,6 @@ interface Props {
   trainerId?: string
 }
 
-const emptyExercise = (): Exercise => ({
-  name: '', sets: '3×10', weight: '', isMain: false,
-  comment: '', videoUrl: '', restSets: 90, restAfter: 120
-})
 const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmupExercises: [] } as any)
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
 

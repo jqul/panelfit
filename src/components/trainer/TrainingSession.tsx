@@ -64,9 +64,10 @@ function FinishConfirmModal({ incomplete, onConfirm, onCancel }: {
 }
 
 // ── Pantalla de comentario antes del resumen final ─────────────────────────
-function CommentScreen({ onSubmit, clientName }: {
+function CommentScreen({ onSubmit, saving }: {
   onSubmit: (comment: string) => void
   clientName?: string
+  saving?: boolean
 }) {
   const [comment, setComment] = useState('')
   return (
@@ -88,9 +89,9 @@ function CommentScreen({ onSubmit, clientName }: {
           className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed"
         />
         <div className="space-y-2">
-          <button onClick={() => onSubmit(comment)}
-            className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform">
-            {comment.trim() ? 'Enviar y terminar' : 'Terminar sin comentario'}
+          <button onClick={() => onSubmit(comment)} disabled={saving}
+            className="w-full py-4 bg-ink text-white rounded-2xl font-bold text-base active:scale-[0.98] transition-transform disabled:opacity-60">
+            {saving ? 'Guardando...' : comment.trim() ? 'Enviar y terminar' : 'Terminar sin comentario'}
           </button>
           {!comment.trim() && (
             <p className="text-center text-xs text-muted">Puedes dejarlo en blanco</p>
@@ -244,7 +245,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   }
 
   if (view === 'comment') {
-    return <CommentScreen onSubmit={submitComment} clientName={clientName} />
+    return <CommentScreen onSubmit={submitComment} clientName={clientName} saving={savingComment} />
   }
 
   if (view === 'finish') {

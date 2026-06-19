@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft, Save, X, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft, Save, X } from 'lucide-react'
 import { TrainerLabel, LabelSelector, LabelPill } from './labels'
 
 // ── Tipos ─────────────────────────────────────────────────
@@ -44,7 +44,6 @@ const MEAL_PRESETS = ['Desayuno', 'Media mañana', 'Comida', 'Merienda', 'Cena',
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 const TIPOS_DEFAULT = ['Volumen', 'Definición', 'Mantenimiento', 'Pérdida de grasa', 'Rendimiento', 'Cetogénica', 'Vegetariana', 'General']
 const LS_NUTR_TIPOS = (uid: string) => `pf_nutr_tipos_${uid}`
-const LABEL_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899','#6e5438','#64748b']
 const LS_KEY = (uid: string) => `pf_nutrition_templates_${uid}`
 
 function emptyMeal(name = 'Desayuno'): Meal {

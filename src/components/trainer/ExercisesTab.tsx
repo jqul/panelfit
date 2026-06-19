@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search, Settings2 } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
-import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
+import { ESPECIALIDADES } from '../../lib/especialidades'
 
 // ── Persistencia ───────────────────────────────────────────
 const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
@@ -175,7 +175,6 @@ function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onC
             {tags.length > 0 && (
               <div className="space-y-2">
                 {tags.map(tag => {
-                  const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
                   return (
                     <div key={tag.id} className="flex items-center gap-2">
                       <input value={tag.emoji} onChange={e=>editTag(tag.id,{emoji:e.target.value})}

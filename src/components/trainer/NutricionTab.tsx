@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2, Save, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 // ── Tipos ─────────────────────────────────────────────────
 interface Meal {
@@ -115,65 +115,6 @@ function MealCard({ meal, onChange, onDelete }: {
               placeholder="Nota (opcional)..."
               className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
           )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Day Editor ────────────────────────────────────────────
-function DayEditor({ day, onChange }: { day: NutriDay; onChange: (d: NutriDay) => void }) {
-  const [open, setOpen] = useState(true)
-  const totalKcal = day.meals.reduce((a, m) => a + (m.kcal || 0), 0)
-  const totalProt = day.meals.reduce((a, m) => a + (m.protein || 0), 0)
-
-  const updateMeal = (i: number, m: Meal) => {
-    const meals = [...day.meals]; meals[i] = m; onChange({ ...day, meals })
-  }
-  const deleteMeal = (i: number) => {
-    onChange({ ...day, meals: day.meals.filter((_, idx) => idx !== i) })
-  }
-  const addMeal = (preset?: string) => {
-    onChange({ ...day, meals: [...day.meals, emptyMeal(preset || 'Comida')] })
-  }
-
-  return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <button onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-bg-alt/30 transition-colors text-left">
-        <div className="flex-1">
-          <p className="font-semibold text-sm">{day.label}</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-muted">{day.meals.length} comidas</span>
-            {totalKcal > 0 && <span className="text-[10px] font-bold text-accent">{totalKcal} kcal</span>}
-            {totalProt > 0 && <span className="text-[10px] text-ok">{totalProt}g prot</span>}
-          </div>
-        </div>
-        {open ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
-      </button>
-
-      {open && (
-        <div className="border-t border-border px-4 py-3 space-y-2">
-          {day.meals.map((meal, i) => (
-            <MealCard key={meal.id} meal={meal} onChange={m => updateMeal(i, m)} onDelete={() => deleteMeal(i)} />
-          ))}
-          {/* Añadir comida */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {MEAL_PRESETS.filter(p => !day.meals.some(m => m.name === p)).map(preset => (
-              <button key={preset} onClick={() => addMeal(preset)}
-                className="px-2.5 py-1 rounded-lg text-xs border border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all">
-                + {preset}
-              </button>
-            ))}
-            <button onClick={() => addMeal()}
-              className="px-2.5 py-1 rounded-lg text-xs border border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all flex items-center gap-1">
-              <Plus className="w-3 h-3" /> Otra
-            </button>
-          </div>
-          {/* Notas del día */}
-          <input value={day.notes || ''} onChange={e => onChange({ ...day, notes: e.target.value })}
-            placeholder="Notas del día (opcional)..."
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none mt-1" />
         </div>
       )}
     </div>

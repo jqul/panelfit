@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, X, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, X } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
@@ -65,7 +65,7 @@ function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan, name: string, ty
 
 // ── Label pill ────────────────────────────────────────────
 
-export function TemplatesTab({ trainerId, clients }: Props) {
+export function TemplatesTab({ trainerId }: Props) {
   const [templates, setTemplates]     = useState<TrainingTemplate[]>([])
   const [labels, setLabels]           = useState<TrainerLabel[]>([])
   const [loading, setLoading]         = useState(true)

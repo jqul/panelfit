@@ -1,8 +1,8 @@
-import { TrainerLabel, LabelPill } from './labels'
+import { TrainerLabel } from './labels'
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
-  ClipboardList, StickyNote, Eye, TrendingUp, MessageSquare,
+  ClipboardList, StickyNote, Eye, TrendingUp,
   CheckCircle2, ClipboardCheck, Link, MessageCircle,
   User, Bell, Plus, Trash2, Calendar, Check, Edit2, ChevronUp, ChevronDown
 } from 'lucide-react'
@@ -85,14 +85,16 @@ function useTemplates(trainerId: string) {
     setTemplates(updated)
     localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
     const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name || 'Plantilla', description: (tmpl as any).description || '', plan: tmpl, created_at: Date.now(), updated_at: Date.now() }
-    await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+    const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+    if (error) { logError('ClientPanel:saveTemplate', error); toast('No se pudo guardar la plantilla en la nube', 'warn') }
   }
 
   const deleteTemplate = async (id: string) => {
     const updated = templates.filter(t => t.id !== id)
     setTemplates(updated)
     localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
-    await supabase.from('plan_templates').delete().eq('id', id)
+    const { error } = await supabase.from('plan_templates').delete().eq('id', id)
+    if (error) { logError('ClientPanel:deleteTemplate', error); toast('No se pudo eliminar la plantilla en la nube', 'warn') }
   }
 
   return { templates, saveTemplate, deleteTemplate }
@@ -917,7 +919,7 @@ function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: Train
   )
 }
 
-function DietaTabEntrenador({ clientId, plan, onChange, client, trainerId }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData; trainerId: string }) {
+function DietaTabEntrenador({ clientId, plan, onChange, trainerId }: { clientId: string; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; client: ClientData; trainerId: string }) {
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
       <DietEditor clientId={clientId} isTrainer={true} trainerId={trainerId}

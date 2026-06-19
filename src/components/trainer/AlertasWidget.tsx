@@ -75,7 +75,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
             <p className="text-[9px] font-bold uppercase tracking-wider text-warn">Vencidos</p>
           </div>
         )}
-        {allPending.slice(0, 8).map(({ alert, client }, i) => {
+        {allPending.slice(0, 8).map(({ alert, client }) => {
           const isOverdue = alert.date < today
           const isToday = alert.date === today
           return (

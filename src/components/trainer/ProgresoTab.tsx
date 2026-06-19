@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart
 } from 'recharts'
 import { TrendingUp, Dumbbell, Scale, Activity, ChevronDown, Camera, ChevronLeft, ChevronRight, X, Zap, AlertTriangle, Video, MessageCircle, Send, Clock } from 'lucide-react'
@@ -58,7 +58,7 @@ function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan |
   const [selected, setSelected] = useState(0)
   if (!ejercicios.length) return <EmptyState icon={<Dumbbell className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita al menos 2 sesiones por ejercicio" />
 
-  const [name, dates] = ejercicios[selected]
+  const [, dates] = ejercicios[selected]
   const data = Object.entries(dates).sort(([a], [b]) => a.localeCompare(b)).map(([date, best]) => ({
     fecha: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), kg: best
   }))

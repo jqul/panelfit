@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, X, Zap, Shield, Star } from 'lucide-react'
+import { Check, X, Zap, Shield } from 'lucide-react'
 
 const PLANES = [
   {

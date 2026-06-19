@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { ClientData, TrainingLogs, TrainingPlan } from '../../types'
-import { getNudge, getConsejo, OBJETIVOS, Objetivo } from '../../lib/nudges'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
+import { ClientData, TrainingLogs } from '../../types'
+import { getNudge, Objetivo } from '../../lib/nudges'
+import { TrendingUp, TrendingDown, Minus, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
 
 interface ClientStats {
   client: ClientData

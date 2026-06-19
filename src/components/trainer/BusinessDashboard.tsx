@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ClientData } from '../../types'
-import { TrendingUp, Users, CheckCircle2, BarChart2, Clock } from 'lucide-react'
+import { TrendingUp, Users, CheckCircle2, BarChart2 } from 'lucide-react'
 
 interface Props {
   trainerId: string
@@ -9,7 +9,7 @@ interface Props {
   planName?: string
 }
 
-export function BusinessDashboard({ trainerId, clients, logsMap, planName }: Props) {
+export function BusinessDashboard({ clients, logsMap, planName }: Props) {
   const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
 

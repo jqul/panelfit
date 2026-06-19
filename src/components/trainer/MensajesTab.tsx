@@ -25,7 +25,6 @@ interface SurveyTemplate {
   questions: any[]
 }
 
-const DAY_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual', once: 'Una vez' }
 
 function formatPhone(phone: string) {
@@ -55,9 +54,9 @@ function schedulesDueThisWeek(sched: SurveySchedule): boolean {
 }
 
 export function MensajesTab({ userProfile, clients }: Props) {
+  const [, setTrainerProfile] = useState<Record<string, any>>({})
   const [schedules, setSchedules] = useState<SurveySchedule[]>([])
   const [templates, setTemplates] = useState<SurveyTemplate[]>([])
-  const [trainerProfile, setTrainerProfile] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState<string | null>(null)
   const [showInactivos, setShowInactivos] = useState(false)

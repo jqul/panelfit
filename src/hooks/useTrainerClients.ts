@@ -32,7 +32,7 @@ export function useTrainerClients({ trainerId, demoClients, clientLimit = 999 }:
 
     const { data, error } = await supabase
       .from('clientes').select('*').eq('trainerId', trainerId)
-    if (error) { console.error('Error:', error); setLoading(false); return }
+    if (error) { console.error('Error:', error); toast('No se pudieron cargar los clientes', 'warn'); setLoading(false); return }
 
     const mapped = mapClientes(data || []).map((c, i) => ({
       ...c,
@@ -127,9 +127,11 @@ export function useTrainerClients({ trainerId, demoClients, clientLimit = 999 }:
   }
 
   const deleteClient = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
+    const { error } = await supabase.from('clientes').delete().eq('id', id)
+    if (error) { toast('Error al eliminar el cliente', 'warn'); return false }
     await fetchClients()
     toast('Cliente eliminado', 'ok')
+    return true
   }
 
   const limitReached = !demoClients && clients.length >= clientLimit

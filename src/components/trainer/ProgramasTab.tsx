@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
-  Plus, Trash2, Copy, ChevronDown, ChevronUp, Edit2, ArrowLeft,
-  Save, Tag, X, Check, Dumbbell, Timer, Camera, ClipboardList,
+  Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
+  Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
   MessageSquare, Video, Calendar
 } from 'lucide-react'
 import type { TrainerLabel } from './labels'

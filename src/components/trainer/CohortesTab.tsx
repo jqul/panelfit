@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import { ClientData } from '../../types'
 import {
-  Plus, Users, Trash2, X, Check, ChevronRight, Edit2,
-  Calendar, UserPlus, UserMinus, TrendingUp, Dumbbell
+  Plus, Users, X, Check, ChevronRight, Edit2, Trash2,
+  UserPlus, UserMinus
 } from 'lucide-react'
 
 interface Props {
@@ -159,7 +159,16 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
             <h3 className="font-serif font-bold text-xl">{selectedCohorte.nombre}</h3>
             {selectedCohorte.descripcion && <p className="text-sm text-muted">{selectedCohorte.descripcion}</p>}
           </div>
+          <button onClick={() => toggleActiva(selectedCohorte)}
+            title={selectedCohorte.activa ? 'Desactivar grupo' : 'Activar grupo'}
+            className={`p-2 rounded-xl hover:bg-bg-alt ${selectedCohorte.activa ? 'text-ok' : 'text-muted'}`}>
+            <Check className="w-4 h-4" />
+          </button>
           <button onClick={() => setEditing(selectedCohorte)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><Edit2 className="w-4 h-4" /></button>
+          <button onClick={() => { if (confirm(`¿Eliminar el grupo "${selectedCohorte.nombre}"?`)) deleteCohorte(selectedCohorte.id) }}
+            className="p-2 rounded-xl hover:bg-bg-alt text-muted hover:text-warn">
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Stats agregadas */}
