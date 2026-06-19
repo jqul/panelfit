@@ -56,10 +56,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [token])
 
   const checkAuth = async () => {
-    // 1. Cargar datos del cliente por token
-    const { data: clientData, error: cErr } = await supabase
-      .from('clientes').select('*').eq('token', token).maybeSingle()
+    // 1. Cargar datos del cliente por token (vía RPC: no se puede listar la tabla directamente)
+    const { data: rows, error: cErr } = await supabase.rpc('get_client_by_token', { p_token: token })
     if (cErr) logError('ClientView:loadClient', cErr)
+    const clientData = rows?.[0] || null
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
 

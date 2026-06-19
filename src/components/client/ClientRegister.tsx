@@ -59,11 +59,8 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
       }
 
       if (authData.user) {
-        // Vincular auth_user_id al cliente
-        const { error: updateError } = await supabase
-          .from('clientes')
-          .update({ auth_user_id: authData.user.id })
-          .eq('token', token)
+        // Vincular auth_user_id al cliente (RPC: solo si la fila aún no tiene cuenta vinculada)
+        const { error: updateError } = await supabase.rpc('claim_client_by_token', { p_token: token })
 
         if (updateError) {
           setError('Error al vincular cuenta. Contacta con tu entrenador.')
