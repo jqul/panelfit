@@ -194,6 +194,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     return (
       <ClientRegister
         token={token}
+        clientId={client.id}
         clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
         trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
         brandColor={trainerProf.brandColor}
@@ -210,6 +211,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     return (
       <ClientRegister
         token={token}
+        clientId={client.id}
         clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
         trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
         brandColor={trainerProf.brandColor}

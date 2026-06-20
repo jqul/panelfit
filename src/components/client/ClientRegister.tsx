@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS } from '../../lib/intakeQuestions'
 
 interface Props {
   token: string
+  clientId: string
   clientName: string
   trainerName: string
   brandColor?: string
@@ -11,9 +13,9 @@ interface Props {
   onComplete: () => void
 }
 
-type Step = 'register' | 'login' | 'success'
+type Step = 'register' | 'login' | 'intake' | 'success'
 
-export function ClientRegister({ token, clientName, trainerName, brandColor = '#6e5438', brandLogo, onComplete }: Props) {
+export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, onComplete }: Props) {
   const [step, setStep] = useState<Step>('register')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -21,6 +23,8 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [parqAnswers, setParqAnswers] = useState<Record<number, boolean | null>>({})
+  const [freeAnswers, setFreeAnswers] = useState<Record<string, string>>({})
 
   const firstName = clientName.split(' ')[0]
 
@@ -68,8 +72,7 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
           return
         }
 
-        setStep('success')
-        setTimeout(onComplete, 2000)
+        setStep('intake')
       }
     } catch (e) {
       setError('Error inesperado. Inténtalo de nuevo.')
@@ -94,6 +97,23 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
     setLoading(false)
   }
 
+  const finishIntake = async () => {
+    setLoading(true)
+    const respuestas = [
+      ...PARQ_QUESTIONS.map((pregunta, i) => ({
+        pregunta, respuesta: parqAnswers[i] === true ? 'Sí' : parqAnswers[i] === false ? 'No' : 'Sin responder'
+      })),
+      ...INTAKE_FREE_QUESTIONS.map(q => ({ pregunta: q.label, respuesta: freeAnswers[q.key]?.trim() || 'Sin responder' })),
+    ]
+    await supabase.from('checkins').insert({
+      id: crypto.randomUUID().replace(/-/g, ''),
+      clientId, respuestas, tipo: 'intake', createdAt: Date.now(),
+    })
+    setStep('success')
+    setLoading(false)
+    setTimeout(onComplete, 1800)
+  }
+
   if (step === 'success') {
     return (
       <div className="min-h-[100dvh] bg-bg flex flex-col items-center justify-center p-6 text-center">
@@ -106,6 +126,53 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
           {[0,1,2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: brandColor, animationDelay: `${i * 0.15}s` }} />
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 'intake') {
+    return (
+      <div className="min-h-[100dvh] bg-bg flex flex-col">
+        <div className="px-6 pt-10 pb-4">
+          <h1 className="text-xl font-serif font-bold">Antes de empezar...</h1>
+          <p className="text-sm text-muted mt-1.5">Unas preguntas rápidas de salud para que tu entrenador adapte tu plan con seguridad.</p>
+        </div>
+        <div className="flex-1 px-6 space-y-5 max-w-sm mx-auto w-full pb-8">
+          <div className="space-y-3">
+            {PARQ_QUESTIONS.map((q, i) => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-3.5">
+                <p className="text-sm mb-2.5">{q}</p>
+                <div className="flex gap-2">
+                  {[{ v: true, label: 'Sí' }, { v: false, label: 'No' }].map(opt => (
+                    <button key={opt.label} onClick={() => setParqAnswers(a => ({ ...a, [i]: opt.v }))}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        parqAnswers[i] === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            {INTAKE_FREE_QUESTIONS.map(q => (
+              <div key={q.key}>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">{q.label}</label>
+                <textarea value={freeAnswers[q.key] || ''} onChange={e => setFreeAnswers(a => ({ ...a, [q.key]: e.target.value }))}
+                  rows={2} placeholder="Opcional..."
+                  className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-sm outline-none resize-none focus:ring-2 focus:ring-accent/20" />
+              </div>
+            ))}
+          </div>
+
+          <button onClick={finishIntake} disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold text-base disabled:opacity-50 transition-opacity active:scale-[0.98]"
+            style={{ backgroundColor: brandColor, minHeight: '56px' }}>
+            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Continuar <ArrowRight className="w-4 h-4" /></>}
+          </button>
         </div>
       </div>
     )
@@ -184,7 +251,7 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
                 onChange={e => { setConfirmPassword(e.target.value); setError('') }}
                 placeholder="Repite la contraseña"
                 onKeyDown={e => e.key === 'Enter' && handleRegister()}
-                className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:ring-2 focus:border-accent transition-colors"
+                className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:border-accent transition-colors"
               />
               {confirmPassword && password === confirmPassword && (
                 <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ok" />
