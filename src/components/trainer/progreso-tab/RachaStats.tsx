@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { TrainingLogs } from '../../../types'
+import { getBadgeProgress } from '../../../lib/badges'
 
 export function RachaStats({ logs }: { logs: TrainingLogs }) {
   const stats = useMemo(() => {
@@ -26,9 +27,20 @@ export function RachaStats({ logs }: { logs: TrainingLogs }) {
     return { rachaActual, maxRacha, totalSesiones: dates.length, frecuencia, primera: dates[0], ultima: dates[dates.length-1] }
   }, [logs])
 
+  const { earned } = useMemo(() => getBadgeProgress(logs), [logs])
+
   if (!stats) return <div className="text-center py-8 text-muted text-sm">Sin sesiones registradas aún</div>
   return (
     <div className="space-y-4">
+      {earned.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {earned.map(b => (
+            <span key={b.id} title={b.label} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-accent/10 text-accent rounded-full text-xs font-semibold">
+              <span className="text-base">{b.emoji}</span> {b.label}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         {[
           { label: 'Racha actual', value: `${stats.rachaActual}d`, icon: '🔥', color: stats.rachaActual >= 7 ? 'text-warn' : 'text-ok' },

@@ -29,6 +29,32 @@ function EspBadge({ esp, small }: { esp: string; small?: boolean }) {
   )
 }
 
+function ExerciseAlternatives({ selected, library, onPick }: { selected: LibraryExercise; library: LibraryExercise[]; onPick: (ex: LibraryExercise) => void }) {
+  const alternatives = useMemo(() => {
+    if (!selected.category) return []
+    return library.filter(e => e.id !== selected.id && e.category === selected.category).slice(0, 4)
+  }, [selected, library])
+
+  if (!alternatives.length) return null
+
+  return (
+    <div className="mt-2 p-3 bg-bg rounded-xl border border-dashed border-border flex-shrink-0">
+      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">
+        Alternativas · {selected.category}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {alternatives.map(alt => (
+          <button key={alt.id} onClick={() => onPick(alt)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-card hover:border-accent hover:text-accent transition-all">
+            {alt.name}
+          </button>
+        ))}
+      </div>
+      <p className="text-[9px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
+    </div>
+  )
+}
+
 interface Props {
   library: LibraryExercise[]
   onSelect: (exercise: Exercise) => void
@@ -300,6 +326,10 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                 })}
               </div>
             </div>
+          )}
+
+          {selected && (
+            <ExerciseAlternatives selected={selected} library={library} onPick={handleSelect} />
           )}
 
           {selected?.description && (
