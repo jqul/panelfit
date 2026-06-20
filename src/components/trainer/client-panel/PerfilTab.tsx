@@ -3,6 +3,7 @@ import { Bell, Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react'
 import { ClientData, TrainingLogs } from '../../../types'
 import { TrainerLabel } from '../labels'
 import { toast } from '../../shared/Toast'
+import { HabitosSection } from './HabitosSection'
 
 export interface ClientAlert {
   id: string
@@ -302,6 +303,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         )}
       </div>
+
+      <HabitosSection clientId={client.id} />
 
       {/* Notas privadas */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>

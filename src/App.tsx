@@ -13,6 +13,7 @@ const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboar
 const ClientPanel      = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
 const ClientView       = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel  = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
+const PublicTrainerPage = lazy(() => import('./components/trainer/PublicTrainerPage').then(m => ({ default: m.PublicTrainerPage })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -99,7 +100,7 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }
 
 // ── App ───────────────────────────────────────────────────
 export default function App() {
-  const { view, userProfile, pendingUser, clientToken, logout, setView } = useAuthBootstrap()
+  const { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
   const { toasts } = useToast()
@@ -113,6 +114,11 @@ export default function App() {
       {/* Vista cliente por token */}
       {view === 'client-token' && clientToken && (
         <ClientView token={clientToken} showEncuesta={encuestaParam} />
+      )}
+
+      {/* Página pública del entrenador */}
+      {view === 'public-page' && publicSlug && (
+        <PublicTrainerPage slug={publicSlug} />
       )}
 
       {/* Auth */}

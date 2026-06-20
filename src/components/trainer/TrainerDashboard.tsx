@@ -28,6 +28,7 @@ import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
 import { CalendarTab } from './CalendarTab'
+import { ThemeToggle } from '../shared/ThemeToggle'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -121,6 +122,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       <div className="px-5 py-5 border-b border-border flex items-center justify-between">
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <NotificacionesBell trainerId={userProfile.uid} onSelectClient={(clientId) => {
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)

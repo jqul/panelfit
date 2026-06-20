@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page'
 
 export interface PendingUser {
   uid: string
@@ -30,6 +30,7 @@ export function useAuthBootstrap() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [clientToken, setClientToken] = useState<string | null>(null)
+  const [publicSlug, setPublicSlug] = useState<string | null>(null)
 
   const loadProfile = async (uid: string, email: string) => {
     const { data } = await supabase
@@ -69,6 +70,9 @@ export function useAuthBootstrap() {
   }
 
   useEffect(() => {
+    const pageMatch = window.location.pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
+    if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }
+
     const params = new URLSearchParams(window.location.search)
     const token = params.get('c')
     if (token) { setClientToken(token); setView('client-token'); return }
@@ -86,5 +90,5 @@ export function useAuthBootstrap() {
     return () => subscription.unsubscribe()
   }, [])
 
-  return { view, userProfile, pendingUser, clientToken, logout, setView }
+  return { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView }
 }

@@ -12,6 +12,8 @@ import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 import { NotFound } from '../shared/NotFound'
 import { ClientRegister } from './ClientRegister'
+import { HabitosWidget } from './HabitosWidget'
+import { ThemeToggle } from '../shared/ThemeToggle'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
@@ -289,6 +291,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
               plan
                 ? <>
                     <ProximasSesiones clientId={client.id} />
+                    <HabitosWidget clientId={client.id} />
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
@@ -435,6 +438,15 @@ function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: Training
       <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu cuenta</p>
         <p className="text-sm"><span className="text-muted">Nombre:</span> <span className="font-semibold">{client.name} {client.surname}</span></p>
+      </div>
+
+      {/* Tema */}
+      <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold">Modo oscuro</p>
+          <p className="text-xs text-muted">Cambia la apariencia de tu panel</p>
+        </div>
+        <ThemeToggle />
       </div>
 
       {/* Cerrar sesión */}

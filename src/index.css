@@ -17,6 +17,19 @@
   --color-warn:    #b02a20;
 }
 
+.dark {
+  --color-bg:      #1a1814;
+  --color-bg-alt:  #232019;
+  --color-card:    #2a2620;
+  --color-border:  #3c362c;
+  --color-ink:     #ede9e2;
+  --color-muted:   #a39a8c;
+  --color-accent:  #c9a070;
+  --color-accent2: #a8886a;
+  --color-ok:      #34c97a;
+  --color-warn:    #ef6b5e;
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   body {
