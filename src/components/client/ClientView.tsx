@@ -15,6 +15,7 @@ import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { BadgesWidget } from './BadgesWidget'
+import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
@@ -293,6 +294,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <>
+                    <ReadinessCheckin clientId={client.id} />
                     <ProximasSesiones clientId={client.id} />
                     <BadgesWidget logs={logs} />
                     <HabitosWidget clientId={client.id} />

@@ -5,6 +5,7 @@ import { TrainerLabel } from '../labels'
 import { toast } from '../../shared/Toast'
 import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
+import { ReadinessSummary } from './ReadinessSummary'
 
 export interface ClientAlert {
   id: string
@@ -304,6 +305,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         )}
       </div>
+
+      <ReadinessSummary clientId={client.id} />
 
       <IntakeSummary clientId={client.id} />
 
