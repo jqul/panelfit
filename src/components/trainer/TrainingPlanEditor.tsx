@@ -333,6 +333,7 @@ export function TrainingPlanEditor({
                                   onChange={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { weight: e.target.value }) }}
                                   onClick={e => e.stopPropagation()}
                                   placeholder="Peso / Intensidad"
+                                  title="Puedes escribir un % (ej. 75%) y se calculará el peso real a partir del 1RM estimado del cliente"
                                   className="text-xs bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 w-full mx-1"
                                 />
 

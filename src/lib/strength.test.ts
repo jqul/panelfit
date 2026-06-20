@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, rpeToTargetRIR, suggestNextLoad } from './strength'
+import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent } from './strength'
 
 describe('estimate1RM', () => {
   it('returns the weight itself for a single rep', () => {
@@ -51,5 +51,30 @@ describe('suggestNextLoad', () => {
 
   it('holds when there is no previous weight to base a suggestion on', () => {
     expect(suggestNextLoad(0, 3, 3).direction).toBe('hold')
+  })
+})
+
+describe('parsePercentWeight', () => {
+  it('parses a percentage string', () => {
+    expect(parsePercentWeight('75%')).toBe(75)
+    expect(parsePercentWeight('82.5%')).toBe(82.5)
+  })
+
+  it('returns null for non-percentage weight fields', () => {
+    expect(parsePercentWeight('80kg')).toBeNull()
+    expect(parsePercentWeight('')).toBeNull()
+    expect(parsePercentWeight('150%')).toBeNull()
+  })
+})
+
+describe('resolveWeightFromPercent', () => {
+  it('computes the target weight from a percentage and an estimated 1RM', () => {
+    expect(resolveWeightFromPercent('75%', 100)).toBe(75)
+    expect(resolveWeightFromPercent('80%', 137)).toBeCloseTo(109.5, 1)
+  })
+
+  it('returns null when the field is not a percentage or 1RM is unknown', () => {
+    expect(resolveWeightFromPercent('80kg', 100)).toBeNull()
+    expect(resolveWeightFromPercent('75%', 0)).toBeNull()
   })
 })

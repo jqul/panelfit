@@ -7,7 +7,7 @@ import {
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { rpeToTargetRIR, suggestNextLoad } from '../../lib/strength'
+import { rpeToTargetRIR, suggestNextLoad, estimate1RM, parsePercentWeight, resolveWeightFromPercent } from '../../lib/strength'
 
 interface Props {
   plan: TrainingPlan
@@ -502,6 +502,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return prev?.[1]?.sets || {}
   }
 
+  // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
+  const getBest1RM = (exName: string) => {
+    let best = 0
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logs[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone) return
+          Object.values(log.sets || {}).forEach(s => {
+            const rm = estimate1RM(parseFloat(s.weight) || 0, parseFloat(s.reps) || 0)
+            if (rm > best) best = rm
+          })
+        })
+      })
+    })
+    return best
+  }
+
   if (!day) return null
 
   const allComplete = pct === 100
@@ -602,6 +621,15 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
                   </div>
                   {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                  {parsePercentWeight(ex.weight) !== null && (() => {
+                    const best1RM = getBest1RM(ex.name)
+                    const target = resolveWeightFromPercent(ex.weight, best1RM)
+                    return target ? (
+                      <p className="text-[10px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
+                    ) : (
+                      <p className="text-[10px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
+                    )
+                  })()}
                 </div>
                 <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
               </div>

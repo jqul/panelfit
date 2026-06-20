@@ -51,3 +51,22 @@ export function suggestNextLoad(lastWeight: number, actualRIR: number, targetRIR
 function round(n: number): number {
   return Math.round(n * 2) / 2 // redondea a 0.5kg
 }
+
+/**
+ * Programación por %1RM (estilo JuggernautAI/RP): si el campo de peso del
+ * ejercicio es un porcentaje ("75%"), calcula el peso objetivo real a
+ * partir del mejor 1RM estimado histórico del cliente para ese ejercicio.
+ */
+export function parsePercentWeight(weightField: string): number | null {
+  const m = weightField?.trim().match(/^(\d{1,3}(?:\.\d+)?)\s*%$/)
+  if (!m) return null
+  const pct = parseFloat(m[1])
+  if (pct <= 0 || pct > 100) return null
+  return pct
+}
+
+export function resolveWeightFromPercent(weightField: string, estimated1RM: number): number | null {
+  const pct = parsePercentWeight(weightField)
+  if (pct === null || !estimated1RM) return null
+  return round(estimated1RM * (pct / 100))
+}
