@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers } from 'lucide-react'
+import { PERIODIZATION_BLOCKS, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
@@ -46,6 +47,7 @@ export function TrainingPlanEditor({
   const [showSeriesInfo, setShowSeriesInfo] = useState(false)
   const [showSeriesManager, setShowSeriesManager] = useState(false)
   const [openWarmup, setOpenWarmup] = useState<Record<number, boolean>>({})
+  const [showBlockPicker, setShowBlockPicker] = useState(false)
 
   const { types: seriesTypes, saveTypes } = useSeriesTypes(trainerId)
 
@@ -69,6 +71,21 @@ export function TrainingPlanEditor({
   }
 
   const addWeek = () => { updatePlan({ weeks: [...weeks, emptyWeek(weeks.length + 1)] }); setActiveWeek(weeks.length) }
+  const applyBlock = (block: PeriodizationBlock) => {
+    if (!currentWeek) return
+    const baseLabel = currentWeek.label.replace(/\s*\(bloque.*\)$/i, '')
+    const newWeeks: WeekPlan[] = block.steps.map((step, i) => ({
+      ...JSON.parse(JSON.stringify(currentWeek)),
+      label: `${baseLabel} (bloque ${i + 1}/${block.steps.length})`,
+      rpe: step.rpe,
+      isDeload: step.isDeload,
+      isCurrent: false,
+    }))
+    updatePlan({ weeks: [...weeks, ...newWeeks] })
+    setActiveWeek(weeks.length)
+    setShowBlockPicker(false)
+    toast(`${block.label} aplicado: ${newWeeks.length} semanas creadas ✓`, 'ok')
+  }
   const copyWeek = (wi: number) => {
     const copy: WeekPlan = JSON.parse(JSON.stringify(weeks[wi]))
     copy.label += ' (copia)'; copy.isCurrent = false
@@ -194,6 +211,12 @@ export function TrainingPlanEditor({
           <button onClick={addWeek} className="px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all">
             + Semana
           </button>
+          {currentWeek && (
+            <button onClick={() => setShowBlockPicker(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-accent/40 text-accent hover:border-accent transition-all">
+              <Layers className="w-3.5 h-3.5" /> Aplicar bloque
+            </button>
+          )}
         </div>
 
         {/* Semana activa */}
@@ -546,6 +569,24 @@ export function TrainingPlanEditor({
               className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
               <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">{c.name[0]}</div>
               <span className="text-sm font-medium">{c.name} {c.surname}</span>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización">
+        <div className="space-y-2">
+          <p className="text-sm text-muted mb-3">
+            Genera nuevas semanas clonando los días/ejercicios de "{currentWeek?.label}", ajustando el RPE objetivo y marcando la descarga según el bloque.
+          </p>
+          {PERIODIZATION_BLOCKS.map(block => (
+            <button key={block.id} onClick={() => applyBlock(block)}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
+              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0"><Layers className="w-4 h-4 text-accent" /></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">{block.label}</p>
+                <p className="text-xs text-muted">{block.desc}</p>
+              </div>
             </button>
           ))}
         </div>
