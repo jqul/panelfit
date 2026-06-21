@@ -13,6 +13,7 @@ import { FotosTab } from './progreso-tab/FotosTab'
 import { PesosSugeridosChart } from './progreso-tab/PesosSugeridosChart'
 import { FatigaChart } from './progreso-tab/FatigaChart'
 import { VideoFeedbackTab } from './progreso-tab/VideoFeedbackTab'
+import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
 
 interface Props {
   client: ClientData
@@ -21,7 +22,7 @@ interface Props {
   library?: { name: string; category?: string }[]
 }
 
-type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos'
+type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares'
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
@@ -30,6 +31,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
+  { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
   { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
   { id: 'volumen_grupo', icon: '🧩', label: 'Volumen por grupo', desc: 'Series semanales por grupo muscular' },
   { id: 'comparativa',  icon: '↔️', label: 'Esta semana',   desc: 'Esta semana vs anterior' },
@@ -74,6 +76,7 @@ export function ProgresoTab({ client, plan, logs = {}, library }: Props) {
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
         {section === 'distribucion' && <DistribucionChart  logs={logs} plan={plan} library={library} />}
         {section === 'rm'           && <RMChart            logs={logs} plan={plan} />}
+        {section === 'estandares'   && <StrengthStandardsChart client={client} logs={logs} plan={plan} />}
         {section === 'racha'        && <RachaStats         logs={logs} />}
         {section === 'fotos'        && <FotosTab           clientId={client.id} />}
       </div>
