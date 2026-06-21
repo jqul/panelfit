@@ -11,7 +11,7 @@ import { RMChart } from './progreso-tab/RMChart'
 import { RachaStats } from './progreso-tab/RachaStats'
 import { FotosTab } from './progreso-tab/FotosTab'
 import { PesosSugeridosChart } from './progreso-tab/PesosSugeridosChart'
-import { FatigaChart } from './progreso-tab/FatigaChart'
+import { RiesgoChart } from './progreso-tab/RiesgoChart'
 import { VideoFeedbackTab } from './progreso-tab/VideoFeedbackTab'
 import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
 
@@ -26,7 +26,7 @@ type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
-  { id: 'fatiga',        icon: '⚠️', label: 'Fatiga',         desc: 'Riesgo de sobreentrenamiento' },
+  { id: 'fatiga',        icon: '🚦', label: 'Riesgo',         desc: 'Semáforo de carga + bienestar' },
   { id: 'videos',        icon: '🎥', label: 'Vídeos',         desc: 'Feedback de técnica pendiente' },
   { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
@@ -65,7 +65,7 @@ export function ProgresoTab({ client, plan, logs = {}, library }: Props) {
           <p className="text-xs text-muted mt-0.5">{current.desc}</p>
         </div>
         {section === 'pesos_sugeridos' && <PesosSugeridosChart logs={logs} plan={plan} />}
-        {section === 'fatiga'       && <FatigaChart       logs={logs} />}
+        {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
