@@ -12,5 +12,5 @@ export const PARQ_QUESTIONS = [
 export const INTAKE_FREE_QUESTIONS = [
   { key: 'lesiones', label: 'Lesiones o condiciones médicas relevantes' },
   { key: 'objetivos', label: 'Objetivo principal con el entrenamiento' },
-  { key: 'disponibilidad', label: 'Disponibilidad horaria habitual' },
+  { key: 'disponibilidad', label: '¿Qué días y horas prefieres entrenar?' },
 ]

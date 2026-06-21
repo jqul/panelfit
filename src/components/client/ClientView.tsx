@@ -295,11 +295,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <>
-                    <ReadinessCheckin clientId={client.id} />
-                    <ProximasSesiones clientId={client.id} />
-                    <BadgesWidget logs={logs} />
-                    <HabitosWidget clientId={client.id} />
-                    <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
+                    {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
                       weightHistory={weightHistory} clientName={clientName} clientId={client.id}
@@ -307,6 +303,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
+                    {/* Secundario: check-ins, próximas citas, logros y hábitos */}
+                    <ReadinessCheckin clientId={client.id} />
+                    <ProximasSesiones clientId={client.id} />
+                    <BadgesWidget logs={logs} />
+                    <HabitosWidget clientId={client.id} />
+                    <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                   </>
                 : <NoPlanView />
             )}
