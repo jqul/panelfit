@@ -261,7 +261,7 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-serif font-bold text-lg">Grupos de clientes</h3>
-          <p className="text-xs text-muted mt-0.5">Organiza clientes en cohortes y mira progreso conjunto</p>
+          <p className="text-xs text-muted mt-0.5">Colectivos con seguimiento conjunto (ej. "Reto enero"). Para rasgos individuales (ej. "Lesión hombro") usa Etiquetas.</p>
         </div>
         <button onClick={() => setShowNew(true)}
           className="flex items-center gap-1.5 px-3 py-2 bg-ink text-white rounded-xl text-xs font-semibold hover:opacity-90">

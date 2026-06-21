@@ -5,7 +5,7 @@ import { toast } from '../shared/Toast'
 import {
   Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
   Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
-  MessageSquare, Video, Calendar
+  MessageSquare, Video, Calendar, Tag
 } from 'lucide-react'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
@@ -36,7 +36,7 @@ export interface Program {
   updated_at: number
 }
 
-interface Props { trainerId: string }
+interface Props { trainerId: string; onManageLabels: () => void }
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
@@ -464,7 +464,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgramasTab({ trainerId }: Props) {
+export function ProgramasTab({ trainerId, onManageLabels }: Props) {
   const [programs, setPrograms]   = useState<Program[]>([])
   const [labels, setLabels]       = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<{ id: string; name: string }[]>([])
@@ -534,10 +534,16 @@ export function ProgramasTab({ trainerId }: Props) {
           <h2 className="text-3xl font-serif font-bold">Programas</h2>
           <p className="text-muted text-sm mt-1">{programs.length} programa{programs.length !== 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => setEditing(emptyProgram(trainerId))}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-          <Plus className="w-4 h-4" /> Nuevo programa
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onManageLabels}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+            <Tag className="w-4 h-4" /> Etiquetas
+          </button>
+          <button onClick={() => setEditing(emptyProgram(trainerId))}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            <Plus className="w-4 h-4" /> Nuevo programa
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}

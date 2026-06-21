@@ -8,7 +8,7 @@ import {
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Send, Users2
+  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -27,6 +27,7 @@ import { AdherenciaTab } from './AdherenciaTab'
 import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
+import { EtiquetasTab } from './EtiquetasTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
@@ -34,7 +35,7 @@ import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'cohortes' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'nutricion' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'nutricion' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface Props {
@@ -103,6 +104,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
       { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
       { id: 'cohortes' as Tab, icon: Users2,          label: 'Grupos' },
+      { id: 'etiquetas' as Tab, icon: TagIcon,        label: 'Etiquetas' },
       { id: 'calendario' as Tab, icon: CalendarDays,  label: 'Calendario' },
       { id: 'mensajes'  as Tab, icon: MessageCircle,   label: 'Mensajes' },
       { id: 'encuestas' as Tab, icon: ClipboardList,   label: 'Encuestas' },
@@ -607,10 +609,11 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           )}
 
           {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
           {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
+          {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} />}
+          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} />}
           {activeTab === 'nutricion'  && <NutricionLibreria trainerId={userProfile.uid} />}
           {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
@@ -618,7 +621,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
-              <EncuestasTab trainerId={userProfile.uid} clients={clients} />
+              <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />
             </PlanGate>
           )}
           {activeTab === 'negocio' && (

@@ -3,13 +3,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, X } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 
 interface Props {
   trainerId: string
   clients: ClientData[]
+  onManageLabels: () => void
 }
 
 const LS_KEY      = (uid: string) => `pf_templates_${uid}`
@@ -20,11 +21,6 @@ const TIPOS_DEFAULT = [
   'Hipertrofia','Fuerza','Pérdida de grasa','Resistencia',
   'Rehabilitación','Rendimiento','General','Test inicial',
   'Iniciación','Mantenimiento','Peaking','Volumen','Definición',
-]
-
-const LABEL_COLORS = [
-  '#ef4444','#f97316','#eab308','#22c55e','#06b6d4',
-  '#3b82f6','#8b5cf6','#ec4899','#6e5438','#64748b',
 ]
 
 function emptyTemplate(trainerId: string): TrainingTemplate {
@@ -65,7 +61,7 @@ function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan, name: string, ty
 
 // ── Label pill ────────────────────────────────────────────
 
-export function TemplatesTab({ trainerId }: Props) {
+export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   const [templates, setTemplates]     = useState<TrainingTemplate[]>([])
   const [labels, setLabels]           = useState<TrainerLabel[]>([])
   const [loading, setLoading]         = useState(true)
@@ -83,11 +79,6 @@ export function TemplatesTab({ trainerId }: Props) {
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const library = useExerciseLibrary(trainerId)
-  const [showLabels, setShowLabels] = useState(false)
-  const [newLabelName, setNewLabelName] = useState('')
-  const [newLabelEmoji, setNewLabelEmoji] = useState('🏷️')
-  const [newLabelColor, setNewLabelColor] = useState('#6e5438')
-  const [savingLabel, setSavingLabel] = useState(false)
 
 
   useEffect(() => {
@@ -178,33 +169,6 @@ export function TemplatesTab({ trainerId }: Props) {
   const allTypes = [...TIPOS_DEFAULT, ...customTypes]
   const filtered = filterLabel ? templates.filter(t => (t.label_ids || []).includes(filterLabel)) : templates
 
-  const createLabel = async () => {
-    if (!newLabelName.trim()) return
-    setSavingLabel(true)
-    const label: TrainerLabel = {
-      id: `lbl_${Date.now()}`,
-      trainer_id: trainerId,
-      name: newLabelName.trim(),
-      color: newLabelColor,
-      emoji: newLabelEmoji,
-      survey_template_id: null,
-      created_at: Date.now(),
-    }
-    const { error } = await supabase.from('labels').insert(label)
-    if (error) { toast('Error al crear etiqueta', 'warn'); setSavingLabel(false); return }
-    setLabels(ls => [...ls, label])
-    setNewLabelName('')
-    setNewLabelEmoji('🏷️')
-    toast('Etiqueta creada ✓', 'ok')
-    setSavingLabel(false)
-  }
-
-  const deleteLabel = async (id: string) => {
-    await supabase.from('labels').delete().eq('id', id)
-    setLabels(ls => ls.filter(l => l.id !== id))
-    toast('Etiqueta eliminada', 'ok')
-  }
-
   // ── Editor ──
   if (editing && editingPlan) return (
     <div className="animate-fade-in flex flex-col gap-3">
@@ -259,8 +223,8 @@ export function TemplatesTab({ trainerId }: Props) {
           <p className="text-muted text-sm mt-1">Rutinas reutilizables con ejercicios completos</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowLabels(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border transition-all ${showLabels ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
+          <button onClick={onManageLabels}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
             <Tag className="w-4 h-4" /> Etiquetas
           </button>
           <button onClick={startNew}
@@ -269,49 +233,6 @@ export function TemplatesTab({ trainerId }: Props) {
           </button>
         </div>
       </div>
-
-      {/* Panel de gestión de etiquetas */}
-      {showLabels && (
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
-          <p className="text-sm font-bold">Gestionar etiquetas</p>
-          {/* Etiquetas existentes */}
-          {labels.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {labels.map(label => (
-                <div key={label.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl border text-xs font-semibold"
-                  style={{ backgroundColor: label.color + '18', borderColor: label.color + '40', color: label.color }}>
-                  <span>{label.emoji}</span>
-                  <span>{label.name}</span>
-                  <button onClick={() => deleteLabel(label.id)} className="ml-1 hover:opacity-70 p-0.5 rounded">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Crear nueva */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <input value={newLabelEmoji} onChange={e => setNewLabelEmoji(e.target.value)}
-              placeholder="🏷️" maxLength={2}
-              className="w-12 px-2 py-2 bg-bg border border-border rounded-lg text-center text-base outline-none" />
-            <input value={newLabelName} onChange={e => setNewLabelName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createLabel()}
-              placeholder="Nombre de etiqueta..."
-              className="flex-1 min-w-32 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-            <div className="flex gap-1.5">
-              {LABEL_COLORS.map(c => (
-                <button key={c} onClick={() => setNewLabelColor(c)}
-                  className={`w-6 h-6 rounded-full border-2 transition-all ${newLabelColor === c ? 'scale-110 border-ink' : 'border-transparent hover:scale-105'}`}
-                  style={{ backgroundColor: c }} />
-              ))}
-            </div>
-            <button onClick={createLabel} disabled={savingLabel || !newLabelName.trim()}
-              className="px-3 py-2 bg-ink text-white rounded-lg text-sm font-semibold disabled:opacity-40 flex items-center gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Crear
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Filtro etiquetas */}
       {labels.length > 0 && (

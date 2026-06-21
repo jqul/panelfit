@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, Tag } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
@@ -43,6 +43,7 @@ interface SurveyResponse {
 interface Props {
   trainerId: string
   clients: ClientData[]
+  onManageLabels: () => void
 }
 
 const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual', once: 'Una vez' }
@@ -280,13 +281,13 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function EncuestasTab({ trainerId, clients }: Props) {
+export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
   const [templates, setTemplates]   = useState<SurveyTemplate[]>([])
   const [schedules, setSchedules]   = useState<SurveySchedule[]>([])
   const [responses, setResponses]   = useState<SurveyResponse[]>([])
   const [labels, setLabels]         = useState<TrainerLabel[]>([])
   const [loading, setLoading]       = useState(true)
-  const [section, setSection]       = useState<'plantillas' | 'etiquetas' | 'programacion' | 'respuestas'>('plantillas')
+  const [section, setSection]       = useState<'plantillas' | 'programacion' | 'respuestas'>('plantillas')
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<SurveyTemplate | undefined>()
   const [showScheduleEditor, setShowScheduleEditor] = useState(false)
@@ -325,13 +326,6 @@ export function EncuestasTab({ trainerId, clients }: Props) {
     setSchedules(ss => ss.map(s => s.id === id ? { ...s, active } : s))
   }
 
-  // Vincular encuesta a etiqueta
-  const linkSurveyToLabel = async (labelId: string, surveyTemplateId: string | null) => {
-    await supabase.from('labels').update({ survey_template_id: surveyTemplateId }).eq('id', labelId)
-    setLabels(ls => ls.map(l => l.id === labelId ? { ...l, survey_template_id: surveyTemplateId } : l))
-    toast(surveyTemplateId ? 'Encuesta vinculada ✓' : 'Desvinculada', 'ok')
-  }
-
   const sendNow = (schedule: SurveySchedule) => {
     const tmpl = templates.find(t => t.id === schedule.template_id)
     if (!tmpl) return
@@ -345,7 +339,6 @@ export function EncuestasTab({ trainerId, clients }: Props) {
 
   const SECTIONS = [
     { id: 'plantillas',   label: '📝 Plantillas',   count: templates.length },
-    { id: 'etiquetas',    label: '🏷️ Etiquetas',    count: labels.length },
     { id: 'programacion', label: '📅 Programación', count: schedules.length },
     { id: 'respuestas',   label: '📊 Respuestas',   count: responses.length },
   ] as const
@@ -364,14 +357,20 @@ export function EncuestasTab({ trainerId, clients }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-serif font-bold">Encuestas</h2>
-          <p className="text-muted text-sm mt-1">Plantillas, etiquetas, programación y respuestas</p>
+          <p className="text-muted text-sm mt-1">Plantillas, programación y respuestas</p>
         </div>
         <div className="flex gap-2">
           {section === 'plantillas' && (
-            <button onClick={() => { setEditingTemplate(undefined); setShowTemplateEditor(true) }}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
-              <Plus className="w-4 h-4" /> Nueva
-            </button>
+            <>
+              <button onClick={onManageLabels}
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+                🏷️ Vincular a etiquetas
+              </button>
+              <button onClick={() => { setEditingTemplate(undefined); setShowTemplateEditor(true) }}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
+                <Plus className="w-4 h-4" /> Nueva
+              </button>
+            </>
           )}
           {section === 'programacion' && templates.length > 0 && (
             <button onClick={() => setShowScheduleEditor(true)}
@@ -435,52 +434,6 @@ export function EncuestasTab({ trainerId, clients }: Props) {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* ── ETIQUETAS → ENCUESTAS ── */}
-      {section === 'etiquetas' && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted">
-            Vincula cada etiqueta a una encuesta. Cuando asignes esa etiqueta a un cliente, podrás enviarle automáticamente su encuesta correspondiente.
-          </p>
-          {labels.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
-              <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="font-serif text-lg font-bold">Sin etiquetas</p>
-              <p className="text-sm mt-1">Crea etiquetas desde la pestaña Plantillas → botón "Etiquetas"</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {labels.map(label => (
-                <div key={label.id} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
-                  <LabelPill label={label} />
-                  <div className="flex-1">
-                    <p className="text-xs text-muted mb-1">Encuesta vinculada</p>
-                    <select
-                      value={label.survey_template_id || ''}
-                      onChange={e => linkSurveyToLabel(label.id, e.target.value || null)}
-                      className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20">
-                      <option value="">Sin encuesta vinculada</option>
-                      {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </div>
-                  {label.survey_template_id && (
-                    <div className="flex-shrink-0 w-6 h-6 bg-ok/10 rounded-full flex items-center justify-center">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {labels.length > 0 && templates.length === 0 && (
-            <div className="bg-warn/5 border border-warn/20 rounded-xl p-4">
-              <p className="text-sm text-warn font-semibold">⚠ Necesitas crear plantillas de encuesta primero</p>
-              <button onClick={() => setSection('plantillas')} className="mt-2 text-xs text-accent hover:underline">Ir a Plantillas →</button>
-            </div>
-          )}
         </div>
       )}
 
