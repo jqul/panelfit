@@ -29,6 +29,7 @@ import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
+import { PushToggle } from '../shared/PushToggle'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -802,6 +803,13 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 space-y-3 shadow-sm">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Notificaciones</h3>
+          <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
+        </div>
+        <PushToggle trainerId={userProfile.uid} />
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>

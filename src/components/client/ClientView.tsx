@@ -16,6 +16,7 @@ import { HabitosWidget } from './HabitosWidget'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
+import { PushToggle } from '../shared/PushToggle'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
@@ -453,6 +454,15 @@ function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: Training
           <p className="text-xs text-muted">Cambia la apariencia de tu panel</p>
         </div>
         <ThemeToggle />
+      </div>
+
+      {/* Notificaciones push */}
+      <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Notificaciones</p>
+          <p className="text-xs text-muted">Avisos de tu entrenador en este dispositivo</p>
+        </div>
+        <PushToggle clientId={client.id} />
       </div>
 
       {/* Cerrar sesión */}

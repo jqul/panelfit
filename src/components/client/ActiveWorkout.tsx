@@ -8,6 +8,7 @@ import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { rpeToTargetRIR, suggestNextLoad, estimate1RM, parsePercentWeight, resolveWeightFromPercent } from '../../lib/strength'
+import { sendPush } from '../../lib/usePushNotifications'
 
 interface Props {
   plan: TrainingPlan
@@ -751,7 +752,10 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               </div>
             )}
-            <button onClick={onFinish}
+            <button onClick={() => {
+                if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+                onFinish()
+              }}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
                 allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
               }`}>

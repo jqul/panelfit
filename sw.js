@@ -37,3 +37,28 @@ self.addEventListener('fetch', e => {
       .catch(() => caches.match(e.request).then(r => r || caches.match('/index.html')))
   )
 })
+
+self.addEventListener('push', e => {
+  let data = {}
+  try { data = e.data ? e.data.json() : {} } catch {}
+  const title = data.title || 'PanelFit'
+  const options = {
+    body: data.body || '',
+    icon: '/icon-192x192.png',
+    badge: '/icon-96x96.png',
+    data: { url: data.url || '/' },
+  }
+  e.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  const url = e.notification.data?.url || '/'
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then(clientsArr => {
+      const existing = clientsArr.find(c => c.url.includes(url))
+      if (existing) return existing.focus()
+      return self.clients.openWindow(url)
+    })
+  )
+})

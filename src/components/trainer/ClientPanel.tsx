@@ -15,6 +15,7 @@ import { PlanGate } from '../shared/PlanGate'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
+import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
 import { EntrenosTab } from './client-panel/EntrenosTab'
@@ -172,6 +173,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     }
     setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
     toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
+    sendPush({ clientId: client.id }, 'Nuevo plan asignado 🏋️', `Tu entrenador te ha asignado "${template.name}"`)
   }
 
   const importFromClient = async (clientId: string): Promise<TrainingPlan | null> => {
