@@ -30,6 +30,7 @@ import { CohortesTab } from './CohortesTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
+import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
@@ -49,6 +50,10 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     useTrainerClients({ trainerId: userProfile.uid, demoClients, clientLimit })
   const { labels } = useLabels(userProfile.uid)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (demoClients) return false
+    try { return localStorage.getItem(`pf_onboarding_done_${userProfile.uid}`) !== '1' } catch { return false }
+  })
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
@@ -191,8 +196,14 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     </div>
   )
 
+  const closeOnboarding = () => {
+    setShowOnboarding(false)
+    try { localStorage.setItem(`pf_onboarding_done_${userProfile.uid}`, '1') } catch {}
+  }
+
   return (
     <div className="flex min-h-[100dvh] overflow-hidden bg-bg">
+      {showOnboarding && <OnboardingTour onClose={closeOnboarding} />}
       <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border"><SidebarContent /></div>
       {sidebarOpen && (
         <>
