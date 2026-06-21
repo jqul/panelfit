@@ -30,11 +30,15 @@ export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
   const [notifs, setNotifs] = useState<Notificacion[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // Nombre de canal único por instancia: el sidebar de escritorio sigue montado
+  // en el DOM (solo oculto con CSS) cuando se abre el menú móvil, así que dos
+  // instancias de este componente pueden coexistir y no pueden compartir canal.
+  const channelName = useRef(`notificaciones_${Math.random().toString(36).slice(2)}`).current
 
   useEffect(() => {
     loadNotifs()
     // Realtime subscription
-    const channel = supabase.channel('notificaciones')
+    const channel = supabase.channel(channelName)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'notificaciones',
         filter: `trainer_id=eq.${trainerId}`
