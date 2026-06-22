@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers } from 'lucide-react'
-import { PERIODIZATION_BLOCKS, PeriodizationBlock } from '../../lib/periodizationBlocks'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell } from 'lucide-react'
+import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
+import { BlockManager } from './training-plan-editor/BlockManager'
+import { WendlerModal } from './training-plan-editor/WendlerModal'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
@@ -48,6 +50,9 @@ export function TrainingPlanEditor({
   const [showSeriesManager, setShowSeriesManager] = useState(false)
   const [openWarmup, setOpenWarmup] = useState<Record<number, boolean>>({})
   const [showBlockPicker, setShowBlockPicker] = useState(false)
+  const [showBlockManager, setShowBlockManager] = useState(false)
+  const [showWendler, setShowWendler] = useState(false)
+  const { blocks: periodizationBlocks, saveBlocks: savePeriodizationBlocks } = useCustomPeriodizationBlocks(trainerId)
 
   const { types: seriesTypes, saveTypes } = useSeriesTypes(trainerId)
 
@@ -85,6 +90,12 @@ export function TrainingPlanEditor({
     setActiveWeek(weeks.length)
     setShowBlockPicker(false)
     toast(`${block.label} aplicado: ${newWeeks.length} semanas creadas ✓`, 'ok')
+  }
+  const applyWendlerCycle = (newWeeks: WeekPlan[]) => {
+    updatePlan({ weeks: [...weeks, ...newWeeks] })
+    setActiveWeek(weeks.length)
+    setShowWendler(false)
+    toast(`Ciclo 5/3/1 creado: ${newWeeks.length} semanas ✓`, 'ok')
   }
   const copyWeek = (wi: number) => {
     const copy: WeekPlan = JSON.parse(JSON.stringify(weeks[wi]))
@@ -217,6 +228,10 @@ export function TrainingPlanEditor({
               <Layers className="w-3.5 h-3.5" /> Aplicar bloque
             </button>
           )}
+          <button onClick={() => setShowWendler(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-ok/40 text-ok hover:border-ok transition-all">
+            <Dumbbell className="w-3.5 h-3.5" /> Ciclo 5/3/1
+          </button>
         </div>
 
         {/* Semana activa */}
@@ -576,10 +591,16 @@ export function TrainingPlanEditor({
 
       <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización">
         <div className="space-y-2">
-          <p className="text-sm text-muted mb-3">
-            Genera nuevas semanas clonando los días/ejercicios de "{currentWeek?.label}", ajustando el RPE objetivo y marcando la descarga según el bloque.
-          </p>
-          {PERIODIZATION_BLOCKS.map(block => (
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm text-muted flex-1">
+              Genera nuevas semanas clonando los días/ejercicios de "{currentWeek?.label}", ajustando el RPE objetivo y marcando la descarga según el bloque.
+            </p>
+            <button onClick={() => setShowBlockManager(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent flex-shrink-0 ml-2">
+              <Pencil className="w-3 h-3" /> Editar
+            </button>
+          </div>
+          {periodizationBlocks.map(block => (
             <button key={block.id} onClick={() => applyBlock(block)}
               className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
               <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0"><Layers className="w-4 h-4 text-accent" /></div>
@@ -590,6 +611,14 @@ export function TrainingPlanEditor({
             </button>
           ))}
         </div>
+      </Modal>
+
+      <Modal open={showBlockManager} onClose={() => setShowBlockManager(false)} title="Gestionar bloques de periodización">
+        <BlockManager blocks={periodizationBlocks} onSave={savePeriodizationBlocks} onClose={() => setShowBlockManager(false)} />
+      </Modal>
+
+      <Modal open={showWendler} onClose={() => setShowWendler(false)} title="Generar ciclo 5/3/1">
+        <WendlerModal onGenerate={applyWendlerCycle} onClose={() => setShowWendler(false)} />
       </Modal>
     </div>
   )
