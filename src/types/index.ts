@@ -52,6 +52,7 @@ export interface TrainingPlan {
   macros?: { kcal: number; protein: number; carbs: number; fats: number; notaMacros?: string }
   weeks: WeekPlan[]
   programId?: string; programName?: string  // programa de plantilla asignado, si lo hay
+  customMessages?: Record<string, string>  // override por cliente de una plantilla de mensaje, keyed por id de plantilla
 }
 
 // ── PLANTILLAS ────────────────────────────────────────

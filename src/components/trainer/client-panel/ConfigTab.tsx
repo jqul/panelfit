@@ -3,6 +3,7 @@ import { ClientData, TrainingPlan } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { Button } from '../../shared/Button'
 import { toast } from '../../shared/Toast'
+import { MessageTemplatesSection } from './MessageTemplatesSection'
 
 const AUTOMATIONS = [
   { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
@@ -10,7 +11,7 @@ const AUTOMATIONS = [
   { key: 'autoInactividad', label: 'Alerta de inactividad', desc: '+3 días sin entrenar → WhatsApp', emoji: '⚠️' },
 ] as const
 
-export function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+export function ConfigTab({ client, plan, onChange, trainerId }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; trainerId: string }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
@@ -43,11 +44,7 @@ export function ConfigTab({ client, plan, onChange }: { client: ClientData; plan
           </div>
         ))}
       </div>
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-        <h4 className="text-sm font-semibold">Mensaje al cliente</h4>
-        <textarea rows={3} value={plan.message || ''} onChange={e => onChange({ ...plan, message: e.target.value })}
-          placeholder="Mensaje motivacional..." className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none" />
-      </div>
+      <MessageTemplatesSection client={client} plan={plan} onChange={onChange} trainerId={trainerId} />
       <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
         <h4 className="text-sm font-semibold">Acceso del cliente</h4>
         <div className="flex gap-2">

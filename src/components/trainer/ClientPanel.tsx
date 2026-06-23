@@ -170,6 +170,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       const url = `${window.location.origin}?c=${client.token}`
       const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa:\n\n${url}\n\n💪`)
       setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
+      // Push real y automático al cliente — esto sí llega sin que nadie tenga que pulsar nada
+      sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo programa`)
     }
     setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
     toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
@@ -355,7 +357,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} /></div>}
               {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
               {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
-              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} /></div>}
+              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} trainerId={userProfile.uid} /></div>}
             </div>
           )}
         </main>
