@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame } from 'lucide-react'
 import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { BlockManager } from './training-plan-editor/BlockManager'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
+import { ConditioningModal } from './training-plan-editor/ConditioningModal'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
@@ -52,6 +53,7 @@ export function TrainingPlanEditor({
   const [showBlockPicker, setShowBlockPicker] = useState(false)
   const [showBlockManager, setShowBlockManager] = useState(false)
   const [showWendler, setShowWendler] = useState(false)
+  const [showConditioning, setShowConditioning] = useState(false)
   const { blocks: periodizationBlocks, saveBlocks: savePeriodizationBlocks } = useCustomPeriodizationBlocks(trainerId)
 
   const { types: seriesTypes, saveTypes } = useSeriesTypes(trainerId)
@@ -96,6 +98,14 @@ export function TrainingPlanEditor({
     setActiveWeek(weeks.length)
     setShowWendler(false)
     toast(`Ciclo 5/3/1 creado: ${newWeeks.length} semanas ✓`, 'ok')
+  }
+  const applyConditioningDay = (day: DayPlan) => {
+    if (!currentWeek) return
+    const days = [...currentWeek.days, day]
+    updateWeek(activeWeek, { days })
+    setOpenDays(p => ({ ...p, [days.length - 1]: true }))
+    setShowConditioning(false)
+    toast(`"${day.title}" añadido a la semana ✓`, 'ok')
   }
   const copyWeek = (wi: number) => {
     const copy: WeekPlan = JSON.parse(JSON.stringify(weeks[wi]))
@@ -231,6 +241,10 @@ export function TrainingPlanEditor({
           <button onClick={() => setShowWendler(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-ok/40 text-ok hover:border-ok transition-all">
             <Dumbbell className="w-3.5 h-3.5" /> Ciclo 5/3/1
+          </button>
+          <button onClick={() => setShowConditioning(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-warn/40 text-warn hover:border-warn transition-all">
+            <Flame className="w-3.5 h-3.5" /> Acondicionamiento
           </button>
         </div>
 
@@ -619,6 +633,10 @@ export function TrainingPlanEditor({
 
       <Modal open={showWendler} onClose={() => setShowWendler(false)} title="Generar ciclo 5/3/1">
         <WendlerModal onGenerate={applyWendlerCycle} onClose={() => setShowWendler(false)} />
+      </Modal>
+
+      <Modal open={showConditioning} onClose={() => setShowConditioning(false)} title="Bloques de acondicionamiento">
+        <ConditioningModal trainerId={trainerId} onApply={applyConditioningDay} onClose={() => setShowConditioning(false)} />
       </Modal>
     </div>
   )
