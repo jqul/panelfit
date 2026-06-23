@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar } from 'lucide-react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 
@@ -375,9 +375,66 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
   )
 }
 
+// ── Feedback de técnica ───────────────────────────────────
+interface VideoFeedbackRow {
+  id: string; exercise_name: string; video_url: string; client_note: string | null
+  trainer_comment: string | null; trainer_comment_video_url: string | null
+  status: 'pendiente' | 'comentado'; created_at: number
+}
+
+function FeedbackTab({ clientId }: { clientId: string }) {
+  const [videos, setVideos] = useState<VideoFeedbackRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('video_feedback').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
+      .then(({ data }) => { setVideos((data || []) as VideoFeedbackRow[]); setLoading(false) })
+  }, [clientId])
+
+  if (loading) return <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
+
+  if (!videos.length) return (
+    <div className="text-center py-12 text-muted">
+      <Video className="w-8 h-8 mx-auto mb-2 opacity-30" />
+      <p className="text-sm">Pide feedback de técnica desde un ejercicio en tu entreno y aparecerá aquí.</p>
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      {videos.map(v => (
+        <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
+            <p className="text-sm font-semibold">{v.exercise_name}</p>
+            <span className={`text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+              {v.status === 'pendiente' ? 'Pendiente' : '✓ Comentado'}
+            </span>
+          </div>
+          <div className="p-4 space-y-3">
+            <video src={v.video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+            <p className="text-[10px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+            {v.trainer_comment && (
+              <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
+                <p className="text-sm">{v.trainer_comment}</p>
+              </div>
+            )}
+            {v.trainer_comment_video_url && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
+                <video src={v.trainer_comment_video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────
 export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
-  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records'>('calendario')
+  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback'>('calendario')
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
@@ -461,6 +518,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
     { id: 'records',    icon: '🏆', label: 'Récords' },
     { id: 'peso',       icon: '⚖️', label: 'Peso' },
     { id: 'fotos',      icon: '📸', label: 'Fotos' },
+    { id: 'feedback',   icon: '🎥', label: 'Feedback' },
   ] as const
 
   return (
@@ -483,6 +541,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
       {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
+      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} />}
 
       {subtab === 'peso' && (
         <div className="space-y-4">

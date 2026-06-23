@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Video, Clock, MessageCircle, Send, X } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Video, Clock, MessageCircle, Send, X, Upload, Loader2 } from 'lucide-react'
 import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
@@ -24,6 +24,8 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
   const [activeVideo, setActiveVideo] = useState<VideoFeedbackRow | null>(null)
   const [comment, setComment] = useState('')
   const [sending, setSending] = useState(false)
+  const [uploadingReply, setUploadingReply] = useState(false)
+  const replyFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { loadVideos() }, [client.id])
 
@@ -45,6 +47,27 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
     setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment: comment.trim(), status: 'comentado', commented_at: Date.now() } : vid))
     setComment('')
     setActiveVideo(null)
+  }
+
+  const uploadReplyVideo = async (videoId: string, file: File) => {
+    setUploadingReply(true)
+    try {
+      const ext = file.name.split('.').pop() || 'mp4'
+      const path = `reply/${videoId}_${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
+      const { error } = await supabase.from('video_feedback')
+        .update({ trainer_comment_video_url: urlData.publicUrl, status: 'comentado', commented_at: Date.now() })
+        .eq('id', videoId)
+      if (error) throw error
+      setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment_video_url: urlData.publicUrl, status: 'comentado', commented_at: Date.now() } : vid))
+      setActiveVideo(v => v && v.id === videoId ? { ...v, trainer_comment_video_url: urlData.publicUrl, status: 'comentado' } : v)
+    } catch {
+      // silencioso: el botón vuelve a estar disponible para reintentar
+    } finally {
+      setUploadingReply(false)
+    }
   }
 
   if (loading) return (
@@ -113,6 +136,19 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
                 <button onClick={() => sendComment(activeVideo.id)} disabled={!comment.trim() || sending}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40">
                   <Send className="w-4 h-4" /> {sending ? 'Enviando...' : 'Enviar comentario'}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted">O responde con vídeo</p>
+                {activeVideo.trainer_comment_video_url && (
+                  <video src={activeVideo.trainer_comment_video_url} controls className="w-full rounded-2xl bg-black max-h-60" />
+                )}
+                <input ref={replyFileRef} type="file" accept="video/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadReplyVideo(activeVideo.id, f) }} />
+                <button onClick={() => replyFileRef.current?.click()} disabled={uploadingReply}
+                  className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-xl text-sm font-semibold text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50">
+                  {uploadingReply ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Grabar o subir vídeo de respuesta</>}
                 </button>
               </div>
             </div>
