@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { TemplateGallery } from './TemplateGallery'
 
 interface Props {
   trainerId: string
@@ -78,6 +79,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
     try { return JSON.parse(localStorage.getItem(LS_TYPES(trainerId)) || '[]') } catch { return [] }
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [showGallery, setShowGallery] = useState(false)
   const library = useExerciseLibrary(trainerId)
 
 
@@ -108,7 +110,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
     ])
     if (tmplRes.data) {
-      const parsed: TrainingTemplate[] = tmplRes.data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description || '', label_ids: r.label_ids || [] }))
+      const parsed: TrainingTemplate[] = tmplRes.data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description || '', label_ids: r.label_ids || [], isPublic: r.is_public || false }))
       setTemplates(parsed); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(parsed))
     }
     if (labelRes.data) setLabels(labelRes.data)
@@ -116,11 +118,17 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   }
 
   const persist = async (tmpl: TrainingTemplate) => {
-    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [] }
+    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [], is_public: tmpl.isPublic || false }
     const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
     if (error) throw error
     const updated = templates.find(t => t.id === tmpl.id) ? templates.map(t => t.id === tmpl.id ? tmpl : t) : [tmpl, ...templates]
     setTemplates(updated); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+  }
+
+  const togglePublic = async (tmpl: TrainingTemplate) => {
+    const updated = { ...tmpl, isPublic: !tmpl.isPublic }
+    await persist(updated)
+    toast(updated.isPublic ? `"${tmpl.name}" ahora es público ✓` : `"${tmpl.name}" ya no es público`, 'ok')
   }
 
   const handleSave = async () => {
@@ -223,6 +231,10 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
           <p className="text-muted text-sm mt-1">Rutinas reutilizables con ejercicios completos</p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowGallery(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+            <Store className="w-4 h-4" /> Galería
+          </button>
           <button onClick={onManageLabels}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
             <Tag className="w-4 h-4" /> Etiquetas
@@ -308,10 +320,13 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {tmpl.type && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
                       <p className="text-xs text-muted">{tmpl.weeks?.length || 0} sem · {tmpl.weeks?.[0]?.days?.length || 0} días</p>
+                      {tmpl.isPublic && <span className="text-[10px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => togglePublic(tmpl)} title={tmpl.isPublic ? 'Dejar de compartir' : 'Compartir en la galería'}
+                      className={`p-1.5 rounded-lg ${tmpl.isPublic ? 'text-ok hover:text-warn' : 'text-muted hover:text-ok'}`}><Globe className="w-3.5 h-3.5" /></button>
                     <button onClick={() => startEdit(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => duplicate(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
                     <button onClick={() => deleteTemplate(tmpl.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -342,6 +357,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
           })}
         </div>
       )}
+      {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onImported={() => { setShowGallery(false); loadAll() }} />}
     </div>
   )
 }

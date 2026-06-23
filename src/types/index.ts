@@ -58,6 +58,7 @@ export interface TrainingPlan {
 export interface TrainingTemplate {
   id: string; trainerId: string; name: string; type: string; description: string
   weeks: WeekPlan[]; createdAt: number; updatedAt: number; label_ids?: string[]
+  isPublic?: boolean
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
