@@ -23,6 +23,48 @@ export interface CombinedRisk {
   reasons: string[]
 }
 
+export interface ACWRSignal {
+  acute: number      // tonelaje medio diario, últimos 7 días (incluyendo días de descanso)
+  chronic: number     // tonelaje medio diario, últimos 28 días
+  ratio: number | null
+  hasData: boolean
+}
+
+/**
+ * Ratio de carga aguda:crónica (ACWR), modelo de Gabbett (2016) sobre el
+ * tonelaje (peso × reps) diario. Promedia sobre TODOS los días de la
+ * ventana, incluyendo descansos, tal como exige el método original —
+ * a diferencia del resto de señales de este fichero, esto no es una
+ * heurística: es el cálculo real agudo(7d)/crónico(28d).
+ * Zonas: <0.8 desentrenamiento, 0.8–1.3 óptima, 1.3–1.5 moderado, >1.5 alto.
+ */
+export function computeACWR(logs: TrainingLogs, today: Date = new Date()): ACWRSignal {
+  const dayTonnage: Record<string, number> = {}
+  Object.values(logs).forEach(log => {
+    if (!log.done || !log.dateDone) return
+    const vol = Object.values(log.sets || {}).reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+    dayTonnage[log.dateDone] = (dayTonnage[log.dateDone] || 0) + vol
+  })
+
+  const avgWindow = (days: number) => {
+    let sum = 0
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today); d.setDate(today.getDate() - i)
+      sum += dayTonnage[d.toISOString().slice(0, 10)] || 0
+    }
+    return sum / days
+  }
+
+  const acute = avgWindow(7)
+  const chronic = avgWindow(28)
+  return {
+    acute: Math.round(acute),
+    chronic: Math.round(chronic),
+    ratio: chronic > 0 ? Math.round((acute / chronic) * 100) / 100 : null,
+    hasData: Object.keys(dayTonnage).length > 0,
+  }
+}
+
 /** Señal de carga de entrenamiento: RIR semanal, cambio de volumen, sesiones. */
 export function computeTrainingSignal(logs: TrainingLogs): TrainingSignal {
   const now = new Date()
@@ -69,13 +111,26 @@ export function computeReadinessSignal(rows: { sleep: number; soreness: number; 
 }
 
 /**
- * Combina ambas señales en un único semáforo de riesgo (estilo ACWR /
- * "training stress" de apps como TrainingPeaks o Whoop, simplificado).
+ * Combina la señal de ACWR real, una heurística de RIR/volumen/frecuencia
+ * y el bienestar autoinformado en un único semáforo de riesgo.
  */
-export function combineRisk(training: TrainingSignal, readiness: ReadinessSignal): CombinedRisk {
+export function combineRisk(training: TrainingSignal, readiness: ReadinessSignal, acwr?: ACWRSignal): CombinedRisk {
   let level: RiskLevel = 'bajo'
   const reasons: string[] = []
   const escalate = (next: RiskLevel) => { if (next === 'alto' || level === 'bajo') level = next }
+
+  if (acwr?.ratio !== null && acwr?.ratio !== undefined) {
+    if (acwr.ratio > 1.5) {
+      escalate('alto')
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (>1.5) — riesgo de lesión elevado según el modelo de Gabbett`)
+    } else if (acwr.ratio >= 1.3) {
+      escalate('moderado')
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (1.3–1.5) — zona de precaución`)
+    } else if (acwr.ratio < 0.8 && acwr.chronic > 0) {
+      escalate('moderado')
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (<0.8) — desentrenamiento, una vuelta brusca a la carga habitual también eleva el riesgo`)
+    }
+  }
 
   if (training.avgRirThis !== null && training.avgRirThis <= 1.5) {
     escalate('alto')

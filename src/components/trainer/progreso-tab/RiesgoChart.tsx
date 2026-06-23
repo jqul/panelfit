@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { AlertTriangle, Moon } from 'lucide-react'
 import { TrainingLogs } from '../../../types'
 import { supabase } from '../../../lib/supabase'
-import { computeTrainingSignal, computeReadinessSignal, combineRisk } from '../../../lib/loadRisk'
+import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR } from '../../../lib/loadRisk'
 import { EmptyState } from './helpers'
 
 const RISK_META = {
@@ -24,7 +24,8 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
 
   const training = useMemo(() => computeTrainingSignal(logs), [logs])
   const readiness = useMemo(() => computeReadinessSignal(readinessRows), [readinessRows])
-  const { level, reasons } = useMemo(() => combineRisk(training, readiness), [training, readiness])
+  const acwr = useMemo(() => computeACWR(logs), [logs])
+  const { level, reasons } = useMemo(() => combineRisk(training, readiness, acwr), [training, readiness, acwr])
 
   if (loadingReadiness) return <div className="py-8 text-center text-muted text-sm">Calculando...</div>
 
@@ -44,6 +45,14 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
       </div>
 
       <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card border border-border rounded-2xl p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2" title="Tonelaje medio diario, agudo (7d) ÷ crónico (28d) — modelo de Gabbett">ACWR</p>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between"><span className="text-muted">Ratio agudo:crónico</span><span className="font-bold">{acwr.ratio !== null ? acwr.ratio.toFixed(2) : '—'}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Agudo (7d)</span><span className="font-bold">{acwr.acute} kg·rep/día</span></div>
+            <div className="flex justify-between"><span className="text-muted">Crónico (28d)</span><span className="font-bold">{acwr.chronic} kg·rep/día</span></div>
+          </div>
+        </div>
         <div className="bg-card border border-border rounded-2xl p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Entrenamiento</p>
           <div className="space-y-1.5 text-xs">
