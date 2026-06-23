@@ -362,9 +362,14 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prev
   )
 })
 
+const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '👍']
+
 export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish, trainerId }: Props) {
   const day = plan.weeks[weekIdx]?.days[dayIdx]
   const dayKey = `w${weekIdx}_d${dayIdx}`
+  const [reactionEmoji, setReactionEmoji] = useState<string | null>(null)
+  const [reactionComment, setReactionComment] = useState('')
+  const [showReactionComment, setShowReactionComment] = useState(false)
 
   type SetState = { weight: string; reps: string; done: boolean; rir?: number }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
@@ -752,8 +757,31 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               </div>
             )}
-            <button onClick={() => {
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
+              <div className="flex justify-center gap-2">
+                {REACTION_EMOJIS.map(emoji => (
+                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true) }}
+                    className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${reactionEmoji === emoji ? 'bg-accent/15 ring-2 ring-accent' : 'bg-bg hover:bg-bg-alt'}`}>
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {showReactionComment && (
+                <textarea value={reactionComment} onChange={e => setReactionComment(e.target.value)} rows={2}
+                  placeholder="¿Algo que comentar? (opcional)"
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+              )}
+            </div>
+            <button onClick={async () => {
                 if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+                if (reactionEmoji) {
+                  const today = new Date().toISOString().split('T')[0]
+                  await supabase.from('session_reactions').insert({
+                    clientId: plan.clientId, dayTitle: day.title, date: today,
+                    emoji: reactionEmoji, comment: reactionComment.trim() || null,
+                  })
+                }
                 onFinish()
               }}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${

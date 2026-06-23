@@ -1,7 +1,23 @@
+import { useState, useEffect } from 'react'
 import { ClipboardList, CheckCircle2, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../../types'
+import { supabase } from '../../../lib/supabase'
 
-export function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: TrainingPlan | null }) {
+interface SessionReaction { date: string; emoji: string; comment: string | null }
+
+export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan: TrainingPlan | null; clientId?: string }) {
+  const [reactions, setReactions] = useState<Record<string, SessionReaction>>({})
+
+  useEffect(() => {
+    if (!clientId) return
+    supabase.from('session_reactions').select('date, emoji, comment').eq('clientId', clientId)
+      .then(({ data }) => {
+        const byDate: Record<string, SessionReaction> = {}
+        ;(data || []).forEach((r: SessionReaction) => { byDate[r.date] = r })
+        setReactions(byDate)
+      })
+  }, [clientId])
+
   const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
     if (!log.dateDone) return
@@ -24,6 +40,12 @@ export function EntrenosTab({ logs, plan }: { logs: TrainingLogs; plan: Training
             <p className="text-sm font-semibold capitalize flex-1">{new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
             <span className="text-xs text-muted">{byDate[fecha].length} ejercicios</span>
           </div>
+          {reactions[fecha] && (
+            <div className="flex items-start gap-2 px-4 py-2.5 bg-accent/5 border-b border-border">
+              <span className="text-lg flex-shrink-0">{reactions[fecha].emoji}</span>
+              {reactions[fecha].comment && <p className="text-xs text-ink/80 italic mt-1">"{reactions[fecha].comment}"</p>}
+            </div>
+          )}
           <div className="divide-y divide-border">
             {byDate[fecha].map(({ exName, sets, key }) => {
               const setsArr = Object.values(sets || {})
