@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Bell, Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react'
-import { ClientData, TrainingLogs } from '../../../types'
+import { ClientData, TrainingLogs, TrainingPlan } from '../../../types'
 import { TrainerLabel } from '../labels'
 import { toast } from '../../shared/Toast'
 import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
 import { ReadinessSummary } from './ReadinessSummary'
+import { MessageTemplatesSection } from './MessageTemplatesSection'
 
 export interface ClientAlert {
   id: string
@@ -23,11 +24,14 @@ export const ALERT_TYPES = [
   { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
 ] as const
 
-export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts }: {
+export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId }: {
   client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
   onUpdate: (updates: Record<string, any>) => Promise<void>
   labels?: TrainerLabel[]
   onSaveAlerts: (alerts: ClientAlert[]) => Promise<void>
+  plan?: TrainingPlan | null
+  onPlanChange?: (p: TrainingPlan) => void
+  trainerId?: string
 }) {
   const c = client
   const [editing, setEditing] = useState(false)
@@ -337,6 +341,10 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           className="w-full flex items-center justify-center gap-3 py-3.5 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
           📱 Abrir WhatsApp con {c.name}
         </button>
+      )}
+
+      {plan && onPlanChange && trainerId && (
+        <MessageTemplatesSection client={client} plan={plan} onChange={onPlanChange} trainerId={trainerId} />
       )}
     </div>
   )
