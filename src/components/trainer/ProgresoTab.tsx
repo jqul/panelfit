@@ -14,12 +14,14 @@ import { PesosSugeridosChart } from './progreso-tab/PesosSugeridosChart'
 import { RiesgoChart } from './progreso-tab/RiesgoChart'
 import { VideoFeedbackTab } from './progreso-tab/VideoFeedbackTab'
 import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
+import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
 
 interface Props {
   client: ClientData
   plan?: TrainingPlan | null
   logs?: TrainingLogs
   library?: { name: string; category?: string }[]
+  trainerId?: string
 }
 
 type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares'
@@ -42,9 +44,11 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
 ]
 
-export function ProgresoTab({ client, plan, logs = {}, library }: Props) {
+export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Props) {
+  const tier = useTrainerTier(trainerId)
+  const visibleSections = tier === 'basico' ? SECTIONS.filter(s => !ADVANCED_SECTIONS.has(s.id)) : SECTIONS
   const [section, setSection] = useState<Section>('fuerza')
-  const current = SECTIONS.find(s => s.id === section)!
+  const current = visibleSections.find(s => s.id === section) || visibleSections[0]
   return (
     <div className="max-w-2xl space-y-5 animate-fade-in">
       <div>
@@ -52,7 +56,7 @@ export function ProgresoTab({ client, plan, logs = {}, library }: Props) {
         <p className="text-xs text-muted mt-0.5">Análisis de rendimiento y evolución</p>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {SECTIONS.map(s => (
+        {visibleSections.map(s => (
           <button key={s.id} onClick={() => setSection(s.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${section === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-accent'}`}>
             {s.icon} {s.label}
