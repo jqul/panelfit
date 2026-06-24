@@ -127,7 +127,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-border flex items-center justify-between" style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}>
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -135,7 +135,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)
           }} />
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
         </div>
       </div>
       <div className="px-4 py-3 border-b border-border">
@@ -214,10 +214,11 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
         </>
       )}
       <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
-        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
+        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => !limitReached && setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
+          <button onClick={() => !limitReached && setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><UserPlus className="w-5 h-5" /></button>
         </div>
 
         <div className="p-4 lg:p-6">
