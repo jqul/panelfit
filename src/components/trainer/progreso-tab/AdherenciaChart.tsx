@@ -36,7 +36,7 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
       {data.length >= 2 ? (
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
               <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
               <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} unit="%" />

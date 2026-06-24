@@ -13,7 +13,7 @@ interface Props {
   onComplete: () => void
 }
 
-type Step = 'register' | 'login' | 'intake' | 'success'
+type Step = 'register' | 'login' | 'forgot' | 'intake' | 'success'
 
 export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, onComplete }: Props) {
   const [step, setStep] = useState<Step>('register')
@@ -25,6 +25,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   const [error, setError] = useState('')
   const [parqAnswers, setParqAnswers] = useState<Record<number, boolean | null>>({})
   const [freeAnswers, setFreeAnswers] = useState<Record<string, string>>({})
+  const [forgotSent, setForgotSent] = useState(false)
 
   const firstName = clientName.split(' ')[0]
 
@@ -97,6 +98,16 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     setLoading(false)
   }
 
+  const handleForgotPassword = async () => {
+    setError('')
+    if (!email.trim()) { setError('Introduce tu email'); return }
+    setLoading(true)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: window.location.origin })
+    setLoading(false)
+    if (resetError) { setError(resetError.message); return }
+    setForgotSent(true)
+  }
+
   const finishIntake = async () => {
     setLoading(true)
     const respuestas = [
@@ -126,6 +137,41 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
           {[0,1,2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: brandColor, animationDelay: `${i * 0.15}s` }} />
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 'forgot') {
+    return (
+      <div className="min-h-[100dvh] bg-bg flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-full max-w-sm">
+          {forgotSent ? (
+            <>
+              <div className="w-16 h-16 bg-ok/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="w-8 h-8 text-ok" /></div>
+              <h2 className="text-xl font-serif font-bold mb-2">Revisa tu email</h2>
+              <p className="text-sm text-muted leading-relaxed">Te hemos mandado un enlace a <strong>{email}</strong> para elegir una nueva contraseña.</p>
+              <button onClick={() => { setForgotSent(false); setStep('login') }} className="mt-6 w-full py-3.5 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: brandColor }}>Volver al inicio de sesión</button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-serif font-bold mb-2">¿Olvidaste tu contraseña?</h1>
+              <p className="text-sm text-muted mb-8">Te mandamos un enlace a tu email para elegir una nueva.</p>
+              <div className="text-left">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Email</label>
+                <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                  placeholder="tu@email.com"
+                  className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:ring-2 focus:border-accent transition-colors" />
+              </div>
+              {error && <p className="mt-3 text-sm text-warn text-left">{error}</p>}
+              <button onClick={handleForgotPassword} disabled={loading}
+                className="w-full mt-6 py-3.5 rounded-2xl text-white font-bold text-sm disabled:opacity-50" style={{ backgroundColor: brandColor }}>
+                {loading ? 'Enviando...' : 'Enviar enlace'}
+              </button>
+              <button onClick={() => { setError(''); setStep('login') }} className="w-full mt-4 text-sm text-muted hover:text-ink">← Volver al inicio de sesión</button>
+            </>
+          )}
         </div>
       </div>
     )
@@ -258,6 +304,12 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
               )}
             </div>
           </div>
+        )}
+
+        {step === 'login' && (
+          <button onClick={() => { setError(''); setStep('forgot') }} className="text-sm text-muted hover:underline" style={{ color: brandColor }}>
+            ¿Olvidaste tu contraseña?
+          </button>
         )}
 
         {/* Error */}
