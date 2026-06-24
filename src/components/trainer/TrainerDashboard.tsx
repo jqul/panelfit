@@ -739,17 +739,6 @@ const TEMAS = [
   { id: 'grafito', nombre: 'Grafito', color: '#455a64', bg: '#f4f6f7' },
   { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
 ]
-const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
-
-function EmojiBar({ onPick }: { onPick: (e: string) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1 mb-2 p-2 bg-bg-alt rounded-xl border border-border/50">
-      {EMOJIS.map(em => (
-        <button key={em} type="button" onClick={() => onPick(em)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-base transition-colors">{em}</button>
-      ))}
-    </div>
-  )
-}
 
 function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
@@ -762,9 +751,6 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [brandBgColor, setBrandBgColor] = useState(saved.brandBgColor || '#f0f7f4')
   const [phone, setPhone] = useState(saved.phone || '')
   const [bio, setBio] = useState(saved.bio || '')
-  const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
-  const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
-  const [restDayMsg, setRestDayMsg] = useState(saved.restDayMsg || '')
   const [temaId, setTemaId] = useState(saved.temaId || 'bosque')
   const [saving, setSaving] = useState(false)
 
@@ -772,7 +758,10 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, welcomeMsg, motivMsg, restDayMsg, updatedAt: Date.now() }
+    // Fusiona con el perfil más reciente en BD para no pisar campos que gestionan
+    // otras pantallas (tier, periodizationBlocks, seriesTypes...).
+    const { data } = await supabase.from('entrenadores').select('profile').eq('uid', userProfile.uid).maybeSingle()
+    const profile = { ...(data?.profile || {}), displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, updatedAt: Date.now() }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
@@ -806,7 +795,7 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
           <span className="ml-auto text-white/40 text-[10px]">Preview</span>
         </div>
         <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
-          {welcomeMsg ? <p className="font-medium" style={{ color: brandColor }}>{welcomeMsg}</p> : <p className="text-muted/60 italic text-xs">Tu mensaje de bienvenida aquí</p>}
+          <p className="text-muted/60 italic text-xs">Así se verá el panel de tus clientes</p>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
@@ -867,11 +856,9 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
             : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
+      <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label><EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} /><textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label><EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} /><textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label><EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} /><input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+        <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>

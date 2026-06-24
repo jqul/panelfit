@@ -53,7 +53,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, welcomeMsg, motivMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
   const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
@@ -346,9 +346,11 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             <div>
               <p className="text-sm font-bold">{streak} días seguidos entrenando</p>
               <p className="text-xs text-muted mt-0.5">
-                {streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
-                 streak >= 5 ? '¡Casi una semana! Sigue así.' :
-                 '¡Buen ritmo! Mantén la racha.'}
+                {restDayMsg || (
+                  streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
+                  streak >= 5 ? '¡Casi una semana! Sigue así.' :
+                  '¡Buen ritmo! Mantén la racha.'
+                )}
               </p>
             </div>
           </div>

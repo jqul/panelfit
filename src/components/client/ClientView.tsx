@@ -18,6 +18,7 @@ import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
 import { PushToggle } from '../shared/PushToggle'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -36,6 +37,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
   const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
 
   useEffect(() => {
@@ -133,6 +135,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           if (local.seriesTypes?.length) setSeriesTypes(local.seriesTypes)
         } catch {}
       }
+      const { data: tmplData } = await supabase
+        .from('plantillas_mensajes').select('*').eq('trainerId', clientData.trainerId)
+      if (tmplData) setMessageTemplates(tmplData as MessageTemplate[])
     }
 
     setAuthState('authenticated')
@@ -229,10 +234,17 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const brandName = trainerProfile.brandName || 'PanelFit'
   const brandLogo = trainerProfile.brandLogo || null
   const brandColor = trainerProfile.brandColor || '#6e5438'
-  const welcomeMsg = trainerProfile.welcomeMsg || ''
-  const motivMsg = trainerProfile.motivMsg || ''
-  const restDayMsg = trainerProfile.restDayMsg || ''
   const brandBg = trainerProfile.brandBg || ''
+
+  const resolveTemplate = (tipo: 'nueva_rutina' | 'descanso' | 'racha') => {
+    const tmpl = messageTemplates.find(t => t.tipo === tipo)
+    if (!tmpl) return ''
+    const override = plan?.customMessages?.[tmpl.id]
+    return resolveMessage(override ?? tmpl.texto, clientName)
+  }
+  const welcomeMsg = resolveTemplate('nueva_rutina')
+  const motivMsg = resolveTemplate('descanso')
+  const restDayMsg = resolveTemplate('racha')
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
