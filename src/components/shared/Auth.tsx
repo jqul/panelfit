@@ -48,7 +48,10 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
     if (data.user) {
-      await supabase.from('entrenadores').upsert({ id: data.user.id, nombre: name, email, activo: false }, { onConflict: 'id' })
+      await supabase.from('entrenadores').upsert(
+        { uid: data.user.id, displayName: name, email, approved: false, rol: 'trainer', createdAt: Date.now() },
+        { onConflict: 'uid' }
+      )
     }
     setLoading(false); setRegistered(true)
   }
