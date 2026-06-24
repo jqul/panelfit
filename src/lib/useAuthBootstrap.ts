@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password'
 
 export interface PendingUser {
   uid: string
@@ -83,7 +83,8 @@ export function useAuthBootstrap() {
       else setView('auth')
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') { setView('reset-password'); return }
       if (session?.user) loadProfile(session.user.id, session.user.email || '')
       else { setView('auth'); setUserProfile(null) }
     })

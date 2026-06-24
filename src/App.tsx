@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react'
 import { supabase } from './lib/supabase'
 import { ClientData } from './types'
 import { Auth } from './components/shared/Auth'
+import { ResetPassword } from './components/shared/ResetPassword'
 import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_ID,
   DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
@@ -119,6 +120,11 @@ export default function App() {
       {/* Página pública del entrenador */}
       {view === 'public-page' && publicSlug && (
         <PublicTrainerPage slug={publicSlug} />
+      )}
+
+      {/* Establecer nueva contraseña (enlace de recuperación) */}
+      {view === 'reset-password' && (
+        <ResetPassword onDone={() => setView('auth')} />
       )}
 
       {/* Auth */}

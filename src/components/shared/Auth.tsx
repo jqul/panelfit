@@ -24,7 +24,7 @@ const TESTIMONIALS = [
 ]
 
 export function Auth({ onAuth, onDemo }: AuthProps) {
-  const [view, setView] = useState<'landing' | 'login' | 'register'>('landing')
+  const [view, setView] = useState<'landing' | 'login' | 'register' | 'forgot'>('landing')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -32,6 +32,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [registered, setRegistered] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
 
   const handleLogin = async () => {
     setError(''); setLoading(true)
@@ -39,6 +40,15 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     if (error) setError('Email o contraseña incorrectos')
     else onAuth()
     setLoading(false)
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) { setError('Introduce tu email'); return }
+    setError(''); setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    setLoading(false)
+    if (error) { setError(error.message); return }
+    setForgotSent(true)
   }
 
   const handleRegister = async () => {
@@ -161,6 +171,40 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     </div>
   )
 
+  if (view === 'forgot') return (
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <h1 className="text-center text-3xl font-serif font-bold mb-8">Panel<span className="text-accent italic">Fit</span></h1>
+        {forgotSent ? (
+          <div className="bg-card border border-border rounded-2xl p-8 text-center">
+            <div className="w-14 h-14 bg-ok/10 rounded-full flex items-center justify-center mx-auto mb-4"><Check className="w-7 h-7 text-ok" /></div>
+            <h2 className="font-serif font-bold text-xl mb-2">Revisa tu email</h2>
+            <p className="text-muted text-sm leading-relaxed">Te hemos mandado un enlace a <strong>{email}</strong> para elegir una nueva contraseña.</p>
+            <button onClick={() => { setForgotSent(false); setView('login') }} className="mt-6 w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90">Volver al inicio de sesión</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-2xl font-serif font-bold mb-2">¿Olvidaste tu contraseña?</h2>
+            <p className="text-muted text-sm mb-8">Te mandamos un enlace a tu email para elegir una nueva.</p>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                placeholder="tu@email.com"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm" />
+            </div>
+            {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+            <button onClick={handleForgotPassword} disabled={loading}
+              className="w-full mt-6 py-3.5 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
+              {loading ? 'Enviando...' : 'Enviar enlace'}
+            </button>
+            <button onClick={() => { setError(''); setView('login') }} className="w-full mt-4 text-center text-sm text-muted hover:text-ink">← Volver al inicio de sesión</button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-bg flex">
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-ink text-white p-16">
@@ -208,6 +252,9 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
               </div>
             </div>
           </div>
+          {view === 'login' && (
+            <button onClick={() => { setError(''); setView('forgot') }} className="mt-2 text-sm text-muted hover:text-accent">¿Olvidaste tu contraseña?</button>
+          )}
           {error && <p className="mt-3 text-sm text-warn">{error}</p>}
           <button className="w-full mt-6 py-3.5 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             onClick={view === 'login' ? handleLogin : handleRegister} disabled={loading}>
