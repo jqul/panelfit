@@ -44,24 +44,49 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
 ]
 
+const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
+  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos'] },
+  { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'adherencia', 'racha'] },
+  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'fotos', 'distribucion'] },
+  { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
+]
+
 export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Props) {
   const tier = useTrainerTier(trainerId)
   const visibleSections = tier === 'basico' ? SECTIONS.filter(s => !ADVANCED_SECTIONS.has(s.id)) : SECTIONS
+  const visibleIds = new Set(visibleSections.map(s => s.id))
+  const groups = GROUPS.map(g => ({ ...g, sections: g.sections.filter(id => visibleIds.has(id)) })).filter(g => g.sections.length > 0)
+
   const [section, setSection] = useState<Section>('fuerza')
+  const activeGroup = groups.find(g => g.sections.includes(section)) || groups[0]
   const current = visibleSections.find(s => s.id === section) || visibleSections[0]
+
   return (
     <div className="max-w-2xl space-y-5 animate-fade-in">
       <div>
         <h3 className="font-serif font-bold text-lg">Progreso de {client.name}</h3>
         <p className="text-xs text-muted mt-0.5">Análisis de rendimiento y evolución</p>
       </div>
-      <div className="flex gap-2 flex-wrap">
-        {visibleSections.map(s => (
-          <button key={s.id} onClick={() => setSection(s.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${section === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-accent'}`}>
-            {s.icon} {s.label}
+
+      <div className="flex gap-1.5 flex-wrap">
+        {groups.map(g => (
+          <button key={g.id} onClick={() => setSection(g.sections[0])}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-all ${activeGroup?.id === g.id ? 'bg-ink text-white' : 'bg-bg-alt text-muted hover:text-ink'}`}>
+            {g.icon} {g.label}
           </button>
         ))}
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {activeGroup?.sections.map(id => {
+          const s = SECTIONS.find(x => x.id === id)!
+          return (
+            <button key={s.id} onClick={() => setSection(s.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${section === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-accent'}`}>
+              {s.icon} {s.label}
+            </button>
+          )
+        })}
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="mb-4">
