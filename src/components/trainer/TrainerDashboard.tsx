@@ -2,7 +2,7 @@ import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useLabels } from '../../hooks/useLabels'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
@@ -33,6 +33,7 @@ import { PushToggle } from '../shared/PushToggle'
 import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
 import { PublicPageEditor } from './PublicPageEditor'
+import { EquipoSection } from './EquipoSection'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
@@ -40,12 +41,16 @@ type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface Props {
   userProfile: UserProfile
+  realUserProfile?: UserProfile
+  teamContext?: { uid: string; displayName: string } | null
+  onSwitchTeam?: (team: { uid: string; displayName: string } | null) => void
   onLogout: () => void
   onSelectClient: (client: ClientData) => void
   demoClients?: ClientData[]
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
+export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients }: Props) {
+  const realUid = realUserProfile?.uid || userProfile.uid
   const clientLimit = userProfile.clientLimit ?? 999
   const { clients, logsMap, loading, addClient, deleteClient, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, clientLimit })
@@ -66,6 +71,16 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const library = useExerciseLibrary(userProfile.uid)
+  const [myTeams, setMyTeams] = useState<{ uid: string; displayName: string }[]>([])
+
+  useEffect(() => {
+    if (demoClients) return
+    supabase.from('team_members').select('owner_id').eq('member_uid', realUid).then(async ({ data }) => {
+      if (!data?.length) { setMyTeams([]); return }
+      const { data: owners } = await supabase.from('entrenadores').select('uid, "displayName"').in('uid', data.map(d => d.owner_id))
+      setMyTeams((owners || []).map(o => ({ uid: o.uid, displayName: o.displayName || 'Entrenador' })))
+    })
+  }, [realUid, demoClients])
 
   const { activeToday, noPlan, noActivity7d, activePrevWeek, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
@@ -137,6 +152,19 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
         </div>
       </div>
+      {myTeams.length > 0 && onSwitchTeam && (
+        <div className="px-4 py-2.5 border-b border-border bg-bg-alt/30">
+          <label className="block text-[9px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
+          <select value={teamContext?.uid || ''} onChange={e => {
+              const sel = myTeams.find(t => t.uid === e.target.value)
+              onSwitchTeam(sel || null)
+            }}
+            className="w-full text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1.5 outline-none">
+            <option value="">Tu cuenta</option>
+            {myTeams.map(t => <option key={t.uid} value={t.uid}>Equipo de {t.displayName}</option>)}
+          </select>
+        </div>
+      )}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center font-bold text-accent text-sm flex-shrink-0">
@@ -614,7 +642,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} />}
-          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
+          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
@@ -739,7 +767,7 @@ const TEMAS = [
   { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
 ]
 
-function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
+function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProfile; realUid: string; onLogout: () => void }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
   const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
@@ -861,6 +889,9 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
       </div>
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <PublicPageEditor userProfile={userProfile} />
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <EquipoSection ownerId={realUid} />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>

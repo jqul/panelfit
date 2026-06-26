@@ -104,7 +104,12 @@ export default function App() {
   const { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
+  const [teamContext, setTeamContext] = useState<{ uid: string; displayName: string } | null>(null)
   const { toasts } = useToast()
+
+  // Si estamos viendo la cuenta de un compañero de equipo, usamos su uid en vez del nuestro
+  // para clientes/plantillas/biblioteca, pero conservamos nuestro email/rol reales.
+  const scopedProfile = teamContext && userProfile ? { ...userProfile, uid: teamContext.uid, displayName: teamContext.displayName } : userProfile
 
   const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
 
@@ -146,13 +151,16 @@ export default function App() {
         ) : selectedClient ? (
           <ClientPanel
             client={selectedClient}
-            userProfile={userProfile}
+            userProfile={scopedProfile!}
             allClients={allClients}
             onClose={() => setSelectedClient(null)}
           />
         ) : (
           <TrainerDashboard
-            userProfile={userProfile}
+            userProfile={scopedProfile!}
+            realUserProfile={userProfile}
+            teamContext={teamContext}
+            onSwitchTeam={setTeamContext}
             onLogout={logout}
             onSelectClient={(client: ClientData) => {
               setSelectedClient(client)
