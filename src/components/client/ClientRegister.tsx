@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS } from '../../lib/intakeQuestions'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION } from '../../lib/intakeQuestions'
 
 interface Props {
   token: string
@@ -26,6 +26,9 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   const [parqAnswers, setParqAnswers] = useState<Record<number, boolean | null>>({})
   const [freeAnswers, setFreeAnswers] = useState<Record<string, string>>({})
   const [forgotSent, setForgotSent] = useState(false)
+  const [waiverAccepted, setWaiverAccepted] = useState(false)
+  const [waiverExpanded, setWaiverExpanded] = useState(false)
+  const [signedName, setSignedName] = useState('')
 
   const firstName = clientName.split(' ')[0]
 
@@ -120,6 +123,11 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
       id: crypto.randomUUID().replace(/-/g, ''),
       clientId, respuestas, tipo: 'intake', createdAt: Date.now(),
     })
+    if (waiverAccepted && signedName.trim()) {
+      await supabase.from('waivers').insert({
+        clientId, signed_name: signedName.trim(), accepted_at: Date.now(), text_version: WAIVER_TEXT_VERSION,
+      })
+    }
     setStep('success')
     setLoading(false)
     setTimeout(onComplete, 1800)
@@ -214,7 +222,23 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
             ))}
           </div>
 
-          <button onClick={finishIntake} disabled={loading}
+          <div className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5">
+            <button onClick={() => setWaiverExpanded(v => !v)} className="text-xs font-semibold uppercase tracking-wider text-muted text-left">
+              Descargo de responsabilidad {waiverExpanded ? '▲' : '▼'}
+            </button>
+            {waiverExpanded && <p className="text-xs text-muted leading-relaxed">{WAIVER_TEXT}</p>}
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={waiverAccepted} onChange={e => setWaiverAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 flex-shrink-0" />
+              <span className="text-sm">He leído y acepto el descargo de responsabilidad</span>
+            </label>
+            {waiverAccepted && (
+              <input value={signedName} onChange={e => setSignedName(e.target.value)} placeholder="Escribe tu nombre completo como firma"
+                className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            )}
+          </div>
+
+          <button onClick={finishIntake} disabled={loading || !waiverAccepted || !signedName.trim()}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold text-base disabled:opacity-50 transition-opacity active:scale-[0.98]"
             style={{ backgroundColor: brandColor, minHeight: '56px' }}>
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Continuar <ArrowRight className="w-4 h-4" /></>}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { NotFound } from '../shared/NotFound'
+import { Check } from 'lucide-react'
 
 interface PublicPageData {
   bio: string
@@ -18,6 +19,12 @@ export function PublicTrainerPage({ slug }: Props) {
   const [loading, setLoading] = useState(true)
   const [displayName, setDisplayName] = useState('')
   const [data, setData] = useState<PublicPageData | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [leadName, setLeadName] = useState('')
+  const [leadContact, setLeadContact] = useState('')
+  const [leadMessage, setLeadMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
 
   useEffect(() => {
     supabase.rpc('get_public_trainer_page', { p_slug: slug }).then(({ data: rows }) => {
@@ -34,6 +41,17 @@ export function PublicTrainerPage({ slug }: Props) {
   )
 
   if (!data) return <NotFound />
+
+  const sendLead = async () => {
+    if (!leadName.trim()) return
+    setSending(true)
+    const { error } = await supabase.rpc('submit_lead', {
+      p_slug: slug, p_name: leadName.trim(), p_email: leadContact.includes('@') ? leadContact.trim() : null,
+      p_phone: !leadContact.includes('@') ? leadContact.trim() || null : null, p_message: leadMessage.trim() || null,
+    })
+    setSending(false)
+    if (!error) setSent(true)
+  }
 
   const waUrl = data.whatsapp
     ? `https://wa.me/${data.whatsapp.replace(/\s+/g, '').replace(/^\+/, '')}?text=${encodeURIComponent(`Hola ${displayName}, vi tu página y me gustaría más información sobre entrenamiento.`)}`
@@ -75,6 +93,31 @@ export function PublicTrainerPage({ slug }: Props) {
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
             💬 Contactar por WhatsApp
           </a>
+        )}
+
+        {sent ? (
+          <div className="bg-ok/10 border border-ok/20 rounded-2xl p-4 text-center">
+            <Check className="w-5 h-5 text-ok mx-auto mb-1" />
+            <p className="text-sm font-semibold text-ok">¡Gracias! Te contactaré pronto.</p>
+          </div>
+        ) : showForm ? (
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
+            <input value={leadName} onChange={e => setLeadName(e.target.value)} placeholder="Tu nombre"
+              className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            <input value={leadContact} onChange={e => setLeadContact(e.target.value)} placeholder="Email o teléfono"
+              className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            <textarea value={leadMessage} onChange={e => setLeadMessage(e.target.value)} rows={2} placeholder="Cuéntame qué buscas (opcional)"
+              className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+            <button onClick={sendLead} disabled={!leadName.trim() || sending}
+              className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40">
+              {sending ? 'Enviando...' : 'Enviar'}
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setShowForm(true)}
+            className="w-full py-3.5 border border-border rounded-2xl text-sm font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+            📩 Pedir más información
+          </button>
         )}
 
         {data.instagram && (

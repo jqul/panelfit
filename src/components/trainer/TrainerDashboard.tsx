@@ -33,6 +33,7 @@ import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
 import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
+import { PublicPageEditor } from './PublicPageEditor'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'nutricion' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
@@ -860,6 +861,9 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
       <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
         <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <PublicPageEditor userProfile={userProfile} />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>

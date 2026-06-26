@@ -115,6 +115,25 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
     setMemberships(m => m.filter(x => !(x.cohorte_id === cohorteId && x.client_id === clientId)))
   }
 
+  // Ranking del grupo: nº de sesiones por miembro, en el rango del reto (fecha_inicio/fecha_fin)
+  // si está definido, o en los últimos 7 días por defecto.
+  const getLeaderboard = (cohorte: Cohorte) => {
+    const members = getMembersOf(cohorte.id)
+    const desde = cohorte.fecha_inicio ? new Date(cohorte.fecha_inicio + 'T00:00:00').getTime() : Date.now() - 7 * 86400000
+    const hasta = cohorte.fecha_fin ? new Date(cohorte.fecha_fin + 'T23:59:59').getTime() : Date.now()
+    return members.map(c => {
+      const logs = logsMap[c.id] || {}
+      const sesiones = new Set(
+        Object.values(logs).filter((l: any) => {
+          if (!l.done || !l.dateDone) return false
+          const t = new Date(l.dateDone + 'T00:00:00').getTime()
+          return t >= desde && t <= hasta
+        }).map((l: any) => l.dateDone)
+      )
+      return { client: c, sesiones: sesiones.size }
+    }).sort((a, b) => b.sesiones - a.sesiones)
+  }
+
   // Stats agregadas del grupo: adherencia media basada en sesiones completadas últimos 7 días
   const getCohorteStats = (cohorteId: string) => {
     const members = getMembersOf(cohorteId)
@@ -186,6 +205,26 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
             <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Media/cliente</p>
           </div>
         </div>
+
+        {/* Ranking del reto */}
+        {members.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted mb-2">
+              Ranking {selectedCohorte.fecha_inicio || selectedCohorte.fecha_fin ? '· del reto' : '· últimos 7 días'}
+            </p>
+            <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+              {getLeaderboard(selectedCohorte).map(({ client: c, sesiones }, i) => (
+                <button key={c.id} onClick={() => onSelectClient?.(c)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/30">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-bg-alt text-muted'
+                  }`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
+                  <p className="text-sm font-semibold flex-1 truncate">{c.name} {c.surname}</p>
+                  <span className="text-sm font-bold text-accent flex-shrink-0">{sesiones} sesion{sesiones !== 1 ? 'es' : ''}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Lista de miembros */}
         <div>

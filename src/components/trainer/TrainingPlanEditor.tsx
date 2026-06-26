@@ -52,6 +52,8 @@ export function TrainingPlanEditor({
   const [openWarmup, setOpenWarmup] = useState<Record<number, boolean>>({})
   const [showBlockPicker, setShowBlockPicker] = useState(false)
   const [showBlockManager, setShowBlockManager] = useState(false)
+  const [dragEx, setDragEx] = useState<{ di: number; ri: number } | null>(null)
+  const [dragDay, setDragDay] = useState<number | null>(null)
   const [showWendler, setShowWendler] = useState(false)
   const [showConditioning, setShowConditioning] = useState(false)
   const { blocks: periodizationBlocks, saveBlocks: savePeriodizationBlocks } = useCustomPeriodizationBlocks(trainerId)
@@ -137,6 +139,12 @@ export function TrainingPlanEditor({
   }
   const deleteDay = (wi: number, di: number) =>
     updateWeek(wi, { days: weeks[wi].days.filter((_, i) => i !== di) })
+  const moveDay = (wi: number, fromDi: number, toDi: number) => {
+    const days = [...weeks[wi].days]
+    const [moved] = days.splice(fromDi, 1)
+    days.splice(toDi, 0, moved)
+    updateWeek(wi, { days })
+  }
 
   const addExercise = (wi: number, di: number, exercise: Exercise) => {
     updateDay(wi, di, { exercises: [...(weeks[wi].days[di]?.exercises || []), exercise] })
@@ -280,11 +288,16 @@ export function TrainingPlanEditor({
 
             <div className="divide-y divide-border">
               {currentWeek.days.map((day, di) => (
-                <div key={di} className="group/day">
+                <div key={di} className={`group/day ${dragDay === di ? 'opacity-40' : ''}`}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => { e.preventDefault(); if (dragDay !== null && dragDay !== di) moveDay(activeWeek, dragDay, di); setDragDay(null) }}>
                   {/* Header día */}
                   <div className="flex items-center gap-2 px-4 py-2 hover:bg-bg-alt/20 transition-colors cursor-pointer select-none"
                     onClick={() => setOpenDays(p => ({ ...p, [di]: !p[di] }))}>
-                    <GripVertical className="w-3 h-3 text-muted/30 flex-shrink-0" />
+                    <span draggable onClick={e => e.stopPropagation()} onDragStart={() => setDragDay(di)} onDragEnd={() => setDragDay(null)}
+                      className="cursor-grab active:cursor-grabbing" title="Arrastra para reordenar el día">
+                      <GripVertical className="w-3 h-3 text-muted/30 flex-shrink-0" />
+                    </span>
                     <div className="flex-1 min-w-0 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <input value={day.title} onChange={e => updateDay(activeWeek, di, { title: e.target.value })}
                         className="text-sm font-bold bg-transparent outline-none w-32 hover:underline focus:underline underline-offset-2" />
@@ -349,13 +362,19 @@ export function TrainingPlanEditor({
                           const seriesMeta = seriesTypes.find(s => s.id === seriesTypeId) || seriesTypes[0] || DEFAULT_SERIES_TYPES[0]
 
                           return (
-                            <div key={ri} className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'}`}>
+                            <div key={ri}
+                              draggable
+                              onDragStart={() => setDragEx({ di, ri })}
+                              onDragOver={e => e.preventDefault()}
+                              onDrop={e => { e.preventDefault(); if (dragEx && dragEx.di === di && dragEx.ri !== ri) moveExercise(di, dragEx.ri, ri); setDragEx(null) }}
+                              onDragEnd={() => setDragEx(null)}
+                              className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''}`}>
                               <div className="grid items-center gap-0 px-4 py-2 cursor-pointer"
                                 style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}
                                 onClick={() => setSelectedEx(isSelected ? null : { wi: activeWeek, di, ri })}>
 
-                                {/* Nº */}
-                                <div className="flex items-center justify-center">
+                                {/* Nº / asa de arrastre */}
+                                <div className="flex items-center justify-center cursor-grab active:cursor-grabbing" title="Arrastra para reordenar">
                                   {ex.isMain
                                     ? <span className="w-4 h-4 rounded-full bg-accent flex items-center justify-center text-white text-[8px] font-bold">{ri + 1}</span>
                                     : <span className="text-[10px] text-muted font-bold">{ri + 1}</span>}

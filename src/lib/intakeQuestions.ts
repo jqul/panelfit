@@ -14,3 +14,6 @@ export const INTAKE_FREE_QUESTIONS = [
   { key: 'objetivos', label: 'Objetivo principal con el entrenamiento' },
   { key: 'disponibilidad', label: '¿Qué días y horas prefieres entrenar?' },
 ]
+
+export const WAIVER_TEXT_VERSION = 'v1'
+export const WAIVER_TEXT = `Declaro que la información de salud que he proporcionado es veraz y que participo en el programa de entrenamiento de forma voluntaria, siendo consciente de los riesgos asociados a la actividad física. Soy responsable de informar a mi entrenador de cualquier molestia o cambio en mi estado de salud durante el programa. El entrenador no se hace responsable de lesiones derivadas de información de salud omitida o inexacta por mi parte.`
