@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Store, Copy, X } from 'lucide-react'
+import { Store, Copy, X, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingTemplate } from '../../types'
 import { toast } from '../shared/Toast'
@@ -12,6 +12,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
   const [rows, setRows] = useState<PublicRow[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('plan_templates').select('id, trainer_id, name, description, plan')
@@ -49,15 +50,46 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
               <p className="text-sm">Aún no hay workouts compartidos. ¡Sé el primero!</p>
             </div>
           ) : rows.map(row => (
-            <div key={row.id} className="bg-bg border border-border rounded-2xl px-4 py-3 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate">{row.name}</p>
-                <p className="text-xs text-muted">{row.plan?.weeks?.length || 0} sem · {row.plan?.weeks?.[0]?.days?.length || 0} días{row.plan?.type ? ` · ${row.plan.type}` : ''}</p>
+            <div key={row.id} className="bg-bg border border-border rounded-2xl overflow-hidden">
+              <div className="px-4 py-3 flex items-center gap-3 cursor-pointer" onClick={() => setExpanded(expanded === row.id ? null : row.id)}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate">{row.name}</p>
+                  <p className="text-xs text-muted">{row.plan?.weeks?.length || 0} sem · {row.plan?.weeks?.[0]?.days?.length || 0} días{row.plan?.type ? ` · ${row.plan.type}` : ''}</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); importTemplate(row) }} disabled={importing === row.id || row.trainer_id === trainerId}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40 flex-shrink-0">
+                  <Copy className="w-3.5 h-3.5" /> {row.trainer_id === trainerId ? 'Tuyo' : importing === row.id ? 'Añadiendo...' : 'Añadir a mi librería'}
+                </button>
+                {expanded === row.id ? <ChevronUp className="w-4 h-4 text-muted flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />}
               </div>
-              <button onClick={() => importTemplate(row)} disabled={importing === row.id || row.trainer_id === trainerId}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40 flex-shrink-0">
-                <Copy className="w-3.5 h-3.5" /> {row.trainer_id === trainerId ? 'Tuyo' : importing === row.id ? 'Añadiendo...' : 'Añadir a mi librería'}
-              </button>
+
+              {expanded === row.id && (
+                <div className="border-t border-border px-4 py-3 space-y-3 bg-card">
+                  {row.description && <p className="text-xs text-muted italic">{row.description}</p>}
+                  {(row.plan?.weeks || []).map((week, wi) => (
+                    <div key={wi}>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}</p>
+                      <div className="space-y-2">
+                        {week.days.map((day, di) => (
+                          <div key={di} className="bg-bg border border-border rounded-xl px-3 py-2">
+                            <p className="text-xs font-semibold mb-1">{day.title}{day.focus ? ` — ${day.focus}` : ''}</p>
+                            <div className="space-y-0.5">
+                              {day.exercises.map((ex, ei) => (
+                                <div key={ei} className="flex items-center gap-1.5 text-[11px] text-muted">
+                                  <Dumbbell className="w-2.5 h-2.5 flex-shrink-0" />
+                                  <span className="flex-1 truncate">{ex.name}</span>
+                                  <span className="flex-shrink-0">{ex.sets} · {ex.weight}</span>
+                                </div>
+                              ))}
+                              {day.exercises.length === 0 && <p className="text-[11px] text-muted/60">Sin ejercicios</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
