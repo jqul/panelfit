@@ -28,6 +28,7 @@ export interface Exercise {
   restAfter?: number       // descanso tras el ejercicio (seg)
   seriesType?: string      // id de SeriesTypeDef (normal, dropset, etc.)
   hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
+  supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
 }
 
 export interface ExerciseVideoUpload {

@@ -24,6 +24,7 @@ import { ConfigTab } from './client-panel/ConfigTab'
 import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
 import { ValoracionTab } from './client-panel/ValoracionTab'
+import { TrainingSession } from './TrainingSession'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
@@ -108,6 +109,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [alerts, setAlerts] = useState<ClientAlert[]>([])
   const [programs, setPrograms] = useState<any[]>([])
   const [labels, setLabels] = useState<any[]>([])
+  const [showDayPicker, setShowDayPicker] = useState(false)
+  const [liveSession, setLiveSession] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -150,6 +153,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     const { error } = await supabase.from('planes').upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() }, { onConflict: 'clientId' })
     if (error) { logError('savePlan', error); setSaveState('error'); return }
     setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
+  }
+
+  const saveLogs = async (newLogs: TrainingLogs) => {
+    setLogs(newLogs)
+    if (demoPlan !== undefined) return
+    await supabase.from('registros').upsert({ clientId: client.id, logs: newLogs }, { onConflict: 'clientId' })
   }
 
   const saveAlerts = async (newAlerts: ClientAlert[]) => {
@@ -293,6 +302,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <button onClick={() => setShowInforme(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">📄 Informe PDF</button>
               </PlanGate>
             )}
+            {activeTab === 'plan' && plan?.weeks?.length ? (
+              <button onClick={() => setShowDayPicker(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-ok text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                ▶ Sesión en vivo
+              </button>
+            ) : null}
             {activeTab === 'plan' && templates.length > 0 && (
               <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
                 <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
@@ -363,6 +377,43 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           )}
         </main>
       </div>
+
+      {/* Selector de día para sesión en vivo */}
+      <Modal open={showDayPicker} onClose={() => setShowDayPicker(false)} title="¿Qué día vais a entrenar?">
+        <div className="space-y-2">
+          {plan?.weeks?.map((week, wi) => (
+            <div key={wi} className={week.isCurrent ? '' : 'opacity-60'}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{week.isCurrent ? ' · actual' : ''}</p>
+              <div className="space-y-1.5 mb-3">
+                {week.days.map((day, di) => (
+                  <button key={di} onClick={() => { setLiveSession({ weekIdx: wi, dayIdx: di }); setShowDayPicker(false) }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 border border-border rounded-xl text-left hover:border-ok transition-colors">
+                    <span className="text-sm font-semibold">{day.title}</span>
+                    <span className="text-xs text-muted">{day.exercises.length} ej.</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Sesión en vivo — el entrenador registra desde su propio dispositivo */}
+      {liveSession && plan && (
+        <div className="fixed inset-0 z-[80] bg-bg">
+          <TrainingSession
+            day={plan.weeks[liveSession.weekIdx].days[liveSession.dayIdx]}
+            dayKey={`w${liveSession.weekIdx}_d${liveSession.dayIdx}`}
+            plan={plan}
+            logs={logs}
+            onLogsChange={saveLogs}
+            onFinish={() => setLiveSession(null)}
+            onBack={() => setLiveSession(null)}
+            clientId={client.id}
+            clientName={client.name}
+          />
+        </div>
+      )}
 
       {/* Informe PDF */}
       {showInforme && (

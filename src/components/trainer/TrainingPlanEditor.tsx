@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame, Link2 } from 'lucide-react'
 import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { BlockManager } from './training-plan-editor/BlockManager'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
@@ -163,6 +163,26 @@ export function TrainingPlanEditor({
     const exs = [...weeks[activeWeek].days[di].exercises]
     const [moved] = exs.splice(fromRi, 1); exs.splice(toRi, 0, moved)
     updateDay(activeWeek, di, { exercises: exs })
+  }
+
+  // Vincula el ejercicio ri con el siguiente (ri+1) en una superserie (sin descanso entre ellos).
+  // Si ya está vinculado, lo desvincula; si el grupo se queda con 1 solo miembro, también se limpia.
+  const toggleSuperset = (wi: number, di: number, ri: number) => {
+    const exs = [...weeks[wi].days[di].exercises]
+    const current = exs[ri].supersetId
+    if (current) {
+      exs[ri] = { ...exs[ri], supersetId: undefined }
+      const remaining = exs.filter(e => e.supersetId === current)
+      if (remaining.length === 1) {
+        const idx = exs.findIndex(e => e.supersetId === current)
+        if (idx !== -1) exs[idx] = { ...exs[idx], supersetId: undefined }
+      }
+    } else if (exs[ri + 1]) {
+      const groupId = exs[ri + 1].supersetId || `ss_${Date.now()}`
+      exs[ri] = { ...exs[ri], supersetId: groupId }
+      exs[ri + 1] = { ...exs[ri + 1], supersetId: groupId }
+    }
+    updateDay(wi, di, { exercises: exs })
   }
 
   const handleImport = async (clientId: string) => {
@@ -368,7 +388,10 @@ export function TrainingPlanEditor({
                               onDragOver={e => e.preventDefault()}
                               onDrop={e => { e.preventDefault(); if (dragEx && dragEx.di === di && dragEx.ri !== ri) moveExercise(di, dragEx.ri, ri); setDragEx(null) }}
                               onDragEnd={() => setDragEx(null)}
-                              className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''}`}>
+                              className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''} ${ex.supersetId ? 'border-l-2 border-warn' : ''}`}>
+                              {ex.supersetId && (
+                                <p className="px-4 pt-1.5 text-[9px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
+                              )}
                               <div className="grid items-center gap-0 px-4 py-2 cursor-pointer"
                                 style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}
                                 onClick={() => setSelectedEx(isSelected ? null : { wi: activeWeek, di, ri })}>
@@ -457,6 +480,11 @@ export function TrainingPlanEditor({
                                     <button onClick={e => { e.stopPropagation(); if (ri < day.exercises.length - 1) moveExercise(di, ri, ri + 1) }} disabled={ri === day.exercises.length - 1}
                                       className="p-0.5 text-muted hover:text-ink disabled:opacity-20 transition-colors leading-none"><ChevronDown className="w-3 h-3" /></button>
                                   </div>
+                                  <button onClick={e => { e.stopPropagation(); toggleSuperset(activeWeek, di, ri) }}
+                                    title="Vincular en superserie con el siguiente ejercicio"
+                                    className={`p-1.5 rounded transition-colors ${ex.supersetId ? 'text-warn' : 'text-muted hover:text-warn'}`}>
+                                    <Link2 className="w-3 h-3" />
+                                  </button>
                                   <button onClick={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { isMain: !ex.isMain }) }}
                                     className={`p-1.5 rounded transition-colors ${ex.isMain ? 'text-accent' : 'text-muted hover:text-accent'}`}>
                                     <Star className="w-3 h-3" />
