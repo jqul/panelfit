@@ -81,7 +81,8 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 ## 11. Nutrición
 
 - Plan de macros (kcal/proteína/carbos/grasas) por cliente, comidas con horario y alimentos, distribución de macros por comida, suplementación (visible/oculta al cliente), consejo del entrenador.
-- *(Nota interna: existen dos sistemas de nutrición parcialmente solapados — `DietEditor`/tabla `dietas` y `NutricionTab`/tabla `nutrition_plans` — pendiente de consolidar en uno solo, ver tareas pendientes.)*
+- Plantillas de dieta reutilizables (3 predefinidas + las que guarde el entrenador).
+- *(Antes existía un segundo sistema paralelo — "Nutrición" en el menú, con su propia librería de plantillas — que nunca llegó a poder asignarse a ningún cliente. Se ha eliminado: ahora solo hay un sistema, el de arriba.)*
 
 ## 12. Gamificación (lado cliente)
 
@@ -118,5 +119,6 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 - **Pagos / cobro real** — decidido explícitamente dejarlo para más adelante.
 - **Automatización real de WhatsApp** (sin clic) — requiere la API de pago de Meta/WhatsApp Business, evaluar cuando haya ingresos.
-- **Consolidar los dos sistemas de nutrición** en uno solo.
 - **n8n / automatización externa** — aparcado, retomar cuando haga falta.
+- **Integraciones con wearables** (Whoop, Garmin, Apple Health) — descartado por ahora a petición explícita, cara de construir.
+- **Dominio propio** — pendiente de comprar (panelfit.es o panelfit.app disponibles), sin prisa.

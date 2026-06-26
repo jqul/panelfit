@@ -4,7 +4,7 @@ import { useClientStats } from '../../hooks/useClientStats'
 import { useLabels } from '../../hooks/useLabels'
 import { useState } from 'react'
 import {
-  LayoutDashboard, Users, Dumbbell, ClipboardList, FileText, Settings as SettingsIcon,
+  LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar, CalendarDays, ChevronDown,
@@ -20,7 +20,6 @@ import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ProgramasTab } from './ProgramasTab'
-import { NutricionLibreria } from './NutricionLibreria'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
@@ -36,7 +35,7 @@ import { PlanGate } from '../shared/PlanGate'
 import { PublicPageEditor } from './PublicPageEditor'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'nutricion' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
 
 interface Props {
@@ -115,7 +114,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
       { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
       { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
-      { id: 'nutricion' as Tab, icon: FileText,  label: 'Nutrición' },
     ]},
     { label: 'Análisis', items: [
       { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
@@ -616,7 +614,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} />}
-          {activeTab === 'nutricion'  && <NutricionLibreria trainerId={userProfile.uid} />}
           {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
