@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import {
-  ChevronDown, Check, Clock, Trophy,
+  ChevronDown, ChevronUp, Check, Clock, Trophy,
   Play, Pause, SkipForward, ChevronLeft,
   Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Video, Upload, Loader2
 } from 'lucide-react'
@@ -298,40 +298,60 @@ const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prev
             )}
           </div>
 
-          {/* KG — con botón calculadora */}
-          <div className="relative">
-            <input
-              type="number"
-              inputMode="decimal"
-              value={weight}
-              onChange={e => setWeight(e.target.value)}
-              onBlur={() => onCommit(weight, reps)}
-              placeholder={prevWeight || '0'}
-              className={`w-full text-center text-sm font-semibold py-2 pr-6 rounded-xl border outline-none ${
-                done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => onOpenCalc(weight)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
-              title="Calculadora de discos">
-              <Calculator className="w-3.5 h-3.5" />
+          {/* KG — con paso rápido +/- y calculadora */}
+          <div className="flex flex-col items-stretch gap-0.5">
+            <button type="button" onClick={() => { const v = String(Math.max(0, (parseFloat(weight) || 0) + 2.5)); setWeight(v); onCommit(v, reps) }}
+              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
+              <ChevronUp className="w-3 h-3" />
+            </button>
+            <div className="relative">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                onBlur={() => onCommit(weight, reps)}
+                placeholder={prevWeight || '0'}
+                className={`w-full text-center text-sm font-semibold py-1.5 pr-6 rounded-xl border outline-none ${
+                  done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => onOpenCalc(weight)}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
+                title="Calculadora de discos">
+                <Calculator className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <button type="button" onClick={() => { const v = String(Math.max(0, (parseFloat(weight) || 0) - 2.5)); setWeight(v); onCommit(v, reps) }}
+              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
+              <ChevronDown className="w-3 h-3" />
             </button>
           </div>
 
-          {/* Reps */}
-          <input
-            type="number"
-            inputMode="numeric"
-            value={reps}
-            onChange={e => setReps(e.target.value)}
-            onBlur={() => onCommit(weight, reps)}
-            placeholder={prevReps || '10'}
-            className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
-              done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-            }`}
-          />
+          {/* Reps — con paso rápido +/- */}
+          <div className="flex flex-col items-stretch gap-0.5">
+            <button type="button" onClick={() => { const v = String(Math.max(0, (parseInt(reps) || 0) + 1)); setReps(v); onCommit(weight, v) }}
+              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
+              <ChevronUp className="w-3 h-3" />
+            </button>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={reps}
+              onChange={e => setReps(e.target.value)}
+              onBlur={() => onCommit(weight, reps)}
+              placeholder={prevReps || '10'}
+              className={`w-full text-center text-sm font-semibold py-1.5 rounded-xl border outline-none ${
+                done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
+              }`}
+            />
+            <button type="button" onClick={() => { const v = String(Math.max(0, (parseInt(reps) || 0) - 1)); setReps(v); onCommit(weight, v) }}
+              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
 
           {/* Check */}
           <button
