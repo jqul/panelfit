@@ -450,7 +450,12 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [, forceUpdate] = useState(0)
   const refresh = () => forceUpdate(n=>n+1)
 
-  const cats     = load(CATS_KEY(trainerId), DEFAULT_CATS)
+  const storedCats = load(CATS_KEY(trainerId), DEFAULT_CATS)
+  // Unimos las categorías guardadas con las que de verdad tienen ejercicios
+  // (p.ej. las de la biblioteca de serie, que usan nombres más detallados
+  // como "Hombro" o "Pierna — Cuádriceps") para que el filtro no las oculte.
+  const usedCats = Array.from(new Set(exercises.map(e => e.category).filter(Boolean)))
+  const cats     = Array.from(new Set([...storedCats, ...usedCats]))
   const esps     = load<{id:string;label:string;emoji:string}[]>(ESPS_KEY(trainerId), [])
   const tags     = load<CustomTag[]>(TAGS_KEY(trainerId), [])
   const allEsps  = [...ESPECIALIDADES.map(e=>({id:e.value,label:e.label,emoji:e.emoji})), ...esps]
