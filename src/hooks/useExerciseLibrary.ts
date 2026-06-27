@@ -2,11 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
-import { DEFAULT_EXERCISE_LIBRARY } from '../lib/defaultExerciseLibrary'
+import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
 const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
+// Versión de la biblioteca de serie. Subir este número cuando se añadan
+// ejercicios nuevos a DEFAULT_EXERCISE_LIBRARY para que las cuentas que ya
+// fueron sembradas reciban solo los que les faltan (sin duplicar).
+const DEFAULT_LIBRARY_VERSION = 2
+const LS_DEFAULT_TOPUP = (uid: string) => `pf_library_default_topup_${uid}`
 
 export type { Especialidad }
 
@@ -101,15 +106,33 @@ export function useExerciseLibrary(trainerId: string) {
       // Marcar el flag ANTES de insertar para que un segundo montaje casi
       // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
       localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
-      await seedDefaultLibrary()
+      localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+      await seedDefaultLibrary(DEFAULT_EXERCISE_LIBRARY)
       await syncFromSupabase()
+    } else if (isRealUuid && alreadySeeded) {
+      // 5. La cuenta ya tenía la siembra de serie (de una versión anterior de la
+      //    biblioteca) -> añadir solo los ejercicios nuevos que le falten, sin duplicar.
+      const topupVersion = Number(localStorage.getItem(LS_DEFAULT_TOPUP(trainerId)) || '1')
+      if (topupVersion < DEFAULT_LIBRARY_VERSION) {
+        const { data: existing } = await supabase
+          .from('exercise_library')
+          .select('name')
+          .eq('trainer_id', trainerId)
+        const existingNames = new Set((existing || []).map(r => r.name.toLowerCase()))
+        const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
+        localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+        if (missing.length) {
+          await seedDefaultLibrary(missing)
+          await syncFromSupabase()
+        }
+      }
     }
 
     setLoading(false)
   }
 
-  const seedDefaultLibrary = async () => {
-    const rows = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
+  const seedDefaultLibrary = async (list: DefaultExercise[]) => {
+    const rows = list.map((e, i) => ({
       id: `ex_default_${Date.now()}_${i}`, trainer_id: trainerId, name: e.name, description: '', category: e.category,
       especialidades: [], videos: [], tags: [], use_count: 0, video_use_count: 0, created_at: Date.now(), updated_at: Date.now(),
     }))

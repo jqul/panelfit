@@ -1,7 +1,7 @@
 // Biblioteca de ejercicios de serie — se siembra automáticamente la primera vez
-// que un entrenador entra a "Ejercicios" y aún no tiene ninguno. El entrenador
-// decide luego a qué especialidad pertenece cada uno; aquí solo se clasifican
-// por grupo muscular.
+// que un entrenador entra a "Ejercicios" y aún no tiene ninguno en su base de
+// datos. El entrenador decide luego a qué especialidad pertenece cada uno;
+// aquí solo se clasifican por grupo muscular.
 export interface DefaultExercise { name: string; category: string }
 
 export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
@@ -10,66 +10,171 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Press banca inclinado', category: 'Pecho' },
   { name: 'Press banca declinado', category: 'Pecho' },
   { name: 'Press inclinado mancuernas', category: 'Pecho' },
-  { name: 'Aperturas con mancuernas', category: 'Pecho' },
-  { name: 'Cruces en polea (cable cross)', category: 'Pecho' },
-  { name: 'Fondos en paralelas', category: 'Pecho' },
-  { name: 'Press en máquina', category: 'Pecho' },
+  { name: 'Press declinado mancuernas', category: 'Pecho' },
+  { name: 'Press de pecho en máquina', category: 'Pecho' },
+  { name: 'Aperturas con mancuernas (planas)', category: 'Pecho' },
+  { name: 'Aperturas inclinadas con mancuernas', category: 'Pecho' },
+  { name: 'Cruces en polea alta (cable cross)', category: 'Pecho' },
+  { name: 'Cruces en polea baja', category: 'Pecho' },
+  { name: 'Peck deck (contractor de pecho)', category: 'Pecho' },
+  { name: 'Fondos en paralelas (pecho)', category: 'Pecho' },
+  { name: 'Flexiones (push-ups)', category: 'Pecho' },
+  { name: 'Press con banda elástica', category: 'Pecho' },
+  { name: 'Pullover con mancuerna', category: 'Pecho' },
 
   // Espalda
-  { name: 'Dominadas', category: 'Espalda' },
-  { name: 'Remo con barra', category: 'Espalda' },
-  { name: 'Remo con mancuerna a una mano', category: 'Espalda' },
-  { name: 'Jalón al pecho', category: 'Espalda' },
+  { name: 'Dominadas pronas', category: 'Espalda' },
+  { name: 'Dominadas supinas (chin-up)', category: 'Espalda' },
+  { name: 'Dominadas agarre neutro', category: 'Espalda' },
+  { name: 'Dominadas lastradas', category: 'Espalda' },
+  { name: 'Jalón al pecho (polea)', category: 'Espalda' },
   { name: 'Pulldown agarre neutro', category: 'Espalda' },
+  { name: 'Pulldown agarre estrecho', category: 'Espalda' },
+  { name: 'Remo con barra', category: 'Espalda' },
+  { name: 'Remo Pendlay', category: 'Espalda' },
+  { name: 'Remo con mancuerna a una mano', category: 'Espalda' },
+  { name: 'Remo en T (T-bar row)', category: 'Espalda' },
+  { name: 'Remo en máquina sentado', category: 'Espalda' },
+  { name: 'Remo en polea baja (seated cable row)', category: 'Espalda' },
   { name: 'Peso muerto convencional', category: 'Espalda' },
   { name: 'Peso muerto rumano', category: 'Espalda' },
-  { name: 'Remo en máquina', category: 'Espalda' },
-  { name: 'Hiperextensiones', category: 'Espalda' },
+  { name: 'Peso muerto sumo', category: 'Espalda' },
+  { name: 'Peso muerto piernas rígidas', category: 'Espalda' },
+  { name: 'Pull-over en polea alta', category: 'Espalda' },
+  { name: 'Face pull', category: 'Espalda' },
+  { name: 'Buenos días (good morning)', category: 'Espalda' },
 
-  // Pierna
-  { name: 'Sentadilla con barra', category: 'Pierna' },
-  { name: 'Sentadilla goblet', category: 'Pierna' },
-  { name: 'Sentadilla búlgara', category: 'Pierna' },
-  { name: 'Prensa de piernas', category: 'Pierna' },
-  { name: 'Zancadas', category: 'Pierna' },
-  { name: 'Curl femoral tumbado', category: 'Pierna' },
-  { name: 'Extensión de cuádriceps', category: 'Pierna' },
-  { name: 'Elevación de talones (gemelo)', category: 'Pierna' },
-  { name: 'Hip thrust', category: 'Pierna' },
-  { name: 'Abducción de cadera en máquina', category: 'Pierna' },
+  // Lumbar
+  { name: 'Hiperextensiones (banco lumbar)', category: 'Lumbar' },
+  { name: 'Superman', category: 'Lumbar' },
+  { name: 'Peso muerto a una pierna', category: 'Lumbar' },
+  { name: 'Extensión lumbar en máquina', category: 'Lumbar' },
+
+  // Trapecio
+  { name: 'Encogimiento de hombros con barra (shrugs)', category: 'Trapecio' },
+  { name: 'Encogimiento de hombros con mancuernas', category: 'Trapecio' },
+  { name: 'Remo al cuello (upright row)', category: 'Trapecio' },
+  { name: 'Farmer walk (paseo del granjero)', category: 'Trapecio' },
 
   // Hombro
   { name: 'Press militar con barra', category: 'Hombro' },
+  { name: 'Press militar sentado', category: 'Hombro' },
   { name: 'Press de hombro con mancuernas', category: 'Hombro' },
-  { name: 'Elevaciones laterales', category: 'Hombro' },
-  { name: 'Elevaciones frontales', category: 'Hombro' },
-  { name: 'Pájaros (elevación posterior)', category: 'Hombro' },
-  { name: 'Face pull', category: 'Hombro' },
   { name: 'Press Arnold', category: 'Hombro' },
+  { name: 'Press de hombro en máquina', category: 'Hombro' },
+  { name: 'Press tras nuca', category: 'Hombro' },
+  { name: 'Elevaciones laterales con mancuernas', category: 'Hombro' },
+  { name: 'Elevaciones laterales en polea', category: 'Hombro' },
+  { name: 'Elevaciones laterales en máquina', category: 'Hombro' },
+  { name: 'Elevaciones frontales con mancuernas', category: 'Hombro' },
+  { name: 'Elevaciones frontales con barra', category: 'Hombro' },
+  { name: 'Pájaros (elevación posterior con mancuernas)', category: 'Hombro' },
+  { name: 'Pájaros en máquina (reverse peck deck)', category: 'Hombro' },
+  { name: 'Press Bradford', category: 'Hombro' },
+  { name: 'Landmine press', category: 'Hombro' },
+  { name: 'Push press', category: 'Hombro' },
 
   // Bíceps
   { name: 'Curl de bíceps con barra', category: 'Bíceps' },
+  { name: 'Curl de bíceps con barra Z', category: 'Bíceps' },
   { name: 'Curl de bíceps con mancuernas', category: 'Bíceps' },
+  { name: 'Curl de bíceps alterno', category: 'Bíceps' },
   { name: 'Curl martillo', category: 'Bíceps' },
-  { name: 'Curl en banco Scott', category: 'Bíceps' },
+  { name: 'Curl en banco Scott (predicador)', category: 'Bíceps' },
+  { name: 'Curl concentrado', category: 'Bíceps' },
+  { name: 'Curl en polea baja', category: 'Bíceps' },
+  { name: 'Curl 21s', category: 'Bíceps' },
 
   // Tríceps
-  { name: 'Press francés', category: 'Tríceps' },
-  { name: 'Extensión de tríceps en polea', category: 'Tríceps' },
-  { name: 'Patada de tríceps', category: 'Tríceps' },
+  { name: 'Press francés con barra', category: 'Tríceps' },
+  { name: 'Press francés con mancuerna', category: 'Tríceps' },
+  { name: 'Extensión de tríceps en polea alta', category: 'Tríceps' },
+  { name: 'Extensión de tríceps con cuerda', category: 'Tríceps' },
+  { name: 'Patada de tríceps (kickback)', category: 'Tríceps' },
   { name: 'Fondos de tríceps en banco', category: 'Tríceps' },
+  { name: 'Press cerrado (close grip bench press)', category: 'Tríceps' },
+  { name: 'Extensión de tríceps tras nuca con mancuerna', category: 'Tríceps' },
+
+  // Antebrazo
+  { name: 'Curl de muñeca con barra', category: 'Antebrazo' },
+  { name: 'Curl de muñeca inverso', category: 'Antebrazo' },
+  { name: 'Dead hang (colgarse de la barra)', category: 'Antebrazo' },
+  { name: 'Paseo del granjero (agarre)', category: 'Antebrazo' },
+
+  // Pierna — Cuádriceps
+  { name: 'Sentadilla con barra (back squat)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla frontal (front squat)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla goblet', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla búlgara', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla hack (hack squat)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla sumo', category: 'Pierna — Cuádriceps' },
+  { name: 'Prensa de piernas (leg press)', category: 'Pierna — Cuádriceps' },
+  { name: 'Zancadas (lunges)', category: 'Pierna — Cuádriceps' },
+  { name: 'Zancadas con barra', category: 'Pierna — Cuádriceps' },
+  { name: 'Extensión de cuádriceps en máquina', category: 'Pierna — Cuádriceps' },
+  { name: 'Step up (subida al cajón)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sissy squat', category: 'Pierna — Cuádriceps' },
+
+  // Pierna — Femoral
+  { name: 'Curl femoral tumbado', category: 'Pierna — Femoral' },
+  { name: 'Curl femoral sentado', category: 'Pierna — Femoral' },
+  { name: 'Curl femoral de pie', category: 'Pierna — Femoral' },
+  { name: 'Peso muerto rumano (femoral)', category: 'Pierna — Femoral' },
+  { name: 'Nordic curl', category: 'Pierna — Femoral' },
+
+  // Glúteo
+  { name: 'Hip thrust', category: 'Glúteo' },
+  { name: 'Hip thrust a una pierna', category: 'Glúteo' },
+  { name: 'Puente de glúteo (glute bridge)', category: 'Glúteo' },
+  { name: 'Patada de glúteo en polea', category: 'Glúteo' },
+  { name: 'Abducción de cadera en máquina', category: 'Glúteo' },
+  { name: 'Abducción de cadera con banda', category: 'Glúteo' },
+  { name: 'Peso muerto sumo (glúteo)', category: 'Glúteo' },
+  { name: 'Patada de burro (donkey kick)', category: 'Glúteo' },
+
+  // Pantorrilla
+  { name: 'Elevación de talones de pie (gemelo)', category: 'Pantorrilla' },
+  { name: 'Elevación de talones sentado', category: 'Pantorrilla' },
+  { name: 'Elevación de talones en prensa', category: 'Pantorrilla' },
+  { name: 'Elevación de talones a una pierna', category: 'Pantorrilla' },
 
   // Core
-  { name: 'Plancha', category: 'Core' },
+  { name: 'Plancha (plank)', category: 'Core' },
+  { name: 'Plancha lateral', category: 'Core' },
   { name: 'Rueda abdominal (ab wheel)', category: 'Core' },
   { name: 'Crunch abdominal', category: 'Core' },
+  { name: 'Crunch en polea (cable crunch)', category: 'Core' },
   { name: 'Elevación de piernas colgado', category: 'Core' },
+  { name: 'Elevación de rodillas colgado', category: 'Core' },
   { name: 'Russian twist', category: 'Core' },
+  { name: 'Mountain climbers', category: 'Core' },
+  { name: 'Dragon flag', category: 'Core' },
+  { name: 'Hollow body hold', category: 'Core' },
+  { name: 'Sit-up', category: 'Core' },
+  { name: 'Pallof press', category: 'Core' },
 
   // Cardio
   { name: 'Carrera continua', category: 'Cardio' },
+  { name: 'Sprints (carrera corta intensa)', category: 'Cardio' },
   { name: 'Bicicleta estática', category: 'Cardio' },
-  { name: 'Remo (cardio)', category: 'Cardio' },
+  { name: 'Elíptica', category: 'Cardio' },
+  { name: 'Remo (máquina de remo)', category: 'Cardio' },
+  { name: 'Assault bike / bici de aire', category: 'Cardio' },
   { name: 'Comba (saltar a la cuerda)', category: 'Cardio' },
+  { name: 'Subir escaleras / stairmaster', category: 'Cardio' },
+  { name: 'Natación', category: 'Cardio' },
   { name: 'Burpees', category: 'Cardio' },
+  { name: 'Battle ropes (cuerdas de batalla)', category: 'Cardio' },
+
+  // Funcional / Olímpico
+  { name: 'Kettlebell swing', category: 'Funcional/Olímpico' },
+  { name: 'Clean (cargada)', category: 'Funcional/Olímpico' },
+  { name: 'Snatch (arrancada)', category: 'Funcional/Olímpico' },
+  { name: 'Clean and jerk', category: 'Funcional/Olímpico' },
+  { name: 'Thruster', category: 'Funcional/Olímpico' },
+  { name: 'Wall ball', category: 'Funcional/Olímpico' },
+  { name: 'Box jump (salto al cajón)', category: 'Funcional/Olímpico' },
+  { name: 'Lanzamiento de balón medicinal (slam ball)', category: 'Funcional/Olímpico' },
+  { name: 'Arrastre de trineo (sled push/pull)', category: 'Funcional/Olímpico' },
+  { name: 'Turkish get-up', category: 'Funcional/Olímpico' },
 ]
