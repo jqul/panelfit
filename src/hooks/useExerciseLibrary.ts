@@ -90,12 +90,14 @@ export function useExerciseLibrary(trainerId: string) {
     // 3. Cargar desde Supabase (fuente de verdad)
     const hadData = await syncFromSupabase()
 
-    // 4. Primera vez sin ningún ejercicio (ni propio ni migrado) -> sembrar la
-    //    biblioteca de serie, para que todas las cuentas arranquen con algo.
+    // 4. Sin ningún ejercicio real en Supabase (ni propio ni migrado) -> sembrar
+    //    la biblioteca de serie, para que todas las cuentas arranquen con algo.
+    //    Nota: no miramos la caché local — una caché vacía ("[]") de una sesión
+    //    anterior no debe bloquear esto, lo único que importa es lo que hay en BD.
     //    (Solo para cuentas reales — el modo demo antiguo usa un id falso, no UUID.)
     const isRealUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trainerId)
     const alreadySeeded = localStorage.getItem(LS_DEFAULT_SEEDED(trainerId))
-    if (isRealUuid && !hadData && !cached && !alreadySeeded) {
+    if (isRealUuid && !hadData && !alreadySeeded) {
       // Marcar el flag ANTES de insertar para que un segundo montaje casi
       // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
       localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
