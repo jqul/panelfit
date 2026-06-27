@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
+import { DEFAULT_EXERCISE_LIBRARY } from '../lib/defaultExerciseLibrary'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
+const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
 
 export type { Especialidad }
 
@@ -86,8 +88,31 @@ export function useExerciseLibrary(trainerId: string) {
     }
 
     // 3. Cargar desde Supabase (fuente de verdad)
-    await syncFromSupabase()
+    const hadData = await syncFromSupabase()
+
+    // 4. Primera vez sin ningún ejercicio (ni propio ni migrado) -> sembrar la
+    //    biblioteca de serie, para que todas las cuentas arranquen con algo.
+    //    (Solo para cuentas reales — el modo demo antiguo usa un id falso, no UUID.)
+    const isRealUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trainerId)
+    const alreadySeeded = localStorage.getItem(LS_DEFAULT_SEEDED(trainerId))
+    if (isRealUuid && !hadData && !cached && !alreadySeeded) {
+      // Marcar el flag ANTES de insertar para que un segundo montaje casi
+      // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
+      localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
+      await seedDefaultLibrary()
+      await syncFromSupabase()
+    }
+
     setLoading(false)
+  }
+
+  const seedDefaultLibrary = async () => {
+    const rows = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
+      id: `ex_default_${Date.now()}_${i}`, trainer_id: trainerId, name: e.name, description: '', category: e.category,
+      especialidades: [], videos: [], tags: [], use_count: 0, video_use_count: 0, created_at: Date.now(), updated_at: Date.now(),
+    }))
+    const { error } = await supabase.from('exercise_library').insert(rows)
+    if (error) console.error('[PanelFit] Error al sembrar biblioteca por defecto:', error)
   }
 
   const syncFromSupabase = async () => {
@@ -105,7 +130,7 @@ export function useExerciseLibrary(trainerId: string) {
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(local))
     }
     setSyncing(false)
-    return !error
+    return (data?.length ?? 0) > 0
   }
 
   // ── Migración one-time desde localStorage ──────────

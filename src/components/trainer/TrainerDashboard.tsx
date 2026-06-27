@@ -65,6 +65,19 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
+  const [customObjetivos, setCustomObjetivos] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`pf_custom_objetivos_${userProfile.uid}`) || '[]') } catch { return [] }
+  })
+  const [addingObjetivo, setAddingObjetivo] = useState(false)
+  const [newObjetivoInput, setNewObjetivoInput] = useState('')
+  const addCustomObjetivo = () => {
+    const v = newObjetivoInput.trim(); if (!v) return
+    const updated = [...customObjetivos, v]
+    setCustomObjetivos(updated)
+    localStorage.setItem(`pf_custom_objetivos_${userProfile.uid}`, JSON.stringify(updated))
+    setNewClient(p => ({ ...p, objetivo: v }))
+    setNewObjetivoInput(''); setAddingObjetivo(false)
+  }
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
@@ -704,12 +717,26 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
                 <div className="flex flex-wrap gap-1.5">
-                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Pérdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitación' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' }].map(opt => (
+                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Pérdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitación' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' },
+                    ...customObjetivos.map(v => ({ v, label: v }))].map(opt => (
                     <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                       {opt.label}
                     </button>
                   ))}
+                  {addingObjetivo ? (
+                    <div className="flex gap-1 items-center">
+                      <input autoFocus value={newObjetivoInput} onChange={e => setNewObjetivoInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') addCustomObjetivo(); if (e.key === 'Escape') { setAddingObjetivo(false); setNewObjetivoInput('') } }}
+                        placeholder="Otro objetivo..." className="px-2 py-1 bg-bg border border-accent/40 rounded-lg text-xs outline-none w-32" />
+                      <button type="button" onClick={addCustomObjetivo} className="px-2 py-1 bg-ink text-white rounded-lg text-xs font-semibold">Añadir</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setAddingObjetivo(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent">
+                      + Otro
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
