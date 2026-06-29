@@ -1,30 +1,37 @@
 // Silueta corporal simplificada que resalta la zona muscular trabajada,
 // para identificar de un vistazo qué grupo entrena cada ejercicio
-// (front = vista de frente, back = vista de espalda).
-interface Region { view: 'front' | 'back'; cx: number; cy: number; rx: number; ry: number }
+// (front = vista de frente, back = vista de espalda — el dibujo del
+// cuerpo es el mismo en ambas, solo cambia dónde se resalta y la etiqueta).
+interface Shape { cx: number; cy: number; rx: number; ry: number }
+interface Region { view: 'front' | 'back'; shapes: Shape[] }
 
 const REGIONS: Record<string, Region> = {
-  'Pecho':                 { view: 'front', cx: 50, cy: 38, rx: 17, ry: 12 },
-  'Espalda':               { view: 'back',  cx: 50, cy: 45, rx: 18, ry: 28 },
-  'Hombro':                { view: 'front', cx: 50, cy: 26, rx: 22, ry: 8 },
-  'Hombros':               { view: 'front', cx: 50, cy: 26, rx: 22, ry: 8 },
-  'Bíceps':                { view: 'front', cx: 50, cy: 50, rx: 20, ry: 10 },
-  'Tríceps':               { view: 'back',  cx: 50, cy: 50, rx: 20, ry: 10 },
-  'Antebrazo':             { view: 'front', cx: 50, cy: 68, rx: 22, ry: 9 },
-  'Piernas':               { view: 'front', cx: 50, cy: 88, rx: 17, ry: 28 },
-  'Glúteo':                { view: 'back',  cx: 50, cy: 64, rx: 16, ry: 9 },
-  'Glúteos':               { view: 'back',  cx: 50, cy: 64, rx: 16, ry: 9 },
-  'Core':                  { view: 'front', cx: 50, cy: 58, rx: 13, ry: 14 },
-  'Cardio':                { view: 'front', cx: 50, cy: 38, rx: 17, ry: 12 },
-  'Funcional/Olímpico':    { view: 'front', cx: 50, cy: 55, rx: 26, ry: 30 },
+  'Pecho':              { view: 'front', shapes: [{ cx: 50, cy: 42, rx: 16, ry: 11 }] },
+  'Cardio':             { view: 'front', shapes: [{ cx: 50, cy: 42, rx: 16, ry: 11 }] },
+  'Espalda':            { view: 'back',  shapes: [{ cx: 50, cy: 47, rx: 17, ry: 21 }] },
+  'Hombro':             { view: 'front', shapes: [{ cx: 24, cy: 31, rx: 11, ry: 9 }, { cx: 76, cy: 31, rx: 11, ry: 9 }] },
+  'Hombros':            { view: 'front', shapes: [{ cx: 24, cy: 31, rx: 11, ry: 9 }, { cx: 76, cy: 31, rx: 11, ry: 9 }] },
+  'Bíceps':             { view: 'front', shapes: [{ cx: 20, cy: 53, rx: 8,  ry: 14 }, { cx: 80, cy: 53, rx: 8,  ry: 14 }] },
+  'Tríceps':            { view: 'back',  shapes: [{ cx: 20, cy: 53, rx: 8,  ry: 14 }, { cx: 80, cy: 53, rx: 8,  ry: 14 }] },
+  'Antebrazo':          { view: 'front', shapes: [{ cx: 20, cy: 71, rx: 7,  ry: 10 }, { cx: 80, cy: 71, rx: 7,  ry: 10 }] },
+  'Core':               { view: 'front', shapes: [{ cx: 50, cy: 59, rx: 13, ry: 13 }] },
+  'Piernas':            { view: 'front', shapes: [{ cx: 41, cy: 106, rx: 9, ry: 32 }, { cx: 59, cy: 106, rx: 9, ry: 32 }] },
+  'Glúteo':             { view: 'back',  shapes: [{ cx: 50, cy: 69, rx: 18, ry: 9  }] },
+  'Glúteos':            { view: 'back',  shapes: [{ cx: 50, cy: 69, rx: 18, ry: 9  }] },
+  'Funcional/Olímpico': { view: 'front', shapes: [{ cx: 50, cy: 78, rx: 38, ry: 68 }] },
 }
 
-function BodyOutline() {
+function BodyFigure() {
   return (
-    <>
-      <circle cx="50" cy="10" r="8" fill="none" />
-      <path d="M50 18 C30 18 22 28 22 42 L22 70 C22 78 26 84 32 88 L32 120 L42 120 L44 92 L56 92 L58 120 L68 120 L68 88 C74 84 78 78 78 70 L78 42 C78 28 70 18 50 18 Z" fill="none" />
-    </>
+    <g className="text-border" fill="currentColor" stroke="currentColor" strokeWidth="1.5" opacity="0.5">
+      <circle cx="50" cy="13" r="10" fillOpacity="0.35" />
+      <rect x="32" y="26" width="36" height="45" rx="16" fillOpacity="0.3" />
+      <rect x="29" y="62" width="42" height="17" rx="12" fillOpacity="0.3" />
+      <rect x="14" y="27" width="13" height="51" rx="6.5" fillOpacity="0.3" />
+      <rect x="73" y="27" width="13" height="51" rx="6.5" fillOpacity="0.3" />
+      <rect x="34" y="73" width="14" height="68" rx="7" fillOpacity="0.3" />
+      <rect x="52" y="73" width="14" height="68" rx="7" fillOpacity="0.3" />
+    </g>
   )
 }
 
@@ -33,12 +40,12 @@ export function MuscleDiagram({ category, size = 30 }: { category?: string; size
   if (!region) return null
 
   return (
-    <svg width={size} height={size * 1.3} viewBox="0 0 100 130" className="flex-shrink-0">
-      <g stroke="currentColor" strokeWidth="2.5" className="text-border" opacity="0.6">
-        <BodyOutline />
-      </g>
-      <ellipse cx={region.cx} cy={region.cy} rx={region.rx} ry={region.ry} className="fill-accent" opacity="0.55" />
-      <text x="50" y="128" textAnchor="middle" fontSize="9" className="fill-muted">
+    <svg width={size} height={size * 1.5} viewBox="0 0 100 150" className="flex-shrink-0">
+      <BodyFigure />
+      {region.shapes.map((s, i) => (
+        <ellipse key={i} cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} className="fill-accent" opacity="0.6" />
+      ))}
+      <text x="50" y="148" textAnchor="middle" fontSize="10" className="fill-muted">
         {region.view === 'front' ? 'frontal' : 'espalda'}
       </text>
     </svg>
