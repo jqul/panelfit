@@ -21,6 +21,16 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Flexiones (push-ups)', category: 'Pecho' },
   { name: 'Press con banda elástica', category: 'Pecho' },
   { name: 'Pullover con mancuerna', category: 'Pecho' },
+  { name: 'Press banca con mancuernas', category: 'Pecho' },
+  { name: 'Press banca con agarre cerrado', category: 'Pecho' },
+  { name: 'Press inclinado en máquina', category: 'Pecho' },
+  { name: 'Press en multipower (smith machine)', category: 'Pecho' },
+  { name: 'Aperturas en máquina (pec deck inverso)', category: 'Pecho' },
+  { name: 'Flexiones con lastre', category: 'Pecho' },
+  { name: 'Flexiones declinadas', category: 'Pecho' },
+  { name: 'Flexiones con palmada', category: 'Pecho' },
+  { name: 'Cruces en polea media', category: 'Pecho' },
+  { name: 'Press con un solo brazo en polea', category: 'Pecho' },
 
   // Espalda
   { name: 'Dominadas pronas', category: 'Espalda' },
@@ -43,6 +53,15 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Pull-over en polea alta', category: 'Espalda' },
   { name: 'Face pull', category: 'Espalda' },
   { name: 'Buenos días (good morning)', category: 'Espalda' },
+  { name: 'Remo invertido (inverted row)', category: 'Espalda' },
+  { name: 'Remo con banda elástica', category: 'Espalda' },
+  { name: 'Remo Meadows', category: 'Espalda' },
+  { name: 'Jalón al pecho agarre amplio', category: 'Espalda' },
+  { name: 'Jalón tras nuca', category: 'Espalda' },
+  { name: 'Australian pull-up', category: 'Espalda' },
+  { name: 'Peso muerto con trap bar (hex bar)', category: 'Espalda' },
+  { name: 'Peso muerto déficit', category: 'Espalda' },
+  { name: 'Remo en máquina Hammer', category: 'Espalda' },
 
   // Lumbar
   { name: 'Hiperextensiones (banco lumbar)', category: 'Lumbar' },
@@ -73,6 +92,13 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Press Bradford', category: 'Hombro' },
   { name: 'Landmine press', category: 'Hombro' },
   { name: 'Push press', category: 'Hombro' },
+  { name: 'Elevaciones laterales inclinado (lean-away)', category: 'Hombro' },
+  { name: 'Elevaciones laterales con banda', category: 'Hombro' },
+  { name: 'Y-raises', category: 'Hombro' },
+  { name: 'Press de hombro con kettlebell', category: 'Hombro' },
+  { name: 'Press militar en multipower', category: 'Hombro' },
+  { name: 'Cuban press', category: 'Hombro' },
+  { name: 'Rotación externa de hombro en polea', category: 'Hombro' },
 
   // Bíceps
   { name: 'Curl de bíceps con barra', category: 'Bíceps' },
@@ -84,6 +110,11 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Curl concentrado', category: 'Bíceps' },
   { name: 'Curl en polea baja', category: 'Bíceps' },
   { name: 'Curl 21s', category: 'Bíceps' },
+  { name: 'Curl spider', category: 'Bíceps' },
+  { name: 'Curl con banda elástica', category: 'Bíceps' },
+  { name: 'Curl en máquina', category: 'Bíceps' },
+  { name: 'Curl inclinado con mancuernas', category: 'Bíceps' },
+  { name: 'Curl con cuerda en polea', category: 'Bíceps' },
 
   // Tríceps
   { name: 'Press francés con barra', category: 'Tríceps' },
@@ -94,12 +125,19 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Fondos de tríceps en banco', category: 'Tríceps' },
   { name: 'Press cerrado (close grip bench press)', category: 'Tríceps' },
   { name: 'Extensión de tríceps tras nuca con mancuerna', category: 'Tríceps' },
+  { name: 'Extensión de tríceps en polea a una mano', category: 'Tríceps' },
+  { name: 'Press JM', category: 'Tríceps' },
+  { name: 'Fondos en paralelas (tríceps)', category: 'Tríceps' },
+  { name: 'Extensión de tríceps con banda', category: 'Tríceps' },
 
   // Antebrazo
   { name: 'Curl de muñeca con barra', category: 'Antebrazo' },
   { name: 'Curl de muñeca inverso', category: 'Antebrazo' },
   { name: 'Dead hang (colgarse de la barra)', category: 'Antebrazo' },
   { name: 'Paseo del granjero (agarre)', category: 'Antebrazo' },
+  { name: 'Curl de muñeca con mancuerna', category: 'Antebrazo' },
+  { name: 'Pinza de discos (plate pinch)', category: 'Antebrazo' },
+  { name: 'Enrollado de muñeca (wrist roller)', category: 'Antebrazo' },
 
   // Pierna — Cuádriceps
   { name: 'Sentadilla con barra (back squat)', category: 'Pierna — Cuádriceps' },
@@ -114,6 +152,13 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Extensión de cuádriceps en máquina', category: 'Pierna — Cuádriceps' },
   { name: 'Step up (subida al cajón)', category: 'Pierna — Cuádriceps' },
   { name: 'Sissy squat', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla con salto (jump squat)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla isométrica en pared (wall sit)', category: 'Pierna — Cuádriceps' },
+  { name: 'Zancadas caminando', category: 'Pierna — Cuádriceps' },
+  { name: 'Zancadas inversas', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla Smith machine', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla pistol (a una pierna)', category: 'Pierna — Cuádriceps' },
+  { name: 'Sentadilla con banda (mini band)', category: 'Pierna — Cuádriceps' },
 
   // Pierna — Femoral
   { name: 'Curl femoral tumbado', category: 'Pierna — Femoral' },
@@ -121,6 +166,9 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Curl femoral de pie', category: 'Pierna — Femoral' },
   { name: 'Peso muerto rumano (femoral)', category: 'Pierna — Femoral' },
   { name: 'Nordic curl', category: 'Pierna — Femoral' },
+  { name: 'Curl femoral con balón suizo (stability ball)', category: 'Pierna — Femoral' },
+  { name: 'Peso muerto rumano a una pierna', category: 'Pierna — Femoral' },
+  { name: 'Buenos días con barra (femoral)', category: 'Pierna — Femoral' },
 
   // Glúteo
   { name: 'Hip thrust', category: 'Glúteo' },
@@ -131,12 +179,19 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Abducción de cadera con banda', category: 'Glúteo' },
   { name: 'Peso muerto sumo (glúteo)', category: 'Glúteo' },
   { name: 'Patada de burro (donkey kick)', category: 'Glúteo' },
+  { name: 'Hip thrust en máquina', category: 'Glúteo' },
+  { name: 'Puente de glúteo con barra', category: 'Glúteo' },
+  { name: 'Sentadilla sumo con kettlebell (glúteo)', category: 'Glúteo' },
+  { name: 'Cable kickback (polea baja)', category: 'Glúteo' },
+  { name: 'Frog pump', category: 'Glúteo' },
 
   // Pantorrilla
   { name: 'Elevación de talones de pie (gemelo)', category: 'Pantorrilla' },
   { name: 'Elevación de talones sentado', category: 'Pantorrilla' },
   { name: 'Elevación de talones en prensa', category: 'Pantorrilla' },
   { name: 'Elevación de talones a una pierna', category: 'Pantorrilla' },
+  { name: 'Elevación de talones en sentadilla hack', category: 'Pantorrilla' },
+  { name: 'Saltos a la comba (gemelo)', category: 'Pantorrilla' },
 
   // Core
   { name: 'Plancha (plank)', category: 'Core' },
@@ -152,6 +207,13 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Hollow body hold', category: 'Core' },
   { name: 'Sit-up', category: 'Core' },
   { name: 'Pallof press', category: 'Core' },
+  { name: 'V-ups', category: 'Core' },
+  { name: 'Bicicleta abdominal (bicycle crunch)', category: 'Core' },
+  { name: 'Plancha con elevación de brazo/pierna', category: 'Core' },
+  { name: 'Giro ruso con peso (weighted russian twist)', category: 'Core' },
+  { name: 'Elevación de piernas tumbado', category: 'Core' },
+  { name: 'Ab rollout en TRX', category: 'Core' },
+  { name: 'Sit-up con disco', category: 'Core' },
 
   // Cardio
   { name: 'Carrera continua', category: 'Cardio' },
@@ -165,6 +227,11 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Natación', category: 'Cardio' },
   { name: 'Burpees', category: 'Cardio' },
   { name: 'Battle ropes (cuerdas de batalla)', category: 'Cardio' },
+  { name: 'Mountain climbers (cardio)', category: 'Cardio' },
+  { name: 'Jumping jacks', category: 'Cardio' },
+  { name: 'Skipping (high knees)', category: 'Cardio' },
+  { name: 'Senderismo / caminata rápida', category: 'Cardio' },
+  { name: 'Ciclismo en ruta', category: 'Cardio' },
 
   // Funcional / Olímpico
   { name: 'Kettlebell swing', category: 'Funcional/Olímpico' },
@@ -177,4 +244,14 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Lanzamiento de balón medicinal (slam ball)', category: 'Funcional/Olímpico' },
   { name: 'Arrastre de trineo (sled push/pull)', category: 'Funcional/Olímpico' },
   { name: 'Turkish get-up', category: 'Funcional/Olímpico' },
+  { name: 'Power clean', category: 'Funcional/Olímpico' },
+  { name: 'Hang clean', category: 'Funcional/Olímpico' },
+  { name: 'Split jerk', category: 'Funcional/Olímpico' },
+  { name: 'Snatch balance', category: 'Funcional/Olímpico' },
+  { name: 'Devil press', category: 'Funcional/Olímpico' },
+  { name: 'Man maker', category: 'Funcional/Olímpico' },
+  { name: 'Tire flip (volteo de neumático)', category: 'Funcional/Olímpico' },
+  { name: 'Bear crawl', category: 'Funcional/Olímpico' },
+  { name: 'Battle rope slam', category: 'Funcional/Olímpico' },
+  { name: 'Sled drag (arrastre lateral)', category: 'Funcional/Olímpico' },
 ]

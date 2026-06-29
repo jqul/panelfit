@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search, Settings2 } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
+import { MuscleDiagram } from './MuscleDiagram'
 
 // ── Persistencia ───────────────────────────────────────────
 const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
@@ -570,6 +571,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                     onCancel={()=>setEditId(null)}/>
                 ) : (
                   <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+                    <MuscleDiagram category={ex.category} size={28} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold">{ex.name}</p>
