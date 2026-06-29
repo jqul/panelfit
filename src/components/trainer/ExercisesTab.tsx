@@ -265,6 +265,12 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
         <button onClick={onCancel}><X className="w-4 h-4 text-muted"/></button>
       </div>
 
+      <div className="flex items-center justify-center bg-bg border border-border rounded-2xl py-3 min-h-[90px]">
+        {form.name.trim() || form.category
+          ? <MuscleDiagram category={form.category} name={form.name} size={72} />
+          : <p className="text-xs text-muted">Escribe un nombre o elige grupo muscular para ver el pictograma</p>}
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-muted mb-1">Nombre *</label>
