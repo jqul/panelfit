@@ -10,7 +10,7 @@ const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
 const CATS_KEY      = (uid: string) => `pf_cats_${uid}`
 const ESPS_KEY      = (uid: string) => `pf_esps_${uid}`
 
-const DEFAULT_CATS = ['Piernas','Pecho','Espalda','Hombros','Bíceps','Tríceps','Core','Cardio','General']
+const DEFAULT_CATS = ['Pecho','Espalda','Hombros','Bíceps','Tríceps','Antebrazo','Piernas','Glúteos','Core','Cardio','Funcional/Olímpico','General']
 
 export interface CustomTag  { id: string; label: string; emoji: string; colorIdx: number }
 export interface CustomEsp  { id: string; label: string; emoji: string }

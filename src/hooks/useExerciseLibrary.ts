@@ -10,7 +10,7 @@ const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
 // Versión de la biblioteca de serie. Subir este número cuando se añadan
 // ejercicios nuevos a DEFAULT_EXERCISE_LIBRARY para que las cuentas que ya
 // fueron sembradas reciban solo los que les faltan (sin duplicar).
-const DEFAULT_LIBRARY_VERSION = 3
+const DEFAULT_LIBRARY_VERSION = 4
 const LS_DEFAULT_TOPUP = (uid: string) => `pf_library_default_topup_${uid}`
 
 export type { Especialidad }
