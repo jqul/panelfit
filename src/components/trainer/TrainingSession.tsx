@@ -492,31 +492,53 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                         {isDone ? `Serie ${si + 1} ✓` : isCurrent ? `Serie ${si + 1} — activa` : `Serie ${si + 1}`}
                       </p>
                     </div>
-                    <div className="flex items-end px-4 pb-3 gap-2">
-                      <div className="flex-1 text-center">
-                        <p className="text-[9px] text-muted uppercase tracking-wider mb-0.5">kg</p>
-                        <input type="number" inputMode="decimal" placeholder="—"
-                          value={s?.weight || ''}
-                          onChange={e => updateSet(activeIdx, si, 'weight', e.target.value)}
-                          disabled={!isCurrent && !isDone}
-                          style={{ fontSize: isCurrent ? '28px' : '20px' }}
-                          className={`w-full text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
-                            isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
-                          }`}
-                        />
+                    <div className="flex items-center px-3 pb-3 gap-1">
+                      {/* Peso */}
+                      <div className="flex-1">
+                        <p className="text-[9px] text-muted uppercase tracking-wider mb-1 text-center">kg</p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => updateSet(activeIdx, si, 'weight', String(Math.round((Math.max(0, (parseFloat(s?.weight||'0')||0) - 2.5)) * 10) / 10))}
+                            disabled={!isCurrent && !isDone}
+                            className="w-8 h-8 rounded-full bg-bg border border-border text-muted text-base font-bold flex-shrink-0 disabled:opacity-25 active:scale-90 transition-transform">−</button>
+                          <input type="number" inputMode="decimal" placeholder="—"
+                            value={s?.weight || ''}
+                            onChange={e => updateSet(activeIdx, si, 'weight', e.target.value)}
+                            disabled={!isCurrent && !isDone}
+                            style={{ fontSize: isCurrent ? '26px' : '18px' }}
+                            className={`flex-1 min-w-0 text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
+                              isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
+                            }`}
+                          />
+                          <button
+                            onClick={() => updateSet(activeIdx, si, 'weight', String(Math.round(((parseFloat(s?.weight||'0')||0) + 2.5) * 10) / 10))}
+                            disabled={!isCurrent && !isDone}
+                            className="w-8 h-8 rounded-full bg-bg border border-border text-muted text-base font-bold flex-shrink-0 disabled:opacity-25 active:scale-90 transition-transform">+</button>
+                        </div>
                       </div>
-                      <p className="text-muted text-xl font-light pb-1 flex-shrink-0">×</p>
-                      <div className="flex-1 text-center">
-                        <p className="text-[9px] text-muted uppercase tracking-wider mb-0.5">reps</p>
-                        <input type="number" inputMode="numeric" placeholder="—"
-                          value={s?.reps || ''}
-                          onChange={e => updateSet(activeIdx, si, 'reps', e.target.value)}
-                          disabled={!isCurrent && !isDone}
-                          style={{ fontSize: isCurrent ? '28px' : '20px' }}
-                          className={`w-full text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
-                            isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
-                          }`}
-                        />
+                      <p className="text-muted text-lg font-light flex-shrink-0 px-1 self-end pb-1">×</p>
+                      {/* Reps */}
+                      <div className="flex-1">
+                        <p className="text-[9px] text-muted uppercase tracking-wider mb-1 text-center">reps</p>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => updateSet(activeIdx, si, 'reps', String(Math.max(1, (parseInt(s?.reps||'1')||1) - 1)))}
+                            disabled={!isCurrent && !isDone}
+                            className="w-8 h-8 rounded-full bg-bg border border-border text-muted text-base font-bold flex-shrink-0 disabled:opacity-25 active:scale-90 transition-transform">−</button>
+                          <input type="number" inputMode="numeric" placeholder="—"
+                            value={s?.reps || ''}
+                            onChange={e => updateSet(activeIdx, si, 'reps', e.target.value)}
+                            disabled={!isCurrent && !isDone}
+                            style={{ fontSize: isCurrent ? '26px' : '18px' }}
+                            className={`flex-1 min-w-0 text-center font-serif font-bold bg-transparent outline-none disabled:opacity-50 ${
+                              isCurrent ? 'text-ink' : isDone ? 'text-ok' : 'text-muted'
+                            }`}
+                          />
+                          <button
+                            onClick={() => updateSet(activeIdx, si, 'reps', String((parseInt(s?.reps||'0')||0) + 1))}
+                            disabled={!isCurrent && !isDone}
+                            className="w-8 h-8 rounded-full bg-bg border border-border text-muted text-base font-bold flex-shrink-0 disabled:opacity-25 active:scale-90 transition-transform">+</button>
+                        </div>
                       </div>
                     </div>
                   </div>

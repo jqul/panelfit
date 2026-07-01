@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Plus, Trash2, Edit2, X, Video, Search, Settings2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
 import { MuscleDiagram } from './MuscleDiagram'
@@ -9,6 +9,7 @@ import { MuscleDiagram } from './MuscleDiagram'
 const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
 const CATS_KEY      = (uid: string) => `pf_cats_${uid}`
 const ESPS_KEY      = (uid: string) => `pf_esps_${uid}`
+const FAV_KEY       = (uid: string) => `pf_fav_${uid}`
 
 const DEFAULT_CATS = ['Pecho','Espalda','Hombros','Bíceps','Tríceps','Antebrazo','Piernas','Glúteos','Core','Cardio','Funcional/Olímpico','General']
 
@@ -450,6 +451,14 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [filterEsp, setFilterEsp]   = useState('')
   const [filterTag, setFilterTag]   = useState('')
   const [filterVideos, setFilterVideos] = useState<''|'con_esp'|'sin_esp'|'sin_video'>('')
+  const [favs, setFavs] = useState<Set<string>>(() => new Set(load(FAV_KEY(trainerId), [] as string[])))
+
+  const toggleFav = (id: string) => {
+    const next = new Set(favs)
+    next.has(id) ? next.delete(id) : next.add(id)
+    setFavs(next)
+    save(FAV_KEY(trainerId), Array.from(next))
+  }
   const [editId, setEditId]         = useState<string|null>(null)
   const [showNew, setShowNew]       = useState(false)
   const [showConfig, setShowConfig] = useState(false)
@@ -567,7 +576,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map(ex => {
+          {[...filtered].sort((a,b) => (favs.has(b.id)?1:0) - (favs.has(a.id)?1:0)).map(ex => {
             const exTags = ex.tags||[]
             return (
               <div key={ex.id}>
@@ -618,6 +627,9 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                       )}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={()=>toggleFav(ex.id)} className="p-1.5">
+                        <Star className={`w-3.5 h-3.5 transition-colors ${favs.has(ex.id) ? 'fill-amber-400 text-amber-400' : 'text-border hover:text-amber-300'}`}/>
+                      </button>
                       <button onClick={()=>startEdit(ex)} className="p-1.5 text-muted hover:text-accent"><Edit2 className="w-3.5 h-3.5"/></button>
                       <button onClick={()=>onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5"/></button>
                     </div>
