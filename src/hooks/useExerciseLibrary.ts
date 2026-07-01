@@ -148,11 +148,15 @@ export function useExerciseLibrary(trainerId: string) {
       .eq('trainer_id', trainerId)
       .is('deleted_at', null)
       .order('name')
+      .limit(2000)
 
     if (!error && data) {
+      console.log(`[PanelFit] syncFromSupabase: ${data.length} ejercicios recibidos`)
       const local = data.map(dbToLocal)
       setExercises(local)
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(local))
+    } else if (error) {
+      console.error('[PanelFit] syncFromSupabase error:', error)
     }
     setSyncing(false)
     return (data?.length ?? 0) > 0
