@@ -298,7 +298,10 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 
       {/* Especialidades (sistema + custom) */}
       <div>
-        <label className="block text-xs font-semibold text-muted mb-2">Especialidades</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-semibold text-muted">Especialidades del ejercicio</label>
+          <span className="text-[10px] text-muted">Añade más en ⚙️ Configurar</span>
+        </div>
         <div className="flex flex-wrap gap-2">
           {allEsps.map(e => (
             <button key={e.id} type="button" onClick={()=>toggle('especialidades',e.id)}
@@ -396,30 +399,30 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
               }}/>
           </label>
         )}
-        {/* Especialidades para el vídeo subido localmente */}
-        {videoMode==='file' && (
-          <div className="flex flex-wrap gap-1.5">
-            {allEsps.map(e => {
-              const active = uploadVideoEsps.includes(e.id)
-              return (
-                <button key={e.id} type="button" onClick={()=>setUploadVideoEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
-                  {e.emoji} {e.label}
-                </button>
-              )
-            })}
-          </div>
+        {/* Opciones extra — solo cuando hay URL/archivo */}
+        {newVideoUrl.trim() && (
+          <>
+            <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
+              placeholder="Etiqueta del vídeo (opcional)" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
+            <div>
+              <p className="text-[9px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allEsps.map(e => {
+                  const esps = videoMode === 'file' ? uploadVideoEsps : newVideoEsps
+                  const setEsps = videoMode === 'file' ? setUploadVideoEsps : setNewVideoEsps
+                  const active = esps.includes(e.id)
+                  return (
+                    <button key={e.id} type="button" onClick={()=>setEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
+                      {e.emoji} {e.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[9px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
+            </div>
+          </>
         )}
-        <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
-          placeholder="Etiqueta del vídeo" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
-        <div className="flex flex-wrap gap-1.5">
-          {allEsps.map(e => (
-            <button key={e.id} type="button" onClick={()=>setNewVideoEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${newVideoEsps.includes(e.id)?'bg-accent text-white border-accent':'border-border text-muted'}`}>
-              {e.emoji} {e.label}
-            </button>
-          ))}
-        </div>
         <button onClick={addVideo} disabled={!newVideoUrl.trim()||uploading}
           className="w-full py-2 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
           + Añadir vídeo
