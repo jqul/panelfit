@@ -114,7 +114,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">{setsArr.map((s, si) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}</span>)}</div>
                     </div>
                     {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[9px] text-muted">mejor</p></div>}
-                    {(exHistory[exName]?.length ?? 0) >= 1 && (
+                    {(exHistory[exName]?.length ?? 0) >= 2 && (
                       <button
                         onClick={() => setExpandedEx(expandedEx === key ? null : key)}
                         className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${expandedEx === key ? 'bg-accent/10 text-accent' : 'text-muted hover:text-accent'}`}>
