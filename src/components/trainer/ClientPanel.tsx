@@ -281,43 +281,51 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top bar */}
-        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-3 lg:px-6">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden p-2 rounded-lg hover:bg-bg-alt text-muted">
+        <header className="bg-card border-b border-border flex-shrink-0 flex items-center justify-between px-1 lg:px-6" style={{ height: 'calc(3.5rem + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <div className="flex items-center gap-0.5">
+            {/* Mobile: back arrow + hamburger */}
+            <button onClick={onClose} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted transition-colors flex-shrink-0" style={{ minWidth: '40px', minHeight: '44px' }}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <div>
+            <div className="lg:hidden min-w-0">
+              <p className="text-sm font-bold truncate">{client.name} {client.surname}</p>
+              <p className="text-[10px] text-muted truncate">{TABS.find(t => t.id === activeTab)?.label}</p>
+            </div>
+            <div className="hidden lg:block">
               <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
               <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
+          <div className="flex items-center gap-2 lg:gap-3">
+            <span className={`hidden sm:block text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
             {activeTab === 'progreso' && (
               <PlanGate feature="pdf_report" planName={userProfile.planName} fallback={
-                <button disabled className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted/40 cursor-not-allowed">🔒 Informe PDF</button>
+                <button disabled className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted/40 cursor-not-allowed">🔒 Informe PDF</button>
               }>
-                <button onClick={() => setShowInforme(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">📄 Informe PDF</button>
+                <button onClick={() => setShowInforme(true)} className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">📄 Informe PDF</button>
               </PlanGate>
             )}
             {activeTab === 'plan' && plan?.weeks?.length ? (
               <button onClick={() => setShowDayPicker(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-ok text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-                ▶ Sesión en vivo
+                ▶ <span className="hidden sm:inline">Sesión en vivo</span><span className="sm:hidden">Sesión</span>
               </button>
             ) : null}
             {activeTab === 'plan' && templates.length > 0 && (
-              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+              <button onClick={() => setShowTemplates(true)} className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
                 <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
               </button>
             )}
             {activeTab !== 'perfil' && (
               <Button size="sm" onClick={() => savePlan()} disabled={saveState === 'saving'} className="gap-1.5">
-                <Save className="w-3.5 h-3.5" /> Guardar
+                <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
               </Button>
             )}
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <button onClick={onClose} className="hidden lg:flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
