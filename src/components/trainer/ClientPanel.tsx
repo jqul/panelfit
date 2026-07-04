@@ -202,15 +202,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const pendingAlerts = alerts.filter(a => !a.done)
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg flex overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-card flex flex-col overflow-hidden">
+      {/* Safe-area spacer — sits above everything, height = Dynamic Island / notch on iOS */}
+      <div className="flex-shrink-0 bg-card" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+
+      {/* Main layout: sidebar + content side by side */}
+      <div className="flex flex-1 overflow-hidden min-h-0 bg-bg">
 
       {/* Sidebar */}
       {mobileShowSidebar && (
         <div className="fixed inset-0 bg-ink/40 z-10 lg:hidden" onClick={() => setMobileShowSidebar(false)} />
       )}
-      <aside className={`flex-shrink-0 bg-card border-r border-border flex flex-col transition-all z-20 ${mobileShowSidebar ? 'fixed inset-y-0 left-0 w-64' : 'hidden lg:flex lg:w-56'}`}>
-        {/* Safe-area spacer inside sidebar */}
-        {mobileShowSidebar && <div className="flex-shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />}
+      <aside className={`flex-shrink-0 bg-card border-r border-border flex flex-col z-20 ${mobileShowSidebar ? 'fixed left-0 bottom-0 w-64' : 'hidden lg:flex lg:w-56'}`}
+        style={mobileShowSidebar ? { top: 'env(safe-area-inset-top, 0px)' } : undefined}>
         <div className="px-4 py-4 border-b border-border">
           <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm" style={{ minHeight: '44px' }}>
             <ChevronLeft className="w-4 h-4" /> Volver
@@ -282,8 +286,6 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Safe-area spacer: pushes content below the iOS status bar / notch */}
-        <div className="lg:hidden flex-shrink-0 bg-card" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         {/* Top bar */}
         <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-1 lg:px-6">
           <div className="flex items-center gap-0.5">
@@ -489,6 +491,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           </div>
         )}
       </Modal>
+      </div>{/* end flex flex-1 layout */}
     </div>
   )
 }
