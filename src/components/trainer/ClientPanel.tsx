@@ -209,8 +209,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         <div className="fixed inset-0 bg-ink/40 z-10 lg:hidden" onClick={() => setMobileShowSidebar(false)} />
       )}
       <aside className={`flex-shrink-0 bg-card border-r border-border flex flex-col transition-all z-20 ${mobileShowSidebar ? 'fixed inset-y-0 left-0 w-64' : 'hidden lg:flex lg:w-56'}`}>
+        {/* Safe-area spacer inside sidebar */}
+        {mobileShowSidebar && <div className="flex-shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />}
         <div className="px-4 py-4 border-b border-border">
-          <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm">
+          <button onClick={onClose} className="flex items-center gap-2 text-muted hover:text-ink transition-colors mb-3 text-sm" style={{ minHeight: '44px' }}>
             <ChevronLeft className="w-4 h-4" /> Volver
           </button>
           <button onClick={() => { setActiveTab('perfil'); setMobileShowSidebar(false) }}
@@ -280,8 +282,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Safe-area spacer: pushes content below the iOS status bar / notch */}
+        <div className="lg:hidden flex-shrink-0 bg-card" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         {/* Top bar */}
-        <header className="bg-card border-b border-border flex-shrink-0 flex items-center justify-between px-1 lg:px-6" style={{ height: 'calc(3.5rem + env(safe-area-inset-top, 0px))', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-1 lg:px-6">
           <div className="flex items-center gap-0.5">
             {/* Mobile: back arrow + hamburger */}
             <button onClick={onClose} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
