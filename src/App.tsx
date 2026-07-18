@@ -15,6 +15,7 @@ const ClientPanel      = lazy(() => import('./components/trainer/ClientPanel').t
 const ClientView       = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel  = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 const PublicTrainerPage = lazy(() => import('./components/trainer/PublicTrainerPage').then(m => ({ default: m.PublicTrainerPage })))
+const LandingAppEntrenadores = lazy(() => import('./components/LandingAppEntrenadores').then(m => ({ default: m.LandingAppEntrenadores })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -120,6 +121,15 @@ export default function App() {
       {/* Vista cliente por token */}
       {view === 'client-token' && clientToken && (
         <ClientView token={clientToken} showEncuesta={encuestaParam} />
+      )}
+
+      {/* Páginas SEO públicas */}
+      {view === 'landing-app-entrenadores' && (
+        <LandingAppEntrenadores
+          onDemo={() => { window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
       )}
 
       {/* Página pública del entrenador */}
