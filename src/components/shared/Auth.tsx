@@ -17,10 +17,10 @@ const FEATURES = [
   { icon: '🥗', title: 'Plan nutricional', desc: 'Crea planes de dieta con macros, comidas y consejos personalizados.' },
   { icon: '💬', title: 'Comunicación directa', desc: 'Comparte rutinas y dietas por WhatsApp con un clic desde el panel.' },
 ]
-const TESTIMONIALS = [
-  { name: 'Carlos M.', role: 'Entrenador personal · Madrid', text: 'Antes mandaba PDFs por WhatsApp. Ahora cada cliente tiene su panel con todo. Cambió mi forma de trabajar.' },
-  { name: 'Laura G.', role: 'Coach de fuerza · Barcelona', text: 'Mis clientes pueden ver sus vídeos de referencia directamente en el panel cuando entrenan. Genial.' },
-  { name: 'Marcos R.', role: 'Entrenador online · Sevilla', text: 'El modo cliente desde el móvil sin instalar nada es lo que más valoran mis alumnos.' },
+const WHY_PANELFIT = [
+  { icon: '🔗', title: 'Un enlace es suficiente', desc: 'El cliente abre su panel desde el móvil sin instalar ninguna app y sin crear cuenta. Tú le mandas el enlace por WhatsApp.' },
+  { icon: '👁️', title: 'Sabes quién entrena y quién no', desc: 'Ve en tiempo real qué clientes han completado sus sesiones esta semana y cuáles llevan días sin actividad.' },
+  { icon: '🗂️', title: 'Todo en un sitio, ordenado', desc: 'Rutinas, dieta, progreso, fotos y comunicación de cada cliente en su propio espacio — sin PDFs desperdigados.' },
 ]
 
 export function Auth({ onAuth, onDemo }: AuthProps) {
@@ -122,19 +122,22 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
       </section>
       <section className="bg-card border-y border-border">
         <div className="max-w-5xl mx-auto px-6 py-20">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 text-center">Testimonios</p>
-          <h2 className="text-3xl font-serif font-bold text-center mb-12">Lo que dicen los entrenadores</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 text-center">Por qué PanelFit</p>
+          <h2 className="text-3xl font-serif font-bold text-center mb-12">Pensado para cómo trabajan los entrenadores reales</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="bg-bg border border-border rounded-2xl p-6">
-                <p className="text-sm text-ink/80 leading-relaxed mb-6 italic">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">{t.name[0]}</div>
-                  <div><p className="text-sm font-semibold">{t.name}</p><p className="text-[10px] text-muted">{t.role}</p></div>
-                </div>
+            {WHY_PANELFIT.map(w => (
+              <div key={w.title} className="bg-bg border border-border rounded-2xl p-6">
+                <div className="text-3xl mb-4">{w.icon}</div>
+                <p className="font-serif font-bold text-base mb-2">{w.title}</p>
+                <p className="text-sm text-muted leading-relaxed">{w.desc}</p>
               </div>
             ))}
           </div>
+          <p className="text-center mt-10">
+            <a href="/app-entrenadores" className="text-sm text-accent hover:underline underline-offset-2">
+              Ver más sobre cómo funciona PanelFit →
+            </a>
+          </p>
         </div>
       </section>
       <section className="bg-ink text-white">

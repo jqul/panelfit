@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador'
 
 export interface PendingUser {
   uid: string
@@ -72,6 +72,7 @@ export function useAuthBootstrap() {
   useEffect(() => {
     const pathname = window.location.pathname
     if (pathname === '/app-entrenadores' || pathname === '/app-entrenadores/') { setView('landing-app-entrenadores'); return }
+    if (pathname === '/software-entrenador-personal' || pathname === '/software-entrenador-personal/') { setView('landing-software-entrenador'); return }
 
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }

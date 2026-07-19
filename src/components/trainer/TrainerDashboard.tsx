@@ -314,32 +314,29 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 {/* Onboarding — solo cuando no hay clientes */}
                 {clients.length === 0 && !loading && (
-                  <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
-                    <div className="px-8 py-10 text-center">
-                      <div className="text-5xl mb-4">👋</div>
-                      <p className="font-serif text-2xl font-bold text-ink">Bienvenido a PanelFit</p>
-                      <p className="text-sm text-muted mt-2 max-w-sm mx-auto">Empieza añadiendo tu primer cliente. En menos de 2 minutos puedes tenerle con un plan asignado.</p>
-                      <button onClick={() => setShowAdd(true)} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-                        Añadir primer cliente
-                      </button>
+                  <div className="rounded-2xl overflow-hidden border border-border">
+                    <div className="px-8 pt-10 pb-6">
+                      <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">Bienvenido a PanelFit</p>
+                      <h3 className="font-serif text-2xl font-bold leading-snug mb-1">Tu primer cliente, listo en 2 minutos</h3>
+                      <p className="text-sm text-muted">Sigue estos 3 pasos y tendrás a un cliente entrenando con su panel móvil hoy mismo.</p>
                     </div>
-                    <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Primeros pasos</p>
-                      <div className="space-y-2.5">
-                        {[
-                          { label: "Añade tu primer cliente", action: "Nuevo cliente", onClick: () => setShowAdd(true) },
-                          { label: "Crea un workout en la librería", action: "Ir a Workouts", onClick: () => handleTabChange("templates") },
-                          { label: "Asigna un plan a tu cliente", action: "Ver clientes", onClick: () => handleTabChange("clients") },
-                        ].map(({ label, action, onClick }) => (
-                          <div key={label} className="flex items-center justify-between py-2 px-3 bg-white rounded-xl border border-border/50">
-                            <div className="flex items-center gap-3">
-                              <div className="w-5 h-5 rounded-full border-2 border-border flex-shrink-0" />
-                              <p className="text-sm text-ink">{label}</p>
-                            </div>
-                            <button onClick={onClick} className="text-xs font-semibold text-accent hover:underline flex-shrink-0">{action} →</button>
+                    <div className="px-8 pb-8 space-y-3">
+                      {[
+                        { n: '1', title: 'Añade al cliente', desc: 'Nombre y objetivo. En 30 segundos.', cta: '+ Nuevo cliente', onClick: () => setShowAdd(true), primary: true },
+                        { n: '2', title: 'Asígnale una rutina', desc: 'Usa una plantilla o créala desde cero.', cta: 'Ver Workouts', onClick: () => handleTabChange('templates'), primary: false },
+                        { n: '3', title: 'Envíale el enlace', desc: 'Un clic lo manda por WhatsApp. Sin instalar nada.', cta: 'Ver Clientes', onClick: () => handleTabChange('clients'), primary: false },
+                      ].map(({ n, title, desc, cta, onClick, primary }) => (
+                        <div key={n} className={`flex items-center gap-4 p-4 rounded-xl border ${primary ? 'bg-ink text-white border-ink' : 'bg-card border-border'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-serif font-bold text-sm flex-shrink-0 ${primary ? 'bg-white/15 text-white' : 'bg-bg-alt text-muted'}`}>{n}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${primary ? 'text-white' : 'text-ink'}`}>{title}</p>
+                            <p className={`text-xs mt-0.5 ${primary ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
                           </div>
-                        ))}
-                      </div>
+                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-white text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
+                            {cta}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

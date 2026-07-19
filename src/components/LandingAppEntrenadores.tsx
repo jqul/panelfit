@@ -70,6 +70,23 @@ export function LandingAppEntrenadores({ onDemo, onRegister, onLogin }: Props) {
     document.title = 'App para entrenadores personales — PanelFit | Panel de cliente sin app'
     const desc = document.querySelector('meta[name="description"]')
     if (desc) desc.setAttribute('content', 'App para entrenadores personales: crea rutinas, comparte el plan por WhatsApp y cada cliente accede a su panel móvil sin instalar nada. Prueba gratis.')
+
+    const ld = document.createElement('script')
+    ld.type = 'application/ld+json'
+    ld.id = 'ld-app-entrenadores'
+    ld.text = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'PanelFit',
+      applicationCategory: 'HealthApplication',
+      operatingSystem: 'Web, iOS, Android',
+      description: 'Software para entrenadores personales. Crea rutinas, comparte planes por WhatsApp y cada cliente accede a su panel móvil sin instalar ninguna app.',
+      url: 'https://panelfit.vercel.app',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR', description: 'Beta gratuita disponible' },
+      featureList: ['Rutinas por semanas con vídeos', 'Panel móvil del cliente sin app', 'Seguimiento de progreso', 'Plan nutricional', 'Envío por WhatsApp'],
+    })
+    document.head.appendChild(ld)
+    return () => { document.getElementById('ld-app-entrenadores')?.remove() }
   }, [])
 
   return (
