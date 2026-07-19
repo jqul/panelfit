@@ -70,6 +70,7 @@ export function LandingSoftwareEntrenador({ onDemo, onRegister, onLogin }: Props
         <div className="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
           <a href="/" className="text-xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></a>
           <div className="flex items-center gap-2">
+            <a href="/precios" className="hidden md:block px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Precios</a>
             <button onClick={onLogin} className="px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Entrar</button>
             <button onClick={onDemo} className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:border-ink transition-colors">Ver demo</button>
             <button onClick={onRegister} className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">Acceso gratuito</button>
@@ -203,6 +204,7 @@ export function LandingSoftwareEntrenador({ onDemo, onRegister, onLogin }: Props
           <div className="flex gap-5">
             <a href="/" className="hover:text-ink transition-colors">Inicio</a>
             <a href="/app-entrenadores" className="hover:text-ink transition-colors">App entrenadores</a>
+            <a href="/precios" className="hover:text-ink transition-colors">Precios</a>
             <button onClick={onDemo} className="hover:text-ink transition-colors">Demo</button>
           </div>
           <span>© {new Date().getFullYear()} PanelFit</span>
