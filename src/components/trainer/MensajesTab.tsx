@@ -158,6 +158,33 @@ export function MensajesTab({ userProfile, clients }: Props) {
     </div>
   )
 
+  if (!clients.length) return (
+    <div className="max-w-md mx-auto py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+        <Send className="w-8 h-8 text-accent opacity-60" />
+      </div>
+      <p className="font-serif text-2xl font-bold mb-2">Mensajes y encuestas</p>
+      <p className="text-sm text-muted leading-relaxed mb-6">
+        Desde aquí enviarás check-ins semanales por WhatsApp y verás qué clientes llevan días sin entrenar. Todo empieza cuando tengas tu primer cliente.
+      </p>
+      <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-2.5">
+        {[
+          { icon: '📋', t: 'Encuestas automáticas', d: 'Programa check-ins semanales para todos tus clientes a la vez.' },
+          { icon: '⚠️', t: 'Alertas de inactividad', d: 'Te avisamos qué clientes llevan más de 4 días sin entrenar.' },
+          { icon: '💬', t: 'Envío directo a WhatsApp', d: 'Un clic abre WhatsApp con el mensaje ya redactado.' },
+        ].map(({ icon, t, d }) => (
+          <div key={t} className="flex items-start gap-3">
+            <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+            <div>
+              <p className="text-sm font-semibold">{t}</p>
+              <p className="text-xs text-muted">{d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="animate-fade-in space-y-5 max-w-2xl">
       <div>

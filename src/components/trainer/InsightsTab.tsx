@@ -65,10 +65,29 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
   )
 
   if (!clients.length) return (
-    <div className="text-center py-16 text-muted">
-      <BarChart2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="font-serif text-lg">Sin datos aún</p>
-      <p className="text-sm mt-1">Los insights aparecerán cuando tus clientes empiecen a entrenar.</p>
+    <div className="max-w-md mx-auto py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+        <BarChart2 className="w-8 h-8 text-accent opacity-60" />
+      </div>
+      <p className="font-serif text-2xl font-bold mb-2">Los insights se generan solos</p>
+      <p className="text-sm text-muted leading-relaxed mb-6">
+        En cuanto añadas clientes y empiecen a registrar entrenamientos verás aquí adherencia, rachas, récords y alertas de inactividad — sin que tengas que hacer nada.
+      </p>
+      <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-3">
+        {[
+          { n: '1', t: 'Añade un cliente', d: 'Nombre, objetivo y ya está dado de alta.' },
+          { n: '2', t: 'Asígnale un plan', d: 'Usa una plantilla o créala desde cero en menos de 2 min.' },
+          { n: '3', t: 'Envíale el enlace', d: 'El cliente empieza a entrenar y los datos fluyen aquí automáticamente.' },
+        ].map(({ n, t, d }) => (
+          <div key={n} className="flex items-start gap-3">
+            <span className="w-5 h-5 rounded-full bg-accent/10 text-accent text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span>
+            <div>
+              <p className="text-sm font-semibold">{t}</p>
+              <p className="text-xs text-muted">{d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 
