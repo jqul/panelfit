@@ -50,4 +50,24 @@
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://panelfit.vercel.app/blog/gestionar-pagos-entrenador-personal</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://panelfit.vercel.app/blog/plantillas-entrenamiento-entrenador-personal</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://panelfit.vercel.app/blog/conseguir-clientes-entrenador-personal-online</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://panelfit.vercel.app/blog/app-enviar-planes-entrenamiento-clientes</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 </urlset>

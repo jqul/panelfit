@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
 export interface PendingUser {
   uid: string
@@ -80,6 +80,10 @@ export function useAuthBootstrap() {
     if (pathname === '/blog/como-organizar-clientes-entrenador-personal' || pathname === '/blog/como-organizar-clientes-entrenador-personal/') { setView('blog-organizar-clientes'); return }
     if (pathname === '/blog/mejor-software-entrenador-personal' || pathname === '/blog/mejor-software-entrenador-personal/') { setView('blog-mejor-software'); return }
     if (pathname === '/blog/como-hacer-seguimiento-clientes-gym' || pathname === '/blog/como-hacer-seguimiento-clientes-gym/') { setView('blog-seguimiento-clientes'); return }
+    if (pathname === '/blog/gestionar-pagos-entrenador-personal' || pathname === '/blog/gestionar-pagos-entrenador-personal/') { setView('blog-pagos'); return }
+    if (pathname === '/blog/plantillas-entrenamiento-entrenador-personal' || pathname === '/blog/plantillas-entrenamiento-entrenador-personal/') { setView('blog-plantillas'); return }
+    if (pathname === '/blog/conseguir-clientes-entrenador-personal-online' || pathname === '/blog/conseguir-clientes-entrenador-personal-online/') { setView('blog-conseguir-clientes'); return }
+    if (pathname === '/blog/app-enviar-planes-entrenamiento-clientes' || pathname === '/blog/app-enviar-planes-entrenamiento-clientes/') { setView('blog-app-planes'); return }
 
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }

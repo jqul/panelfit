@@ -16,11 +16,25 @@ const ARTICLES = [
     date: 'Feb 2025',
   },
   {
-    href: '/blog/como-organizar-clientes-entrenador-personal',
-    title: 'Cómo organizar tus clientes como entrenador personal',
-    desc: 'Sistema práctico para llevar el seguimiento de clientes, planes y registros sin morir en el intento.',
+    href: '/blog/conseguir-clientes-entrenador-personal-online',
+    title: 'Cómo conseguir clientes como entrenador personal online',
+    desc: 'Estrategias reales para los primeros clientes: sin presupuesto de publicidad ni miles de seguidores.',
+    mins: 8,
+    date: 'May 2025',
+  },
+  {
+    href: '/blog/app-enviar-planes-entrenamiento-clientes',
+    title: 'App para enviar planes de entrenamiento a clientes',
+    desc: 'Comparativa de métodos: PDF, WhatsApp, app o panel web. Por qué el cliente no instala la app.',
+    mins: 6,
+    date: 'May 2025',
+  },
+  {
+    href: '/blog/plantillas-entrenamiento-entrenador-personal',
+    title: 'Plantillas de entrenamiento para entrenador personal',
+    desc: 'Cómo crear y usar plantillas para ahorrar tiempo sin sacrificar calidad en los planes.',
     mins: 7,
-    date: 'Ene 2025',
+    date: 'Abr 2025',
   },
   {
     href: '/blog/como-hacer-seguimiento-clientes-gym',
@@ -28,6 +42,20 @@ const ARTICLES = [
     desc: 'Qué métricas importan, cómo estructurar el seguimiento semanal y qué herramientas usar en 2025.',
     mins: 6,
     date: 'Mar 2025',
+  },
+  {
+    href: '/blog/gestionar-pagos-entrenador-personal',
+    title: 'Cómo gestionar los pagos como entrenador personal',
+    desc: 'Métodos de cobro en España, control de pagos y facturación sin complicaciones.',
+    mins: 6,
+    date: 'Abr 2025',
+  },
+  {
+    href: '/blog/como-organizar-clientes-entrenador-personal',
+    title: 'Cómo organizar tus clientes como entrenador personal',
+    desc: 'Sistema práctico para llevar el seguimiento de clientes, planes y registros sin morir en el intento.',
+    mins: 7,
+    date: 'Ene 2025',
   },
 ]
 

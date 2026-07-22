@@ -26,6 +26,10 @@ const BlogIndex                    = lazy(() => import('./components/BlogIndex')
 const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
 const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
 const BlogSeguimientoClientes      = lazy(() => import('./components/BlogSeguimientoClientes').then(m => ({ default: m.BlogSeguimientoClientes })))
+const BlogGestionPagos             = lazy(() => import('./components/BlogGestionPagos').then(m => ({ default: m.BlogGestionPagos })))
+const BlogPlantillasEntrenamiento  = lazy(() => import('./components/BlogPlantillasEntrenamiento').then(m => ({ default: m.BlogPlantillasEntrenamiento })))
+const BlogConseguirClientes        = lazy(() => import('./components/BlogConseguirClientes').then(m => ({ default: m.BlogConseguirClientes })))
+const BlogAppEnviarPlanes          = lazy(() => import('./components/BlogAppEnviarPlanes').then(m => ({ default: m.BlogAppEnviarPlanes })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -227,6 +231,34 @@ export default function App() {
         />
       )}
 
+      {view === 'blog-pagos' && (
+        <BlogGestionPagos
+          onDemo={() => { track('demo_clicked', { source: 'blog_pagos' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_pagos' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-plantillas' && (
+        <BlogPlantillasEntrenamiento
+          onDemo={() => { track('demo_clicked', { source: 'blog_plantillas' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_plantillas' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-conseguir-clientes' && (
+        <BlogConseguirClientes
+          onDemo={() => { track('demo_clicked', { source: 'blog_conseguir' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_conseguir' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-app-planes' && (
+        <BlogAppEnviarPlanes
+          onDemo={() => { track('demo_clicked', { source: 'blog_app_planes' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_app_planes' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
       {view === 'blog-mejor-software' && (
         <BlogMejorSoftware
           onDemo={() => { track('demo_clicked', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('demo') }}
