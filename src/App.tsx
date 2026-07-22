@@ -19,7 +19,8 @@ const PublicTrainerPage = lazy(() => import('./components/trainer/PublicTrainerP
 const LandingAppEntrenadores    = lazy(() => import('./components/LandingAppEntrenadores').then(m => ({ default: m.LandingAppEntrenadores })))
 const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwareEntrenador').then(m => ({ default: m.LandingSoftwareEntrenador })))
 const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
-const LandingAlternativaHarbiz  = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
+const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
+const LandingAlternativaTrainerize = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -153,6 +154,13 @@ export default function App() {
         <LandingAlternativaHarbiz
           onDemo={() => { track('demo_clicked', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('demo') }}
           onRegister={() => { track('register_intent', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-trainerize' && (
+        <LandingAlternativaTrainerize
+          onDemo={() => { track('demo_clicked', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}

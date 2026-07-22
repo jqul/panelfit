@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize'
 
 export interface PendingUser {
   uid: string
@@ -75,6 +75,7 @@ export function useAuthBootstrap() {
     if (pathname === '/software-entrenador-personal' || pathname === '/software-entrenador-personal/') { setView('landing-software-entrenador'); return }
     if (pathname === '/precios' || pathname === '/precios/') { setView('landing-precios'); return }
     if (pathname === '/alternativas/harbiz' || pathname === '/alternativas/harbiz/') { setView('landing-alternativa-harbiz'); return }
+    if (pathname === '/alternativas/trainerize' || pathname === '/alternativas/trainerize/') { setView('landing-alternativa-trainerize'); return }
 
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }
