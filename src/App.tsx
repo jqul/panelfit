@@ -22,6 +22,7 @@ const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwar
 const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
 const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
 const LandingAlternativaTrainerize = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
+const BlogIndex                    = lazy(() => import('./components/BlogIndex').then(m => ({ default: m.BlogIndex })))
 const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
 const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
 const BlogSeguimientoClientes      = lazy(() => import('./components/BlogSeguimientoClientes').then(m => ({ default: m.BlogSeguimientoClientes })))
@@ -211,6 +212,13 @@ export default function App() {
       )}
 
       {/* Blog */}
+      {view === 'blog-index' && (
+        <BlogIndex
+          onDemo={() => { track('demo_clicked', { source: 'blog_index' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_index' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
       {view === 'blog-organizar-clientes' && (
         <BlogOrganizarClientes
           onDemo={() => { track('demo_clicked', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('demo') }}
