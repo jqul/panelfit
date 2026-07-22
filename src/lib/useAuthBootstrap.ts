@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-organizar-clientes'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes'
 
 export interface PendingUser {
   uid: string
@@ -77,6 +77,8 @@ export function useAuthBootstrap() {
     if (pathname === '/alternativas/harbiz' || pathname === '/alternativas/harbiz/') { setView('landing-alternativa-harbiz'); return }
     if (pathname === '/alternativas/trainerize' || pathname === '/alternativas/trainerize/') { setView('landing-alternativa-trainerize'); return }
     if (pathname === '/blog/como-organizar-clientes-entrenador-personal' || pathname === '/blog/como-organizar-clientes-entrenador-personal/') { setView('blog-organizar-clientes'); return }
+    if (pathname === '/blog/mejor-software-entrenador-personal' || pathname === '/blog/mejor-software-entrenador-personal/') { setView('blog-mejor-software'); return }
+    if (pathname === '/blog/como-hacer-seguimiento-clientes-gym' || pathname === '/blog/como-hacer-seguimiento-clientes-gym/') { setView('blog-seguimiento-clientes'); return }
 
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }

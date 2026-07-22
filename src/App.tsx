@@ -23,6 +23,8 @@ const LandingPrecios            = lazy(() => import('./components/LandingPrecios
 const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
 const LandingAlternativaTrainerize = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
 const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
+const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
+const BlogSeguimientoClientes      = lazy(() => import('./components/BlogSeguimientoClientes').then(m => ({ default: m.BlogSeguimientoClientes })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -213,6 +215,21 @@ export default function App() {
         <BlogOrganizarClientes
           onDemo={() => { track('demo_clicked', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('demo') }}
           onRegister={() => { track('register_intent', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {view === 'blog-mejor-software' && (
+        <BlogMejorSoftware
+          onDemo={() => { track('demo_clicked', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-seguimiento-clientes' && (
+        <BlogSeguimientoClientes
+          onDemo={() => { track('demo_clicked', { source: 'blog_seguimiento' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_seguimiento' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
