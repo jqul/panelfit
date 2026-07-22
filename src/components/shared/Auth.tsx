@@ -74,6 +74,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
           <span className="text-xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></span>
           <div className="flex items-center gap-3">
             <a href="/precios" className="hidden sm:block px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Precios</a>
+            <a href="/blog" className="hidden sm:block px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Blog</a>
             <button onClick={() => setView('login')} className="px-4 py-2 text-sm font-medium text-muted hover:text-ink transition-colors">Entrar →</button>
             <button onClick={() => setView('register')} className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">Solicitar acceso</button>
           </div>
@@ -139,6 +140,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
             <a href="/app-entrenadores" className="text-accent hover:underline underline-offset-2">App para entrenadores →</a>
             <a href="/software-entrenador-personal" className="text-accent hover:underline underline-offset-2">Software →</a>
             <a href="/precios" className="text-accent hover:underline underline-offset-2">Precios →</a>
+            <a href="/blog" className="text-accent hover:underline underline-offset-2">Blog →</a>
           </div>
         </div>
       </section>
