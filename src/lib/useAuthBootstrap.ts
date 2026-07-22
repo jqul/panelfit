@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
 export interface PendingUser {
   uid: string
@@ -76,6 +76,10 @@ export function useAuthBootstrap() {
     if (pathname === '/precios' || pathname === '/precios/') { setView('landing-precios'); return }
     if (pathname === '/alternativas/harbiz' || pathname === '/alternativas/harbiz/') { setView('landing-alternativa-harbiz'); return }
     if (pathname === '/alternativas/trainerize' || pathname === '/alternativas/trainerize/') { setView('landing-alternativa-trainerize'); return }
+    if (pathname === '/alternativas/mypthub' || pathname === '/alternativas/mypthub/') { setView('landing-alternativa-mypthub'); return }
+    if (pathname === '/alternativas/truecoach' || pathname === '/alternativas/truecoach/') { setView('landing-alternativa-truecoach'); return }
+    if (pathname === '/alternativas/pt-distinction' || pathname === '/alternativas/pt-distinction/') { setView('landing-alternativa-ptdistinction'); return }
+    if (pathname === '/calculadora-1rm' || pathname === '/calculadora-1rm/') { setView('calculadora-rm'); return }
     if (pathname === '/blog' || pathname === '/blog/') { setView('blog-index'); return }
     if (pathname === '/blog/como-organizar-clientes-entrenador-personal' || pathname === '/blog/como-organizar-clientes-entrenador-personal/') { setView('blog-organizar-clientes'); return }
     if (pathname === '/blog/mejor-software-entrenador-personal' || pathname === '/blog/mejor-software-entrenador-personal/') { setView('blog-mejor-software'); return }

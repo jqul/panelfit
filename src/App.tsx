@@ -21,7 +21,11 @@ const LandingAppEntrenadores    = lazy(() => import('./components/LandingAppEntr
 const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwareEntrenador').then(m => ({ default: m.LandingSoftwareEntrenador })))
 const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
 const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
-const LandingAlternativaTrainerize = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
+const LandingAlternativaTrainerize  = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
+const LandingAlternativaMyPTHub     = lazy(() => import('./components/LandingAlternativaMyPTHub').then(m => ({ default: m.LandingAlternativaMyPTHub })))
+const LandingAlternativaTrueCoach   = lazy(() => import('./components/LandingAlternativaTrueCoach').then(m => ({ default: m.LandingAlternativaTrueCoach })))
+const LandingAlternativaPTDistinction = lazy(() => import('./components/LandingAlternativaPTDistinction').then(m => ({ default: m.LandingAlternativaPTDistinction })))
+const CalculadoraRM                 = lazy(() => import('./components/CalculadoraRM').then(m => ({ default: m.CalculadoraRM })))
 const BlogIndex                    = lazy(() => import('./components/BlogIndex').then(m => ({ default: m.BlogIndex })))
 const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
 const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
@@ -211,6 +215,38 @@ export default function App() {
         <LandingAlternativaTrainerize
           onDemo={() => { track('demo_clicked', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('demo') }}
           onRegister={() => { track('register_intent', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Calculadora */}
+      {view === 'calculadora-rm' && (
+        <CalculadoraRM
+          onDemo={() => { track('demo_clicked', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Alternativas adicionales */}
+      {view === 'landing-alternativa-mypthub' && (
+        <LandingAlternativaMyPTHub
+          onDemo={() => { track('demo_clicked', { source: 'alt_mypthub' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'alt_mypthub' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-truecoach' && (
+        <LandingAlternativaTrueCoach
+          onDemo={() => { track('demo_clicked', { source: 'alt_truecoach' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'alt_truecoach' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-ptdistinction' && (
+        <LandingAlternativaPTDistinction
+          onDemo={() => { track('demo_clicked', { source: 'alt_ptdistinction' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'alt_ptdistinction' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
