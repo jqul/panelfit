@@ -7,7 +7,7 @@ import {
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'blog-organizar-clientes'
 
 export interface PendingUser {
   uid: string
@@ -76,6 +76,7 @@ export function useAuthBootstrap() {
     if (pathname === '/precios' || pathname === '/precios/') { setView('landing-precios'); return }
     if (pathname === '/alternativas/harbiz' || pathname === '/alternativas/harbiz/') { setView('landing-alternativa-harbiz'); return }
     if (pathname === '/alternativas/trainerize' || pathname === '/alternativas/trainerize/') { setView('landing-alternativa-trainerize'); return }
+    if (pathname === '/blog/como-organizar-clientes-entrenador-personal' || pathname === '/blog/como-organizar-clientes-entrenador-personal/') { setView('blog-organizar-clientes'); return }
 
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }

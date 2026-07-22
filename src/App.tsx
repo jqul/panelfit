@@ -22,6 +22,7 @@ const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwar
 const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
 const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
 const LandingAlternativaTrainerize = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
+const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
 
 // ── Perfil demo constante ─────────────────────────────────
 const DEMO_PROFILE: UserProfile = {
@@ -63,12 +64,49 @@ function PendingBanner({ displayName, email }: { displayName: string; email: str
   )
 }
 
+// ── CTA flotante para demo público ───────────────────────
+function DemoCTA({ onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {
+  const [dismissed, setDismissed] = useState(false)
+  if (dismissed) return null
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-bg border-t border-border shadow-lg px-4 py-3 flex items-center justify-between gap-3">
+      <p className="text-sm text-text-secondary hidden sm:block">
+        Estás viendo la demo — los datos son ficticios.
+      </p>
+      <p className="text-sm font-medium sm:hidden">¿Te convence PanelFit?</p>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={onLogin}
+          className="text-sm text-text-secondary hover:text-text px-3 py-1.5 rounded-lg hover:bg-surface transition-colors"
+        >
+          Entrar
+        </button>
+        <button
+          onClick={onRegister}
+          className="text-sm font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+        >
+          Solicitar acceso gratis →
+        </button>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-text-secondary/50 hover:text-text-secondary ml-1 text-lg leading-none"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Vista demo compartida (pending-demo y demo público) ───
-function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }: {
+function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient, onRegister, onLogin }: {
   showBanner: boolean
   pendingUser: { displayName: string; email: string } | null
   selectedClient: ClientData | null
   setSelectedClient: (c: ClientData | null) => void
+  onRegister?: () => void
+  onLogin?: () => void
 }) {
   const demoPlan = (id: string) =>
     id === 'demo-client-001' ? DEMO_PLAN_MARIA :
@@ -83,7 +121,10 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }
       {showBanner && pendingUser && (
         <PendingBanner displayName={pendingUser.displayName} email={pendingUser.email} />
       )}
-      <div className={showBanner ? 'pt-11' : ''}>
+      {!showBanner && onRegister && onLogin && (
+        <DemoCTA onRegister={onRegister} onLogin={onLogin} />
+      )}
+      <div className={showBanner ? 'pt-11' : 'pb-16'}>
         {selectedClient ? (
           <ClientPanel
             client={selectedClient}
@@ -167,6 +208,15 @@ export default function App() {
         />
       )}
 
+      {/* Blog */}
+      {view === 'blog-organizar-clientes' && (
+        <BlogOrganizarClientes
+          onDemo={() => { track('demo_clicked', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
       {/* Página pública del entrenador */}
       {view === 'public-page' && publicSlug && (
         <PublicTrainerPage slug={publicSlug} />
@@ -232,6 +282,8 @@ export default function App() {
           pendingUser={null}
           selectedClient={selectedClient}
           setSelectedClient={setSelectedClient}
+          onRegister={() => { track('register_intent', { source: 'demo_cta' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
 
