@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star, Dumbbell } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
 import { MuscleDiagram } from './MuscleDiagram'
@@ -573,10 +573,44 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
 
       {/* Lista */}
       {filtered.length===0 ? (
-        <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
-          <p className="font-serif text-lg">Sin ejercicios</p>
-          <p className="text-sm mt-1">Añade ejercicios a tu biblioteca para reutilizarlos en los planes.</p>
-        </div>
+        exercises.length === 0 ? (
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-accent/8 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Dumbbell className="w-8 h-8 text-accent opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu biblioteca de ejercicios</p>
+              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Añade ejercicios una vez y reutilízalos en todos tus planes. Puedes incluir vídeos de referencia para cada uno.</p>
+              <button onClick={() => { setShowNew(true); setEditId(null) }} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                + Añadir primer ejercicio
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>
+              <div className="flex items-start gap-6 flex-wrap">
+                {[
+                  { step: '1', label: 'Crea ejercicios', desc: 'Con vídeo de YouTube o propio', color: 'bg-accent/10 text-accent' },
+                  { step: '2', label: 'Crea workouts', desc: 'Combina ejercicios en rutinas', color: 'bg-ok/10 text-ok' },
+                  { step: '3', label: 'Asígnalos', desc: 'A clientes desde su plan', color: 'bg-ink/10 text-ink' },
+                ].map(({ step, label, desc, color }) => (
+                  <div key={step} className="flex items-start gap-3 flex-1 min-w-36">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{label}</p>
+                      <p className="text-xs text-muted">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
+            <p className="font-serif text-lg">Sin resultados</p>
+            <p className="text-sm mt-1">Prueba con otro término o categoría.</p>
+            <button onClick={() => { setSearch(''); setFilterCat(''); setFilterTag('') }} className="mt-3 text-accent text-sm hover:underline">Limpiar filtros</button>
+          </div>
+        )
       ) : (
         <div className="space-y-2">
           {[...filtered].sort((a,b) => (favs.has(b.id)?1:0) - (favs.has(a.id)?1:0)).map(ex => {
