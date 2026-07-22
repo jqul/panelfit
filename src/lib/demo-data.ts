@@ -396,3 +396,9 @@ export const DEMO_SURVEY_TEMPLATE = {
   ],
   created_at: Date.now() - 30*86400000,
 }
+
+export const DEMO_LOGS_MAP: Record<string, TrainingLogs> = {
+  'demo-client-001': DEMO_LOGS_MARIA,
+  'demo-client-002': DEMO_LOGS_CARLOS,
+  'demo-client-003': DEMO_LOGS_LAURA,
+}

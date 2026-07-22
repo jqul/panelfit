@@ -48,13 +48,14 @@ interface Props {
   onLogout: () => void
   onSelectClient: (client: ClientData) => void
   demoClients?: ClientData[]
+  demoLogsMap?: Record<string, any>
 }
 
-export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients }: Props) {
+export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
   const clientLimit = userProfile.clientLimit ?? 999
   const { clients, logsMap, loading, addClient, deleteClient, limitReached } =
-    useTrainerClients({ trainerId: userProfile.uid, demoClients, clientLimit })
+    useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
   const { labels } = useLabels(userProfile.uid)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [showOnboarding, setShowOnboarding] = useState(() => {

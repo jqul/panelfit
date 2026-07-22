@@ -5,7 +5,8 @@ import { ClientData } from './types'
 import { Auth } from './components/shared/Auth'
 import { ResetPassword } from './components/shared/ResetPassword'
 import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_ID,
-  DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA } from './lib/demo-data'
+  DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA,
+  DEMO_LOGS_MAP } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
 import { useAuthBootstrap } from './lib/useAuthBootstrap'
 import { Rocket, Mail } from 'lucide-react'
@@ -97,6 +98,7 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient }
             userProfile={DEMO_PROFILE}
             onLogout={() => { window.location.href = '/' }}
             demoClients={DEMO_CLIENTS}
+            demoLogsMap={DEMO_LOGS_MAP}
             onSelectClient={(c: ClientData) => setSelectedClient(c)}
           />
         )}

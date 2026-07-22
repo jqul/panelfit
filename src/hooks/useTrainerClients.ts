@@ -14,10 +14,11 @@ export interface ClientWithStats extends ClientData {
 interface Options {
   trainerId: string
   demoClients?: ClientData[]
+  demoLogsMap?: Record<string, any>
   clientLimit?: number
 }
 
-export function useTrainerClients({ trainerId, demoClients, clientLimit = 999 }: Options) {
+export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientLimit = 999 }: Options) {
   const [clients, setClients] = useState<ClientWithStats[]>([])
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
@@ -25,7 +26,25 @@ export function useTrainerClients({ trainerId, demoClients, clientLimit = 999 }:
   const fetchClients = useCallback(async () => {
     setLoading(true)
     if (demoClients) {
-      setClients(demoClients as ClientWithStats[])
+      const lm = demoLogsMap || {}
+      setLogsMap(lm)
+      const hoy = new Date().toISOString().split('T')[0]
+      const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
+      setClients(demoClients.map(c => {
+        const logs = lm[c.id] || {}
+        const dates = [...new Set(
+          Object.values(logs)
+            .filter((l: any) => l.dateDone)
+            .map((l: any) => l.dateDone as string)
+        )].sort().reverse() as string[]
+        return {
+          ...c,
+          lastActive: dates[0],
+          doneToday: dates[0] === hoy,
+          hasPlan: true,
+          weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
+        }
+      }) as ClientWithStats[])
       setLoading(false)
       return
     }
