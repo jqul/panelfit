@@ -807,6 +807,20 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
   const [bio, setBio] = useState(saved.bio || '')
   const [temaId, setTemaId] = useState(saved.temaId || 'bosque')
   const [saving, setSaving] = useState(false)
+  const [autoCheckin, setAutoCheckin] = useState(false)
+  const [checkinLoading, setCheckinLoading] = useState(false)
+
+  useEffect(() => {
+    supabase.from('entrenadores').select('auto_checkin_enabled').eq('uid', userProfile.uid).maybeSingle()
+      .then(({ data }) => { if (data) setAutoCheckin(data.auto_checkin_enabled ?? false) })
+  }, [userProfile.uid])
+
+  const toggleAutoCheckin = async (val: boolean) => {
+    setCheckinLoading(true)
+    const { error } = await supabase.from('entrenadores').update({ auto_checkin_enabled: val }).eq('uid', userProfile.uid)
+    if (error) { toast('Error al guardar', 'warn') } else { setAutoCheckin(val); toast(val ? 'Check-in semanal activado ✓' : 'Check-in semanal desactivado', 'ok') }
+    setCheckinLoading(false)
+  }
 
   const applyTema = (tema: typeof TEMAS[0]) => { setTemaId(tema.id); setBrandColor(tema.color); setBrandBgColor(tema.bg) }
 
@@ -867,6 +881,19 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
         </div>
         <PushToggle trainerId={userProfile.uid} />
+        <div className="flex items-start justify-between gap-4 pt-3 border-t border-border/40">
+          <div>
+            <p className="text-sm font-medium">Check-in semanal automático</p>
+            <p className="text-xs text-muted mt-0.5">Recibe cada lunes un email con el estado de tus clientes: quién entrenó, quién lleva más de 7 o 14 días sin actividad.</p>
+          </div>
+          <button
+            onClick={() => toggleAutoCheckin(!autoCheckin)}
+            disabled={checkinLoading}
+            className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${autoCheckin ? 'bg-accent' : 'bg-border'} ${checkinLoading ? 'opacity-50' : ''}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
