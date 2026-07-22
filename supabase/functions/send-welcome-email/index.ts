@@ -92,12 +92,15 @@ serve(async (req) => {
 </body>
 </html>`
 
+  const headers = {
+    'Authorization': `Bearer ${RESEND_API_KEY}`,
+    'Content-Type': 'application/json',
+  }
+
+  // Email de bienvenida al nuevo entrenador
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       from: 'PanelFit <onboarding@resend.dev>',
       to: [email],
@@ -108,9 +111,32 @@ serve(async (req) => {
 
   if (!res.ok) {
     const err = await res.text()
-    console.error('Resend error:', err)
+    console.error('Resend error (welcome):', err)
     return new Response(JSON.stringify({ error: err }), { status: 500 })
   }
+
+  // Notificación al admin
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      from: 'PanelFit <onboarding@resend.dev>',
+      to: ['javier.quinones.lopez@gmail.com'],
+      subject: `🆕 Nuevo registro en PanelFit: ${displayName}`,
+      html: `
+        <p style="font-family:sans-serif;font-size:15px;">
+          Nuevo entrenador registrado en PanelFit:
+        </p>
+        <ul style="font-family:sans-serif;font-size:15px;">
+          <li><strong>Nombre:</strong> ${displayName}</li>
+          <li><strong>Email:</strong> ${email}</li>
+        </ul>
+        <p style="font-family:sans-serif;font-size:15px;">
+          <a href="https://panelfit.vercel.app" style="color:#6366f1;">Ir al panel de admin →</a>
+        </p>
+      `,
+    }),
+  })
 
   return new Response(JSON.stringify({ ok: true }), { status: 200 })
 })
