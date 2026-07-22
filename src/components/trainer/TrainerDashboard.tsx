@@ -1,3 +1,4 @@
+import { track } from '@vercel/analytics'
 import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
@@ -104,6 +105,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setAdding(true)
     const ok = await addClient(newClient, newClientLabelIds)
     if (ok) {
+      if (clients.length === 0) track('first_client_created')
       setShowAdd(false)
       setNewClientLabelIds([])
       setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })

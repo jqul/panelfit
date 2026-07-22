@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
+import { track } from '@vercel/analytics'
 import { supabase } from './lib/supabase'
 import { ClientData } from './types'
 import { Auth } from './components/shared/Auth'
@@ -129,29 +130,29 @@ export default function App() {
       {/* Páginas SEO públicas */}
       {view === 'landing-app-entrenadores' && (
         <LandingAppEntrenadores
-          onDemo={() => { window.history.pushState({}, '', '/'); setView('demo') }}
-          onRegister={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+          onDemo={() => { track('demo_clicked', { source: 'app_entrenadores' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'app_entrenadores' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-software-entrenador' && (
         <LandingSoftwareEntrenador
-          onDemo={() => { window.history.pushState({}, '', '/'); setView('demo') }}
-          onRegister={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+          onDemo={() => { track('demo_clicked', { source: 'software_entrenador' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'software_entrenador' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-precios' && (
         <LandingPrecios
-          onDemo={() => { window.history.pushState({}, '', '/'); setView('demo') }}
-          onRegister={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+          onDemo={() => { track('demo_clicked', { source: 'precios' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'precios' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-alternativa-harbiz' && (
         <LandingAlternativaHarbiz
-          onDemo={() => { window.history.pushState({}, '', '/'); setView('demo') }}
-          onRegister={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+          onDemo={() => { track('demo_clicked', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onRegister={() => { track('register_intent', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { track } from '@vercel/analytics'
 import { supabase } from '../../lib/supabase'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 
@@ -38,7 +39,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     setError(''); setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError('Email o contraseña incorrectos')
-    else onAuth()
+    else { track('login_success'); onAuth() }
     setLoading(false)
   }
 
@@ -63,7 +64,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         { onConflict: 'uid' }
       )
     }
-    setLoading(false); setRegistered(true)
+    setLoading(false); track('register_success'); setRegistered(true)
   }
 
   if (view === 'landing') return (
@@ -91,11 +92,11 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </p>
         <div className="relative flex flex-col sm:flex-row gap-3 justify-center mb-16">
           {onDemo && (
-            <button onClick={onDemo} className="flex items-center justify-center gap-2 px-8 py-4 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg">
+            <button onClick={() => { track('demo_clicked', { source: 'home' }); onDemo!() }} className="flex items-center justify-center gap-2 px-8 py-4 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg">
               Ver demo en vivo <ArrowRight className="w-4 h-4" />
             </button>
           )}
-          <button onClick={() => setView('register')} className="flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
+          <button onClick={() => { track('register_intent', { source: 'home' }); setView('register') }} className="flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
             Solicitar acceso
           </button>
         </div>
