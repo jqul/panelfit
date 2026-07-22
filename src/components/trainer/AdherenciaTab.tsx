@@ -88,9 +88,29 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
   }
 
   if (!clients.length) return (
-    <div className="text-center py-16 text-muted">
-      <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="font-serif text-lg">Sin clientes aún</p>
+    <div className="max-w-md mx-auto py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+        <TrendingUp className="w-8 h-8 text-accent opacity-60" />
+      </div>
+      <p className="font-serif text-2xl font-bold mb-2">Seguimiento de adherencia</p>
+      <p className="text-sm text-muted leading-relaxed mb-6">
+        Aquí verás qué clientes están en racha, cuáles llevan días sin entrenar y mensajes automáticos de motivación que puedes enviar con un clic.
+      </p>
+      <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-2.5">
+        {[
+          { icon: '🔥', t: 'Rachas y adherencia', d: 'Porcentaje de días entrenados en los últimos 7 y 30 días por cliente.' },
+          { icon: '⚠️', t: 'Alertas de inactividad', d: 'Detecta automáticamente clientes con más de 4 días sin actividad.' },
+          { icon: '💬', t: 'Mensajes con un clic', d: 'Envía un recordatorio personalizado por WhatsApp directo desde aquí.' },
+        ].map(({ icon, t, d }) => (
+          <div key={t} className="flex items-start gap-3">
+            <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+            <div>
+              <p className="text-sm font-semibold">{t}</p>
+              <p className="text-xs text-muted">{d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 

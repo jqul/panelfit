@@ -50,7 +50,7 @@ function PendingBanner({ displayName, email }: { displayName: string; email: str
       <div className="flex items-center gap-2 text-sm font-medium">
         <Rocket className="w-4 h-4 flex-shrink-0" />
         <span>Hola <strong>{displayName}</strong> — Estás explorando el modo demo. Te activaremos en breve.</span>
-        <a href={`mailto:javi_ql@hotmail.com?subject=Activar cuenta PanelFit&body=Hola, soy ${displayName} (${email})`}
+        <a href={`mailto:javier.quinones.lopez@gmail.com?subject=Activar cuenta PanelFit&body=Hola, soy ${displayName} (${email})`}
           className="ml-2 underline underline-offset-2 flex items-center gap-1 hover:opacity-80">
           <Mail className="w-3.5 h-3.5" /> Contactar
         </a>
