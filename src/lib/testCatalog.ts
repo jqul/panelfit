@@ -1,0 +1,103 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from './supabase'
+
+export interface FitnessTest {
+  id: string
+  trainer_id: string
+  nombre: string
+  categoria: string
+  unidad: string
+  descripcion: string
+  es_default: boolean
+  created_at: number
+}
+
+export interface TestResultado {
+  id: string
+  trainer_id: string
+  client_id: string
+  test_id: string
+  valor: number
+  fecha: string
+  notas: string | null
+  created_at: number
+}
+
+export const CATEGORIAS = ['Fuerza', 'Resistencia', 'Potencia', 'Flexibilidad', 'Equilibrio'] as const
+
+const DEFAULTS: { nombre: string; categoria: string; unidad: string; descripcion: string }[] = [
+  { nombre: 'Salto vertical', categoria: 'Potencia', unidad: 'cm', descripcion: 'Salto máximo sin carrera previa (test de Sargent).' },
+  { nombre: 'Test de Cooper', categoria: 'Resistencia', unidad: 'm', descripcion: 'Metros recorridos corriendo en 12 minutos.' },
+  { nombre: 'Flexiones en 1 min', categoria: 'Fuerza', unidad: 'reps', descripcion: 'Máximo de flexiones de brazo en 60 segundos.' },
+  { nombre: 'Plancha (plank)', categoria: 'Fuerza', unidad: 'segundos', descripcion: 'Tiempo máximo sosteniendo la posición de plancha.' },
+  { nombre: 'Sit and reach', categoria: 'Flexibilidad', unidad: 'cm', descripcion: 'Distancia alcanzada en el test de flexibilidad isquiotibial.' },
+  { nombre: 'Equilibrio a la pata coja', categoria: 'Equilibrio', unidad: 'segundos', descripcion: 'Tiempo en equilibrio sobre una pierna, ojos cerrados.' },
+]
+
+export function useTestCatalog(trainerId?: string) {
+  const [tests, setTests] = useState<FitnessTest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!trainerId) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase.from('test_catalogo').select('*').eq('trainer_id', trainerId).order('created_at')
+    let rows = data || []
+    if (rows.length === 0) {
+      const seeded = DEFAULTS.map(d => ({
+        id: `test_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        trainer_id: trainerId, nombre: d.nombre, categoria: d.categoria, unidad: d.unidad, descripcion: d.descripcion,
+        es_default: true, created_at: Date.now(),
+      }))
+      const { error } = await supabase.from('test_catalogo').insert(seeded)
+      if (!error) rows = seeded
+    }
+    setTests(rows as FitnessTest[])
+    setLoading(false)
+  }, [trainerId])
+
+  useEffect(() => { load() }, [load])
+
+  const addTest = useCallback(async (nombre: string, categoria: string, unidad: string, descripcion: string) => {
+    if (!trainerId) return
+    const t: FitnessTest = { id: `test_${Date.now()}`, trainer_id: trainerId, nombre, categoria, unidad, descripcion, es_default: false, created_at: Date.now() }
+    setTests(prev => [...prev, t])
+    await supabase.from('test_catalogo').insert(t)
+  }, [trainerId])
+
+  const deleteTest = useCallback(async (id: string) => {
+    setTests(prev => prev.filter(t => t.id !== id))
+    await supabase.from('test_catalogo').delete().eq('id', id)
+  }, [])
+
+  return { tests, loading, addTest, deleteTest, reload: load }
+}
+
+export function useTestResultados(clientId?: string) {
+  const [resultados, setResultados] = useState<TestResultado[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!clientId) { setLoading(false); return }
+    setLoading(true)
+    const { data } = await supabase.from('test_resultados').select('*').eq('client_id', clientId).order('fecha', { ascending: false })
+    setResultados((data || []) as TestResultado[])
+    setLoading(false)
+  }, [clientId])
+
+  useEffect(() => { load() }, [load])
+
+  const addResultado = useCallback(async (trainerId: string, testId: string, valor: number, fecha: string, notas: string) => {
+    if (!clientId) return
+    const r: TestResultado = { id: `res_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, trainer_id: trainerId, client_id: clientId, test_id: testId, valor, fecha, notas, created_at: Date.now() }
+    setResultados(prev => [r, ...prev])
+    await supabase.from('test_resultados').insert(r)
+  }, [clientId])
+
+  const deleteResultado = useCallback(async (id: string) => {
+    setResultados(prev => prev.filter(r => r.id !== id))
+    await supabase.from('test_resultados').delete().eq('id', id)
+  }, [])
+
+  return { resultados, loading, addResultado, deleteResultado, reload: load }
+}

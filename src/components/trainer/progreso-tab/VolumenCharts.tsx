@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { Activity } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
-import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap } from './helpers'
+import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap, VOLUME_LANDMARKS, getVolumeStatus } from './helpers'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -84,8 +84,41 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
 
   if (data.length < 2) return <EmptyState icon={<Activity className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita actividad en al menos 2 semanas" />
 
+  const lastWeek = data[data.length - 1] as Record<string, any>
+  const withLandmarks = groups.filter(g => VOLUME_LANDMARKS[g])
+
   return (
     <div className="space-y-3">
+      {withLandmarks.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
+          {withLandmarks.map(g => {
+            const sets = lastWeek[g] || 0
+            const status = getVolumeStatus(g, sets)!
+            const l = VOLUME_LANDMARKS[g]
+            const pct = Math.min(100, (sets / l.mrv) * 100)
+            const mevPct = (l.mev / l.mrv) * 100
+            const mavPct = (l.mav / l.mrv) * 100
+            return (
+              <div key={g} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold">{g}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-bold">{sets} series</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
+                  </span>
+                </div>
+                <div className="relative h-1.5 rounded-full bg-bg-alt overflow-hidden">
+                  <div className="absolute inset-y-0 left-0" style={{ width: `${mevPct}%`, backgroundColor: '#e2ddd4' }} />
+                  <div className="absolute inset-y-0" style={{ left: `${mevPct}%`, width: `${mavPct - mevPct}%`, backgroundColor: '#cfe8da' }} />
+                  <div className="absolute inset-y-0 rounded-full" style={{ width: `${pct}%`, backgroundColor: status.color }} />
+                </div>
+              </div>
+            )
+          })}
+          <p className="text-[9px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {groups.map(g => (
           <span key={g} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted">

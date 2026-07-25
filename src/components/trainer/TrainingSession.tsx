@@ -4,6 +4,7 @@ import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 import { VideoModal } from '../client/VideoModal'
+import { toast } from '../shared/Toast'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
@@ -155,6 +156,15 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     updateLog(ri, { sets: { ...log.sets, [si]: { ...log.sets[si], [field]: value } } })
   }
 
+  // Récord personal: ¿este peso supera todo lo registrado antes para este ejercicio?
+  const isNewRecord = (ri: number, weight: number) => {
+    if (weight <= 0) return false
+    const prevBest = Object.entries(logs)
+      .filter(([k]) => k.includes(`_r${ri}`))
+      .flatMap(([, log]) => Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight) || 0))
+    return weight > Math.max(0, ...prevBest)
+  }
+
   const markSeriesDone = (ri: number) => {
     const ex = exercises[ri]; const log = getLog(ri)
     const total = parseInt(ex.sets?.split('×')[0] || '3')
@@ -164,7 +174,13 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const sets = { ...log.sets, [done]: log.sets[done] || { weight: prev?.weight || ex.weight || '', reps: prev?.reps || ex.sets?.split('×')[1]?.trim() || '' } }
     const allDone = Object.keys(sets).length >= total
     updateLog(ri, { sets, done: allDone, dateDone: allDone ? new Date().toISOString().split('T')[0] : undefined })
-    vibrate(50)
+    const weightDone = parseFloat(sets[done]?.weight || '0') || 0
+    if (isNewRecord(ri, weightDone)) {
+      toast(`🏆 ¡Nuevo récord! ${ex.name}: ${weightDone}kg`, 'ok')
+      vibrate([80, 40, 80, 40, 200])
+    } else {
+      vibrate(50)
+    }
     // Solo iniciar timer si el entrenador no lo ocultó
     if (!ex.hideRest) {
       const restTime = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))

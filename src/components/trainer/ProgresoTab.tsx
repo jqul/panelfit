@@ -14,6 +14,9 @@ import { PesosSugeridosChart } from './progreso-tab/PesosSugeridosChart'
 import { RiesgoChart } from './progreso-tab/RiesgoChart'
 import { VideoFeedbackTab } from './progreso-tab/VideoFeedbackTab'
 import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
+import { PruebasChart } from './progreso-tab/PruebasChart'
+import { MonthlyRecap } from './progreso-tab/MonthlyRecap'
+import { CicloCard } from './progreso-tab/CicloCard'
 import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
 
 interface Props {
@@ -24,7 +27,7 @@ interface Props {
   trainerId?: string
 }
 
-type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares'
+type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo'
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
@@ -34,20 +37,23 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
   { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
+  { id: 'pruebas',      icon: '🧪', label: 'Pruebas físicas', desc: 'Salto, Cooper, flexibilidad y más' },
   { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
   { id: 'volumen_grupo', icon: '🧩', label: 'Volumen por grupo', desc: 'Series semanales por grupo muscular' },
   { id: 'comparativa',  icon: '↔️', label: 'Esta semana',   desc: 'Esta semana vs anterior' },
+  { id: 'resumen_mensual', icon: '🗓️', label: 'Resumen mensual', desc: 'Este mes vs el anterior' },
   { id: 'distribucion', icon: '🎯', label: 'Músculos',      desc: 'Distribución por grupos musculares' },
   { id: 'adherencia',   icon: '📅', label: 'Adherencia',    desc: '% días entrenados vs planificados' },
   { id: 'racha',        icon: '🔥', label: 'Racha',         desc: 'Racha y estadísticas globales' },
   { id: 'peso',         icon: '⚖️', label: 'Peso',          desc: 'Evolución del peso corporal' },
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
+  { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase del ciclo y guía de intensidad (opcional)' },
 ]
 
 const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
-  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos'] },
-  { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'adherencia', 'racha'] },
-  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'fotos', 'distribucion'] },
+  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'pruebas'] },
+  { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
+  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'fotos', 'distribucion', 'ciclo'] },
   { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
 ]
 
@@ -103,11 +109,16 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
+        {section === 'resumen_mensual' && <MonthlyRecap    logs={logs} plan={plan} />}
         {section === 'distribucion' && <DistribucionChart  logs={logs} plan={plan} library={library} />}
         {section === 'rm'           && <RMChart            logs={logs} plan={plan} />}
         {section === 'estandares'   && <StrengthStandardsChart client={client} logs={logs} plan={plan} />}
+        {section === 'pruebas'      && (trainerId
+          ? <PruebasChart clientId={client.id} trainerId={trainerId} />
+          : <p className="text-xs text-muted">No se pudo determinar el entrenador.</p>)}
         {section === 'racha'        && <RachaStats         logs={logs} />}
         {section === 'fotos'        && <FotosTab           clientId={client.id} />}
+        {section === 'ciclo'        && <CicloCard          clientId={client.id} />}
       </div>
       <p className="text-[10px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
     </div>

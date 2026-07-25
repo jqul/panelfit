@@ -53,6 +53,28 @@ const MUSCLE_GROUPS: Record<string, string[]> = {
   'Glúteos':   ['hip thrust','glúteo','gluteo','patada'],
 }
 
+// Rango orientativo de series/semana por grupo muscular (MEV/MAV/MRV, principios de volumen de entrenamiento).
+// Es una estimación general para lifters intermedios, no una prescripción individualizada.
+export const VOLUME_LANDMARKS: Record<string, { mev: number; mav: number; mrv: number }> = {
+  'Pecho':    { mev: 8,  mav: 16, mrv: 22 },
+  'Espalda':  { mev: 10, mav: 18, mrv: 25 },
+  'Piernas':  { mev: 8,  mav: 15, mrv: 20 },
+  'Hombros':  { mev: 8,  mav: 17, mrv: 24 },
+  'Bíceps':   { mev: 6,  mav: 13, mrv: 20 },
+  'Tríceps':  { mev: 6,  mav: 11, mrv: 18 },
+  'Core':     { mev: 4,  mav: 10, mrv: 16 },
+  'Glúteos':  { mev: 6,  mav: 13, mrv: 20 },
+}
+
+export function getVolumeStatus(group: string, sets: number): { label: string; color: string } | null {
+  const l = VOLUME_LANDMARKS[group]
+  if (!l) return null
+  if (sets < l.mev) return { label: 'Bajo', color: '#e07b54' }
+  if (sets <= l.mav) return { label: 'Óptimo', color: '#4caf7d' }
+  if (sets <= l.mrv) return { label: 'Alto', color: '#e0a854' }
+  return { label: 'Excesivo', color: '#dc2626' }
+}
+
 export function getMuscleGroup(name: string, libraryMap?: Map<string, string>) {
   const fromLibrary = libraryMap?.get(name.toLowerCase().trim())
   if (fromLibrary) return fromLibrary
