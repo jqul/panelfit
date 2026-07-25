@@ -67,6 +67,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 ## 9. Comunicación con el cliente
 
 - **Mensajes preestablecidos** (en Perfil del cliente): plantillas por situación — nueva rutina, racha de entreno, día de descanso, personalizadas — editables a nivel general y con opción de personalizar el texto solo para un cliente concreto. Envío por WhatsApp en 1 clic con el nombre ya resuelto.
+- **Mensajes programados**: desde cualquier plantilla, se puede programar su envío para una fecha futura concreta. Al llegar el día, aparece como pendiente en la pestaña Mensajes, se dispara automáticamente una notificación push real al cliente, y queda listo para enviar por WhatsApp con 1 clic.
 - **Automatizaciones** (en Ajustes del cliente): mensaje de bienvenida automático al asignar un plan nuevo (WhatsApp + notificación push real al cliente), recordatorio de check-in semanal, alerta de inactividad.
 - **Notificaciones push reales**: al entrenador cuando un cliente completa una sesión o sube un vídeo; al cliente cuando se le asigna un plan nuevo. Usa VAPID/Web Push, no requiere abrir la app.
 - **Pestaña Mensajes**: vista general de encuestas pendientes esta semana, clientes inactivos, y envío rápido por WhatsApp a cualquier cliente.
