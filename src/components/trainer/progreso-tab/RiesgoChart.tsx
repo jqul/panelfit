@@ -4,6 +4,7 @@ import { TrainingLogs } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR } from '../../../lib/loadRisk'
 import { EmptyState } from './helpers'
+import { CargaTrendChart } from './CargaTrendChart'
 
 const RISK_META = {
   bajo: { color: '#22c55e', bg: '#f0fdf4', label: 'Riesgo bajo', emoji: '✅' },
@@ -29,15 +30,31 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
 
   if (loadingReadiness) return <div className="py-8 text-center text-muted text-sm">Calculando...</div>
 
+  const trendChart = (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-border/50 bg-bg-alt/30">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">Tendencia de carga (Fitness / Fatiga / Forma)</p>
+      </div>
+      <div className="p-4">
+        <CargaTrendChart logs={logs} />
+      </div>
+    </div>
+  )
+
   if (!training.hasData && !readiness.hasData) return (
-    <EmptyState icon={<AlertTriangle className="w-8 h-8 opacity-30" />} text="Sin datos suficientes"
-      sub="Necesita RIR registrado o check-ins de readiness en la última semana" />
+    <div className="space-y-4">
+      {trendChart}
+      <EmptyState icon={<AlertTriangle className="w-8 h-8 opacity-30" />} text="Semáforo sin datos suficientes"
+        sub="Necesita RIR registrado o check-ins de readiness en la última semana" />
+    </div>
   )
 
   const meta = RISK_META[level]
 
   return (
     <div className="space-y-4">
+      {trendChart}
+
       <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: meta.bg }}>
         <p className="text-3xl mb-1">{meta.emoji}</p>
         <p className="text-xl font-serif font-bold" style={{ color: meta.color }}>{meta.label}</p>

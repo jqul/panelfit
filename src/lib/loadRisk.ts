@@ -30,6 +30,25 @@ export interface ACWRSignal {
   hasData: boolean
 }
 
+function buildDayTonnage(logs: TrainingLogs): Record<string, number> {
+  const dayTonnage: Record<string, number> = {}
+  Object.values(logs).forEach(log => {
+    if (!log.done || !log.dateDone) return
+    const vol = Object.values(log.sets || {}).reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+    dayTonnage[log.dateDone] = (dayTonnage[log.dateDone] || 0) + vol
+  })
+  return dayTonnage
+}
+
+function avgWindowFrom(dayTonnage: Record<string, number>, endDate: Date, days: number): number {
+  let sum = 0
+  for (let i = 0; i < days; i++) {
+    const d = new Date(endDate); d.setDate(endDate.getDate() - i)
+    sum += dayTonnage[d.toISOString().slice(0, 10)] || 0
+  }
+  return sum / days
+}
+
 /**
  * Ratio de carga aguda:crónica (ACWR), modelo de Gabbett (2016) sobre el
  * tonelaje (peso × reps) diario. Promedia sobre TODOS los días de la
@@ -39,30 +58,41 @@ export interface ACWRSignal {
  * Zonas: <0.8 desentrenamiento, 0.8–1.3 óptima, 1.3–1.5 moderado, >1.5 alto.
  */
 export function computeACWR(logs: TrainingLogs, today: Date = new Date()): ACWRSignal {
-  const dayTonnage: Record<string, number> = {}
-  Object.values(logs).forEach(log => {
-    if (!log.done || !log.dateDone) return
-    const vol = Object.values(log.sets || {}).reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
-    dayTonnage[log.dateDone] = (dayTonnage[log.dateDone] || 0) + vol
-  })
-
-  const avgWindow = (days: number) => {
-    let sum = 0
-    for (let i = 0; i < days; i++) {
-      const d = new Date(today); d.setDate(today.getDate() - i)
-      sum += dayTonnage[d.toISOString().slice(0, 10)] || 0
-    }
-    return sum / days
-  }
-
-  const acute = avgWindow(7)
-  const chronic = avgWindow(28)
+  const dayTonnage = buildDayTonnage(logs)
+  const acute = avgWindowFrom(dayTonnage, today, 7)
+  const chronic = avgWindowFrom(dayTonnage, today, 28)
   return {
     acute: Math.round(acute),
     chronic: Math.round(chronic),
     ratio: chronic > 0 ? Math.round((acute / chronic) * 100) / 100 : null,
     hasData: Object.keys(dayTonnage).length > 0,
   }
+}
+
+export interface LoadTrendPoint { date: string; fitness: number; fatigue: number; form: number }
+
+/**
+ * Serie temporal de Fitness (carga crónica 28d) / Fatiga (carga aguda 7d) /
+ * Forma (fitness - fatiga), muestreada semana a semana — el mismo concepto
+ * del Performance Management Chart de TrainingPeaks (CTL/ATL/TSB), aplicado
+ * aquí al tonelaje de fuerza en vez de al Training Stress Score.
+ */
+export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
+  const dayTonnage = buildDayTonnage(logs)
+  const points: LoadTrendPoint[] = []
+  for (let w = weeks - 1; w >= 0; w--) {
+    const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
+    const fitness = avgWindowFrom(dayTonnage, endDate, 28)
+    const fatigue = avgWindowFrom(dayTonnage, endDate, 7)
+    points.push({
+      date: endDate.toISOString().slice(0, 10),
+      fitness: Math.round(fitness),
+      fatigue: Math.round(fatigue),
+      form: Math.round(fitness - fatigue),
+    })
+  }
+  const firstNonZero = points.findIndex(p => p.fitness > 0 || p.fatigue > 0)
+  return firstNonZero === -1 ? [] : points.slice(firstNonZero)
 }
 
 /** Señal de carga de entrenamiento: RIR semanal, cambio de volumen, sesiones. */
