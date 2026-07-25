@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 export type TrainerTier = 'basico' | 'alto_rendimiento'
 
 // Secciones de ProgresoTab reservadas al plan Alto Rendimiento.
-export const ADVANCED_SECTIONS = new Set(['fatiga', 'rm', 'estandares', 'pesos_sugeridos'])
+export const ADVANCED_SECTIONS = new Set(['fatiga', 'rm', 'estandares', 'pesos_sugeridos', 'ciclo'])
 
 export const TIER_LABEL: Record<TrainerTier, string> = {
   basico: 'Básico',
@@ -28,6 +28,7 @@ export const TIER_FEATURES: Record<TrainerTier, string[]> = {
     'Semáforo de riesgo: carga de entreno + bienestar',
     'Check-in diario de bienestar y PAR-Q de alta',
     'Pesos sugeridos automáticos según RIR',
+    'Periodización según el ciclo menstrual (opcional)',
   ],
 }
 
