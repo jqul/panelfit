@@ -1,9 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { UserProfile } from '../../types'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { toast } from '../shared/Toast'
-import { Send, MessageCircle, Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { useScheduledMessages } from '../../lib/scheduledMessages'
+import { sendPush } from '../../lib/usePushNotifications'
+import { Send, MessageCircle, Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react'
 
 interface Props {
   userProfile: UserProfile
@@ -62,8 +64,21 @@ export function MensajesTab({ userProfile, clients }: Props) {
   const [sending, setSending] = useState<string | null>(null)
   const [showInactivos, setShowInactivos] = useState(false)
   const [showAlerts, setShowAlerts] = useState(true)
+  const [showUpcoming, setShowUpcoming] = useState(false)
+  const { due: dueScheduled, upcoming: upcomingScheduled, markPushSent, markSent: markScheduledSent, remove: removeScheduled } = useScheduledMessages(userProfile.uid)
+  const pushedRef = useRef(new Set<string>())
 
   const origin = window.location.origin
+
+  // Al detectar un mensaje programado que ya toca, dispara el push real una sola vez.
+  useEffect(() => {
+    dueScheduled.forEach(m => {
+      if (m.pushEnviado || pushedRef.current.has(m.id)) return
+      pushedRef.current.add(m.id)
+      sendPush({ clientId: m.clientId }, 'Tienes un mensaje nuevo', m.mensaje)
+      markPushSent(m.id)
+    })
+  }, [dueScheduled, markPushSent])
 
   useEffect(() => {
     loadData()
@@ -152,6 +167,12 @@ export function MensajesTab({ userProfile, clients }: Props) {
     toast(`WhatsApp abierto con ${client.name}`, 'ok')
   }
 
+  const sendScheduled = (id: string, client: ClientWithStats | undefined, mensaje: string) => {
+    if (client?.phone) window.open(buildWAUrl(client.phone, mensaje), '_blank')
+    markScheduledSent(id)
+    toast(client ? `Enviado a ${client.name} ✓` : 'Marcado como enviado ✓', 'ok')
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -215,6 +236,89 @@ export function MensajesTab({ userProfile, clients }: Props) {
           </div>
         </div>
       )}
+
+      {/* ── MENSAJES PROGRAMADOS ── */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="w-4 h-4 text-accent" />
+            <h3 className="font-semibold text-sm">Mensajes programados</h3>
+          </div>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            dueScheduled.length > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+          }`}>
+            {dueScheduled.length} pendiente{dueScheduled.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {dueScheduled.length === 0 ? (
+          <div className="px-5 py-8 text-center text-muted">
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-ok opacity-60" />
+            <p className="text-sm font-semibold">Nada pendiente hoy</p>
+            <p className="text-xs mt-1">Programa un mensaje desde el perfil de cada cliente, en "Mensajes preestablecidos"</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {dueScheduled.map(m => {
+              const client = clients.find(c => c.id === m.clientId)
+              const hasPhone = !!client?.phone
+              return (
+                <div key={m.id} className="px-5 py-3.5 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
+                      {(client?.name || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
+                      <p className="text-xs text-muted">Programado para el {new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                    </div>
+                    <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    <button
+                      onClick={() => sendScheduled(m.id, client, m.mensaje)}
+                      disabled={!hasPhone}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0 ${
+                        hasPhone
+                          ? 'bg-[#25D366] text-white hover:opacity-90'
+                          : 'bg-bg-alt text-muted cursor-not-allowed'
+                      }`}>
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      {hasPhone ? 'Enviar' : 'Sin tel.'}
+                    </button>
+                  </div>
+                  <p className="text-xs italic text-muted pl-11">"{m.mensaje}"</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {upcomingScheduled.length > 0 && (
+          <>
+            <button
+              className="w-full px-5 py-3 border-t border-border flex items-center justify-between text-xs font-semibold text-muted hover:text-accent"
+              onClick={() => setShowUpcoming(!showUpcoming)}>
+              <span>{upcomingScheduled.length} programado{upcomingScheduled.length !== 1 ? 's' : ''} a futuro</span>
+              {showUpcoming ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {showUpcoming && (
+              <div className="divide-y divide-border">
+                {upcomingScheduled.map(m => {
+                  const client = clients.find(c => c.id === m.clientId)
+                  return (
+                    <div key={m.id} className="px-5 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
+                        <p className="text-xs text-muted truncate">{new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · "{m.mensaje}"</p>
+                      </div>
+                      <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── ENCUESTAS ESTA SEMANA ── */}
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>

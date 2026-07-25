@@ -1,19 +1,23 @@
 import { useState } from 'react'
-import { Pencil, Check, Plus, Trash2, MessageSquareText } from 'lucide-react'
+import { Pencil, Check, Plus, Trash2, MessageSquareText, CalendarClock } from 'lucide-react'
 import { ClientData, TrainingPlan } from '../../../types'
 import { useMessageTemplates, resolveMessage, MESSAGE_TYPE_LABEL } from '../../../lib/messageTemplates'
+import { useScheduledMessages } from '../../../lib/scheduledMessages'
 import { toast } from '../../shared/Toast'
 
 export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
   client: ClientData; plan: TrainingPlan; onChange: (p: TrainingPlan) => void; trainerId: string
 }) {
   const { templates, loading, saveTemplate, addTemplate, deleteTemplate } = useMessageTemplates(trainerId)
+  const { schedule } = useScheduledMessages(trainerId)
   const [editingDefault, setEditingDefault] = useState<string | null>(null)
   const [editingClient, setEditingClient] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [addingCustom, setAddingCustom] = useState(false)
   const [newName, setNewName] = useState('')
   const [newText, setNewText] = useState('')
+  const [scheduling, setScheduling] = useState<string | null>(null)
+  const [scheduleDate, setScheduleDate] = useState('')
 
   const overrides = plan.customMessages || {}
 
@@ -25,6 +29,16 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
     const phone = (client.phone || '').replace(/\D/g, '')
     const resolved = resolveMessage(text, client.name)
     window.open(phone ? `https://wa.me/${phone}?text=${encodeURIComponent(resolved)}` : `https://wa.me/?text=${encodeURIComponent(resolved)}`, '_blank')
+  }
+
+  const confirmSchedule = async (tipo: string, text: string) => {
+    if (!scheduleDate) { toast('Elige una fecha', 'warn'); return }
+    const resolved = resolveMessage(text, client.name)
+    const ok = await schedule(client.id, tipo, resolved, scheduleDate)
+    if (ok) toast(`Programado para ${new Date(scheduleDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ✓`, 'ok')
+    else toast('No se pudo programar', 'warn')
+    setScheduling(null)
+    setScheduleDate('')
   }
 
   if (loading) return <div className="h-32 bg-card border border-border rounded-2xl animate-pulse" />
@@ -81,9 +95,23 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                       <button onClick={() => { const o = { ...overrides }; delete o[t.id]; onChange({ ...plan, customMessages: o }) }}
                         className="text-[10px] text-muted hover:text-warn underline">Quitar personalización</button>
                     )}
+                    <button onClick={() => { setScheduling(t.id); setScheduleDate('') }}
+                      className="ml-auto flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[10px] font-bold text-muted hover:text-accent hover:border-accent/40"
+                      title="Programar envío para más adelante">
+                      <CalendarClock className="w-3 h-3" /> Programar
+                    </button>
                     <button onClick={() => sendWhatsApp(effectiveText)}
-                      className="ml-auto flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[10px] font-bold">📱 Enviar</button>
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[10px] font-bold">📱 Enviar</button>
                   </div>
+                  {scheduling === t.id && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <input type="date" value={scheduleDate} min={new Date().toISOString().slice(0, 10)}
+                        onChange={e => setScheduleDate(e.target.value)}
+                        className="flex-1 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
+                      <button onClick={() => setScheduling(null)} className="px-2.5 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>
+                      <button onClick={() => confirmSchedule(t.tipo, effectiveText)} className="px-2.5 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold">Confirmar</button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
