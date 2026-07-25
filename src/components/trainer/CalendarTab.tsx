@@ -20,7 +20,7 @@ interface Cita {
   title: string
   start_at: string
   end_at: string
-  status: 'confirmada' | 'cancelada' | 'completada'
+  status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
   notes: string
   recurring: 'weekly' | null
   recurring_until: string | null
@@ -42,6 +42,7 @@ function weekDays(anchor: Date) {
 }
 
 const STATUS_META = {
+  pendiente: { label: 'Solicitada', color: '#e0a854', bg: '#fef9ec' },
   confirmada: { label: 'Confirmada', color: '#22c55e', bg: '#f0fdf4' },
   completada: { label: 'Completada', color: '#3b82f6', bg: '#eff6ff' },
   cancelada: { label: 'Cancelada', color: '#ef4444', bg: '#fef2f2' },
@@ -134,6 +135,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
   }
 
   const clientName = (id: string | null) => clients.find(c => c.id === id)?.name || null
+  const pendientes = citas.filter(c => c.status === 'pendiente')
 
   if (loading) return (
     <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
@@ -141,6 +143,14 @@ export function CalendarTab({ trainerId, clients }: Props) {
 
   return (
     <div className="max-w-3xl space-y-4 animate-fade-in">
+      {pendientes.length > 0 && (
+        <div className="bg-warn/8 border border-warn/20 rounded-2xl px-4 py-3 flex items-center gap-2">
+          <Clock className="w-4 h-4 text-warn flex-shrink-0" />
+          <p className="text-xs font-semibold text-warn">
+            {pendientes.length} cita{pendientes.length !== 1 ? 's' : ''} solicitada{pendientes.length !== 1 ? 's' : ''} por clientes, esperando tu confirmación
+          </p>
+        </div>
+      )}
       {/* Navegación semanal */}
       <div className="flex items-center justify-between">
         <button onClick={() => setAnchor(addDays(anchor, -7))} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
@@ -190,6 +200,14 @@ export function CalendarTab({ trainerId, clients }: Props) {
                         <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ color: meta.color, backgroundColor: meta.bg }}>
                           {meta.label}
                         </span>
+                        {cita.status === 'pendiente' && (
+                          <>
+                            <button onClick={() => updateStatus(cita, 'confirmada')}
+                              className="px-2.5 py-1.5 bg-ok text-white rounded-lg text-[11px] font-bold flex-shrink-0">Confirmar</button>
+                            <button onClick={() => updateStatus(cita, 'cancelada')} title="Rechazar"
+                              className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0"><Ban className="w-3.5 h-3.5" /></button>
+                          </>
+                        )}
                         {cita.status === 'confirmada' && (
                           <>
                             <button onClick={() => updateStatus(cita, 'completada')} title="Marcar como completada"

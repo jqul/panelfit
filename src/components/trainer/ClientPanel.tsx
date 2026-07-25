@@ -111,6 +111,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [labels, setLabels] = useState<any[]>([])
   const [showDayPicker, setShowDayPicker] = useState(false)
   const [liveSession, setLiveSession] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
+  const [borradorActivo, setBorradorActivo] = useState(false)
+  const [borradorBusy, setBorradorBusy] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -122,9 +124,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const loadData = async () => {
     setLoading(true)
     if (demoPlan) { setPlan(demoPlan); if (demoLogs) setLogs(demoLogs); setLoading(false); return }
-    const { data: planData } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+    const { data: planData } = await supabase.from('planes').select('plan,plan_borrador,borrador_activo').eq('clientId', client.id).maybeSingle()
     const planRow = planData as PlanRow | null
-    if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
+    const isDraft = !!planRow?.borrador_activo && !!planRow?.plan_borrador?.P
+    setBorradorActivo(isDraft)
+    if (isDraft) setPlan(planRow!.plan_borrador!.P as TrainingPlan)
+    else if (planRow?.plan?.P) setPlan(planRow.plan.P as TrainingPlan)
     else setPlan({ clientId: client.id, type: client.objetivo || 'hipertrofia', restMain: 180, restAcc: 90, restWarn: 30, weeks: [] })
     const { data: regData } = await supabase.from('registros').select('logs').eq('clientId', client.id).maybeSingle()
     const regRow = regData as RegistroRow | null
@@ -150,9 +155,48 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     const p = planToSave || pendingPlan.current || plan; if (!p) return
     setSaveState('saving')
     if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
-    const { error } = await supabase.from('planes').upsert({ clientId: client.id, plan: { P: p }, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    const update: Record<string, unknown> = { clientId: client.id, updatedAt: Date.now() }
+    if (borradorActivo) { update.plan_borrador = { P: p }; update.borrador_activo = true }
+    else update.plan = { P: p }
+    const { error } = await supabase.from('planes').upsert(update, { onConflict: 'clientId' })
     if (error) { logError('savePlan', error); setSaveState('error'); return }
     setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000)
+  }
+
+  // ── Borrador: el cliente no ve los cambios hasta que el entrenador publica ──
+  const startBorrador = async () => {
+    if (!plan) return
+    setBorradorBusy(true)
+    const { error } = await supabase.from('planes')
+      .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    setBorradorBusy(false)
+    if (error) { logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
+    setBorradorActivo(true)
+    toast('Borrador iniciado — el cliente sigue viendo la versión anterior', 'ok')
+  }
+
+  const publishBorrador = async () => {
+    if (!plan) return
+    setBorradorBusy(true)
+    const { error } = await supabase.from('planes')
+      .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() })
+      .eq('clientId', client.id)
+    setBorradorBusy(false)
+    if (error) { logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
+    setBorradorActivo(false)
+    toast('Cambios publicados ✓', 'ok')
+    sendPush({ clientId: client.id }, 'Tu plan se ha actualizado 💪', `${client.name}, tu entrenador ha publicado cambios en tu rutina`)
+  }
+
+  const discardBorrador = async () => {
+    setBorradorBusy(true)
+    const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+    await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null }).eq('clientId', client.id)
+    setBorradorBusy(false)
+    const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
+    setPlan(livePlan || null)
+    setBorradorActivo(false)
+    toast('Borrador descartado', 'ok')
   }
 
   const saveLogs = async (newLogs: TrainingLogs) => {
@@ -175,16 +219,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
     const newPlan: TrainingPlan = { ...plan, type: template.type, weeks, fechaInicio, autoCheckin }
     setPlan(newPlan); savePlan(newPlan)
-    if (autoWelcome) {
-      const url = `${window.location.origin}?c=${client.token}`
-      const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa:\n\n${url}\n\n💪`)
-      setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
-      // Push real y automático al cliente — esto sí llega sin que nadie tenga que pulsar nada
-      sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo programa`)
+    // Mientras hay un borrador activo, el cliente no ve el plan todavía — no avisar hasta publicar.
+    if (!borradorActivo) {
+      if (autoWelcome) {
+        const url = `${window.location.origin}?c=${client.token}`
+        const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa:\n\n${url}\n\n💪`)
+        setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
+        // Push real y automático al cliente — esto sí llega sin que nadie tenga que pulsar nada
+        sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo programa`)
+      }
+      sendPush({ clientId: client.id }, 'Nuevo plan asignado 🏋️', `Tu entrenador te ha asignado "${template.name}"`)
     }
     setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
-    toast(`Plantilla "${template.name}" aplicada ✓`, 'ok')
-    sendPush({ clientId: client.id }, 'Nuevo plan asignado 🏋️', `Tu entrenador te ha asignado "${template.name}"`)
+    toast(`Plantilla "${template.name}" aplicada ✓${borradorActivo ? ' (en el borrador)' : ''}`, 'ok')
   }
 
   const importFromClient = async (clientId: string): Promise<TrainingPlan | null> => {
@@ -336,6 +383,32 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </button>
           </div>
         </header>
+
+        {!loading && plan && (
+          borradorActivo ? (
+            <div className="flex-shrink-0 bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-accent font-semibold">📝 Editando un borrador — {client.name} sigue viendo la versión anterior</p>
+              <div className="flex gap-2">
+                <button onClick={discardBorrador} disabled={borradorBusy}
+                  className="px-3 py-1.5 border border-accent/30 rounded-lg text-xs font-semibold text-accent hover:bg-accent/10 disabled:opacity-50">
+                  Descartar borrador
+                </button>
+                <button onClick={publishBorrador} disabled={borradorBusy}
+                  className="px-3 py-1.5 bg-accent text-white rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50">
+                  {borradorBusy ? 'Publicando...' : 'Publicar cambios'}
+                </button>
+              </div>
+            </div>
+          ) : (activeTab === 'plan' || activeTab === 'dieta') && (
+            <div className="flex-shrink-0 bg-bg-alt border-b border-border px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-muted">¿Vas a hacer cambios grandes? Puedes trabajar en un borrador que {client.name} no verá hasta que lo publiques.</p>
+              <button onClick={startBorrador} disabled={borradorBusy}
+                className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent disabled:opacity-50 flex-shrink-0">
+                Empezar borrador
+              </button>
+            </div>
+          )
+        )}
 
         <main className="flex-1 overflow-hidden flex flex-col">
           {loading ? (
