@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { DEMO_TRAINER_ID, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from './demo-data'
 
 export interface FitnessTest {
   id: string
@@ -40,6 +41,7 @@ export function useTestCatalog(trainerId?: string) {
 
   const load = useCallback(async () => {
     if (!trainerId) { setLoading(false); return }
+    if (trainerId === DEMO_TRAINER_ID) { setTests(DEMO_TEST_CATALOG as FitnessTest[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('test_catalogo').select('*').eq('trainer_id', trainerId).order('created_at')
     let rows = data || []
@@ -62,13 +64,15 @@ export function useTestCatalog(trainerId?: string) {
     if (!trainerId) return
     const t: FitnessTest = { id: `test_${Date.now()}`, trainer_id: trainerId, nombre, categoria, unidad, descripcion, es_default: false, created_at: Date.now() }
     setTests(prev => [...prev, t])
+    if (trainerId === DEMO_TRAINER_ID) return
     await supabase.from('test_catalogo').insert(t)
   }, [trainerId])
 
   const deleteTest = useCallback(async (id: string) => {
     setTests(prev => prev.filter(t => t.id !== id))
+    if (trainerId === DEMO_TRAINER_ID) return
     await supabase.from('test_catalogo').delete().eq('id', id)
-  }, [])
+  }, [trainerId])
 
   return { tests, loading, addTest, deleteTest, reload: load }
 }
@@ -79,6 +83,7 @@ export function useTestResultados(clientId?: string) {
 
   const load = useCallback(async () => {
     if (!clientId) { setLoading(false); return }
+    if (clientId.startsWith('demo-client-')) { setResultados((DEMO_TEST_RESULTS_MAP[clientId] || []) as TestResultado[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('test_resultados').select('*').eq('client_id', clientId).order('fecha', { ascending: false })
     setResultados((data || []) as TestResultado[])
@@ -91,13 +96,15 @@ export function useTestResultados(clientId?: string) {
     if (!clientId) return
     const r: TestResultado = { id: `res_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, trainer_id: trainerId, client_id: clientId, test_id: testId, valor, fecha, notas, created_at: Date.now() }
     setResultados(prev => [r, ...prev])
+    if (clientId.startsWith('demo-client-')) return
     await supabase.from('test_resultados').insert(r)
   }, [clientId])
 
   const deleteResultado = useCallback(async (id: string) => {
     setResultados(prev => prev.filter(r => r.id !== id))
+    if (clientId?.startsWith('demo-client-')) return
     await supabase.from('test_resultados').delete().eq('id', id)
-  }, [])
+  }, [clientId])
 
   return { resultados, loading, addResultado, deleteResultado, reload: load }
 }

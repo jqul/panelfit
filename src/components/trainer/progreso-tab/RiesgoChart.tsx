@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR } from '../../../lib/loadRisk'
 import { EmptyState } from './helpers'
 import { CargaTrendChart } from './CargaTrendChart'
+import { DEMO_READINESS_MAP } from '../../../lib/demo-data'
 
 const RISK_META = {
   bajo: { color: '#22c55e', bg: '#f0fdf4', label: 'Riesgo bajo', emoji: '✅' },
@@ -17,6 +18,11 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
   const [loadingReadiness, setLoadingReadiness] = useState(true)
 
   useEffect(() => {
+    if (clientId.startsWith('demo-client-')) {
+      setReadinessRows(DEMO_READINESS_MAP[clientId] || [])
+      setLoadingReadiness(false)
+      return
+    }
     const since = new Date(); since.setDate(since.getDate() - 7)
     supabase.from('readiness_checkins').select('sleep, soreness, stress, motivation')
       .eq('clientId', clientId).gte('date', since.toISOString().split('T')[0])

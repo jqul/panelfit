@@ -171,10 +171,13 @@ export const DEMO_LOGS_MARIA: TrainingLogs = (() => {
       }
       const progression = Math.min(Math.floor(offset / 7), 4)
       const bw = (baseWeights[dayIdx] || [60,62.5,65,67.5,70])[progression]
-      const sets: Record<number, {weight:string;reps:string}> = {}
+      // RIR: más fatiga (RIR bajo) en la semana más reciente, para que el
+      // semáforo de riesgo tenga algo real que mostrar en la demo.
+      const baseRir = offset <= 7 ? 1 : offset <= 14 ? 2 : 3
+      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
       const n = ri === 0 ? 4 : 3
       for (let si = 0; si < n; si++) {
-        sets[si] = { weight: String(bw - (si * 2.5)), reps: String(ri === 0 ? 8 : 10) }
+        sets[si] = { weight: String(bw - (si * 2.5)), reps: String(ri === 0 ? 8 : 10), rir: Math.max(0, baseRir - Math.floor(si / 2)) }
       }
       logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
     })
@@ -401,4 +404,54 @@ export const DEMO_LOGS_MAP: Record<string, TrainingLogs> = {
   'demo-client-001': DEMO_LOGS_MARIA,
   'demo-client-002': DEMO_LOGS_CARLOS,
   'demo-client-003': DEMO_LOGS_LAURA,
+}
+
+// ── CHECK-INS DE BIENESTAR (demo) ──────────────────────
+// Sueño/motivación bajando un poco esta semana — cuenta la misma historia
+// que el RIR: hay algo de fatiga acumulada, buen ejemplo para el semáforo.
+export interface DemoReadinessRow { sleep: number; soreness: number; stress: number; motivation: number; date: string }
+export const DEMO_READINESS_MARIA: DemoReadinessRow[] = [0,1,2,3,4,5,6].map(i => {
+  const d = new Date(Date.now() - i * 86400000)
+  const vals = [
+    { sleep: 3, soreness: 3, stress: 3, motivation: 3 },
+    { sleep: 3, soreness: 2, stress: 3, motivation: 4 },
+    { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+    { sleep: 3, soreness: 3, stress: 4, motivation: 3 },
+    { sleep: 4, soreness: 4, stress: 4, motivation: 4 },
+    { sleep: 4, soreness: 4, stress: 4, motivation: 5 },
+    { sleep: 5, soreness: 4, stress: 5, motivation: 5 },
+  ][i]
+  return { ...vals, date: d.toISOString().split('T')[0] }
+})
+export const DEMO_READINESS_MAP: Record<string, DemoReadinessRow[]> = {
+  'demo-client-001': DEMO_READINESS_MARIA,
+}
+
+// ── PRUEBAS FÍSICAS (demo) ──────────────────────────────
+export const DEMO_TEST_CATALOG = [
+  { id: 'demo-test-salto', trainer_id: DEMO_TRAINER_ID, nombre: 'Salto vertical', categoria: 'Potencia', unidad: 'cm', descripcion: 'Salto máximo sin carrera previa (test de Sargent).', es_default: true, created_at: Date.now() - 60 * 86400000 },
+  { id: 'demo-test-plancha', trainer_id: DEMO_TRAINER_ID, nombre: 'Plancha (plank)', categoria: 'Fuerza', unidad: 'segundos', descripcion: 'Tiempo máximo sosteniendo la posición de plancha.', es_default: true, created_at: Date.now() - 60 * 86400000 },
+  { id: 'demo-test-cooper', trainer_id: DEMO_TRAINER_ID, nombre: 'Test de Cooper', categoria: 'Resistencia', unidad: 'm', descripcion: 'Metros recorridos corriendo en 12 minutos.', es_default: true, created_at: Date.now() - 60 * 86400000 },
+]
+export const DEMO_TEST_RESULTS_MARIA = [
+  { id: 'demo-res-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-salto', valor: 32, fecha: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-salto', valor: 36, fecha: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-salto', valor: 39, fecha: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], notas: 'Mejor marca hasta la fecha 🔥', created_at: 0 },
+  { id: 'demo-res-4', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-plancha', valor: 45, fecha: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-5', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-plancha', valor: 62, fecha: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+]
+export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARIA> = {
+  'demo-client-001': DEMO_TEST_RESULTS_MARIA,
+}
+
+// ── CICLO (demo) — activado, en fase folicular ─────────
+export const DEMO_CICLO_MARIA = {
+  client_id: 'demo-client-001', trainer_id: DEMO_TRAINER_ID,
+  activo: true,
+  ultima_regla: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
+  duracion_ciclo: 28,
+  updated_at: 0,
+}
+export const DEMO_CICLO_MAP: Record<string, typeof DEMO_CICLO_MARIA> = {
+  'demo-client-001': DEMO_CICLO_MARIA,
 }

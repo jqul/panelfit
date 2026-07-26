@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { DEMO_CICLO_MAP } from './demo-data'
 
 export interface CicloTracking {
   client_id: string
@@ -42,6 +43,7 @@ export function useCicloTracking(clientId?: string) {
 
   const load = useCallback(async () => {
     if (!clientId) { setLoading(false); return }
+    if (clientId.startsWith('demo-client-')) { setCiclo(DEMO_CICLO_MAP[clientId] || null); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('ciclo_tracking').select('*').eq('client_id', clientId).maybeSingle()
     setCiclo(data as CicloTracking | null)
@@ -54,6 +56,7 @@ export function useCicloTracking(clientId?: string) {
     if (!clientId) return
     const row = { client_id: clientId, trainer_id: trainerId, activo: ciclo?.activo ?? false, ultima_regla: ciclo?.ultima_regla ?? null, duracion_ciclo: ciclo?.duracion_ciclo ?? 28, ...updates, updated_at: Date.now() }
     setCiclo(row as CicloTracking)
+    if (clientId.startsWith('demo-client-')) return
     await supabase.from('ciclo_tracking').upsert(row, { onConflict: 'client_id' })
   }, [clientId, ciclo])
 
