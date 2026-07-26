@@ -52,6 +52,42 @@ function round(n: number): number {
   return Math.round(n * 2) / 2 // redondea a 0.5kg
 }
 
+// ── RIR (Repeticiones en Reserva) ─────────────────────────
+// 0 = al fallo, 1-2 = casi al fallo, 3-4 = moderado, 5+ = fácil
+export const RIR_OPTIONS = [
+  { value: 0, label: '0', desc: 'Al fallo', color: '#ef4444' },
+  { value: 1, label: '1', desc: 'Casi al fallo', color: '#f97316' },
+  { value: 2, label: '2', desc: 'Muy duro', color: '#f59e0b' },
+  { value: 3, label: '3', desc: 'Duro', color: '#eab308' },
+  { value: 4, label: '4', desc: 'Moderado', color: '#84cc16' },
+  { value: 5, label: '5+', desc: 'Fácil', color: '#22c55e' },
+]
+
+/**
+ * Sugerencia de peso para un set concreto, comparando el RIR real reportado
+ * la última vez que se hizo este mismo ejercicio/serie contra el RIR
+ * objetivo de la semana (derivado del RPE planificado). Mismo principio de
+ * autoregulación que JuggernautAI: si sobró margen, sube; si faltó margen,
+ * baja o mantiene. Se muestra junto al peso, antes de hacer la serie.
+ */
+export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string): { pct: number; label: string; color: string } | null {
+  if (rir === undefined || rir === null) return null
+
+  const targetRIR = rpeToTargetRIR(weekRpe)
+  const weight = parseFloat(prevWeight || '')
+  if (targetRIR !== null && weight) {
+    const s = suggestNextLoad(weight, rir, targetRIR)
+    const color = s.direction === 'up' ? '#22c55e' : s.direction === 'down' ? '#ef4444' : '#f59e0b'
+    const label = s.direction === 'up' ? `Subir +${s.deltaKg}kg` : s.direction === 'down' ? `Bajar -${s.deltaKg}kg` : 'Mantener peso'
+    return { pct: s.direction === 'up' ? 5 : s.direction === 'down' ? -5 : 0, label, color }
+  }
+
+  if (rir <= 1) return { pct: -5, label: 'Bajar peso la próxima', color: '#ef4444' }
+  if (rir <= 2) return { pct: 0, label: 'Mantener peso', color: '#f59e0b' }
+  if (rir <= 3) return { pct: 2.5, label: 'Subir ligero', color: '#84cc16' }
+  return { pct: 5, label: 'Subir peso', color: '#22c55e' }
+}
+
 /**
  * Programación por %1RM (estilo JuggernautAI/RP): si el campo de peso del
  * ejercicio es un porcentaje ("75%"), calcula el peso objetivo real a

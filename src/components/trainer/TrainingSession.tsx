@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 import { VideoModal } from '../client/VideoModal'
 import { toast } from '../shared/Toast'
+import { RIR_OPTIONS, getSuggestedWeightChange } from '../../lib/strength'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
@@ -155,6 +156,22 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const log = getLog(ri)
     updateLog(ri, { sets: { ...log.sets, [si]: { ...log.sets[si], [field]: value } } })
   }
+
+  const setSetRir = (ri: number, si: number, rir: number) => {
+    const log = getLog(ri)
+    updateLog(ri, { sets: { ...log.sets, [si]: { ...log.sets[si], rir } } })
+  }
+
+  // Sets de la última vez que se hizo este mismo ejercicio (otra semana), para
+  // sugerir el peso de hoy en base al RIR que se registró entonces.
+  const getPrevSets = (ri: number) => {
+    const key = `ex_${dayKey}_r${ri}`
+    const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
+    return prev?.[1]?.sets || {}
+  }
+
+  const weekIdx = parseInt(dayKey.match(/^w(\d+)_/)?.[1] || '0')
+  const weekRpe = plan.weeks?.[weekIdx]?.rpe
 
   // Récord personal: ¿este peso supera todo lo registrado antes para este ejercicio?
   const isNewRecord = (ri: number, weight: number) => {
@@ -389,6 +406,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const log = getLog(activeIdx)
     const totalSeries = parseInt(ex.sets?.split('×')[0] || '3')
     const doneSeries = Object.keys(log.sets).length
+    const prevSets = getPrevSets(activeIdx)
     const restTotal = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
     const timerPct = timerRunning ? (timer / restTotal) * 100 : 0
     const allVideos = [ex.videoUrl, ...(ex.videoUrls || [])].filter(Boolean).filter((u, i, a) => a.indexOf(u) === i)
@@ -498,6 +516,8 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                 const s = log.sets[si]
                 const isDone = si < doneSeries
                 const isCurrent = si === doneSeries && !timerRunning && !log.done
+                const prev = prevSets[si]
+                const suggestion = !isDone ? getSuggestedWeightChange(prev?.rir, prev?.weight, weekRpe) : null
                 return (
                   <div key={si} className={`transition-all ${isDone ? 'bg-ok/5' : isCurrent ? 'bg-bg' : 'opacity-35'}`}>
                     <div className="flex items-center gap-2 px-4 pt-3 pb-1">
@@ -507,6 +527,11 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                       <p className={`text-xs font-semibold ${isCurrent ? 'text-ink' : 'text-muted'}`}>
                         {isDone ? `Serie ${si + 1} ✓` : isCurrent ? `Serie ${si + 1} — activa` : `Serie ${si + 1}`}
                       </p>
+                      {suggestion && (
+                        <span className="text-[10px] font-bold ml-auto flex-shrink-0" style={{ color: suggestion.color }}>
+                          {suggestion.pct > 0 ? '↑' : suggestion.pct < 0 ? '↓' : '='} {suggestion.label}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center px-3 pb-3 gap-1">
                       {/* Peso */}
@@ -557,6 +582,22 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                         </div>
                       </div>
                     </div>
+                    {/* RIR — solo relevante una vez completada la serie */}
+                    {isDone && (
+                      <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
+                        <span className="text-[9px] text-muted uppercase tracking-wider flex-shrink-0">RIR</span>
+                        {RIR_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => setSetRir(activeIdx, si, opt.value)}
+                            className="w-6 h-6 rounded-full text-[10px] font-bold flex-shrink-0 border-2 transition-all"
+                            style={s?.rir === opt.value
+                              ? { backgroundColor: opt.color, borderColor: opt.color, color: '#fff' }
+                              : { borderColor: '#e2ddd4', color: '#8a8278' }}
+                            title={opt.desc}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
