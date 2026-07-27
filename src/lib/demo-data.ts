@@ -14,6 +14,7 @@ export const DEMO_CLIENTS: ClientData[] = [
     planDescription: 'Programa hipertrofia 4 días',
     isActive: true,
     createdAt: Date.now() - 60 * 86400000,
+    precio_mensual: 80,
   },
   {
     id: 'demo-client-002',
@@ -25,6 +26,7 @@ export const DEMO_CLIENTS: ClientData[] = [
     planDescription: 'Powerlifting intermedio',
     isActive: true,
     createdAt: Date.now() - 90 * 86400000,
+    precio_mensual: 100,
   },
   {
     id: 'demo-client-003',

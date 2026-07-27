@@ -35,7 +35,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 }) {
   const c = client
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ name: c.name || '', surname: c.surname || '', phone: c.phone || '', objetivo: c.objetivo || '', altura: c.altura || '', weight: c.weight || '', genero: c.genero || '', fechanacimiento: c.fechanacimiento || '' })
+  const [form, setForm] = useState({ name: c.name || '', surname: c.surname || '', phone: c.phone || '', objetivo: c.objetivo || '', altura: c.altura || '', weight: c.weight || '', genero: c.genero || '', fechanacimiento: c.fechanacimiento || '', precio_mensual: c.precio_mensual || '' })
   const [saving, setSaving] = useState(false)
   const [showNewAlert, setShowNewAlert] = useState(false)
   const [newAlert, setNewAlert] = useState<{ type: ClientAlert['type']; note: string; date: string }>({
@@ -54,7 +54,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
   const handleSave = async () => {
     setSaving(true)
-    await onUpdate({ name: form.name, surname: form.surname, phone: form.phone, objetivo: form.objetivo, altura: form.altura ? parseFloat(String(form.altura)) : null, weight: form.weight ? parseFloat(String(form.weight)) : 0, genero: form.genero || null, fechanacimiento: form.fechanacimiento || null })
+    await onUpdate({ name: form.name, surname: form.surname, phone: form.phone, objetivo: form.objetivo, altura: form.altura ? parseFloat(String(form.altura)) : null, weight: form.weight ? parseFloat(String(form.weight)) : 0, genero: form.genero || null, fechanacimiento: form.fechanacimiento || null, precio_mensual: form.precio_mensual ? parseFloat(String(form.precio_mensual)) : null } as any)
     setEditing(false); setSaving(false)
   }
 
@@ -277,6 +277,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
               { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
               { label: 'Fecha de nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
               { label: 'Edad', value: edad ? `${edad} años` : '—' },
+              { label: 'Precio mensual', value: c.precio_mensual ? `${c.precio_mensual}€/mes` : '—' },
             ].map(row => (
               <div key={row.label} className="flex items-center px-5 py-3 hover:bg-bg-alt/30 transition-colors">
                 <p className="text-xs font-semibold text-muted w-36 flex-shrink-0">{row.label}</p>
@@ -303,6 +304,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                 </select></div>
               <div><label className="block text-xs font-bold text-muted mb-1.5">Fecha nacimiento</label><input type="date" value={form.fechanacimiento} onChange={e => setForm(f => ({ ...f, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
             </div>
+            <div><label className="block text-xs font-bold text-muted mb-1.5">💶 Precio mensual (€) — solo para tu propio seguimiento, no se cobra desde aquí</label><input type="number" value={form.precio_mensual} onChange={e => setForm(f => ({ ...f, precio_mensual: e.target.value }))} placeholder="Ej: 80" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
             <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity">
               {saving ? 'Guardando...' : '✓ Guardar cambios'}
             </button>

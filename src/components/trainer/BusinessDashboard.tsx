@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { ClientData } from '../../types'
-import { TrendingUp, Users, CheckCircle2, BarChart2 } from 'lucide-react'
+import { TrendingUp, Users, CheckCircle2, BarChart2, Euro } from 'lucide-react'
 
 interface Props {
   trainerId: string
@@ -33,10 +33,14 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
       ? Math.round((clientesActivos / clients.length) * 100)
       : 0
 
-    return { sesiones30d, clientesActivos, retencion }
+    const ingresosMensuales = clients.reduce((sum, c) => sum + (c.precio_mensual || 0), 0)
+    const clientesSinPrecio = clients.filter(c => !c.precio_mensual).length
+
+    return { sesiones30d, clientesActivos, retencion, ingresosMensuales, clientesSinPrecio }
   }, [clients, logsMap])
 
   const KPIs = [
+    { label: 'Ingresos estimados/mes', value: `${stats.ingresosMensuales}€`, icon: Euro,         color: 'text-accent', border: '#6e5438' },
     { label: 'Clientes totales',   value: clients.length,        icon: Users,        color: 'text-accent', border: '#6e5438' },
     { label: 'Sesiones (30 días)', value: stats.sesiones30d,     icon: CheckCircle2, color: 'text-ok',     border: '#4caf7d' },
     { label: 'Clientes activos',   value: stats.clientesActivos, icon: TrendingUp,   color: 'text-ok',     border: '#4caf7d' },
@@ -50,7 +54,7 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
         <p className="text-muted text-sm mt-1">Métricas de tu actividad como entrenador</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {KPIs.map(({ label, value, icon: Icon, color, border }) => (
           <div key={label} className="bg-white rounded-2xl p-5 shadow-sm overflow-hidden relative"
             style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -64,6 +68,13 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
           </div>
         ))}
       </div>
+
+      {stats.ingresosMensuales > 0 && (
+        <p className="text-xs text-muted -mt-3">
+          💶 Estimación a partir del precio mensual que has indicado en cada cliente. No es facturación real ni cobra nada automáticamente.
+          {stats.clientesSinPrecio > 0 && ` ${stats.clientesSinPrecio} cliente${stats.clientesSinPrecio > 1 ? 's' : ''} sin precio configurado.`}
+        </p>
+      )}
 
       <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border/50">
