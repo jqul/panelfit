@@ -77,8 +77,43 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
     toast(`Programa "${prog.name}" asignado ✓`, 'ok')
   }
 
+  // Bloque terminando/terminado — calculado en local a partir de inicio + nº semanas
+  const blockEnd = (() => {
+    if (!plan.fechaInicio || !plan.weeks?.length) return null
+    const start = new Date(plan.fechaInicio + 'T00:00:00')
+    const end = new Date(start); end.setDate(start.getDate() + plan.weeks.length * 7)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000)
+    return { end, daysLeft }
+  })()
+  const showRenewBanner = !!blockEnd && blockEnd.daysLeft <= 5
+
+  const generateNextBlock = () => {
+    const weeks = JSON.parse(JSON.stringify(plan.weeks)) as typeof plan.weeks
+    weeks.forEach((w, i) => { w.isCurrent = i === 0 })
+    const newPlan: TrainingPlan = { ...plan, weeks, fechaInicio: new Date().toISOString().split('T')[0] }
+    onPlanChange(newPlan)
+    toast('Nuevo bloque generado — mismos ejercicios, ajusta cargas si hace falta', 'ok')
+  }
+
   return (
     <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+      {/* Banner bloque terminando/terminado — generar el siguiente */}
+      {showRenewBanner && blockEnd && (
+        <div className="flex-shrink-0 mb-3 flex items-center gap-3 px-4 py-3 bg-warn/5 border border-warn/20 rounded-2xl">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-warn uppercase tracking-wider">{blockEnd.daysLeft < 0 ? 'Bloque terminado' : 'Bloque terminando'}</p>
+            <p className="text-sm text-ink">
+              {blockEnd.daysLeft < 0 ? 'Terminó el' : 'Termina el'} {blockEnd.end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} — genera el siguiente con la misma estructura
+            </p>
+          </div>
+          <button onClick={generateNextBlock}
+            className="flex-shrink-0 px-3 py-2 bg-warn text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity">
+            Generar siguiente bloque
+          </button>
+        </div>
+      )}
+
       {/* Banner programa asignado + botón cambiar */}
       <div className="flex-shrink-0 mb-3">
         {plan.programName ? (

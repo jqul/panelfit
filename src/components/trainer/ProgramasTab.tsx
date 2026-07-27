@@ -5,10 +5,11 @@ import { toast } from '../shared/Toast'
 import {
   Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
   Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
-  MessageSquare, Video, Calendar, Tag
+  MessageSquare, Video, Calendar, Tag, Users, Search
 } from 'lucide-react'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
+import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -36,7 +37,22 @@ export interface Program {
   updated_at: number
 }
 
-interface Props { trainerId: string; onManageLabels: () => void }
+interface Props { trainerId: string; onManageLabels: () => void; clients: ClientData[] }
+
+function programToWeeks(weeks: ProgramWeek[]): WeekPlan[] {
+  const result = (weeks || []).map(w => ({
+    label: w.label,
+    rpe: '',
+    isCurrent: false,
+    days: (w.days || []).map(d => ({
+      title: d.tasks?.find(t => t.type === 'workout')?.title || 'Día',
+      focus: d.tasks?.filter(t => t.type !== 'workout').map(t => t.title).join(', ') || '',
+      exercises: [],
+    }))
+  }))
+  if (result.length > 0) result[0].isCurrent = true
+  return result
+}
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
@@ -463,8 +479,132 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
   )
 }
 
+// ── Asignación masiva ───────────────────────────────────────
+function BulkAssignModal({ program, clients, trainerId, onClose }: {
+  program: Program; clients: ClientData[]; trainerId: string; onClose: () => void
+}) {
+  const [mode, setMode] = useState<'clients' | 'group'>('clients')
+  const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [cohortes, setCohortes] = useState<{ id: string; name: string }[]>([])
+  const [selectedCohorte, setSelectedCohorte] = useState('')
+  const [assigning, setAssigning] = useState(false)
+
+  useEffect(() => {
+    supabase.from('cohortes').select('id, name').eq('trainer_id', trainerId).then(({ data }) => setCohortes(data || []))
+  }, [trainerId])
+
+  const filteredClients = clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase()))
+  const toggle = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const confirm = async () => {
+    let targetIds: string[] = []
+    if (mode === 'group') {
+      if (!selectedCohorte) { toast('Elige un grupo', 'warn'); return }
+      const { data } = await supabase.from('cohorte_clientes').select('client_id').eq('cohorte_id', selectedCohorte)
+      targetIds = (data || []).map(r => r.client_id)
+    } else {
+      targetIds = [...selectedIds]
+    }
+    if (targetIds.length === 0) { toast('Selecciona al menos un cliente', 'warn'); return }
+
+    setAssigning(true)
+    const weeks = programToWeeks(program.weeks)
+    const results = await Promise.all(targetIds.map(async clientId => {
+      const newPlan: TrainingPlan = {
+        clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
+        weeks: JSON.parse(JSON.stringify(weeks)),
+        programId: program.id, programName: program.name,
+        fechaInicio: new Date().toISOString().split('T')[0],
+      }
+      const { error } = await supabase.from('planes').upsert(
+        { clientId, plan: { P: newPlan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() },
+        { onConflict: 'clientId' }
+      )
+      return !error
+    }))
+    setAssigning(false)
+    const ok = results.filter(Boolean).length
+    toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn')
+    onClose()
+  }
+
+  const targetCount = mode === 'group'
+    ? (selectedCohorte ? undefined : 0)
+    : selectedIds.size
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{ maxHeight: '85dvh', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg">Asignar a varios</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{program.name} — se publica de inmediato, sin borrador</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-6 pt-4 flex gap-2 flex-shrink-0">
+          <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Elegir clientes</button>
+          <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Grupo completo</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          {mode === 'clients' ? (
+            <>
+              <div className="relative mb-3">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
+                  className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
+              </div>
+              <div className="space-y-1 border border-gray-100 rounded-xl p-2 max-h-64 overflow-y-auto">
+                {filteredClients.length === 0 && <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>}
+                {filteredClients.map(c => (
+                  <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+                    <div onClick={() => toggle(c.id)}
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-gray-300'}`}>
+                      {selectedIds.has(c.id) && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="text-sm truncate">{c.name} {c.surname}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : (
+            cohortes.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">No tienes grupos creados todavía (pestaña Grupos).</p>
+            ) : (
+              <div className="space-y-1">
+                {cohortes.map(c => (
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedCohorte === c.id ? 'bg-accent/10 border-accent' : 'border-gray-100'}`}>
+                    <input type="radio" name="cohorte" checked={selectedCohorte === c.id} onChange={() => setSelectedCohorte(c.id)} className="accent-accent" />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button onClick={confirm} disabled={assigning || targetCount === 0}
+            className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-2">
+            <Users className="w-4 h-4" />
+            {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────
-export function ProgramasTab({ trainerId, onManageLabels }: Props) {
+export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   const [programs, setPrograms]   = useState<Program[]>([])
   const [labels, setLabels]       = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<{ id: string; name: string }[]>([])
@@ -473,6 +613,7 @@ export function ProgramasTab({ trainerId, onManageLabels }: Props) {
   const [editing, setEditing]     = useState<Program | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterTipo, setFilterTipo]   = useState<string | null>(null)
+  const [bulkAssignFor, setBulkAssignFor] = useState<Program | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
 
@@ -636,6 +777,7 @@ export function ProgramasTab({ trainerId, onManageLabels }: Props) {
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setBulkAssignFor(prog)} title="Asignar a varios" className="p-1.5 text-muted hover:text-accent rounded-lg"><Users className="w-3.5 h-3.5" /></button>
                       <button onClick={() => duplicate(prog)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
                       <button onClick={() => deleteProgram(prog.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
@@ -656,6 +798,10 @@ export function ProgramasTab({ trainerId, onManageLabels }: Props) {
             )
           })}
         </div>
+      )}
+
+      {bulkAssignFor && (
+        <BulkAssignModal program={bulkAssignFor} clients={clients} trainerId={trainerId} onClose={() => setBulkAssignFor(null)} />
       )}
     </div>
   )

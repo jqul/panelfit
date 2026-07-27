@@ -11,9 +11,20 @@ export interface ClientWithStats extends ClientData {
   weeklyDays?: number
   planEndDate?: string
   planEndingSoon?: boolean
+  atRisk?: boolean
 }
 
 const PLAN_ENDING_SOON_DAYS = 5
+const AT_RISK_INACTIVE_DAYS = 10
+
+// Riesgo de abandono: tiene plan asignado (el entrenador ya invirtió tiempo)
+// pero lleva demasiados días sin entrenar — señal de que puede estar dejándolo.
+function computeAtRisk(hasPlan: boolean, lastActive?: string): boolean {
+  if (!hasPlan) return false
+  if (!lastActive) return true
+  const days = Math.round((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
+  return days >= AT_RISK_INACTIVE_DAYS
+}
 
 function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
   if (!fechaInicio || !weeksLen) return {}
@@ -25,6 +36,34 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
     planEndDate: end.toISOString().split('T')[0],
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
   }
+}
+
+// Empareja el objetivo del cliente con el "tipo" de programa (vocabularios distintos:
+// el objetivo usa claves tipo especialidad, el tipo de programa es texto libre en español).
+const OBJETIVO_TO_TIPO: Record<string, string> = {
+  hipertrofia: 'Hipertrofia',
+  fuerza: 'Fuerza',
+  halterofilia: 'Fuerza',
+  rehabilitacion: 'Rehabilitación',
+  rendimiento: 'Rendimiento',
+  perdida_grasa: 'Pérdida de grasa',
+  resistencia: 'Resistencia',
+  general: 'General',
+}
+
+function programWeeksToPlanWeeks(weeks: any[]) {
+  const result = (weeks || []).map((w: any) => ({
+    label: w.label,
+    rpe: '',
+    isCurrent: false,
+    days: (w.days || []).map((d: any) => ({
+      title: d.tasks?.find((t: any) => t.type === 'workout')?.title || 'Día',
+      focus: d.tasks?.filter((t: any) => t.type !== 'workout').map((t: any) => t.title).join(', ') || '',
+      exercises: [],
+    }))
+  }))
+  if (result.length > 0) result[0].isCurrent = true
+  return result
 }
 
 interface Options {
@@ -59,6 +98,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           doneToday: dates[0] === hoy,
           hasPlan: true,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
+          atRisk: computeAtRisk(true, dates[0]),
         }
       }) as ClientWithStats[])
       setLoading(false)
@@ -108,12 +148,14 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .filter((l: any) => l.dateDone)
             .map((l: any) => l.dateDone as string)
         )].sort().reverse()
+        const hasPlan = planMap[c.id] || false
         return {
           ...c,
           lastActive: dates[0],
           doneToday: dates[0] === hoy,
-          hasPlan: planMap[c.id] || false,
+          hasPlan,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
+          atRisk: computeAtRisk(hasPlan, dates[0]),
           ...planEndMap[c.id],
         }
       }))
@@ -143,12 +185,13 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       return false
     }
     const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({
+    const objetivo = newClient.objetivo || 'general'
+    const { data: inserted, error } = await supabase.from('clientes').insert({
       trainerId,
       name: newClient.name.trim(),
       surname: newClient.surname.trim(),
       phone: (newClient.phone || '').trim(),
-      objetivo: newClient.objetivo || 'general',
+      objetivo,
       token,
       createdAt: Date.now(),
       altura: newClient.altura ? parseFloat(newClient.altura) : null,
@@ -157,11 +200,32 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       fechanacimiento: newClient.fechanacimiento || null,
       fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '',
       label_ids: labelIds,
-    })
+    }).select('id').single()
     if (error) { toast('Error: ' + error.message, 'warn'); return false }
     toast('Cliente creado ✓', 'ok')
+    if (inserted?.id) await autoAssignProgram(inserted.id, objetivo)
     await fetchClients()
     return true
+  }
+
+  // Al dar de alta un cliente, si el entrenador ya tiene un programa que encaja
+  // con el objetivo elegido, se lo asigna de inmediato para ahorrar el paso manual.
+  const autoAssignProgram = async (clientId: string, objetivo: string) => {
+    const tipo = OBJETIVO_TO_TIPO[objetivo]
+    if (!tipo) return
+    const { data: progs } = await supabase.from('programs').select('*')
+      .eq('trainer_id', trainerId).ilike('tipo', tipo).order('created_at', { ascending: false }).limit(1)
+    const prog = progs?.[0]
+    if (!prog) return
+    const weeks = programWeeksToPlanWeeks(prog.weeks)
+    const newPlan = {
+      clientId, type: prog.tipo, restMain: 180, restAcc: 90, restWarn: 30,
+      weeks, programId: prog.id, programName: prog.name,
+      fechaInicio: new Date().toISOString().split('T')[0],
+    }
+    const { error: planError } = await supabase.from('planes')
+      .upsert({ clientId, plan: { P: newPlan }, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    if (!planError) toast(`Programa "${prog.name}" asignado automáticamente ✓`, 'ok')
   }
 
   const deleteClient = async (id: string) => {

@@ -9,7 +9,7 @@ import {
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon
+  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -27,6 +27,7 @@ import { AdherenciaTab } from './AdherenciaTab'
 import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
+import { BandejaTab } from './BandejaTab'
 import { EtiquetasTab } from './EtiquetasTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
@@ -37,8 +38,8 @@ import { PublicPageEditor } from './PublicPageEditor'
 import { EquipoSection } from './EquipoSection'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk'
 
 interface Props {
   userProfile: UserProfile
@@ -97,7 +98,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     })
   }, [realUid, demoClients])
 
-  const { activeToday, noPlan, noActivity7d, activePrevWeek, adherenciaMap,
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
 
@@ -134,6 +135,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { label: 'Gestión', items: [
       { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
       { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
+      { id: 'bandeja'   as Tab, icon: Inbox,           label: 'Bandeja' },
       { id: 'cohortes' as Tab, icon: Users2,          label: 'Grupos' },
       { id: 'etiquetas' as Tab, icon: TagIcon,        label: 'Etiquetas' },
       { id: 'calendario' as Tab, icon: CalendarDays,  label: 'Calendario' },
@@ -287,12 +289,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 </div>
 
                 {/* Stat cards — borde de color + número prominente */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                   {[
                     { label: 'Clientes',       value: clients.length, prev: undefined,     icon: Users,        color: 'text-ink',  accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
                     { label: 'Entrenaron hoy', value: activeToday,    prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok',   accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
                     { label: 'Sin plan',       value: noPlan,         prev: undefined,     icon: AlertCircle,  color: noPlan > 0 ? 'text-warn' : 'text-muted',      accent: noPlan > 0 ? '#e07b54' : '#9ca3af',      border: noPlan > 0 ? '#e07b54' : '#e5e7eb',      onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
                     { label: 'Sin actividad',  value: noActivity7d,  prev: undefined,     icon: Clock,        color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
+                    { label: 'En riesgo',      value: atRiskCount,   prev: undefined,     icon: AlertCircle,  color: atRiskCount > 0 ? 'text-warn' : 'text-muted', accent: atRiskCount > 0 ? '#e07b54' : '#9ca3af', border: atRiskCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('at-risk'); handleTabChange('clients') } },
                   ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
                     <button key={label} onClick={onClick}
                       className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
@@ -467,7 +470,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
+                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
                           </div>
                           <ChevronRight className="w-3 h-3 text-muted" />
                         </button>
@@ -525,7 +528,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     {alerts.slice(0, 3).map(c => (
                       <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
                         <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
+                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
                       </button>
                     ))}
                     {alerts.length === 0 && (
@@ -571,7 +574,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }] as const).map(f => (
+                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }] as const).map(f => (
                     <button key={f.id} onClick={() => setClientFilter(f.id)}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
                       {f.label}
@@ -612,6 +615,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
                             </div>
                             {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
+                            {client.atRisk && <p className="text-[10px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
                           </div>
                         )}
                         {!client.hasPlan && (
@@ -649,12 +653,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             </div>
           )}
 
+          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
           {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
           {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} />}
+          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
           {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}

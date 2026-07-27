@@ -5,7 +5,7 @@ interface Options {
   clients: ClientWithStats[]
   logsMap: Record<string, any>
   search: string
-  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity'
+  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk'
 }
 
 export function useClientStats({ clients, logsMap, search, clientFilter }: Options) {
@@ -19,6 +19,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   const noActivity7d = clients.filter(c =>
     !c.lastActive || new Date(c.lastActive) < haceUnaS
   ).length
+  const atRiskCount = clients.filter(c => c.atRisk).length
 
   const activePrevWeek = useMemo(() => {
     let count = 0
@@ -47,6 +48,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
     else if (clientFilter === 'no-activity') list = list.filter(c =>
       !c.lastActive || new Date(c.lastActive) < haceUnaS
     )
+    else if (clientFilter === 'at-risk') list = list.filter(c => c.atRisk)
     if (search) list = list.filter(c =>
       `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
     )
@@ -98,7 +100,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   }
 
   return {
-    activeToday, noPlan, noActivity7d, activePrevWeek,
+    activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount,
     adherenciaMap, filteredClients, chartData, activityFeed,
     alerts, formatLastActive,
   }
