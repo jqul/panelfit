@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
 import {
@@ -31,6 +31,7 @@ export function useAuthBootstrap() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [clientToken, setClientToken] = useState<string | null>(null)
   const [publicSlug, setPublicSlug] = useState<string | null>(null)
+  const loggingOutRef = useRef(false)
 
   const loadProfile = async (uid: string, email: string) => {
     const { data } = await supabase
@@ -63,10 +64,13 @@ export function useAuthBootstrap() {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    // Evita que un refresco de token ya en curso reautentique al usuario justo
+    // después de cerrar sesión (el evento llega igualmente al listener de abajo).
+    loggingOutRef.current = true
     setView('auth')
     setUserProfile(null)
     setPendingUser(null)
+    await supabase.auth.signOut()
   }
 
   useEffect(() => {
@@ -103,6 +107,10 @@ export function useAuthBootstrap() {
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (loggingOutRef.current) {
+        if (event === 'SIGNED_OUT') loggingOutRef.current = false
+        return
+      }
       if (event === 'PASSWORD_RECOVERY') { setView('reset-password'); return }
       if (session?.user) loadProfile(session.user.id, session.user.email || '')
       else { setView('auth'); setUserProfile(null) }

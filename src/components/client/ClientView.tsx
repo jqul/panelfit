@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle, CalendarDays, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
@@ -42,6 +42,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
   const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
+  const loggingOutRef = useRef(false)
 
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
@@ -50,7 +51,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     window.addEventListener('offline', offline)
 
     // Escuchar cambios de auth — si el cliente inicia sesión, cargar datos
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (loggingOutRef.current) {
+        if (event === 'SIGNED_OUT') loggingOutRef.current = false
+        return
+      }
       if (session?.user && authState === 'needs_login') {
         loadData()
       }
@@ -336,8 +341,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
-              await supabase.auth.signOut()
+              loggingOutRef.current = true
               setAuthState('needs_login')
+              await supabase.auth.signOut()
             }} />}
           </>
         )}
