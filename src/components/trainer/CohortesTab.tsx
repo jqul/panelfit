@@ -24,6 +24,7 @@ interface Cohorte {
   fecha_fin?: string
   activa: boolean
   created_at: number
+  puntos_por_sesion?: number
 }
 
 interface CohorteCliente {
@@ -36,7 +37,14 @@ interface CohorteCliente {
 const COLORS = ['#6e5438', '#3b82f6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899']
 
 function emptyCohorte(trainerId: string): Omit<Cohorte, 'id' | 'created_at'> {
-  return { trainer_id: trainerId, nombre: '', descripcion: '', color: COLORS[0], activa: true }
+  return { trainer_id: trainerId, nombre: '', descripcion: '', color: COLORS[0], activa: true, fecha_inicio: '', fecha_fin: '', puntos_por_sesion: 10 }
+}
+
+function daysLeft(fechaFin?: string): number | null {
+  if (!fechaFin) return null
+  const end = new Date(fechaFin + 'T23:59:59')
+  const today = new Date()
+  return Math.ceil((end.getTime() - today.getTime()) / 86400000)
 }
 
 export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }: Props) {
@@ -81,7 +89,7 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
   const updateCohorte = async () => {
     if (!editing) return
     const { error } = await supabase.from('cohortes')
-      .update({ nombre: editing.nombre, descripcion: editing.descripcion, color: editing.color, fecha_inicio: editing.fecha_inicio, fecha_fin: editing.fecha_fin })
+      .update({ nombre: editing.nombre, descripcion: editing.descripcion, color: editing.color, fecha_inicio: editing.fecha_inicio, fecha_fin: editing.fecha_fin, puntos_por_sesion: editing.puntos_por_sesion })
       .eq('id', editing.id)
     if (error) { toast('Error al guardar', 'warn'); return }
     setCohortes(c => c.map(x => x.id === editing.id ? editing : x))
@@ -116,11 +124,12 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
   }
 
   // Ranking del grupo: nº de sesiones por miembro, en el rango del reto (fecha_inicio/fecha_fin)
-  // si está definido, o en los últimos 7 días por defecto.
+  // si está definido, o en los últimos 7 días por defecto. Puntos = sesiones × puntos_por_sesion.
   const getLeaderboard = (cohorte: Cohorte) => {
     const members = getMembersOf(cohorte.id)
     const desde = cohorte.fecha_inicio ? new Date(cohorte.fecha_inicio + 'T00:00:00').getTime() : Date.now() - 7 * 86400000
     const hasta = cohorte.fecha_fin ? new Date(cohorte.fecha_fin + 'T23:59:59').getTime() : Date.now()
+    const ppSesion = cohorte.puntos_por_sesion || 10
     return members.map(c => {
       const logs = logsMap[c.id] || {}
       const sesiones = new Set(
@@ -130,8 +139,8 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
           return t >= desde && t <= hasta
         }).map((l: any) => l.dateDone)
       )
-      return { client: c, sesiones: sesiones.size }
-    }).sort((a, b) => b.sesiones - a.sesiones)
+      return { client: c, sesiones: sesiones.size, puntos: sesiones.size * ppSesion }
+    }).sort((a, b) => b.puntos - a.puntos)
   }
 
   // Stats agregadas del grupo: adherencia media basada en sesiones completadas últimos 7 días
@@ -206,20 +215,42 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
           </div>
         </div>
 
+        {/* Countdown del reto */}
+        {(selectedCohorte.fecha_inicio || selectedCohorte.fecha_fin) && (() => {
+          const left = daysLeft(selectedCohorte.fecha_fin)
+          return (
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-accent/5 border border-accent/20 rounded-xl">
+              <span className="text-base">🏆</span>
+              <p className="text-xs font-semibold flex-1">
+                Reto{selectedCohorte.fecha_inicio ? ` desde ${new Date(selectedCohorte.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ''}
+                {selectedCohorte.fecha_fin ? ` hasta ${new Date(selectedCohorte.fecha_fin + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ''}
+              </p>
+              {left !== null && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${left < 0 ? 'bg-muted/10 text-muted' : left <= 2 ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+                  {left < 0 ? 'Terminado' : left === 0 ? 'Último día' : `${left}d restantes`}
+                </span>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Ranking del reto */}
         {members.length > 0 && (
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-2">
-              Ranking {selectedCohorte.fecha_inicio || selectedCohorte.fecha_fin ? '· del reto' : '· últimos 7 días'}
+              Ranking {selectedCohorte.fecha_inicio || selectedCohorte.fecha_fin ? '· del reto' : '· últimos 7 días'} · {selectedCohorte.puntos_por_sesion || 10} pts/sesión
             </p>
             <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
-              {getLeaderboard(selectedCohorte).map(({ client: c, sesiones }, i) => (
+              {getLeaderboard(selectedCohorte).map(({ client: c, sesiones, puntos }, i) => (
                 <button key={c.id} onClick={() => onSelectClient?.(c)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/30">
                   <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                     i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-gray-100 text-gray-600' : i === 2 ? 'bg-orange-100 text-orange-600' : 'bg-bg-alt text-muted'
                   }`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
-                  <p className="text-sm font-semibold flex-1 truncate">{c.name} {c.surname}</p>
-                  <span className="text-sm font-bold text-accent flex-shrink-0">{sesiones} sesion{sesiones !== 1 ? 'es' : ''}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
+                    <p className="text-[10px] text-muted">{sesiones} sesion{sesiones !== 1 ? 'es' : ''}</p>
+                  </div>
+                  <span className="text-sm font-bold text-accent flex-shrink-0">{puntos} pts</span>
                 </button>
               ))}
             </div>
@@ -322,6 +353,8 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
         <div className="space-y-2">
           {cohortes.map(coh => {
             const stats = getCohorteStats(coh.id)
+            const left = daysLeft(coh.fecha_fin)
+            const isChallenge = !!(coh.fecha_inicio || coh.fecha_fin)
             return (
               <div key={coh.id}
                 className={`bg-card border rounded-2xl overflow-hidden transition-all ${coh.activa ? 'border-border' : 'border-border opacity-60'}`}>
@@ -330,9 +363,14 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
                     <Users className="w-5 h-5" style={{ color: coh.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold truncate">{coh.nombre}</p>
                       {!coh.activa && <span className="text-[9px] font-bold text-muted bg-bg-alt px-1.5 py-0.5 rounded-full">Inactivo</span>}
+                      {isChallenge && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${left !== null && left < 0 ? 'bg-muted/10 text-muted' : left !== null && left <= 2 ? 'bg-warn/10 text-warn' : 'bg-accent/10 text-accent'}`}>
+                          🏆 {left === null ? 'Reto' : left < 0 ? 'Terminado' : left === 0 ? 'Último día' : `${left}d`}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-muted mt-0.5">{stats.totalClientes} cliente{stats.totalClientes !== 1 ? 's' : ''} · {stats.sesionesUltimaSemana} sesiones esta semana</p>
                   </div>
@@ -365,6 +403,24 @@ function CohorteCreateForm({ form, onChange, onSave, onClose }: {
       <input value={form.descripcion || ''} onChange={e => onChange({ ...form, descripcion: e.target.value })}
         placeholder="Descripción breve (opcional)"
         className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none" />
+      <p className="text-[10px] text-muted -mb-1">¿Es un reto con fecha límite? Déjalo en blanco para un grupo permanente.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-[10px] font-bold uppercase text-muted">Inicio</label>
+          <input type="date" value={form.fecha_inicio || ''} onChange={e => onChange({ ...form, fecha_inicio: e.target.value })}
+            className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase text-muted">Fin</label>
+          <input type="date" value={form.fecha_fin || ''} onChange={e => onChange({ ...form, fecha_fin: e.target.value })}
+            className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] font-bold uppercase text-muted">Puntos por sesión completada</label>
+        <input type="number" min={1} value={form.puntos_por_sesion ?? 10} onChange={e => onChange({ ...form, puntos_por_sesion: parseInt(e.target.value) || 10 })}
+          className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+      </div>
       <div className="flex gap-1.5">
         {COLORS.map(c => (
           <button key={c} onClick={() => onChange({ ...form, color: c })}
@@ -409,6 +465,11 @@ function CohorteEditModal({ cohorte, onChange, onSave, onClose }: {
             <input type="date" value={cohorte.fecha_fin || ''} onChange={e => onChange({ ...cohorte, fecha_fin: e.target.value })}
               className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none mt-1" />
           </div>
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase text-muted">Puntos por sesión completada</label>
+          <input type="number" min={1} value={cohorte.puntos_por_sesion ?? 10} onChange={e => onChange({ ...cohorte, puntos_por_sesion: parseInt(e.target.value) || 10 })}
+            className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none mt-1" />
         </div>
         <div className="flex gap-1.5">
           {COLORS.map(c => (
