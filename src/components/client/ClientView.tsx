@@ -21,6 +21,7 @@ import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEdit
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { sendPush } from '../../lib/usePushNotifications'
 import { CicloWidget } from './CicloWidget'
+import { ReferralWidget } from './ReferralWidget'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -533,6 +534,9 @@ function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: Training
 
       {/* Ciclo menstrual (opcional) */}
       <CicloWidget clientId={client.id} trainerId={client.trainerId} />
+
+      {/* Programa de referidos */}
+      <ReferralWidget trainerId={client.trainerId} token={client.token} />
 
       {/* Cerrar sesión */}
       <button onClick={onLogout}

@@ -34,6 +34,8 @@ export function PublicTrainerPage({ slug }: Props) {
     })
   }, [slug])
 
+  const refCode = new URLSearchParams(window.location.search).get('ref')
+
   if (loading) return (
     <div className="min-h-[100dvh] bg-bg flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
@@ -48,6 +50,7 @@ export function PublicTrainerPage({ slug }: Props) {
     const { error } = await supabase.rpc('submit_lead', {
       p_slug: slug, p_name: leadName.trim(), p_email: leadContact.includes('@') ? leadContact.trim() : null,
       p_phone: !leadContact.includes('@') ? leadContact.trim() || null : null, p_message: leadMessage.trim() || null,
+      p_ref: refCode || null,
     })
     setSending(false)
     if (!error) setSent(true)

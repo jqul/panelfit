@@ -35,7 +35,7 @@ const DEFAULT_PAGE: PublicPageData = {
   activa: false,
 }
 
-interface Lead { id: string; name: string; email: string | null; phone: string | null; message: string | null; status: string; created_at: number }
+interface Lead { id: string; name: string; email: string | null; phone: string | null; message: string | null; status: string; created_at: number; referred_by_client_id: string | null; referrerName?: string }
 
 export function PublicPageEditor({ userProfile }: Props) {
   const [data, setData] = useState<PublicPageData>(DEFAULT_PAGE)
@@ -54,7 +54,14 @@ export function PublicPageEditor({ userProfile }: Props) {
 
   const loadLeads = async () => {
     const { data: rows } = await supabase.from('leads').select('*').eq('trainer_id', userProfile.uid).order('created_at', { ascending: false })
-    if (rows) setLeads(rows as Lead[])
+    if (!rows) return
+    const referrerIds = [...new Set(rows.map(r => r.referred_by_client_id).filter(Boolean))]
+    let names: Record<string, string> = {}
+    if (referrerIds.length > 0) {
+      const { data: referrers } = await supabase.from('clientes').select('id, name, surname').in('id', referrerIds)
+      names = Object.fromEntries((referrers || []).map(c => [c.id, `${c.name} ${c.surname || ''}`.trim()]))
+    }
+    setLeads((rows as Lead[]).map(l => ({ ...l, referrerName: l.referred_by_client_id ? names[l.referred_by_client_id] : undefined })))
   }
 
   const setLeadStatus = async (id: string, status: string) => {
@@ -282,6 +289,7 @@ export function PublicPageEditor({ userProfile }: Props) {
                   <p className="text-sm font-semibold">{lead.name}</p>
                   <p className="text-xs text-muted">{[lead.email, lead.phone].filter(Boolean).join(' · ') || 'Sin contacto directo'}</p>
                   {lead.message && <p className="text-xs text-ink/70 mt-1 italic">"{lead.message}"</p>}
+                  {lead.referrerName && <p className="text-[10px] text-accent font-semibold mt-1">🎁 Referido por {lead.referrerName}</p>}
                   <p className="text-[10px] text-muted mt-1">{new Date(lead.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <select value={lead.status} onChange={e => setLeadStatus(lead.id, e.target.value)}
