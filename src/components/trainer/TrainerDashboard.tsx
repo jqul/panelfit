@@ -467,7 +467,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : 'Sin actividad reciente'}</p>
+                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
                           </div>
                           <ChevronRight className="w-3 h-3 text-muted" />
                         </button>
@@ -525,7 +525,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     {alerts.slice(0, 3).map(c => (
                       <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
                         <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : `Revisar progreso de ${c.name}`}</p>
+                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
                       </button>
                     ))}
                     {alerts.length === 0 && (

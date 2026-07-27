@@ -83,7 +83,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   }, [clients, logsMap])
 
   const alerts = clients.filter(c =>
-    !c.hasPlan || (!c.lastActive || new Date(c.lastActive) < haceUnaS)
+    !c.hasPlan || c.planEndingSoon || (!c.lastActive || new Date(c.lastActive) < haceUnaS)
   )
 
   const formatLastActive = (date?: string) => {

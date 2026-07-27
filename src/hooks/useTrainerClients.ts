@@ -9,6 +9,22 @@ export interface ClientWithStats extends ClientData {
   doneToday?: boolean
   hasPlan?: boolean
   weeklyDays?: number
+  planEndDate?: string
+  planEndingSoon?: boolean
+}
+
+const PLAN_ENDING_SOON_DAYS = 5
+
+function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
+  if (!fechaInicio || !weeksLen) return {}
+  const start = new Date(fechaInicio + 'T00:00:00')
+  const end = new Date(start); end.setDate(start.getDate() + weeksLen * 7)
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000)
+  return {
+    planEndDate: end.toISOString().split('T')[0],
+    planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
+  }
 }
 
 interface Options {
@@ -75,8 +91,10 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       ])
 
       const planMap: Record<string, boolean> = {}
+      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean }> = {}
       ;(planes || []).forEach((p: any) => {
         planMap[p.clientId] = !!(p.plan?.P?.weeks?.length)
+        planEndMap[p.clientId] = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
       })
 
       const lm: Record<string, any> = {}
@@ -96,6 +114,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           doneToday: dates[0] === hoy,
           hasPlan: planMap[c.id] || false,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
+          ...planEndMap[c.id],
         }
       }))
     } else {
