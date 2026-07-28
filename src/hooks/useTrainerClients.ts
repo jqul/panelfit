@@ -19,11 +19,18 @@ const AT_RISK_INACTIVE_DAYS = 10
 
 // Riesgo de abandono: tiene plan asignado (el entrenador ya invirtió tiempo)
 // pero lleva demasiados días sin entrenar — señal de que puede estar dejándolo.
-function computeAtRisk(hasPlan: boolean, lastActive?: string): boolean {
+// Si aún no ha entrenado nunca, se cuenta desde que se dio de alta (no desde siempre),
+// para no marcar como "en riesgo" a un cliente recién creado que no ha tenido tiempo de empezar.
+function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number): boolean {
   if (!hasPlan) return false
-  if (!lastActive) return true
-  const days = Math.round((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
+  const since = lastActive ? new Date(lastActive + 'T00:00:00').getTime() : createdAt
+  if (!since) return false
+  const days = Math.round((Date.now() - since) / 86400000)
   return days >= AT_RISK_INACTIVE_DAYS
+}
+
+function toLocalISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
@@ -33,7 +40,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000)
   return {
-    planEndDate: end.toISOString().split('T')[0],
+    planEndDate: toLocalISODate(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
   }
 }
@@ -98,7 +105,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           doneToday: dates[0] === hoy,
           hasPlan: true,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
-          atRisk: computeAtRisk(true, dates[0]),
+          atRisk: computeAtRisk(true, dates[0], c.createdAt),
         }
       }) as ClientWithStats[])
       setLoading(false)
@@ -155,7 +162,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           doneToday: dates[0] === hoy,
           hasPlan,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
-          atRisk: computeAtRisk(hasPlan, dates[0]),
+          atRisk: computeAtRisk(hasPlan, dates[0], c.createdAt),
           ...planEndMap[c.id],
         }
       }))

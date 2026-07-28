@@ -40,13 +40,25 @@ function buildDayTonnage(logs: TrainingLogs): Record<string, number> {
   return dayTonnage
 }
 
-function avgWindowFrom(dayTonnage: Record<string, number>, endDate: Date, days: number): number {
+// `firstDate` (primer día con algún registro) evita diluir la media con días
+// anteriores a que el cliente empezara a entrenar — si no, un cliente nuevo con
+// pocos días de historial siempre saldría con un ratio agudo:crónico artificialmente
+// extremo, porque el "crónico" se dividiría entre 28 días aunque solo existan 5.
+function avgWindowFrom(dayTonnage: Record<string, number>, endDate: Date, days: number, firstDate?: Date): number {
+  const effectiveDays = firstDate
+    ? Math.max(1, Math.min(days, Math.floor((endDate.getTime() - firstDate.getTime()) / 86400000) + 1))
+    : days
   let sum = 0
-  for (let i = 0; i < days; i++) {
+  for (let i = 0; i < effectiveDays; i++) {
     const d = new Date(endDate); d.setDate(endDate.getDate() - i)
     sum += dayTonnage[d.toISOString().slice(0, 10)] || 0
   }
-  return sum / days
+  return sum / effectiveDays
+}
+
+function firstLoggedDate(dayTonnage: Record<string, number>): Date | undefined {
+  const dates = Object.keys(dayTonnage).sort()
+  return dates.length ? new Date(dates[0] + 'T00:00:00') : undefined
 }
 
 /**
@@ -59,8 +71,9 @@ function avgWindowFrom(dayTonnage: Record<string, number>, endDate: Date, days: 
  */
 export function computeACWR(logs: TrainingLogs, today: Date = new Date()): ACWRSignal {
   const dayTonnage = buildDayTonnage(logs)
-  const acute = avgWindowFrom(dayTonnage, today, 7)
-  const chronic = avgWindowFrom(dayTonnage, today, 28)
+  const firstDate = firstLoggedDate(dayTonnage)
+  const acute = avgWindowFrom(dayTonnage, today, 7, firstDate)
+  const chronic = avgWindowFrom(dayTonnage, today, 28, firstDate)
   return {
     acute: Math.round(acute),
     chronic: Math.round(chronic),
@@ -79,11 +92,12 @@ export interface LoadTrendPoint { date: string; fitness: number; fatigue: number
  */
 export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
   const dayTonnage = buildDayTonnage(logs)
+  const firstDate = firstLoggedDate(dayTonnage)
   const points: LoadTrendPoint[] = []
   for (let w = weeks - 1; w >= 0; w--) {
     const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
-    const fitness = avgWindowFrom(dayTonnage, endDate, 28)
-    const fatigue = avgWindowFrom(dayTonnage, endDate, 7)
+    const fitness = avgWindowFrom(dayTonnage, endDate, 28, firstDate)
+    const fatigue = avgWindowFrom(dayTonnage, endDate, 7, firstDate)
     points.push({
       date: endDate.toISOString().slice(0, 10),
       fitness: Math.round(fitness),

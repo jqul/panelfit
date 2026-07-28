@@ -43,6 +43,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
   const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
   const loggingOutRef = useRef(false)
+  const authStateRef = useRef(authState)
+  authStateRef.current = authState
 
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
@@ -56,7 +58,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         if (event === 'SIGNED_OUT') loggingOutRef.current = false
         return
       }
-      if (session?.user && authState === 'needs_login') {
+      if (session?.user && authStateRef.current === 'needs_login') {
         loadData()
       }
     })
@@ -343,6 +345,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
               loggingOutRef.current = true
               setAuthState('needs_login')
+              setTimeout(() => { loggingOutRef.current = false }, 5000)
               await supabase.auth.signOut()
             }} />}
           </>

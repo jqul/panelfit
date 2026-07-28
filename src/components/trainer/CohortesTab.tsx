@@ -42,9 +42,9 @@ function emptyCohorte(trainerId: string): Omit<Cohorte, 'id' | 'created_at'> {
 
 function daysLeft(fechaFin?: string): number | null {
   if (!fechaFin) return null
-  const end = new Date(fechaFin + 'T23:59:59')
-  const today = new Date()
-  return Math.ceil((end.getTime() - today.getTime()) / 86400000)
+  const end = new Date(fechaFin + 'T00:00:00')
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  return Math.round((end.getTime() - today.getTime()) / 86400000)
 }
 
 export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }: Props) {

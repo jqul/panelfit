@@ -70,6 +70,9 @@ export function useAuthBootstrap() {
     setView('auth')
     setUserProfile(null)
     setPendingUser(null)
+    // Red de seguridad: si signOut() falla y nunca llega el SIGNED_OUT que
+    // resetea la bandera, no dejar bloqueados los eventos de auth para siempre.
+    setTimeout(() => { loggingOutRef.current = false }, 5000)
     await supabase.auth.signOut()
   }
 

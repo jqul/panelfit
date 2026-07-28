@@ -58,6 +58,18 @@ describe('computeACWR', () => {
     expect(acwr.ratio).toBe(1)
   })
 
+  it('does not inflate the ratio for a brand-new client with less than 28 days of history', () => {
+    const today = new Date('2026-06-22T00:00:00Z')
+    const logs: TrainingLogs = {}
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today); d.setDate(today.getDate() - i)
+      logs[`d${i}`] = logWithRir(fmt(d), 3, 100, 5) // 500 tonnage/día, primeros 7 días del cliente
+    }
+    const acwr = computeACWR(logs, today)
+    // Sin acortar la ventana crónica a los días reales de historial, esto saldría ~4x inflado.
+    expect(acwr.ratio).toBe(1)
+  })
+
   it('flags a spike when recent load is much higher than the chronic average', () => {
     const today = new Date('2026-06-22T00:00:00Z')
     const logs: TrainingLogs = {}
