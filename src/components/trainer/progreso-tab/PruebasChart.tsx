@@ -4,6 +4,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
 import { useTestCatalog, useTestResultados, CATEGORIAS } from '../../../lib/testCatalog'
 import { CustomTooltip, EmptyState } from './helpers'
 import { toast } from '../../shared/Toast'
+import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
 
 export function PruebasChart({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const { tests, loading: loadingTests, addTest, deleteTest } = useTestCatalog(trainerId)
@@ -13,6 +14,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   const [valor, setValor] = useState('')
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
   const [notas, setNotas] = useState('')
+  const [showVideoAnalyzer, setShowVideoAnalyzer] = useState(false)
   const [addingTest, setAddingTest] = useState(false)
   const [newNombre, setNewNombre] = useState('')
   const [newCategoria, setNewCategoria] = useState<string>(CATEGORIAS[0])
@@ -25,7 +27,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   )
 
   const startLogging = (testId: string) => {
-    setLogging(testId); setValor(''); setFecha(new Date().toISOString().slice(0, 10)); setNotas('')
+    setLogging(testId); setValor(''); setFecha(new Date().toISOString().slice(0, 10)); setNotas(''); setShowVideoAnalyzer(false)
   }
 
   const confirmLog = async (testId: string) => {
@@ -46,6 +48,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
         const history = resultados.filter(r => r.test_id === test.id).sort((a, b) => a.fecha.localeCompare(b.fecha))
         const latest = history[history.length - 1]
         const isExpanded = expanded === test.id
+        const isJumpTest = test.nombre.toLowerCase().includes('salto')
         const chartData = history.slice(-10).map(r => ({
           fecha: new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
           valor: r.valor,
@@ -89,6 +92,18 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
 
                 {logging === test.id ? (
                   <div className="bg-bg rounded-xl p-3 space-y-2">
+                    {isJumpTest && !showVideoAnalyzer && (
+                      <button onClick={() => setShowVideoAnalyzer(true)}
+                        className="w-full py-2 border border-accent/40 text-accent rounded-lg text-xs font-semibold hover:bg-accent/5 transition-colors">
+                        📹 Calcular altura desde vídeo (más preciso que a ojo)
+                      </button>
+                    )}
+                    {isJumpTest && showVideoAnalyzer && (
+                      <JumpVideoAnalyzer
+                        onClose={() => setShowVideoAnalyzer(false)}
+                        onComputed={(heightCm, note) => { setValor(String(heightCm)); setNotas(note); setShowVideoAnalyzer(false) }}
+                      />
+                    )}
                     <div className="flex gap-2">
                       <input type="number" step="0.1" value={valor} onChange={e => setValor(e.target.value)} placeholder={`Valor (${test.unidad})`}
                         className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
