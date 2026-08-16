@@ -18,6 +18,8 @@ export interface ClientData {
   notas_privadas?: string  // notas privadas del entrenador, nunca se muestran al cliente
   label_ids?: string[]
   precio_mensual?: number  // solo para seguimiento del negocio del entrenador, no implica cobro real
+  lesiones?: string        // limitaciones/lesiones relevantes para programar — solo lo ve el entrenador
+  equipo_disponible?: string  // equipo con el que cuenta el cliente para entrenar — solo lo ve el entrenador
 }
 
 // ── PLAN ──────────────────────────────────────────────

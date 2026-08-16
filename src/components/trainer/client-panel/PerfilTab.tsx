@@ -318,6 +318,32 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
       <HabitosSection clientId={client.id} />
 
+      {/* Lesiones/limitaciones y equipo disponible — ficha rápida de referencia al programar */}
+      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">🩺 Lesiones y equipo</p>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-muted mb-1.5">Lesiones / limitaciones</label>
+            <textarea defaultValue={c.lesiones || ''}
+              onBlur={async e => { await onUpdate({ lesiones: e.target.value }) }}
+              placeholder="Ej: molestia en el hombro derecho, evitar press por encima de la cabeza"
+              rows={2}
+              className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-muted mb-1.5">Equipo disponible</label>
+            <textarea defaultValue={c.equipo_disponible || ''}
+              onBlur={async e => { await onUpdate({ equipo_disponible: e.target.value }) }}
+              placeholder="Ej: mancuernas hasta 20kg, bandas elásticas, sin barra"
+              rows={2}
+              className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
+          </div>
+          <p className="text-[10px] text-muted">Solo lo ves tú — se guarda automáticamente al perder el foco</p>
+        </div>
+      </div>
+
       {/* Notas privadas */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
@@ -326,7 +352,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         <div className="p-4">
           <textarea defaultValue={c.notas_privadas || ''}
             onBlur={async e => { await onUpdate({ notas_privadas: e.target.value }) }}
-            placeholder="Observaciones, lesiones, preferencias, historial médico..."
+            placeholder="Observaciones, preferencias, historial médico..."
             rows={4}
             className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
           <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>

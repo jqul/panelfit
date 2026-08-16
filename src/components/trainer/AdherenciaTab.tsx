@@ -7,10 +7,21 @@ interface ClientStats {
   client: ClientData
   diasEntrenados: number
   adherencia: number
+  compliance30: number
+  compliance90: number
+  needsAttention: boolean
   racha: number
   ultimoEntreno: string | null
   diasSinEntrenar: number
   tendencia: 'up' | 'down' | 'stable'
+}
+
+// Cuántos días de entreno se esperan en una ventana de N días — misma referencia de
+// 4 días/semana que ya usa el resto del panel (adherenciaMap en useClientStats.ts).
+const EXPECTED_DAYS_PER_WEEK = 4
+function complianceForWindow(diasEnVentana: number, ventanaDias: number): number {
+  const esperados = Math.max(1, Math.round(EXPECTED_DAYS_PER_WEEK * (ventanaDias / 7)))
+  return Math.min(100, Math.round((diasEnVentana / esperados) * 100))
 }
 
 interface Props {
@@ -28,12 +39,22 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
   const hoy = new Date()
   const hace7 = new Date(hoy); hace7.setDate(hace7.getDate() - 7)
   const hace14 = new Date(hoy); hace14.setDate(hace14.getDate() - 14)
+  const hace30 = new Date(hoy); hace30.setDate(hace30.getDate() - 30)
+  const hace90 = new Date(hoy); hace90.setDate(hace90.getDate() - 90)
 
   const diasUltimos7 = fechas.filter(f => new Date(f) >= hace7).length
   const diasAntes7 = fechas.filter(f => new Date(f) >= hace14 && new Date(f) < hace7).length
+  const diasUltimos30 = fechas.filter(f => new Date(f) >= hace30).length
+  const diasUltimos90 = fechas.filter(f => new Date(f) >= hace90).length
 
   const tendencia: 'up' | 'down' | 'stable' =
     diasUltimos7 > diasAntes7 ? 'up' : diasUltimos7 < diasAntes7 ? 'down' : 'stable'
+
+  // "Needs attention" — caída brusca de cumplimiento (no solo inactividad total):
+  // compara el cumplimiento de los últimos 7 días contra los 7 anteriores.
+  const complianceAntes7 = complianceForWindow(diasAntes7, 7)
+  const complianceUltimos7 = complianceForWindow(diasUltimos7, 7)
+  const needsAttention = complianceAntes7 - complianceUltimos7 >= 20
 
   // Racha
   let racha = 0
@@ -52,7 +73,11 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
       ? Math.floor((hoy.getTime() - client.createdAt) / 86400000)
       : 0  // cliente nuevo sin entrenos: contar desde creación
 
-  return { client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100), racha, ultimoEntreno, diasSinEntrenar, tendencia }
+  return {
+    client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100),
+    compliance30: complianceForWindow(diasUltimos30, 30), compliance90: complianceForWindow(diasUltimos90, 90),
+    needsAttention, racha, ultimoEntreno, diasSinEntrenar, tendencia,
+  }
 }
 
 function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin'): string {
@@ -66,7 +91,7 @@ function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordato
 
 export function AdherenciaTab({ clients, logsMap }: Props) {
   const [enviados, setEnviados] = useState<Set<string>>(new Set())
-  const [filtro, setFiltro] = useState<'todos' | 'riesgo' | 'ok'>('todos')
+  const [filtro, setFiltro] = useState<'todos' | 'riesgo' | 'atencion' | 'ok'>('todos')
 
   const stats = useMemo(() =>
     clients.map(c => calcStats(c, logsMap[c.id] || {}))
@@ -76,10 +101,11 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
 
   const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 3 && s.client.createdAt < Date.now() - 3 * 86400000)
   const conRacha = stats.filter(s => s.racha >= 3)
+  const necesitanAtencion = stats.filter(s => s.needsAttention)
   const mediaAdherencia = stats.length
     ? Math.round(stats.reduce((a, s) => a + s.adherencia, 0) / stats.length) : 0
 
-  const filtered = filtro === 'riesgo' ? enRiesgo : filtro === 'ok' ? stats.filter(s => s.adherencia >= 70) : stats
+  const filtered = filtro === 'riesgo' ? enRiesgo : filtro === 'atencion' ? necesitanAtencion : filtro === 'ok' ? stats.filter(s => s.adherencia >= 70) : stats
 
   const sendWhatsApp = (client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin') => {
     const msg = getWhatsAppMsg(client, stats, tipo)
@@ -98,8 +124,8 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
       </p>
       <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-2.5">
         {[
-          { icon: '🔥', t: 'Rachas y adherencia', d: 'Porcentaje de días entrenados en los últimos 7 y 30 días por cliente.' },
-          { icon: '⚠️', t: 'Alertas de inactividad', d: 'Detecta automáticamente clientes con más de 4 días sin actividad.' },
+          { icon: '🔥', t: 'Rachas y cumplimiento', d: 'Cumplimiento en ventanas de 7, 30 y 90 días por cliente.' },
+          { icon: '⚠️', t: 'Alertas de inactividad y caídas', d: 'Detecta clientes sin actividad y también caídas bruscas de cumplimiento, aunque sigan entrenando algo.' },
           { icon: '💬', t: 'Mensajes con un clic', d: 'Envía un recordatorio personalizado por WhatsApp directo desde aquí.' },
         ].map(({ icon, t, d }) => (
           <div key={t} className="flex items-start gap-3">
@@ -122,7 +148,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
       </div>
 
       {/* Stats globales */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className={`text-3xl font-serif font-bold ${mediaAdherencia >= 70 ? 'text-ok' : mediaAdherencia >= 40 ? 'text-accent' : 'text-warn'}`}>
             {mediaAdherencia}%
@@ -132,6 +158,10 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className="text-3xl font-serif font-bold text-warn">{enRiesgo.length}</p>
           <p className="text-[10px] text-muted uppercase tracking-wider mt-1">En riesgo</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-5 text-center">
+          <p className="text-3xl font-serif font-bold text-warn">{necesitanAtencion.length}</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">⚠️ En caída</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className="text-3xl font-serif font-bold text-ok">{conRacha.length}</p>
@@ -169,6 +199,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
         {([
           { id: 'todos', label: `Todos (${stats.length})` },
           { id: 'riesgo', label: `En riesgo (${enRiesgo.length})` },
+          { id: 'atencion', label: `⚠️ En caída (${necesitanAtencion.length})` },
           { id: 'ok', label: `Buena adherencia` },
         ] as const).map(f => (
           <button key={f.id} onClick={() => setFiltro(f.id)}
@@ -214,11 +245,14 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                      s.diasSinEntrenar === 1 ? 'Ayer' :
                      `${s.diasSinEntrenar} días sin entrenar`}
                   </span>
+                  {s.needsAttention && (
+                    <span className="text-[10px] text-warn font-bold">⚠️ Cumplimiento en caída</span>
+                  )}
                 </div>
               </div>
 
               {/* Barra + % */}
-              <div className="w-20 flex-shrink-0 hidden sm:block">
+              <div className="w-24 flex-shrink-0 hidden sm:block">
                 <div className="flex justify-between mb-1">
                   <span className={`text-xs font-bold ${
                     s.adherencia >= 70 ? 'text-ok' : s.adherencia >= 40 ? 'text-accent' : 'text-warn'
@@ -232,6 +266,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                     s.adherencia >= 70 ? 'bg-ok' : s.adherencia >= 40 ? 'bg-accent' : 'bg-warn'
                   }`} style={{ width: `${s.adherencia}%` }} />
                 </div>
+                <p className="text-[9px] text-muted mt-1">30d: {s.compliance30}% · 90d: {s.compliance90}%</p>
               </div>
 
               {/* Acciones */}
