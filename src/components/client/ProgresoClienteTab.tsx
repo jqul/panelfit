@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 
 interface Props {
   clientId: string
+  trainerId: string
   logs: TrainingLogs
   plan?: TrainingPlan | null
 }
@@ -382,26 +383,96 @@ interface VideoFeedbackRow {
   status: 'pendiente' | 'comentado'; created_at: number
 }
 
-function FeedbackTab({ clientId }: { clientId: string }) {
+function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: string; trainerId: string; onUploaded: () => void }) {
+  const [showModal, setShowModal] = useState(false)
+  const [label, setLabel] = useState('Salto vertical')
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File) => {
+    if (!trainerId) return
+    setUploading(true); setError('')
+    try {
+      const ext = file.name.split('.').pop() || 'mp4'
+      const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
+      const { error: insertErr } = await supabase.from('video_feedback').insert({
+        id: `vf_${Date.now()}`, trainer_id: trainerId, client_id: clientId,
+        exercise_name: label.trim() || 'Vídeo', video_url: urlData.publicUrl,
+        status: 'pendiente', created_at: Date.now(),
+      })
+      if (insertErr) throw insertErr
+      setShowModal(false); setLabel('Salto vertical')
+      onUploaded()
+    } catch {
+      setError('No se pudo subir el vídeo. Inténtalo de nuevo.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (!trainerId) return null
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-sm font-semibold text-muted hover:border-accent hover:text-accent transition-all">
+        <Upload className="w-4 h-4" /> Subir vídeo (ej: salto, técnica...)
+      </button>
+
+      {showModal && (
+        <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center" onClick={() => !uploading && setShowModal(false)}>
+          <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-serif font-bold text-lg">Subir vídeo</p>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1.5">¿De qué es el vídeo?</label>
+              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Ej: Salto vertical"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+            {error && <p className="text-xs text-warn">{error}</p>}
+            <input ref={fileRef} type="file" accept="video/*" capture="environment" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-50">
+              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Grabar o elegir vídeo</>}
+            </button>
+            <button onClick={() => setShowModal(false)} disabled={uploading} className="w-full py-2 text-xs text-muted">Cancelar</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const [videos, setVideos] = useState<VideoFeedbackRow[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const loadVideos = () => {
     supabase.from('video_feedback').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
       .then(({ data }) => { setVideos((data || []) as VideoFeedbackRow[]); setLoading(false) })
-  }, [clientId])
+  }
+
+  useEffect(loadVideos, [clientId])
 
   if (loading) return <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
 
   if (!videos.length) return (
-    <div className="text-center py-12 text-muted">
-      <Video className="w-8 h-8 mx-auto mb-2 opacity-30" />
-      <p className="text-sm">Pide feedback de técnica desde un ejercicio en tu entreno y aparecerá aquí.</p>
+    <div className="space-y-4">
+      <div className="text-center py-8 text-muted">
+        <Video className="w-8 h-8 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">Pide feedback de técnica desde un ejercicio en tu entreno, o sube un vídeo directamente (ej: para que tu entrenador analice un salto).</p>
+      </div>
+      <UploadVideoButton clientId={clientId} trainerId={trainerId} onUploaded={loadVideos} />
     </div>
   )
 
   return (
     <div className="space-y-3">
+      <UploadVideoButton clientId={clientId} trainerId={trainerId} onUploaded={loadVideos} />
       {videos.map(v => (
         <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
@@ -433,7 +504,7 @@ function FeedbackTab({ clientId }: { clientId: string }) {
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
+export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback'>('calendario')
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [photos, setPhotos] = useState<PhotoSession[]>([])
@@ -541,7 +612,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
       {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
-      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} />}
+      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
 
       {subtab === 'peso' && (
         <div className="space-y-4">

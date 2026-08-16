@@ -100,6 +100,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     )}
                     {isJumpTest && showVideoAnalyzer && (
                       <JumpVideoAnalyzer
+                        clientId={clientId}
                         onClose={() => setShowVideoAnalyzer(false)}
                         onComputed={(heightCm, note) => { setValor(String(heightCm)); setNotas(note); setShowVideoAnalyzer(false) }}
                       />
