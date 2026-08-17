@@ -22,6 +22,7 @@ import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { sendPush } from '../../lib/usePushNotifications'
 import { CicloWidget } from './CicloWidget'
 import { ReferralWidget } from './ReferralWidget'
+import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -73,6 +74,25 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [token])
 
   const checkAuth = async () => {
+    // Enlace de un cliente demo — entra directo, sin registro ni login,
+    // igual que el modo demo del entrenador.
+    if (token.startsWith('demo-')) {
+      const demoClient = DEMO_CLIENTS.find(c => c.token === token)
+      if (!demoClient) { setError('Enlace no válido o expirado.'); setLoading(false); return }
+      setClient({
+        id: demoClient.id, trainerId: demoClient.trainerId, name: demoClient.name, surname: demoClient.surname,
+        weight: demoClient.weight, fatPercentage: demoClient.fatPercentage, muscleMass: demoClient.muscleMass,
+        totalLifted: demoClient.totalLifted, planDescription: demoClient.planDescription,
+        token: demoClient.token, objetivo: demoClient.objetivo, createdAt: demoClient.createdAt,
+      } as ClienteRow)
+      setPlan(DEMO_PLAN_MAP[demoClient.id] || null)
+      setLogs(DEMO_LOGS_MAP[demoClient.id] || {})
+      setTrainerProfile(DEMO_TRAINER_PROFILE)
+      setAuthState('authenticated')
+      setLoading(false)
+      return
+    }
+
     // 1. Cargar datos del cliente por token (vía RPC: no se puede listar la tabla directamente)
     const { data: rows, error: cErr } = await supabase.rpc('get_client_by_token', { p_token: token })
     if (cErr) logError('ClientView:loadClient', cErr)
@@ -164,6 +184,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
+    if (client?.id.startsWith('demo-client-')) { setSyncState('saved'); setTimeout(() => setSyncState('idle'), 2000); return }
     setSyncState('saving')
     if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
     if (!navigator.onLine) { setSyncState('offline'); return }
@@ -184,6 +205,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (!plan || !client?.id) return
     const newPlan = { ...plan, diasElegidos: dias }
     setPlan(newPlan)
+    if (client.id.startsWith('demo-client-')) return
     await supabase.from('planes').update({ plan: { P: newPlan }, updatedAt: Date.now() }).eq('clientId', client.id)
   }, [plan, client?.id])
 

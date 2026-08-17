@@ -407,6 +407,11 @@ export const DEMO_LOGS_MAP: Record<string, TrainingLogs> = {
   'demo-client-002': DEMO_LOGS_CARLOS,
   'demo-client-003': DEMO_LOGS_LAURA,
 }
+export const DEMO_PLAN_MAP: Record<string, TrainingPlan> = {
+  'demo-client-001': DEMO_PLAN_MARIA,
+  'demo-client-002': DEMO_PLAN_CARLOS,
+  'demo-client-003': DEMO_PLAN_LAURA,
+}
 
 // ── CHECK-INS DE BIENESTAR (demo) ──────────────────────
 // Sueño/motivación bajando un poco esta semana — cuenta la misma historia
