@@ -3,6 +3,7 @@ import { Video, Clock, MessageCircle, Send, X, Upload, Loader2 } from 'lucide-re
 import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
+import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
 
 interface VideoFeedbackRow {
   id: string
@@ -31,6 +32,11 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
 
   const loadVideos = async () => {
     setLoading(true)
+    if (client.id.startsWith('demo-client-')) {
+      setVideos((DEMO_VIDEO_FEEDBACK_MAP[client.id] || []) as VideoFeedbackRow[])
+      setLoading(false)
+      return
+    }
     const { data } = await supabase.from('video_feedback').select('*').eq('client_id', client.id).order('created_at', { ascending: false })
     if (data) setVideos(data as VideoFeedbackRow[])
     setLoading(false)

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
+import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
 
 interface Props {
   clientId: string
@@ -452,6 +453,10 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
   const [loading, setLoading] = useState(true)
 
   const loadVideos = () => {
+    if (clientId.startsWith('demo-client-')) {
+      setVideos((DEMO_VIDEO_FEEDBACK_MAP[clientId] || []) as VideoFeedbackRow[]); setLoading(false)
+      return
+    }
     supabase.from('video_feedback').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
       .then(({ data }) => { setVideos((data || []) as VideoFeedbackRow[]); setLoading(false) })
   }

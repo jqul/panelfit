@@ -457,3 +457,24 @@ export const DEMO_CICLO_MARIA = {
 export const DEMO_CICLO_MAP: Record<string, typeof DEMO_CICLO_MARIA> = {
   'demo-client-001': DEMO_CICLO_MARIA,
 }
+
+// ── VÍDEOS ENVIADOS POR EL CLIENTE (demo) ──────────────
+// El clip es un vídeo de muestra genérico (no un salto real) solo para poder
+// probar el mecanismo de marcar fotogramas en la demo — no viene del cliente.
+export const DEMO_VIDEO_FEEDBACK_MARIA = [
+  {
+    id: 'demo-vf-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001',
+    exercise_name: 'Salto vertical', video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    client_note: null, trainer_comment: null, trainer_comment_video_url: null,
+    status: 'pendiente' as const, created_at: Date.now() - 2 * 86400000, commented_at: null,
+  },
+  {
+    id: 'demo-vf-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001',
+    exercise_name: 'Sentadilla barra', video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+    client_note: '¿La técnica está bien? Noto molestia en la rodilla derecha', trainer_comment: 'Baja un poco más el pecho y controla la bajada, se ve buena profundidad 💪',
+    trainer_comment_video_url: null, status: 'comentado' as const, created_at: Date.now() - 8 * 86400000, commented_at: Date.now() - 7 * 86400000,
+  },
+]
+export const DEMO_VIDEO_FEEDBACK_MAP: Record<string, typeof DEMO_VIDEO_FEEDBACK_MARIA> = {
+  'demo-client-001': DEMO_VIDEO_FEEDBACK_MARIA,
+}

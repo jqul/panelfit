@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, ChevronLeft, ChevronRight, Video, X, Inbox } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
 
 const G = 9.81 // m/s²
 const FPS_OPTIONS = [24, 25, 30, 60, 120, 240]
@@ -30,6 +31,10 @@ export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
 
   useEffect(() => {
     if (source !== 'library' || library !== null || !clientId) return
+    if (clientId.startsWith('demo-client-')) {
+      setLibrary(DEMO_VIDEO_FEEDBACK_MAP[clientId] || [])
+      return
+    }
     supabase.from('video_feedback').select('id, exercise_name, video_url, created_at')
       .eq('client_id', clientId).order('created_at', { ascending: false })
       .then(({ data }) => setLibrary((data || []) as LibraryVideo[]))
