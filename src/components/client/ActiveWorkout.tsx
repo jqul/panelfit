@@ -155,17 +155,37 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const allRirs = Object.values(sets).flatMap(exSets => Object.values(exSets).filter(s => s.done && s.rir !== undefined).map(s => s.rir as number))
   const avgRir = allRirs.length ? Math.round((allRirs.reduce((a, b) => a + b, 0) / allRirs.length) * 10) / 10 : null
 
+  // Mismo ejercicio en semanas anteriores = mismo día de la semana (dayIdx) y misma
+  // posición (ri), solo cambia la semana. `.includes('_r{ri}')` hacía falsos positivos:
+  // "_r1" también casaba con "_r10", "_r11"... y con el mismo ri en OTRO día del plan.
+  const samePlaceInPlan = (ri: number) => new RegExp(`^ex_w\\d+_d${dayIdx}_r${ri}$`)
+
   const isNewRecord = (ri: number) => {
     const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
+    const key = `ex_${dayKey}_r${ri}`
+    const pattern = samePlaceInPlan(ri)
+    // Excluye la entrada de la sesión actual: se va escribiendo en vivo en `logs`
+    // a medida que se marcan series, y si no se excluye, el propio peso recién
+    // metido "compite contra sí mismo" e impide que se detecte el récord.
     const allPrevBest = Object.entries(logs)
-      .filter(([k]) => k.includes(`_r${ri}`))
+      .filter(([k]) => pattern.test(k) && k !== key)
       .flatMap(([, log]) => Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight || '0')))
     return currentBest > 0 && currentBest > Math.max(0, ...allPrevBest)
   }
 
+  // Récords batidos en esta sesión — para el resumen de fin de entreno
+  const newRecords = (day?.exercises || [])
+    .map((ex, ri) => ({
+      name: ex.name,
+      best: Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0'))),
+      isRecord: isNewRecord(ri),
+    }))
+    .filter(r => r.isRecord)
+
   const getPrevSets = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
-    const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
+    const pattern = samePlaceInPlan(ri)
+    const prev = Object.entries(logs).find(([k, l]) => pattern.test(k) && k !== key && l.dateDone)
     return prev?.[1]?.sets || {}
   }
 
@@ -409,6 +429,20 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               ))}
             </div>
+            {newRecords.length > 0 && (
+              <div className="bg-gradient-to-br from-warn/10 to-warn/5 border border-warn/20 rounded-2xl px-4 py-3 space-y-2">
+                <p className="text-xs font-bold text-warn uppercase tracking-wider flex items-center gap-1.5">
+                  🏆 {newRecords.length} récord{newRecords.length > 1 ? 's' : ''} batido{newRecords.length > 1 ? 's' : ''}
+                </p>
+                {newRecords.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />
+                    <p className="text-sm flex-1 truncate"><span className="font-semibold">{r.name}</span></p>
+                    <p className="text-sm font-bold text-warn">{r.best}kg</p>
+                  </div>
+                ))}
+              </div>
+            )}
             {avgRir !== null && (
               <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
                 <Zap className="w-4 h-4 text-accent flex-shrink-0" />
