@@ -30,12 +30,36 @@ function parseSet(sets: string) {
   return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
 }
 
+// Aviso de fin de descanso — vibración + dos pitidos cortos (sin audio externo,
+// solo Web Audio API). En iOS no hay Vibration API, pero el pitido sí suena.
+function notifyRestDone() {
+  try { navigator.vibrate?.(200) } catch {}
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const beep = (start: number) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.frequency.value = 880
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + start)
+      gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + start + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + 0.25)
+      osc.start(ctx.currentTime + start)
+      osc.stop(ctx.currentTime + start + 0.25)
+    }
+    beep(0); beep(0.3)
+    setTimeout(() => ctx.close(), 700)
+  } catch {}
+}
+
 function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
   const [remaining, setRemaining] = useState(seconds)
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {
-    if (paused || remaining <= 0) { if (remaining <= 0) onDone(); return }
+    if (paused || remaining <= 0) { if (remaining <= 0) { notifyRestDone(); onDone() }; return }
     const t = setInterval(() => setRemaining(r => r - 1), 1000)
     return () => clearInterval(t)
   }, [remaining, paused])
