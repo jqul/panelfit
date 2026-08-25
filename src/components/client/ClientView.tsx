@@ -29,6 +29,19 @@ type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
 type SyncState = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
 type AuthState = 'loading' | 'needs_register' | 'needs_login' | 'authenticated'
 
+const PENDING_LOGS_KEY = (clientId: string) => `pf_logs_pending_${clientId}`
+
+async function pushLogsToServer(clientId: string, newLogs: TrainingLogs): Promise<boolean> {
+  const { error: updateErr } = await supabase.from('registros')
+    .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', clientId)
+  if (updateErr) {
+    const { error: insertErr } = await supabase.from('registros')
+      .insert({ clientId, logs: newLogs, updatedAt: Date.now() })
+    if (insertErr) { logError('ClientView:saveLogs', insertErr); return false }
+  }
+  return true
+}
+
 export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [loading, setLoading] = useState(true)
@@ -127,6 +140,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
     // Cargar logs desde localStorage (offline-first)
     const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
+    const hasPendingLocal = !!localStorage.getItem(PENDING_LOGS_KEY(clientData.id))
     if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
 
     // Plan
@@ -144,11 +158,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       setPlan(p)
     }
 
-    // Registros
+    // Registros — si hay cambios locales aún sin sincronizar, no los pisamos con
+    // la versión (más vieja) del servidor. El efecto de trySyncPendingLogs se
+    // encarga de subirlos en cuanto haya conexión.
     const { data: regData } = await supabase
       .from('registros').select('logs').eq('clientId', clientData.id).maybeSingle()
     const regRow = regData as RegistroRow | null
-    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
+    if (regRow?.logs && !hasPendingLocal) setLogs(regRow.logs as TrainingLogs)
 
     // Perfil del entrenador
     if (clientData.trainerId) {
@@ -185,21 +201,46 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
     if (client?.id.startsWith('demo-client-')) { setSyncState('saved'); setTimeout(() => setSyncState('idle'), 2000); return }
+    if (!client?.id) return
     setSyncState('saving')
-    if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-    if (!navigator.onLine) { setSyncState('offline'); return }
-    if (client?.id) {
-      const { error: updateErr } = await supabase.from('registros')
-        .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
-      if (updateErr) {
-        const { error: insertErr } = await supabase.from('registros')
-          .insert({ clientId: client.id, logs: newLogs, updatedAt: Date.now() })
-        if (insertErr) { logError('ClientView:saveLogs', insertErr); setSyncState('error'); return }
-      }
-      setSyncState('saved')
-      setTimeout(() => setSyncState('idle'), 2000)
+    localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+    if (!navigator.onLine) {
+      // Queda marcado como pendiente — se reintenta solo en cuanto vuelva la conexión,
+      // en vez de perderse si el cliente cierra la pestaña o limpia la caché antes.
+      localStorage.setItem(PENDING_LOGS_KEY(client.id), '1')
+      setSyncState('offline')
+      return
     }
+    const ok = await pushLogsToServer(client.id, newLogs)
+    if (!ok) { localStorage.setItem(PENDING_LOGS_KEY(client.id), '1'); setSyncState('error'); return }
+    localStorage.removeItem(PENDING_LOGS_KEY(client.id))
+    setSyncState('saved')
+    setTimeout(() => setSyncState('idle'), 2000)
   }, [client?.id])
+
+  // Reintenta subir logs que quedaron guardados solo en local (sin conexión, o un
+  // fallo de red puntual) — al recuperar el cliente.id y cada vez que vuelve la conexión.
+  const trySyncPendingLogs = useCallback(async (clientId: string) => {
+    if (!navigator.onLine || !localStorage.getItem(PENDING_LOGS_KEY(clientId))) return
+    const raw = localStorage.getItem(`pf_logs_${clientId}`)
+    if (!raw) { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    let pendingLogs: TrainingLogs
+    try { pendingLogs = JSON.parse(raw) } catch { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    setSyncState('saving')
+    const ok = await pushLogsToServer(clientId, pendingLogs)
+    if (!ok) { setSyncState('error'); return }
+    localStorage.removeItem(PENDING_LOGS_KEY(clientId))
+    setSyncState('saved')
+    setTimeout(() => setSyncState('idle'), 2000)
+  }, [])
+
+  useEffect(() => {
+    if (!client?.id || client.id.startsWith('demo-client-')) return
+    trySyncPendingLogs(client.id)
+    const handler = () => trySyncPendingLogs(client.id)
+    window.addEventListener('online', handler)
+    return () => window.removeEventListener('online', handler)
+  }, [client?.id, trySyncPendingLogs])
 
   const handleDiasUpdate = useCallback(async (dias: number[]) => {
     if (!plan || !client?.id) return
@@ -255,6 +296,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
         brandColor={trainerProf.brandColor}
         brandLogo={trainerProf.brandLogo}
+        initialStep="login"
         onComplete={() => loadData()}
       />
     )

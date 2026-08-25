@@ -10,13 +10,14 @@ interface Props {
   trainerName: string
   brandColor?: string
   brandLogo?: string
+  initialStep?: 'register' | 'login'
   onComplete: () => void
 }
 
 type Step = 'register' | 'login' | 'forgot' | 'intake' | 'success'
 
-export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, onComplete }: Props) {
-  const [step, setStep] = useState<Step>('register')
+export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, initialStep = 'register', onComplete }: Props) {
+  const [step, setStep] = useState<Step>(initialStep)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
