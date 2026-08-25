@@ -74,20 +74,27 @@ export async function compressVideo(file: File, opts: CompressOptions = {}): Pro
         clearTimeout(safetyTimeout)
         URL.revokeObjectURL(video.src)
         const blob = new Blob(chunks, { type: mimeType })
-        if (blob.size === 0 || blob.size >= file.size) { finish(file); return }
+        // Suelo de seguridad: si por lo que sea el redibujado no llegó a correr
+        // (p. ej. la pestaña pasó a segundo plano y se pausó el bucle de dibujo),
+        // el resultado sale casi vacío — mejor subir el original que un vídeo roto.
+        const MIN_PLAUSIBLE_BYTES = 20_000
+        if (blob.size < MIN_PLAUSIBLE_BYTES || blob.size >= file.size) { finish(file); return }
         const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
         const name = file.name.replace(/\.\w+$/, '') + `.${ext}`
         finish(new File([blob], name, { type: mimeType }))
       }
 
+      // requestVideoFrameCallback va atado al decodificado real del vídeo y es más
+      // fiable que requestAnimationFrame (que se puede pausar del todo si la pestaña
+      // pasa a segundo plano durante la compresión). Con navegadores sin soporte,
+      // cae a rAF — y el suelo de seguridad de arriba cubre igualmente ese caso.
+      const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback?.bind(video)
       let raf = 0
-      const draw = () => {
-        if (video.paused || video.ended) return
-        ctx.drawImage(video, 0, 0, w, h)
-        raf = requestAnimationFrame(draw)
-      }
+      const drawFrame = () => ctx.drawImage(video, 0, 0, w, h)
+      const loopRVFC = () => { if (video.paused || video.ended) return; drawFrame(); rvfc!(loopRVFC) }
+      const loopRAF = () => { if (video.paused || video.ended) return; drawFrame(); raf = requestAnimationFrame(loopRAF) }
 
-      video.onplay = () => { recorder.start(); draw() }
+      video.onplay = () => { recorder.start(); rvfc ? rvfc(loopRVFC) : loopRAF() }
       video.onended = () => { cancelAnimationFrame(raf); if (recorder.state === 'recording') recorder.stop() }
       video.onerror = giveUp
 
