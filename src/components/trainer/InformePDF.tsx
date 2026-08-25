@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
-import { X, Download } from 'lucide-react'
+import { X, Download, MessageCircle } from 'lucide-react'
 
 interface Props {
   client: ClientData
@@ -68,6 +68,22 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
 
   const handlePrint = () => window.print()
 
+  const shareWhatsApp = () => {
+    // No se puede adjuntar el PDF automáticamente por WhatsApp — se manda un
+    // resumen en texto con lo esencial, y el propio informe se descarga aparte.
+    const lines = [
+      `📊 Informe de progreso de ${client.name}`,
+      '',
+      totalSesiones > 0 ? `✅ ${totalSesiones} sesión${totalSesiones !== 1 ? 'es' : ''} completada${totalSesiones !== 1 ? 's' : ''}` : null,
+      pesoActual ? `⚖️ Peso actual: ${pesoActual}kg${pesoCambio !== null ? ` (${Number(pesoCambio) > 0 ? '+' : ''}${pesoCambio}kg)` : ''}` : null,
+      topRecords[0] ? `🏆 Mejor marca: ${topRecords[0][0]} — ${topRecords[0][1]}kg` : null,
+      '',
+      `Generado con PanelFit el ${today}`,
+    ].filter(Boolean).join('\n')
+    const phone = client.phone ? client.phone.replace(/\s+/g, '').replace(/^\+/, '') : ''
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines)}`, '_blank')
+  }
+
   return (
     <>
       {/* Overlay con botones — no se imprime */}
@@ -77,6 +93,10 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between z-10">
             <p className="text-sm font-semibold text-gray-700">Vista previa del informe</p>
             <div className="flex gap-2">
+              <button onClick={shareWhatsApp}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#25D366] transition-opacity hover:opacity-90">
+                <MessageCircle className="w-4 h-4" /> Compartir
+              </button>
               <button onClick={handlePrint}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: brandColor }}>
