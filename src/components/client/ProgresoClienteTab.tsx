@@ -3,6 +3,7 @@ import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, 
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
+import { compressVideo } from '../../lib/videoCompress'
 
 interface Props {
   clientId: string
@@ -387,13 +388,25 @@ interface VideoFeedbackRow {
 function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: string; trainerId: string; onUploaded: () => void }) {
   const [showModal, setShowModal] = useState(false)
   const [label, setLabel] = useState('Salto vertical')
+  const [skipCompression, setSkipCompression] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (rawFile: File) => {
     if (!trainerId) return
-    setUploading(true); setError('')
+    setError('')
+    // Compresión más suave que en el resto de la app (más fps, más resolución):
+    // este botón también se usa para vídeos que luego se analizan fotograma a
+    // fotograma (p.ej. altura de salto), donde perder fps rompe la precisión.
+    let file = rawFile
+    if (!skipCompression) {
+      setCompressing(true)
+      file = await compressVideo(rawFile, { maxDimension: 1080, fps: 60 })
+      setCompressing(false)
+    }
+    setUploading(true)
     try {
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
@@ -406,7 +419,7 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
         status: 'pendiente', created_at: Date.now(),
       })
       if (insertErr) throw insertErr
-      setShowModal(false); setLabel('Salto vertical')
+      setShowModal(false); setLabel('Salto vertical'); setSkipCompression(false)
       onUploaded()
     } catch {
       setError('No se pudo subir el vídeo. Inténtalo de nuevo.')
@@ -433,14 +446,19 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
               <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Ej: Salto vertical"
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
             </div>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={skipCompression} onChange={e => setSkipCompression(e.target.checked)}
+                className="mt-0.5 w-4 h-4 flex-shrink-0" />
+              <span className="text-xs text-muted">No comprimir — voy a analizar el vídeo fotograma a fotograma (ej: medir un salto) y necesito máxima precisión</span>
+            </label>
             {error && <p className="text-xs text-warn">{error}</p>}
             <input ref={fileRef} type="file" accept="video/*" capture="environment" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
-            <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            <button onClick={() => fileRef.current?.click()} disabled={uploading || compressing}
               className="w-full flex items-center justify-center gap-2 py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-50">
-              {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Grabar o elegir vídeo</>}
+              {compressing ? <><Loader2 className="w-4 h-4 animate-spin" /> Optimizando...</> : uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Grabar o elegir vídeo</>}
             </button>
-            <button onClick={() => setShowModal(false)} disabled={uploading} className="w-full py-2 text-xs text-muted">Cancelar</button>
+            <button onClick={() => setShowModal(false)} disabled={uploading || compressing} className="w-full py-2 text-xs text-muted">Cancelar</button>
           </div>
         </div>
       )}

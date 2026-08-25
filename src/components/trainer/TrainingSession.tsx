@@ -6,6 +6,7 @@ import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 import { VideoModal } from '../client/VideoModal'
 import { toast } from '../shared/Toast'
 import { RIR_OPTIONS, getSuggestedWeightChange } from '../../lib/strength'
+import { compressVideo } from '../../lib/videoCompress'
 
 interface Props {
   day: DayPlan; dayKey: string; plan: TrainingPlan; logs: TrainingLogs
@@ -137,9 +138,10 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     onLogsChange({ ...logs, [key]: { ...getLog(ri), ...updates } })
   }
 
-  const uploadVideo = async (exerciseKey: string, file: File) => {
-    if (file.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
+  const uploadVideo = async (exerciseKey: string, rawFile: File) => {
+    if (rawFile.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
     setUploading(exerciseKey)
+    const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
     const ext = file.name.split('.').pop()
     const path = `${dayKey}/${exerciseKey}_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
@@ -621,7 +623,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                 </div>
               ) : (
                 <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
-                  {uploading === `r${activeIdx}` ? 'Subiendo...' : '📹 Grabar / subir vídeo'}
+                  {uploading === `r${activeIdx}` ? 'Procesando...' : '📹 Grabar / subir vídeo'}
                   <input type="file" accept="video/*" capture="environment" className="hidden"
                     disabled={!!uploading}
                     onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(`r${activeIdx}`, f) }}

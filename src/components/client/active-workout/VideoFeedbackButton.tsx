@@ -1,20 +1,27 @@
 import { useState, useRef } from 'react'
 import { Video, Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { compressVideo } from '../../../lib/videoCompress'
 
 // ── Subida de vídeo de feedback (inspirado en TrueCoach) ──
 export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exerciseName: string; clientId: string; trainerId: string }) {
   const [showModal, setShowModal] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
   const [note, setNote] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const handleFile = async (file: File) => {
-    if (!file) return
-    setUploading(true)
+  const handleFile = async (rawFile: File) => {
+    if (!rawFile) return
     setError('')
+    setCompressing(true)
+    // Solo revisión visual de técnica — no necesita fotogramas exactos, así que
+    // se puede comprimir con normalidad para ahorrar espacio.
+    const file = await compressVideo(rawFile)
+    setCompressing(false)
+    setUploading(true)
     try {
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
@@ -75,7 +82,12 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
                 <input ref={fileRef} type="file" accept="video/*" capture="user" className="hidden"
                   onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
-                {uploading ? (
+                {compressing ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-accent">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm font-semibold">Optimizando vídeo...</span>
+                  </div>
+                ) : uploading ? (
                   <div className="flex items-center justify-center gap-2 py-6 text-accent">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span className="text-sm font-semibold">Subiendo vídeo...</span>
@@ -93,7 +105,7 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
                   </>
                 )}
                 {error && <p className="text-xs text-warn text-center">{error}</p>}
-                {!uploading && (
+                {!uploading && !compressing && (
                   <button onClick={() => setShowModal(false)} className="w-full py-2 text-xs text-muted">Cancelar</button>
                 )}
               </>
