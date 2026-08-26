@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle, CalendarDays, X } from 'lucide-react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
@@ -13,34 +13,20 @@ import { logError } from '../../lib/errors'
 import { NotFound } from '../shared/NotFound'
 import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
-import { ThemeToggle } from '../shared/ThemeToggle'
 import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
-import { PushToggle } from '../shared/PushToggle'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
-import { sendPush } from '../../lib/usePushNotifications'
-import { CicloWidget } from './CicloWidget'
-import { ReferralWidget } from './ReferralWidget'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
+import { PENDING_LOGS_KEY, pushLogsToServer } from './client-view/helpers'
+import { ProximasSesiones } from './client-view/ProximasSesiones'
+import { MasTab } from './client-view/MasTab'
+import { NoPlanView, SyncIndicator } from './client-view/misc'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
 type SyncState = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
 type AuthState = 'loading' | 'needs_register' | 'needs_login' | 'authenticated'
-
-const PENDING_LOGS_KEY = (clientId: string) => `pf_logs_pending_${clientId}`
-
-async function pushLogsToServer(clientId: string, newLogs: TrainingLogs): Promise<boolean> {
-  const { error: updateErr } = await supabase.from('registros')
-    .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', clientId)
-  if (updateErr) {
-    const { error: insertErr } = await supabase.from('registros')
-      .insert({ clientId, logs: newLogs, updatedAt: Date.now() })
-    if (insertErr) { logError('ClientView:saveLogs', insertErr); return false }
-  }
-  return true
-}
 
 export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [authState, setAuthState] = useState<AuthState>('loading')
@@ -328,21 +314,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     { id: 'mas' as Tab,      icon: MoreHorizontal, label: 'Más' },
   ]
 
-  const SyncIndicator = () => {
-    if (syncState === 'idle') return null
-    return (
-      <div className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${
-        syncState === 'saving' ? 'bg-accent/10 text-accent' :
-        syncState === 'saved' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
-      }`}>
-        {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
-        {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
-        {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />Sin conexión — guardado localmente</>}
-        {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />Error al guardar</>}
-      </div>
-    )
-  }
-
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col"
       style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: '#f5f0ea' }}>
@@ -367,7 +338,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </header>
 
-      <SyncIndicator />
+      <SyncIndicator syncState={syncState} />
       <PWAInstallBanner />
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
@@ -430,192 +401,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           ))}
         </div>
       </nav>
-    </div>
-  )
-}
-
-interface CitaCliente {
-  id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
-}
-
-function ProximasSesiones({ clientId, trainerId, clientName }: { clientId: string; trainerId: string; clientName: string }) {
-  const [citas, setCitas] = useState<CitaCliente[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [date, setDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
-  const [time, setTime] = useState('09:00')
-  const [saving, setSaving] = useState(false)
-
-  const load = () => {
-    supabase.from('citas')
-      .select('id, title, start_at, status')
-      .eq('client_id', clientId)
-      .in('status', ['confirmada', 'pendiente'])
-      .gte('start_at', new Date().toISOString())
-      .order('start_at')
-      .limit(3)
-      .then(({ data }) => { setCitas((data || []) as CitaCliente[]); setLoading(false) })
-  }
-
-  useEffect(() => { load() }, [clientId])
-
-  const cancelar = async (id: string) => {
-    const { error } = await supabase.from('citas').update({ status: 'cancelada' }).eq('id', id)
-    if (!error) setCitas(prev => prev.filter(c => c.id !== id))
-  }
-
-  const solicitar = async () => {
-    setSaving(true)
-    const start = new Date(`${date}T${time}:00`)
-    const end = new Date(start.getTime() + 60 * 60000)
-    const { error } = await supabase.from('citas').insert({
-      trainer_id: trainerId, client_id: clientId, title: 'Cita solicitada',
-      start_at: start.toISOString(), end_at: end.toISOString(), status: 'pendiente', notes: '',
-    })
-    setSaving(false)
-    if (error) { logError('ProximasSesiones:solicitar', error); return }
-    sendPush({ trainerId }, 'Nueva solicitud de cita', `${clientName} pidió una cita para el ${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} a las ${time}`)
-    setShowForm(false)
-    load()
-  }
-
-  if (loading) return null
-
-  return (
-    <div className="px-4 pt-4">
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-3.5 h-3.5 text-muted" />
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Próximas sesiones</p>
-          </div>
-          <button onClick={() => setShowForm(v => !v)} className="text-[10px] font-bold text-accent underline">
-            {showForm ? 'Cancelar' : '+ Pedir cita'}
-          </button>
-        </div>
-
-        {showForm && (
-          <div className="px-4 py-3 border-b border-border bg-bg-alt/30 space-y-2">
-            <div className="flex gap-2">
-              <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={e => setDate(e.target.value)}
-                className="flex-1 px-2.5 py-2 bg-white border border-border rounded-lg text-xs outline-none" />
-              <input type="time" value={time} onChange={e => setTime(e.target.value)}
-                className="px-2.5 py-2 bg-white border border-border rounded-lg text-xs outline-none" />
-            </div>
-            <button onClick={solicitar} disabled={saving}
-              className="w-full py-2 bg-ink text-white rounded-lg text-xs font-bold disabled:opacity-50">
-              {saving ? 'Enviando...' : 'Enviar solicitud'}
-            </button>
-            <p className="text-[10px] text-muted">Tu entrenador confirmará el horario — no es automático.</p>
-          </div>
-        )}
-
-        {citas.length === 0 ? (
-          <p className="px-4 py-3 text-xs text-muted">Sin sesiones programadas</p>
-        ) : (
-          <div className="divide-y divide-border">
-            {citas.map(c => (
-              <div key={c.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold flex items-center gap-1.5">
-                    {c.title}
-                    {c.status === 'pendiente' && <span className="text-[9px] font-bold text-warn bg-warn/10 px-1.5 py-0.5 rounded-full">Pendiente de confirmar</span>}
-                  </p>
-                  <p className="text-xs text-muted">{new Date(c.start_at).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-                <button onClick={() => cancelar(c.id)} className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0" title="Cancelar">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function NoPlanView() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 px-6 text-center text-muted">
-      <Dumbbell className="w-12 h-12 mx-auto mb-4 opacity-20" />
-      <p className="font-serif text-xl font-bold mb-2">Sin plan asignado</p>
-      <p className="text-sm">Tu entrenador aún no ha creado tu programa. ¡Pronto lo tendrás!</p>
-    </div>
-  )
-}
-
-function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void }) {
-  const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
-  const waUrl = trainerPhone
-    ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
-    : `https://wa.me/?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
-
-  return (
-    <div className="px-4 py-6 space-y-4 max-w-xl mx-auto pb-24">
-      <h3 className="font-serif font-bold text-xl">Más opciones</h3>
-
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu entrenador</p>
-        </div>
-        <div className="p-4">
-          <a href={waUrl} target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl"
-            style={{ minHeight: '56px' }}>
-            <MessageSquare className="w-5 h-5 text-[#25D366] flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Contactar por WhatsApp</p>
-              <p className="text-xs text-muted">Abre WhatsApp con mensaje preparado</p>
-            </div>
-          </a>
-        </div>
-      </div>
-
-      {plan && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu programa</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted">Tipo</span><span className="font-semibold capitalize">{plan.type}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan.weeks?.length || 0}</span></div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu cuenta</p>
-        <p className="text-sm"><span className="text-muted">Nombre:</span> <span className="font-semibold">{client.name} {client.surname}</span></p>
-      </div>
-
-      {/* Tema */}
-      <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold">Modo oscuro</p>
-          <p className="text-xs text-muted">Cambia la apariencia de tu panel</p>
-        </div>
-        <ThemeToggle />
-      </div>
-
-      {/* Notificaciones push */}
-      <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">Notificaciones</p>
-          <p className="text-xs text-muted">Avisos de tu entrenador en este dispositivo</p>
-        </div>
-        <PushToggle clientId={client.id} />
-      </div>
-
-      {/* Ciclo menstrual (opcional) */}
-      <CicloWidget clientId={client.id} trainerId={client.trainerId} />
-
-      {/* Programa de referidos */}
-      <ReferralWidget trainerId={client.trainerId} token={client.token} />
-
-      {/* Cerrar sesión */}
-      <button onClick={onLogout}
-        className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
-        Cerrar sesión
-      </button>
     </div>
   )
 }
