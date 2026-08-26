@@ -27,7 +27,10 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeigh
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
 
-  const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === rir) : null
+  // Math.floor porque un RIR fraccionario (1.5) no calza con ningún o.value
+  // entero — sin esto, la insignia perdía el color/descripción y volvía a
+  // mostrar "Añadir RIR" como si no se hubiera registrado nada.
+  const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === Math.floor(rir)) : null
   const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
 
   // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
@@ -155,7 +158,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeigh
                 color: rirMeta ? rirMeta.color : '#9ca3af',
               }}>
               <Zap className="w-2.5 h-2.5" />
-              {rirMeta ? `RIR ${rirMeta.label} · ${rirMeta.desc}` : 'Añadir RIR'}
+              {rirMeta ? `RIR ${rir} · ${rirMeta.desc}` : 'Añadir RIR'}
             </button>
           </div>
         )}

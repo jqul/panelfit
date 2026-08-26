@@ -63,6 +63,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
+  const [sessionRpeHalf, setSessionRpeHalf] = useState(false)
   const startTime = useRef(Date.now())
   const setsRef = useRef(sets)
   useEffect(() => { setsRef.current = sets }, [sets])
@@ -477,14 +478,18 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               <p className="text-xs font-semibold text-muted text-center">¿Cómo de duro se sintió en general? (RPE)</p>
               <div className="grid grid-cols-5 gap-1.5">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => setSessionRpe(n)}
+                  <button key={n} onClick={() => setSessionRpe(n + (sessionRpeHalf && n < 10 ? 0.5 : 0))}
                     className={`py-2 rounded-xl text-sm font-bold transition-all ${
-                      sessionRpe === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
+                      sessionRpe !== null && Math.floor(sessionRpe) === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
                     }`}>
-                    {n}
+                    {sessionRpe !== null && Math.floor(sessionRpe) === n && sessionRpeHalf && n < 10 ? `${n}.5` : n}
                   </button>
                 ))}
               </div>
+              <button onClick={() => setSessionRpeHalf(h => !h)}
+                className={`w-full py-1.5 rounded-xl text-xs font-semibold border transition-all ${sessionRpeHalf ? 'bg-accent/15 border-accent text-accent' : 'border-border text-muted'}`}>
+                {sessionRpeHalf ? '✓ ' : ''}+0.5 (precisión powerlifting/halterofilia)
+              </button>
             </div>
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>

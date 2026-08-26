@@ -119,6 +119,7 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [showConfirm, setShowConfirm] = useState(false)
   const [sessionComment, setSessionComment] = useState('')
   const [savingComment, setSavingComment] = useState(false)
+  const [halfRir, setHalfRir] = useState(false)
   const exercises = day.exercises
 
   useEffect(() => {
@@ -588,16 +589,26 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                     {isDone && (
                       <div className="flex items-center gap-1.5 px-4 pb-3 flex-wrap">
                         <span className="text-[9px] text-muted uppercase tracking-wider flex-shrink-0">RIR</span>
-                        {RIR_OPTIONS.map(opt => (
-                          <button key={opt.value} onClick={() => setSetRir(activeIdx, si, opt.value)}
-                            className="w-6 h-6 rounded-full text-[10px] font-bold flex-shrink-0 border-2 transition-all"
-                            style={s?.rir === opt.value
-                              ? { backgroundColor: opt.color, borderColor: opt.color, color: '#fff' }
-                              : { borderColor: '#e2ddd4', color: '#8a8278' }}
-                            title={opt.desc}>
-                            {opt.label}
-                          </button>
-                        ))}
+                        {RIR_OPTIONS.map(opt => {
+                          const canHalf = opt.value < 5
+                          const active = s?.rir !== undefined && Math.floor(s.rir) === opt.value && (!canHalf || (s.rir % 1 !== 0) === halfRir)
+                          return (
+                            <button key={opt.value} onClick={() => setSetRir(activeIdx, si, opt.value + (canHalf && halfRir ? 0.5 : 0))}
+                              className="w-6 h-6 rounded-full text-[10px] font-bold flex-shrink-0 border-2 transition-all"
+                              style={active
+                                ? { backgroundColor: opt.color, borderColor: opt.color, color: '#fff' }
+                                : { borderColor: '#e2ddd4', color: '#8a8278' }}
+                              title={opt.desc}>
+                              {active && canHalf && halfRir ? `${opt.value}.5` : opt.label}
+                            </button>
+                          )
+                        })}
+                        <button onClick={() => setHalfRir(h => !h)}
+                          className="px-1.5 h-6 rounded-full text-[9px] font-bold flex-shrink-0 border-2 transition-all"
+                          style={halfRir ? { backgroundColor: '#6e5438', borderColor: '#6e5438', color: '#fff' } : { borderColor: '#e2ddd4', color: '#8a8278' }}
+                          title="Precisión powerlifting/halterofilia">
+                          +.5
+                        </button>
                       </div>
                     )}
                   </div>
