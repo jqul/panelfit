@@ -24,10 +24,11 @@ export interface CombinedRisk {
 }
 
 export interface ACWRSignal {
-  acute: number      // tonelaje medio diario, últimos 7 días (incluyendo días de descanso)
-  chronic: number     // tonelaje medio diario, últimos 28 días
+  acute: number      // media diaria agudo/crónico, en la unidad de `source` (incluyendo días de descanso)
+  chronic: number
   ratio: number | null
   hasData: boolean
+  source?: 'tonelaje' | 'sRPE'
 }
 
 function buildDayTonnage(logs: TrainingLogs): Record<string, number> {
@@ -68,6 +69,24 @@ function firstLoggedDate(dayTonnage: Record<string, number>): Date | undefined {
   return dates.length ? new Date(dates[0] + 'T00:00:00Z') : undefined
 }
 
+// Núcleo compartido: ACWR por EWMA a partir de cualquier mapa fecha→carga
+// diaria — el tonelaje (abajo) y la carga interna por sRPE (duración×RPE, en
+// loadRisk de sesión) son dos formas distintas de llenar ese mapa, pero el
+// cálculo agudo:crónico es exactamente el mismo.
+function acwrFromDaily(dayLoad: Record<string, number>, today: Date, source: 'tonelaje' | 'sRPE'): ACWRSignal {
+  const firstDate = firstLoggedDate(dayLoad)
+  if (!firstDate) return { acute: 0, chronic: 0, ratio: null, hasData: false }
+  const acute = ewmaFrom(dayLoad, today, firstDate, 7)
+  const chronic = ewmaFrom(dayLoad, today, firstDate, 28)
+  return {
+    acute: Math.round(acute),
+    chronic: Math.round(chronic),
+    ratio: chronic > 0 ? Math.round((acute / chronic) * 100) / 100 : null,
+    hasData: true,
+    source,
+  }
+}
+
 /**
  * Ratio de carga aguda:crónica (ACWR) sobre el tonelaje (peso × reps) diario,
  * con medias EWMA en vez de medias móviles uniformes (Williams et al. 2016;
@@ -76,17 +95,32 @@ function firstLoggedDate(dayTonnage: Record<string, number>): Date | undefined {
  * Zonas: <0.8 desentrenamiento, 0.8–1.3 óptima, 1.3–1.5 moderado, >1.5 alto.
  */
 export function computeACWR(logs: TrainingLogs, today: Date = new Date()): ACWRSignal {
-  const dayTonnage = buildDayTonnage(logs)
-  const firstDate = firstLoggedDate(dayTonnage)
-  if (!firstDate) return { acute: 0, chronic: 0, ratio: null, hasData: false }
-  const acute = ewmaFrom(dayTonnage, today, firstDate, 7)
-  const chronic = ewmaFrom(dayTonnage, today, firstDate, 28)
-  return {
-    acute: Math.round(acute),
-    chronic: Math.round(chronic),
-    ratio: chronic > 0 ? Math.round((acute / chronic) * 100) / 100 : null,
-    hasData: true,
-  }
+  return acwrFromDaily(buildDayTonnage(logs), today, 'tonelaje')
+}
+
+export interface SessionLoadRow { date: string; duration_min: number; rpe: number }
+
+/**
+ * ACWR sobre carga interna (sRPE de Foster: duración en minutos × RPE de la
+ * sesión, en unidades arbitrarias) en vez de tonelaje. Necesario para
+ * disciplinas que combinan gimnasio con trabajo de campo/pista (sprints,
+ * pliometría, técnica) donde el tonelaje es ciego a la mayor parte de la
+ * carga real — un atleta puede tener el ACWR de tonelaje perfecto y aun así
+ * estar sobrecargado si esas sesiones no entran en el cálculo.
+ */
+export function computeSessionLoadACWR(rows: SessionLoadRow[], today: Date = new Date()): ACWRSignal {
+  const dayLoad: Record<string, number> = {}
+  rows.forEach(r => { dayLoad[r.date] = (dayLoad[r.date] || 0) + r.duration_min * r.rpe })
+  return acwrFromDaily(dayLoad, today, 'sRPE')
+}
+
+/** El ACWR "más preocupante" de dos señales — para no dejar que una lectura
+ * tranquila en una tapadera lo que la otra sí está viendo. */
+export function worseAcwr(a: ACWRSignal, b: ACWRSignal): ACWRSignal {
+  if (!a.hasData) return b
+  if (!b.hasData) return a
+  const distFrom1 = (r: number | null) => r === null ? -1 : Math.abs(r - 1)
+  return distFrom1(b.ratio) > distFrom1(a.ratio) ? b : a
 }
 
 export interface LoadTrendPoint { date: string; fitness: number; fatigue: number; form: number }
@@ -172,15 +206,16 @@ export function combineRisk(training: TrainingSignal, readiness: ReadinessSignal
   const escalate = (next: RiskLevel) => { if (next === 'alto' || level === 'bajo') level = next }
 
   if (acwr?.ratio !== null && acwr?.ratio !== undefined) {
+    const unidad = acwr.source === 'sRPE' ? ' (carga interna, sRPE — el tonelaje puede no verlo)' : acwr.source === 'tonelaje' ? ' (tonelaje)' : ''
     if (acwr.ratio > 1.5) {
       escalate('alto')
-      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (>1.5) — riesgo de lesión elevado según el modelo de Gabbett`)
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio}${unidad} (>1.5) — riesgo de lesión elevado según el modelo de Gabbett`)
     } else if (acwr.ratio >= 1.3) {
       escalate('moderado')
-      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (1.3–1.5) — zona de precaución`)
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio}${unidad} (1.3–1.5) — zona de precaución`)
     } else if (acwr.ratio < 0.8 && acwr.chronic > 0) {
       escalate('moderado')
-      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio} (<0.8) — desentrenamiento, una vuelta brusca a la carga habitual también eleva el riesgo`)
+      reasons.push(`Ratio carga aguda:crónica de ${acwr.ratio}${unidad} (<0.8) — desentrenamiento, una vuelta brusca a la carga habitual también eleva el riesgo`)
     }
   }
 

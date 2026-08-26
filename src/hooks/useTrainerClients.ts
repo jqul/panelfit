@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { ClientData } from '../types'
 import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
-import { computeACWR } from '../lib/loadRisk'
+import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
+import { DEMO_SESSION_LOAD_MAP } from '../lib/demo-data'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -104,7 +105,9 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .filter((l: any) => l.dateDone)
             .map((l: any) => l.dateDone as string)
         )].sort().reverse() as string[]
-        const acwr = computeACWR(logs)
+        const tonnageAcwr = computeACWR(logs)
+        const srpeAcwr = computeSessionLoadACWR(DEMO_SESSION_LOAD_MAP[c.id] || [])
+        const acwr = worseAcwr(tonnageAcwr, srpeAcwr)
         return {
           ...c,
           lastActive: dates[0],
@@ -140,10 +143,15 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
     if (mapped.length) {
       const ids = mapped.map(c => c.id)
-      const [{ data: regs }, { data: planes }] = await Promise.all([
+      const [{ data: regs }, { data: planes }, { data: sessionLoads }] = await Promise.all([
         supabase.from('registros').select('clientId,logs').in('clientId', ids),
         supabase.from('planes').select('clientId,plan').in('clientId', ids),
+        supabase.from('session_load').select('client_id,date,duration_min,rpe').in('client_id', ids),
       ])
+      const loadByClient: Record<string, { date: string; duration_min: number; rpe: number }[]> = {}
+      ;(sessionLoads || []).forEach((r: any) => {
+        (loadByClient[r.client_id] ||= []).push({ date: r.date, duration_min: r.duration_min, rpe: r.rpe })
+      })
 
       const planMap: Record<string, boolean> = {}
       const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean }> = {}
@@ -164,7 +172,9 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .map((l: any) => l.dateDone as string)
         )].sort().reverse()
         const hasPlan = planMap[c.id] || false
-        const acwr = computeACWR(logs)
+        const tonnageAcwr = computeACWR(logs)
+        const srpeAcwr = computeSessionLoadACWR(loadByClient[c.id] || [])
+        const acwr = worseAcwr(tonnageAcwr, srpeAcwr)
         return {
           ...c,
           lastActive: dates[0],

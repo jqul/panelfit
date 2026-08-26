@@ -867,6 +867,40 @@ export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARI
   'demo-client-001': DEMO_TEST_RESULTS_MARIA,
 }
 
+// ── CARGA INTERNA / sRPE (demo) ─────────────────────────
+// Lucas (atletismo) es el ejemplo pensado a propósito: sus sesiones de
+// sprints/pliometría casi no levantan peso, así que el ACWR por tonelaje no
+// las ve — pero sí producen fatiga real, que el sRPE (minutos × RPE) capta.
+// Últimas semanas con una subida real de RPE/duración para que el ACWR de
+// carga interna dispare aunque el de tonelaje esté tranquilo.
+export interface DemoSessionLoadRow { date: string; duration_min: number; rpe: number }
+const LUCAS_SESSIONS: { offset: number; duration: number; rpe: number }[] = [
+  // Pico reciente — bloque de sprints/pliometría intenso, 6 días seguidos
+  { offset: 1, duration: 95, rpe: 9 },
+  { offset: 2, duration: 90, rpe: 9 },
+  { offset: 3, duration: 85, rpe: 8 },
+  { offset: 4, duration: 90, rpe: 9 },
+  { offset: 5, duration: 80, rpe: 8 },
+  { offset: 6, duration: 85, rpe: 8 },
+  // Carga base de las ~5 semanas previas, mucho más suave
+  { offset: 9, duration: 50, rpe: 5 },
+  { offset: 12, duration: 50, rpe: 5 },
+  { offset: 15, duration: 55, rpe: 5 },
+  { offset: 18, duration: 50, rpe: 5 },
+  { offset: 21, duration: 55, rpe: 5 },
+  { offset: 24, duration: 50, rpe: 5 },
+  { offset: 27, duration: 50, rpe: 5 },
+  { offset: 30, duration: 55, rpe: 5 },
+  { offset: 33, duration: 50, rpe: 5 },
+]
+export const DEMO_SESSION_LOAD_LUCAS: DemoSessionLoadRow[] = LUCAS_SESSIONS.map(s => ({
+  date: new Date(Date.now() - s.offset * 86400000).toISOString().split('T')[0],
+  duration_min: s.duration, rpe: s.rpe,
+}))
+export const DEMO_SESSION_LOAD_MAP: Record<string, DemoSessionLoadRow[]> = {
+  'demo-client-007': DEMO_SESSION_LOAD_LUCAS,
+}
+
 // ── CICLO (demo) — activado; la fecha se eligió para que las sesiones ya
 // registradas de María (ver offsets más arriba) se repartan entre las 4 fases
 // del ciclo en vez de amontonarse en una sola, así el gráfico de rendimiento

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR } from './loadRisk'
+import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR, computeSessionLoadACWR, worseAcwr } from './loadRisk'
 import { TrainingLogs } from '../types'
 
 function logWithRir(dateDone: string, rir: number, weight = 100, reps = 5): TrainingLogs[string] {
@@ -102,6 +102,47 @@ describe('computeACWR', () => {
     const acwr = computeACWR(logs, today)
     expect(acwr.ratio).not.toBeNull()
     expect(acwr.ratio as number).toBeGreaterThan(1.5)
+  })
+})
+
+describe('computeSessionLoadACWR', () => {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
+
+  it('reports no data with no sessions', () => {
+    expect(computeSessionLoadACWR([]).hasData).toBe(false)
+  })
+
+  it('flags a spike from sRPE alone, even with zero tonnage — the whole point for field/track work', () => {
+    const today = new Date('2026-06-22T00:00:00Z')
+    const rows = []
+    for (let i = 7; i < 28; i += 2) {
+      const d = new Date(today); d.setDate(today.getDate() - i)
+      rows.push({ date: fmt(d), duration_min: 45, rpe: 5 }) // carga base moderada
+    }
+    for (let i = 0; i < 6; i += 2) {
+      const d = new Date(today); d.setDate(today.getDate() - i)
+      rows.push({ date: fmt(d), duration_min: 90, rpe: 9 }) // pico reciente (sprints)
+    }
+    const acwr = computeSessionLoadACWR(rows, today)
+    expect(acwr.ratio).not.toBeNull()
+    expect(acwr.ratio as number).toBeGreaterThan(1.5)
+    expect(acwr.source).toBe('sRPE')
+  })
+})
+
+describe('worseAcwr', () => {
+  it('picks whichever ratio is further from 1 (the "óptima" center)', () => {
+    const calm = { acute: 100, chronic: 100, ratio: 1.05, hasData: true, source: 'tonelaje' as const }
+    const spiking = { acute: 500, chronic: 200, ratio: 2.5, hasData: true, source: 'sRPE' as const }
+    expect(worseAcwr(calm, spiking)).toBe(spiking)
+    expect(worseAcwr(spiking, calm)).toBe(spiking)
+  })
+
+  it('falls back to whichever signal actually has data', () => {
+    const noData = { acute: 0, chronic: 0, ratio: null, hasData: false }
+    const withData = { acute: 100, chronic: 100, ratio: 1.05, hasData: true, source: 'tonelaje' as const }
+    expect(worseAcwr(noData, withData)).toBe(withData)
+    expect(worseAcwr(withData, noData)).toBe(withData)
   })
 })
 

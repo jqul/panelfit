@@ -535,6 +535,17 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     emoji: reactionEmoji, comment: reactionComment.trim() || null,
                   })
                 }
+                // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente
+                // puso un RPE global. Alimenta el ACWR de carga interna, complementario
+                // al de tonelaje (esencial para quien combina gimnasio con pista/campo).
+                if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
+                  const today = new Date().toISOString().split('T')[0]
+                  const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
+                  await supabase.from('session_load').insert({
+                    client_id: plan.clientId, trainer_id: trainerId, date: today,
+                    duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
+                  })
+                }
                 onFinish()
               }}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
