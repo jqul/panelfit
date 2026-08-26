@@ -39,6 +39,55 @@ export const DEMO_CLIENTS: ClientData[] = [
     isActive: true,
     createdAt: Date.now() - 30 * 86400000,
   },
+  {
+    id: 'demo-client-004',
+    name: 'Diego', surname: 'Fernández',
+    trainerId: DEMO_TRAINER_ID,
+    token: 'demo-diego-004',
+    objetivo: 'fuerza',
+    weight: 90, fatPercentage: 20, muscleMass: 70, totalLifted: 0,
+    planDescription: 'Powerlifting — fase de volumen (a 3 meses de competir)',
+    isActive: true,
+    createdAt: Date.now() - 75 * 86400000,
+    precio_mensual: 100,
+  },
+  {
+    id: 'demo-client-005',
+    name: 'Marta', surname: 'Ruiz',
+    trainerId: DEMO_TRAINER_ID,
+    token: 'demo-marta-005',
+    objetivo: 'rehabilitacion',
+    weight: 64, fatPercentage: 26, muscleMass: 42, totalLifted: 0,
+    planDescription: 'Readaptación post-quirúrgica de rodilla',
+    isActive: true,
+    createdAt: Date.now() - 40 * 86400000,
+    lesiones: 'Rotura parcial de menisco interno (rodilla derecha) — cirugía artroscópica hace 6 semanas. Sin sentadilla profunda ni impacto hasta autorización del fisio.',
+    precio_mensual: 70,
+  },
+  {
+    id: 'demo-client-006',
+    name: 'Beatriz', surname: 'Soto',
+    trainerId: DEMO_TRAINER_ID,
+    token: 'demo-beatriz-006',
+    objetivo: 'perdida_grasa',
+    weight: 96.5, fatPercentage: 38, muscleMass: 55, totalLifted: 0,
+    planDescription: 'Primeros pasos — pérdida de peso, sin experiencia previa',
+    isActive: true,
+    createdAt: Date.now() - 25 * 86400000,
+    precio_mensual: 65,
+  },
+  {
+    id: 'demo-client-007',
+    name: 'Lucas', surname: 'Vega',
+    trainerId: DEMO_TRAINER_ID,
+    token: 'demo-lucas-007',
+    objetivo: 'rendimiento',
+    weight: 72, fatPercentage: 10, muscleMass: 62, totalLifted: 0,
+    planDescription: 'Preparación física para atletismo — velocidad y potencia',
+    isActive: true,
+    createdAt: Date.now() - 55 * 86400000,
+    precio_mensual: 110,
+  },
 ]
 
 // ── PERFIL ENTRENADOR DEMO ─────────────────────────────
@@ -331,6 +380,330 @@ export const DEMO_LOGS_LAURA: TrainingLogs = (() => {
   return logs
 })()
 
+// ── PLAN DIEGO (Powerlifting — fase de volumen, a 3 meses de competir) ──
+export const DEMO_PLAN_DIEGO: TrainingPlan = {
+  clientId: 'demo-client-004',
+  type: 'fuerza',
+  restMain: 180, restAcc: 90, restWarn: 30,
+  message: 'Todavía queda tiempo — hoy construimos la base sobre la que vamos a competir. 🏋️',
+  fechaInicio: new Date(Date.now() - 50 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true,
+  diasSemana: 4,
+  coachNotes: 'A 3 meses de su competición. Fase de acumulación de volumen — no buscamos RPE 9 todavía, prioriza técnica y consistencia. La bajada de intensidad y el pico llegarán en el último mes.',
+  macros: { kcal: 3000, protein: 190, carbs: 350, fats: 85, notaMacros: 'Ligero superávit para sostener el volumen de esta fase. Ajustaremos según cómo evolucione el peso.' },
+  weeks: [
+    {
+      label: 'Semana 4 — Acumulación',
+      rpe: '@7-8', isCurrent: true,
+      days: [
+        {
+          title: 'DÍA 1 — Sentadilla (volumen)', focus: 'Base tren inferior',
+          exercises: [
+            { name: 'Sentadilla barra alta', sets: '5×5', weight: '100kg', isMain: true, comment: 'RPE 7-8, técnica limpia por encima de todo ahora mismo', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 180, restAfter: 120 },
+            { name: 'Sentadilla frontal', sets: '3×6', weight: '70kg', isMain: false, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Prensa 45°', sets: '4×10', weight: '160kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Extensión cuádriceps', sets: '3×15', weight: '55kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 2 — Press banca (volumen)', focus: 'Base tren superior',
+          exercises: [
+            { name: 'Press banca', sets: '5×5', weight: '85kg', isMain: true, comment: 'RPE 7-8, pausa breve en el pecho', videoUrl: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', restSets: 180, restAfter: 120 },
+            { name: 'Press banca pausa', sets: '3×5', weight: '75kg', isMain: false, comment: '2 segundos en el pecho', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Press inclinado mancuernas', sets: '3×10', weight: '30kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Fondos lastrados', sets: '3×8', weight: '+10kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 3 — Peso muerto (volumen)', focus: 'Cadena posterior',
+          exercises: [
+            { name: 'Peso muerto convencional', sets: '4×5', weight: '130kg', isMain: true, comment: 'RPE 7-8, espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q', restSets: 180, restAfter: 120 },
+            { name: 'Peso muerto déficit', sets: '3×5', weight: '110kg', isMain: false, comment: 'Déficit de 2.5cm', videoUrl: '', restSets: 150, restAfter: 90 },
+            { name: 'Remo Pendlay', sets: '4×8', weight: '80kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Buenos días', sets: '3×10', weight: '50kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 4 — Accesorios y puntos débiles', focus: 'Hombro y espalda',
+          exercises: [
+            { name: 'Press militar barra', sets: '4×8', weight: '45kg', isMain: true, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Dominadas lastradas', sets: '4×6', weight: '+10kg', isMain: false, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Zancadas', sets: '3×10', weight: '20kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Curl femoral tumbado', sets: '3×12', weight: '30kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+      ]
+    }
+  ]
+}
+
+// ── LOGS DIEGO ───────────────────────────────────────────
+export const DEMO_LOGS_DIEGO: TrainingLogs = (() => {
+  const logs: TrainingLogs = {}
+  const today = new Date()
+  // lunes, miércoles, viernes, sábado — 5 semanas. Se procesa de más antiguo a
+  // más reciente para que, si dos fechas caen en la misma clave de ejercicio
+  // (solo hay una "semana" en el plan), sobreviva la más reciente y no una de
+  // hace un mes — si no, la última actividad del cliente saldría mal en el dashboard.
+  const offsets = [1,3,5,7, 8,10,12,14, 15,17,19,21, 22,24,26,28, 29,31,33,35].slice().reverse()
+  offsets.forEach((offset, idx) => {
+    const d = new Date(today); d.setDate(d.getDate() - offset)
+    const fecha = d.toISOString().split('T')[0]
+    const dayIdx = idx % 4
+    const week = Math.min(Math.floor(offset / 7), 4)
+    const baseWeights: Record<number, number[]> = {
+      0: [92,94,96,98,100], 1: [78,80,82,84,85],
+      2: [120,124,127,129,130], 3: [40,42,43,44,45],
+    }
+    const bw = (baseWeights[dayIdx] || [80,82,84,86,88])[4 - week]
+    ;[0,1,2,3].forEach(ri => {
+      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
+      const n = ri === 0 ? 5 : 3
+      for (let si = 0; si < n; si++) {
+        sets[si] = { weight: String(bw - (ri * 15)), reps: ri === 0 ? '5' : '8', rir: 2 }
+      }
+      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+    })
+  })
+  return logs
+})()
+
+// ── PLAN MARTA (Rehabilitación de rodilla) ────────────────
+export const DEMO_PLAN_MARTA: TrainingPlan = {
+  clientId: 'demo-client-005',
+  type: 'rehabilitacion',
+  restMain: 90, restAcc: 60, restWarn: 20,
+  message: 'Cada sesión suma en la recuperación. Vamos con paciencia, sin prisa. 🧘',
+  fechaInicio: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true,
+  diasSemana: 3,
+  coachNotes: 'Semana 6 post-cirugía de menisco. Progresar rango de movimiento de forma gradual. Ante cualquier dolor agudo (no simple molestia), parar el ejercicio y avisar — nada de "aguantar".',
+  macros: { kcal: 1900, protein: 130, carbs: 190, fats: 60, notaMacros: 'Mantenimiento — ahora el objetivo es recuperar movilidad y fuerza, no cambiar composición corporal.' },
+  weeks: [
+    {
+      label: 'Semana 6 — Fortalecimiento inicial',
+      rpe: '@5-6', isCurrent: true,
+      days: [
+        {
+          title: 'DÍA A — Tren inferior controlado', focus: 'Fuerza sin impacto',
+          exercises: [
+            { name: 'Sentadilla isométrica en pared', sets: '3×30s', weight: '-', isMain: true, comment: 'Solo hasta 60° de flexión, sin dolor', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Extensión de rodilla con banda', sets: '3×15', weight: 'Banda media', isMain: false, comment: 'Rango controlado, sin tirones', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Puente de glúteo', sets: '3×15', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Elevación de talones sentado', sets: '3×15', weight: '10kg', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+          ]
+        },
+        {
+          title: 'DÍA B — Movilidad + tren superior', focus: 'Mantener el resto del cuerpo activo',
+          exercises: [
+            { name: 'Press mancuernas sentado', sets: '3×12', weight: '8kg', isMain: true, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Remo sentado en polea', sets: '3×12', weight: '25kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Step up bajo (10cm)', sets: '3×8', weight: '-', isMain: false, comment: 'Controlado, sin prisa, apóyate si lo necesitas', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Plancha', sets: '3×20s', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+          ]
+        },
+        {
+          title: 'DÍA C — Cardio suave + core', focus: 'Recuperación activa',
+          exercises: [
+            { name: 'Bici estática', sets: '1×15min', weight: '-', isMain: true, comment: 'Resistencia baja, cero dolor en la rodilla', videoUrl: '', restSets: 0, restAfter: 0 },
+            { name: 'Elevación de piernas tumbado', sets: '3×12', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Pallof press', sets: '3×12', weight: 'Banda ligera', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Estiramientos guiados', sets: '1×10min', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 0, restAfter: 0 },
+          ]
+        },
+      ]
+    }
+  ]
+}
+
+// ── LOGS MARTA ───────────────────────────────────────────
+export const DEMO_LOGS_MARTA: TrainingLogs = (() => {
+  const logs: TrainingLogs = {}
+  const today = new Date()
+  // lunes, miércoles, viernes — 4 semanas. Cargas bajas y progresión lenta,
+  // acorde a una fase de readaptación (no se busca ni RIR ni intensidad alta).
+  // Se procesa de más antiguo a más reciente para que la clave de ejercicio (solo
+  // hay una "semana" en el plan) se quede con la fecha más reciente, no una vieja.
+  const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27].slice().reverse()
+  offsets.forEach((offset, idx) => {
+    const d = new Date(today); d.setDate(d.getDate() - offset)
+    const fecha = d.toISOString().split('T')[0]
+    const dayIdx = idx % 3
+    const week = Math.floor(idx / 3)
+    const baseW = [8, 6, 0][dayIdx] // día A (banda/isométrico ~sin peso), B (mancuernas ligeras), C (cardio, sin peso)
+    ;[0,1,2,3].forEach(ri => {
+      const sets: Record<number, {weight:string;reps:string}> = {}
+      for (let si = 0; si < 3; si++) {
+        sets[si] = { weight: String(baseW + week * 0.5), reps: dayIdx === 2 ? '1' : '12' }
+      }
+      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+    })
+  })
+  return logs
+})()
+
+// ── PLAN BEATRIZ (Primeriza, pérdida de peso) ─────────────
+export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
+  clientId: 'demo-client-006',
+  type: 'perdida_grasa',
+  restMain: 90, restAcc: 60, restWarn: 20,
+  message: '¡Ya llevas 4 semanas seguidas! Eso ya es una victoria en sí misma. 🎉',
+  fechaInicio: new Date(Date.now() - 25 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true, autoInactividad: true,
+  diasSemana: 3,
+  coachNotes: 'Primera vez en el gimnasio. Foco 100% en aprender la técnica y crear el hábito — nada de buscar peso máximo todavía. Ánimo en cada sesión: cuesta arrancar, pero ya lleva 4 semanas seguidas sin fallar.',
+  macros: { kcal: 1900, protein: 140, carbs: 170, fats: 60, notaMacros: 'Déficit sostenible — prioriza proteína y saciedad, nunca pases hambre.' },
+  weeks: [
+    {
+      label: 'Semana 4 — Adaptación',
+      rpe: '@6', isCurrent: true,
+      days: [
+        {
+          title: 'DÍA A — Full body (bajo impacto)', focus: 'Aprender los movimientos base',
+          exercises: [
+            { name: 'Sentadilla a silla (sit to stand)', sets: '3×10', weight: '-', isMain: true, comment: 'Baja controlada, siéntate suave y levántate sin impulso', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Press mancuernas sentado', sets: '3×12', weight: '6kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Remo en máquina', sets: '3×12', weight: '20kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Marcha en el sitio', sets: '1×3min', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 0, restAfter: 0 },
+          ]
+        },
+        {
+          title: 'DÍA B — Full body + core', focus: 'Consolidar técnica',
+          exercises: [
+            { name: 'Zancada estática asistida', sets: '3×8', weight: '-', isMain: true, comment: 'Apóyate en el poste o la pared si hace falta', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Jalón al pecho en máquina', sets: '3×12', weight: '25kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Elevación de piernas sentada', sets: '3×12', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Plancha de rodillas', sets: '3×20s', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+          ]
+        },
+        {
+          title: 'DÍA C — Cardio + tonificación', focus: 'Quemar y sumar hábito',
+          exercises: [
+            { name: 'Bici estática', sets: '1×20min', weight: '-', isMain: true, comment: 'Ritmo cómodo — que puedas hablar mientras pedaleas', videoUrl: '', restSets: 0, restAfter: 0 },
+            { name: 'Curl bíceps mancuerna', sets: '3×12', weight: '4kg', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+            { name: 'Extensión tríceps en polea', sets: '3×12', weight: '12kg', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+            { name: 'Puente de glúteo', sets: '3×15', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+      ]
+    }
+  ]
+}
+
+// ── LOGS BEATRIZ ─────────────────────────────────────────
+export const DEMO_LOGS_BEATRIZ: TrainingLogs = (() => {
+  const logs: TrainingLogs = {}
+  const today = new Date()
+  // lunes, miércoles, viernes — 4 semanas. "Ganancias de principiante": progresión
+  // de reps más que de peso, típica en las primeras semanas de alguien sin experiencia.
+  // Se procesa de más antiguo a más reciente para que la clave de ejercicio (solo
+  // hay una "semana" en el plan) se quede con la fecha más reciente, no una vieja.
+  const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27].slice().reverse()
+  offsets.forEach((offset, idx) => {
+    const d = new Date(today); d.setDate(d.getDate() - offset)
+    const fecha = d.toISOString().split('T')[0]
+    const dayIdx = idx % 3
+    const week = Math.floor(idx / 3)
+    const baseW = [0, 5, 0][dayIdx]
+    const baseReps = 8 + week // 8→9→10→11 reps a medida que avanzan las semanas
+    ;[0,1,2,3].forEach(ri => {
+      const sets: Record<number, {weight:string;reps:string}> = {}
+      for (let si = 0; si < 3; si++) {
+        sets[si] = { weight: String(baseW + ri), reps: dayIdx === 2 && ri === 0 ? '1' : String(baseReps) }
+      }
+      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+    })
+  })
+  return logs
+})()
+
+// ── PLAN LUCAS (Atletismo — velocidad y potencia) ─────────
+export const DEMO_PLAN_LUCAS: TrainingPlan = {
+  clientId: 'demo-client-007',
+  type: 'rendimiento',
+  restMain: 180, restAcc: 120, restWarn: 45,
+  message: 'La potencia se construye en el gimnasio, la velocidad se afina en la pista. ⚡',
+  fechaInicio: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0],
+  autoCheckin: true,
+  diasSemana: 4,
+  coachNotes: 'Pretemporada — bloque de fuerza-potencia en el gimnasio antes de afinar la técnica de carrera con el entrenador de pista. Vigilar isquiotibiales, tiene historial de sobrecarga.',
+  macros: { kcal: 3100, protein: 180, carbs: 400, fats: 80, notaMacros: 'Carga alta de carbohidratos para las sesiones de velocidad — no entrenar en ayunas los días de sprints.' },
+  weeks: [
+    {
+      label: 'Semana 5 — Fuerza-Potencia',
+      rpe: '@8', isCurrent: true,
+      days: [
+        {
+          title: 'DÍA 1 — Fuerza tren inferior', focus: 'Base de fuerza',
+          exercises: [
+            { name: 'Sentadilla trasera', sets: '4×5', weight: '110kg', isMain: true, comment: '', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 180, restAfter: 120 },
+            { name: 'Peso muerto rumano', sets: '3×6', weight: '90kg', isMain: false, comment: 'Cuidado con el isquiotibial, controla el descenso', videoUrl: '', restSets: 150, restAfter: 90 },
+            { name: 'Zancada con salto', sets: '3×8', weight: '-', isMain: false, comment: 'Explosivo, máxima altura', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Elevación de talones', sets: '4×12', weight: '60kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 2 — Potencia y pliometría', focus: 'Transferencia a la pista',
+          exercises: [
+            { name: 'Cargada de potencia (power clean)', sets: '5×3', weight: '60kg', isMain: true, comment: 'Técnica antes que peso', videoUrl: '', restSets: 180, restAfter: 120 },
+            { name: 'Salto al cajón', sets: '4×5', weight: '-', isMain: false, comment: 'Aterrizaje suave y controlado', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Sprints 30m', sets: '6×30m', weight: '-', isMain: false, comment: 'Recuperación completa entre series', videoUrl: '', restSets: 180, restAfter: 0 },
+            { name: 'Abdominales colgado', sets: '3×12', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 3 — Tren superior + core', focus: 'Mantener equilibrio muscular',
+          exercises: [
+            { name: 'Press banca', sets: '4×6', weight: '70kg', isMain: true, comment: '', videoUrl: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', restSets: 150, restAfter: 90 },
+            { name: 'Dominadas', sets: '4×8', weight: 'Peso corporal', isMain: false, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
+            { name: 'Press militar barra', sets: '3×8', weight: '40kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Plancha con rotación', sets: '3×12', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+        {
+          title: 'DÍA 4 — Velocidad y core', focus: 'Sesión de pista',
+          exercises: [
+            { name: 'Sprints progresivos 60m', sets: '5×60m', weight: '-', isMain: true, comment: '70-80-90-95-100% de intensidad', videoUrl: '', restSets: 240, restAfter: 0 },
+            { name: 'Skipping y técnica de carrera', sets: '3×20m', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Peso muerto a una pierna', sets: '3×8', weight: '16kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Core anti-rotación', sets: '3×12', weight: 'Banda', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          ]
+        },
+      ]
+    }
+  ]
+}
+
+// ── LOGS LUCAS ───────────────────────────────────────────
+export const DEMO_LOGS_LUCAS: TrainingLogs = (() => {
+  const logs: TrainingLogs = {}
+  const today = new Date()
+  // lunes, martes, jueves, viernes — 5 semanas. Se procesa de más antiguo a más
+  // reciente para que la clave de ejercicio (solo hay una "semana" en el plan)
+  // se quede con la fecha más reciente, no una de hace un mes.
+  const offsets = [1,2,4,5, 8,9,11,12, 15,16,18,19, 22,23,25,26, 29,30,32,33].slice().reverse()
+  offsets.forEach((offset, idx) => {
+    const d = new Date(today); d.setDate(d.getDate() - offset)
+    const fecha = d.toISOString().split('T')[0]
+    const dayIdx = idx % 4
+    const week = Math.min(Math.floor(offset / 7), 4)
+    const baseWeights: Record<number, number[]> = {
+      0: [102,104,106,108,110], 1: [55,56,58,59,60],
+      2: [64,66,68,69,70], 3: [45,45,45,45,45],
+    }
+    const bw = (baseWeights[dayIdx] || [60,62,64,66,68])[4 - week]
+    ;[0,1,2,3].forEach(ri => {
+      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
+      const n = ri === 0 ? 4 : 3
+      for (let si = 0; si < n; si++) {
+        sets[si] = { weight: String(bw - (ri * 10)), reps: dayIdx >= 2 && ri === 0 ? '1' : '6', rir: 1 }
+      }
+      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+    })
+  })
+  return logs
+})()
+
 // ── PESOS CORPORALES (para localStorage en demo) ───────
 export const DEMO_WEIGHTS_MARIA = [
   { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 61.2 },
@@ -357,6 +730,41 @@ export const DEMO_WEIGHTS_LAURA = [
   { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 69.1 },
   { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 69.8 },
   { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 70.2 },
+]
+
+// Diego — fase de volumen, ligero superávit sostenido (sube de peso a propósito)
+export const DEMO_WEIGHTS_DIEGO = [
+  { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 90.5 },
+  { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 90.0 },
+  { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 89.5 },
+  { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 89.0 },
+  { date: new Date(Date.now() - 28*86400000).toISOString().split('T')[0], weight: 88.5 },
+  { date: new Date(Date.now() - 35*86400000).toISOString().split('T')[0], weight: 88.0 },
+]
+
+// Marta — rehabilitación, peso estable (no es el objetivo de esta fase)
+export const DEMO_WEIGHTS_MARTA = [
+  { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 64.0 },
+  { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 64.2 },
+  { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 63.9 },
+  { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 64.1 },
+]
+
+// Beatriz — pérdida de peso sostenida y saludable (~0.6kg/semana)
+export const DEMO_WEIGHTS_BEATRIZ = [
+  { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 96.5 },
+  { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 97.2 },
+  { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 97.8 },
+  { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 98.4 },
+  { date: new Date(Date.now() - 28*86400000).toISOString().split('T')[0], weight: 99.0 },
+]
+
+// Lucas — atleta ya en su peso de competición, se mantiene estable
+export const DEMO_WEIGHTS_LUCAS = [
+  { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 72.0 },
+  { date: new Date(Date.now() - 7*86400000).toISOString().split('T')[0], weight: 72.2 },
+  { date: new Date(Date.now() - 14*86400000).toISOString().split('T')[0], weight: 71.8 },
+  { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 72.1 },
 ]
 
 // ── RESPUESTAS ENCUESTAS DEMO ──────────────────────────
@@ -406,11 +814,19 @@ export const DEMO_LOGS_MAP: Record<string, TrainingLogs> = {
   'demo-client-001': DEMO_LOGS_MARIA,
   'demo-client-002': DEMO_LOGS_CARLOS,
   'demo-client-003': DEMO_LOGS_LAURA,
+  'demo-client-004': DEMO_LOGS_DIEGO,
+  'demo-client-005': DEMO_LOGS_MARTA,
+  'demo-client-006': DEMO_LOGS_BEATRIZ,
+  'demo-client-007': DEMO_LOGS_LUCAS,
 }
 export const DEMO_PLAN_MAP: Record<string, TrainingPlan> = {
   'demo-client-001': DEMO_PLAN_MARIA,
   'demo-client-002': DEMO_PLAN_CARLOS,
   'demo-client-003': DEMO_PLAN_LAURA,
+  'demo-client-004': DEMO_PLAN_DIEGO,
+  'demo-client-005': DEMO_PLAN_MARTA,
+  'demo-client-006': DEMO_PLAN_BEATRIZ,
+  'demo-client-007': DEMO_PLAN_LUCAS,
 }
 
 // ── CHECK-INS DE BIENESTAR (demo) ──────────────────────

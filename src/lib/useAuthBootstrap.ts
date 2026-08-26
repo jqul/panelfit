@@ -4,6 +4,7 @@ import { UserProfile } from '../types'
 import {
   DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID,
   DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA,
+  DEMO_WEIGHTS_DIEGO, DEMO_WEIGHTS_MARTA, DEMO_WEIGHTS_BEATRIZ, DEMO_WEIGHTS_LUCAS,
   DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
 } from './demo-data'
 
@@ -21,6 +22,10 @@ function hydrateDemoStorage() {
   localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify(DEMO_WEIGHTS_MARIA))
   localStorage.setItem(`pf_weight_demo-client-002`, JSON.stringify(DEMO_WEIGHTS_CARLOS))
   localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
+  localStorage.setItem(`pf_weight_demo-client-004`, JSON.stringify(DEMO_WEIGHTS_DIEGO))
+  localStorage.setItem(`pf_weight_demo-client-005`, JSON.stringify(DEMO_WEIGHTS_MARTA))
+  localStorage.setItem(`pf_weight_demo-client-006`, JSON.stringify(DEMO_WEIGHTS_BEATRIZ))
+  localStorage.setItem(`pf_weight_demo-client-007`, JSON.stringify(DEMO_WEIGHTS_LUCAS))
   localStorage.setItem(`pf_demo_survey_template`, JSON.stringify(DEMO_SURVEY_TEMPLATE))
   localStorage.setItem(`pf_demo_survey_responses`, JSON.stringify(DEMO_SURVEY_RESPONSES))
 }

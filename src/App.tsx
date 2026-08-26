@@ -4,9 +4,7 @@ import { supabase } from './lib/supabase'
 import { ClientData } from './types'
 import { Auth } from './components/shared/Auth'
 import { ResetPassword } from './components/shared/ResetPassword'
-import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_ID,
-  DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA,
-  DEMO_LOGS_MAP } from './lib/demo-data'
+import { DEMO_CLIENTS, DEMO_TRAINER_ID, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
 import { useAuthBootstrap } from './lib/useAuthBootstrap'
 import { Rocket, Mail } from 'lucide-react'
@@ -119,13 +117,8 @@ function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient, 
   onRegister?: () => void
   onLogin?: () => void
 }) {
-  const demoPlan = (id: string) =>
-    id === 'demo-client-001' ? DEMO_PLAN_MARIA :
-    id === 'demo-client-002' ? DEMO_PLAN_CARLOS : DEMO_PLAN_LAURA
-
-  const demoLogs = (id: string) =>
-    id === 'demo-client-001' ? DEMO_LOGS_MARIA :
-    id === 'demo-client-002' ? DEMO_LOGS_CARLOS : DEMO_LOGS_LAURA
+  const demoPlan = (id: string) => DEMO_PLAN_MAP[id] || undefined
+  const demoLogs = (id: string) => DEMO_LOGS_MAP[id] || {}
 
   return (
     <>
