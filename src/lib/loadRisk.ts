@@ -40,45 +40,52 @@ function buildDayTonnage(logs: TrainingLogs): Record<string, number> {
   return dayTonnage
 }
 
-// `firstDate` (primer día con algún registro) evita diluir la media con días
-// anteriores a que el cliente empezara a entrenar — si no, un cliente nuevo con
-// pocos días de historial siempre saldría con un ratio agudo:crónico artificialmente
-// extremo, porque el "crónico" se dividiría entre 28 días aunque solo existan 5.
-function avgWindowFrom(dayTonnage: Record<string, number>, endDate: Date, days: number, firstDate?: Date): number {
-  const effectiveDays = firstDate
-    ? Math.max(1, Math.min(days, Math.floor((endDate.getTime() - firstDate.getTime()) / 86400000) + 1))
-    : days
-  let sum = 0
-  for (let i = 0; i < effectiveDays; i++) {
-    const d = new Date(endDate); d.setDate(endDate.getDate() - i)
-    sum += dayTonnage[d.toISOString().slice(0, 10)] || 0
+// Media móvil con decaimiento exponencial (Williams et al. 2016 / Murray et al.
+// 2017) — sustituye la media móvil uniforme de arriba para el ACWR. La uniforme
+// tiene el "efecto escalón": un día de carga alta pesa lo mismo el día 1 que el
+// día 6, y desaparece de golpe el día 7/29 en vez de perder peso gradualmente.
+// λ = 2/(N+1); EWMA_hoy = carga_hoy·λ + EWMA_ayer·(1-λ), acumulado día a día
+// desde el primer registro (no es una ventana fija: por diseño, todo el
+// historial influye, cada vez menos cuanto más viejo).
+// Pasos de día en milisegundos puros (no setDate/getDate, que operan en hora
+// LOCAL) — así el recorrido día a día no se desalinea con las claves de
+// dayTonnage (generadas vía toISOString) según la zona horaria de quien ejecute
+// esto, que ya nos mordió una vez con un desfase de un día entero.
+function ewmaFrom(dayTonnage: Record<string, number>, endDate: Date, firstDate: Date, windowDays: number): number {
+  const lambda = 2 / (windowDays + 1)
+  const totalDays = Math.max(1, Math.floor((endDate.getTime() - firstDate.getTime()) / 86400000) + 1)
+  let ewma = 0
+  for (let i = 0; i < totalDays; i++) {
+    const key = new Date(firstDate.getTime() + i * 86400000).toISOString().slice(0, 10)
+    const load = dayTonnage[key] || 0
+    ewma = i === 0 ? load : load * lambda + ewma * (1 - lambda)
   }
-  return sum / effectiveDays
+  return ewma
 }
 
 function firstLoggedDate(dayTonnage: Record<string, number>): Date | undefined {
   const dates = Object.keys(dayTonnage).sort()
-  return dates.length ? new Date(dates[0] + 'T00:00:00') : undefined
+  return dates.length ? new Date(dates[0] + 'T00:00:00Z') : undefined
 }
 
 /**
- * Ratio de carga aguda:crónica (ACWR), modelo de Gabbett (2016) sobre el
- * tonelaje (peso × reps) diario. Promedia sobre TODOS los días de la
- * ventana, incluyendo descansos, tal como exige el método original —
- * a diferencia del resto de señales de este fichero, esto no es una
- * heurística: es el cálculo real agudo(7d)/crónico(28d).
+ * Ratio de carga aguda:crónica (ACWR) sobre el tonelaje (peso × reps) diario,
+ * con medias EWMA en vez de medias móviles uniformes (Williams et al. 2016;
+ * Murray et al. 2017) — el estándar actual sobre el modelo original de
+ * Gabbett (2016), que evita el "efecto escalón" al entrar/salir de la ventana.
  * Zonas: <0.8 desentrenamiento, 0.8–1.3 óptima, 1.3–1.5 moderado, >1.5 alto.
  */
 export function computeACWR(logs: TrainingLogs, today: Date = new Date()): ACWRSignal {
   const dayTonnage = buildDayTonnage(logs)
   const firstDate = firstLoggedDate(dayTonnage)
-  const acute = avgWindowFrom(dayTonnage, today, 7, firstDate)
-  const chronic = avgWindowFrom(dayTonnage, today, 28, firstDate)
+  if (!firstDate) return { acute: 0, chronic: 0, ratio: null, hasData: false }
+  const acute = ewmaFrom(dayTonnage, today, firstDate, 7)
+  const chronic = ewmaFrom(dayTonnage, today, firstDate, 28)
   return {
     acute: Math.round(acute),
     chronic: Math.round(chronic),
     ratio: chronic > 0 ? Math.round((acute / chronic) * 100) / 100 : null,
-    hasData: Object.keys(dayTonnage).length > 0,
+    hasData: true,
   }
 }
 
@@ -93,11 +100,12 @@ export interface LoadTrendPoint { date: string; fitness: number; fatigue: number
 export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
   const dayTonnage = buildDayTonnage(logs)
   const firstDate = firstLoggedDate(dayTonnage)
+  if (!firstDate) return []
   const points: LoadTrendPoint[] = []
   for (let w = weeks - 1; w >= 0; w--) {
     const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
-    const fitness = avgWindowFrom(dayTonnage, endDate, 28, firstDate)
-    const fatigue = avgWindowFrom(dayTonnage, endDate, 7, firstDate)
+    const fitness = ewmaFrom(dayTonnage, endDate, firstDate, 28)
+    const fatigue = ewmaFrom(dayTonnage, endDate, firstDate, 7)
     points.push({
       date: endDate.toISOString().slice(0, 10),
       fitness: Math.round(fitness),

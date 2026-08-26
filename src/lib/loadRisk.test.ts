@@ -70,6 +70,24 @@ describe('computeACWR', () => {
     expect(acwr.ratio).toBe(1)
   })
 
+  it('smooths the old "step effect" — a spike from 8 days ago (just past a naive 7-day window) still shows up, decayed', () => {
+    const today = new Date('2026-06-22T00:00:00Z')
+    const logs: TrainingLogs = {}
+    // Carga base los 20 días antes del pico
+    for (let i = 9; i <= 28; i++) {
+      const d = new Date(today); d.setDate(today.getDate() - i)
+      logs[`base${i}`] = logWithRir(fmt(d), 3, 60, 5) // 300 tonelaje/día
+    }
+    // Pico de carga hace 8 días — con una media móvil de 7 días esto ya no
+    // contaría NADA en el agudo (fuera de la ventana). Con EWMA su influencia
+    // decae de forma gradual en vez de desaparecer de golpe.
+    const spikeDate = new Date(today); spikeDate.setDate(today.getDate() - 8)
+    logs['spike'] = logWithRir(fmt(spikeDate), 0, 300, 10) // 3000 tonelaje ese día
+    // Días 0-7 sin entrenar, para aislar el efecto de ese único pico.
+    const acwr = computeACWR(logs, today)
+    expect(acwr.acute).toBeGreaterThan(0)
+  })
+
   it('flags a spike when recent load is much higher than the chronic average', () => {
     const today = new Date('2026-06-22T00:00:00Z')
     const logs: TrainingLogs = {}
