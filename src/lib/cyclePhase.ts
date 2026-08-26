@@ -20,10 +20,16 @@ export const PHASE_INFO: Record<CyclePhase, { label: string; guidance: string; c
   lutea: { label: 'Lútea', color: '#8b5cf6', guidance: 'Energía en descenso progresivo. Prioriza volumen moderado, técnica y buena recuperación.' },
 }
 
-/** Día del ciclo (1-indexado) y fase actual, a partir de la fecha de última regla. */
-export function getCyclePhase(ultimaRegla: string, duracionCiclo: number): { day: number; phase: CyclePhase } {
+/**
+ * Día del ciclo (1-indexado) y fase, a partir de la fecha de última regla.
+ * `refDate` permite calcular la fase en una fecha pasada (ej. el día de una
+ * sesión de entreno ya registrada) en vez de solo la fase de hoy — con un único
+ * ciclo de referencia es una aproximación (asume ciclos de duración regular
+ * hacia atrás), no una fase real medida ese día.
+ */
+export function getCyclePhase(ultimaRegla: string, duracionCiclo: number, refDate: Date = new Date()): { day: number; phase: CyclePhase } {
   const start = new Date(ultimaRegla + 'T00:00:00')
-  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const today = new Date(refDate); today.setHours(0, 0, 0, 0)
   const diffDays = Math.floor((today.getTime() - start.getTime()) / 86400000)
   const day = ((diffDays % duracionCiclo) + duracionCiclo) % duracionCiclo + 1
 

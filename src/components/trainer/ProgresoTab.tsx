@@ -17,6 +17,7 @@ import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
 import { PruebasChart } from './progreso-tab/PruebasChart'
 import { MonthlyRecap } from './progreso-tab/MonthlyRecap'
 import { CicloCard } from './progreso-tab/CicloCard'
+import { CicloRendimientoChart } from './progreso-tab/CicloRendimientoChart'
 import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
 
 interface Props {
@@ -47,7 +48,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'racha',        icon: '🔥', label: 'Racha',         desc: 'Racha y estadísticas globales' },
   { id: 'peso',         icon: '⚖️', label: 'Peso',          desc: 'Evolución del peso corporal' },
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
-  { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase del ciclo y guía de intensidad (opcional)' },
+  { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase actual, guía de intensidad y rendimiento por fase (opcional)' },
 ]
 
 const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
@@ -118,7 +119,14 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
           : <p className="text-xs text-muted">No se pudo determinar el entrenador.</p>)}
         {section === 'racha'        && <RachaStats         logs={logs} />}
         {section === 'fotos'        && <FotosTab           clientId={client.id} />}
-        {section === 'ciclo'        && <CicloCard          clientId={client.id} />}
+        {section === 'ciclo'        && (
+          <div className="space-y-5">
+            <CicloCard clientId={client.id} />
+            <div className="border-t border-border pt-4">
+              <CicloRendimientoChart clientId={client.id} logs={logs} />
+            </div>
+          </div>
+        )}
       </div>
       <p className="text-[10px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
     </div>
