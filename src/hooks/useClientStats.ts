@@ -5,7 +5,7 @@ interface Options {
   clients: ClientWithStats[]
   logsMap: Record<string, any>
   search: string
-  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk'
+  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr'
 }
 
 export function useClientStats({ clients, logsMap, search, clientFilter }: Options) {
@@ -20,6 +20,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
     !c.lastActive || new Date(c.lastActive) < haceUnaS
   ).length
   const atRiskCount = clients.filter(c => c.atRisk).length
+  const highAcwrCount = clients.filter(c => c.highAcwr).length
 
   const activePrevWeek = useMemo(() => {
     let count = 0
@@ -49,6 +50,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
       !c.lastActive || new Date(c.lastActive) < haceUnaS
     )
     else if (clientFilter === 'at-risk') list = list.filter(c => c.atRisk)
+    else if (clientFilter === 'high-acwr') list = list.filter(c => c.highAcwr)
     if (search) list = list.filter(c =>
       `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
     )
@@ -85,7 +87,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   }, [clients, logsMap])
 
   const alerts = clients.filter(c =>
-    !c.hasPlan || c.planEndingSoon || (!c.lastActive || new Date(c.lastActive) < haceUnaS)
+    !c.hasPlan || c.planEndingSoon || c.highAcwr || (!c.lastActive || new Date(c.lastActive) < haceUnaS)
   )
 
   const formatLastActive = (date?: string) => {
@@ -100,7 +102,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   }
 
   return {
-    activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount,
+    activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount,
     adherenciaMap, filteredClients, chartData, activityFeed,
     alerts, formatLastActive,
   }

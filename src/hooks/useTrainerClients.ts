@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { ClientData } from '../types'
 import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
+import { computeACWR } from '../lib/loadRisk'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -12,7 +13,11 @@ export interface ClientWithStats extends ClientData {
   planEndDate?: string
   planEndingSoon?: boolean
   atRisk?: boolean
+  highAcwr?: boolean
+  acwrRatio?: number | null
 }
+
+const ACWR_HIGH_THRESHOLD = 1.5
 
 const PLAN_ENDING_SOON_DAYS = 5
 const AT_RISK_INACTIVE_DAYS = 10
@@ -99,6 +104,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .filter((l: any) => l.dateDone)
             .map((l: any) => l.dateDone as string)
         )].sort().reverse() as string[]
+        const acwr = computeACWR(logs)
         return {
           ...c,
           lastActive: dates[0],
@@ -106,6 +112,8 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           hasPlan: true,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
           atRisk: computeAtRisk(true, dates[0], c.createdAt),
+          highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
+          acwrRatio: acwr.ratio,
         }
       }) as ClientWithStats[])
       setLoading(false)
@@ -156,6 +164,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .map((l: any) => l.dateDone as string)
         )].sort().reverse()
         const hasPlan = planMap[c.id] || false
+        const acwr = computeACWR(logs)
         return {
           ...c,
           lastActive: dates[0],
@@ -163,6 +172,8 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           hasPlan,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
           atRisk: computeAtRisk(hasPlan, dates[0], c.createdAt),
+          highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
+          acwrRatio: acwr.ratio,
           ...planEndMap[c.id],
         }
       }))

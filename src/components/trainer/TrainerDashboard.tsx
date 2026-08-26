@@ -39,7 +39,7 @@ import { EquipoSection } from './EquipoSection'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk'
+type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr'
 
 interface Props {
   userProfile: UserProfile
@@ -98,7 +98,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     })
   }, [realUid, demoClients])
 
-  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, adherenciaMap,
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
 
@@ -289,13 +289,14 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 </div>
 
                 {/* Stat cards — borde de color + número prominente */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
                   {[
                     { label: 'Clientes',       value: clients.length, prev: undefined,     icon: Users,        color: 'text-ink',  accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
                     { label: 'Entrenaron hoy', value: activeToday,    prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok',   accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
                     { label: 'Sin plan',       value: noPlan,         prev: undefined,     icon: AlertCircle,  color: noPlan > 0 ? 'text-warn' : 'text-muted',      accent: noPlan > 0 ? '#e07b54' : '#9ca3af',      border: noPlan > 0 ? '#e07b54' : '#e5e7eb',      onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
                     { label: 'Sin actividad',  value: noActivity7d,  prev: undefined,     icon: Clock,        color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
                     { label: 'En riesgo',      value: atRiskCount,   prev: undefined,     icon: AlertCircle,  color: atRiskCount > 0 ? 'text-warn' : 'text-muted', accent: atRiskCount > 0 ? '#e07b54' : '#9ca3af', border: atRiskCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('at-risk'); handleTabChange('clients') } },
+                    { label: 'Carga alta',     value: highAcwrCount, prev: undefined,     icon: Zap,          color: highAcwrCount > 0 ? 'text-warn' : 'text-muted', accent: highAcwrCount > 0 ? '#e07b54' : '#9ca3af', border: highAcwrCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('high-acwr'); handleTabChange('clients') } },
                   ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
                     <button key={label} onClick={onClick}
                       className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
@@ -470,7 +471,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
+                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.highAcwr ? `⚡ Carga alta (ACWR ${c.acwrRatio})` : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
                           </div>
                           <ChevronRight className="w-3 h-3 text-muted" />
                         </button>
@@ -528,7 +529,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     {alerts.slice(0, 3).map(c => (
                       <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
                         <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
+                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.highAcwr ? `Revisar carga de ${c.name} (riesgo de lesión)` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
                       </button>
                     ))}
                     {alerts.length === 0 && (
@@ -574,7 +575,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }] as const).map(f => (
+                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }, { id: 'high-acwr', label: '⚡ Carga alta' }] as const).map(f => (
                     <button key={f.id} onClick={() => setClientFilter(f.id)}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
                       {f.label}
@@ -615,6 +616,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
                             </div>
                             {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
+                            {client.highAcwr && <p className="text-[10px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
                             {client.atRisk && <p className="text-[10px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
                           </div>
                         )}
