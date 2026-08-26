@@ -18,7 +18,7 @@ import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
-import { PENDING_LOGS_KEY, pushLogsToServer } from './client-view/helpers'
+import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
@@ -97,9 +97,19 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // 1. Cargar datos del cliente por token (vía RPC: no se puede listar la tabla directamente)
     const { data: rows, error: cErr } = await supabase.rpc('get_client_by_token', { p_token: token })
     if (cErr) logError('ClientView:loadClient', cErr)
-    const clientData = rows?.[0] || null
+    let clientData = rows?.[0] || null
+    if (!clientData && cErr) {
+      // Probable fallo de red (sin conexión) en vez de token inválido — si ya se
+      // entró antes con este enlace, sigue con la última copia local en vez de
+      // mostrar "enlace no válido" a un cliente legítimo sin cobertura.
+      try {
+        const cached = JSON.parse(localStorage.getItem(CLIENT_CACHE_KEY(token)) || 'null')
+        if (cached) clientData = cached
+      } catch {}
+    }
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
+    try { localStorage.setItem(CLIENT_CACHE_KEY(token), JSON.stringify(clientData)) } catch {}
 
     // 2. ¿El cliente tiene cuenta creada?
     if (!clientData.auth_user_id) {
@@ -131,7 +141,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const hasPendingLocal = !!localStorage.getItem(PENDING_LOGS_KEY(clientData.id))
     if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
 
-    // Plan
+    // Plan — se guarda una copia en local para poder seguir viendo el entreno de
+    // hoy sin conexión (ej. sótano de gimnasio), en vez de quedarse sin plan.
     const { data: planData } = await supabase
       .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
     const planRow = planData as PlanRow | null
@@ -144,6 +155,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
       setPlan(p)
+      try { localStorage.setItem(PLAN_CACHE_KEY(clientData.id), JSON.stringify(p)) } catch {}
+    } else {
+      try {
+        const cachedPlan = localStorage.getItem(PLAN_CACHE_KEY(clientData.id))
+        if (cachedPlan) setPlan(JSON.parse(cachedPlan))
+      } catch {}
     }
 
     // Registros — si hay cambios locales aún sin sincronizar, no los pisamos con
@@ -298,6 +315,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const brandColor = trainerProfile.brandColor || '#6e5438'
   const brandBg = trainerProfile.brandBg || ''
 
+  // Series de hoy guardadas en local — para el aviso de "sin conexión" del
+  // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
+  const todayKey = new Date().toISOString().split('T')[0]
+  const pendingSetsCount = Object.values(logs).reduce((acc, log: any) => {
+    if (log?.dateDone !== todayKey) return acc
+    return acc + Object.values(log.sets || {}).filter((s: any) => s?.weight).length
+  }, 0)
+
   const resolveTemplate = (tipo: 'nueva_rutina' | 'descanso' | 'racha') => {
     const tmpl = messageTemplates.find(t => t.tipo === tipo)
     if (!tmpl) return ''
@@ -340,7 +365,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </header>
 
-      <SyncIndicator syncState={syncState} />
+      <SyncIndicator syncState={syncState} pendingCount={pendingSetsCount} />
       <PWAInstallBanner />
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"

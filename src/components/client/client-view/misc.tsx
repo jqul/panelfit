@@ -12,7 +12,7 @@ export function NoPlanView() {
   )
 }
 
-export function SyncIndicator({ syncState }: { syncState: SyncState }) {
+export function SyncIndicator({ syncState, pendingCount = 0 }: { syncState: SyncState; pendingCount?: number }) {
   if (syncState === 'idle') return null
   return (
     <div className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${
@@ -21,7 +21,11 @@ export function SyncIndicator({ syncState }: { syncState: SyncState }) {
     }`}>
       {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
       {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
-      {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />Sin conexión — guardado localmente</>}
+      {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />
+        {pendingCount > 0
+          ? `${pendingCount} serie${pendingCount !== 1 ? 's' : ''} guardada${pendingCount !== 1 ? 's' : ''} localmente — se sincronizarán al recuperar señal`
+          : 'Sin conexión — guardado localmente'}
+      </>}
       {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />Error al guardar</>}
     </div>
   )
