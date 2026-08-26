@@ -7,6 +7,7 @@ export function ReferralWidget({ trainerId, token }: { trainerId: string; token:
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
+    if (trainerId.startsWith('demo-trainer-')) { setSlug(null); return }
     supabase.rpc('get_trainer_referral_slug', { p_trainer_id: trainerId }).then(({ data }) => setSlug(data || null))
   }, [trainerId])
 

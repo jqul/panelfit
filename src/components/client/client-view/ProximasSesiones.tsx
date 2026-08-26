@@ -16,7 +16,10 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   const [time, setTime] = useState('09:00')
   const [saving, setSaving] = useState(false)
 
+  const isDemo = clientId.startsWith('demo-client-')
+
   const load = () => {
+    if (isDemo) { setLoading(false); return }
     supabase.from('citas')
       .select('id, title, start_at, status')
       .eq('client_id', clientId)
@@ -30,6 +33,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   useEffect(() => { load() }, [clientId])
 
   const cancelar = async (id: string) => {
+    if (isDemo) { setCitas(prev => prev.filter(c => c.id !== id)); return }
     const { error } = await supabase.from('citas').update({ status: 'cancelada' }).eq('id', id)
     if (!error) setCitas(prev => prev.filter(c => c.id !== id))
   }
@@ -38,6 +42,12 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
     setSaving(true)
     const start = new Date(`${date}T${time}:00`)
     const end = new Date(start.getTime() + 60 * 60000)
+    if (isDemo) {
+      setCitas(prev => [...prev, { id: `demo-cita-${Date.now()}`, title: 'Cita solicitada', start_at: start.toISOString(), status: 'pendiente' }])
+      setSaving(false)
+      setShowForm(false)
+      return
+    }
     const { error } = await supabase.from('citas').insert({
       trainer_id: trainerId, client_id: clientId, title: 'Cita solicitada',
       start_at: start.toISOString(), end_at: end.toISOString(), status: 'pendiente', notes: '',

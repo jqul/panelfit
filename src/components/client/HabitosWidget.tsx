@@ -11,6 +11,7 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
+    if (clientId.startsWith('demo-client-')) { setLoading(false); return }
     setLoading(true)
     Promise.all([
       supabase.from('habitos').select('id, text, sub, order').eq('clientId', clientId).order('order'),
@@ -25,6 +26,7 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
   const toggle = async (id: string) => {
     const updated = completed.includes(id) ? completed.filter(x => x !== id) : [...completed, id]
     setCompleted(updated)
+    if (clientId.startsWith('demo-client-')) return
     await supabase.from('registros_habitos')
       .upsert({ clientId, date: today, completedHabitIds: updated }, { onConflict: 'clientId,date' })
   }

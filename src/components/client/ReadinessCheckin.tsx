@@ -19,11 +19,13 @@ export function ReadinessCheckin({ clientId }: { clientId: string }) {
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {
+    if (clientId.startsWith('demo-client-')) { setLoading(false); return }
     supabase.from('readiness_checkins').select('id').eq('clientId', clientId).eq('date', today).maybeSingle()
       .then(({ data }) => { setDoneToday(!!data); setLoading(false) })
   }, [clientId, today])
 
   const submit = async () => {
+    if (clientId.startsWith('demo-client-')) { setDoneToday(true); return }
     setSaving(true)
     const { error } = await supabase.from('readiness_checkins').upsert({
       clientId, date: today, ...values,
