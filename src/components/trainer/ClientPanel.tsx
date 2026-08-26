@@ -113,6 +113,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [liveSession, setLiveSession] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [borradorActivo, setBorradorActivo] = useState(false)
   const [borradorBusy, setBorradorBusy] = useState(false)
+  // Los cambios de PerfilTab (ej. etiquetas) se aplicaban mutando el objeto
+  // `client` directamente (Object.assign), que es un prop — React nunca se
+  // enteraba y la pantalla no se refrescaba hasta que algo más forzaba un
+  // re-render. Este parche local sí dispara un re-render inmediato.
+  const [clientPatch, setClientPatch] = useState<Record<string, any>>({})
+  useEffect(() => { setClientPatch({}) }, [client.id])
+  const perfilClient = { ...client, ...clientPatch } as typeof client
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
   const pendingPlan = useRef<TrainingPlan | null>(null)
   const library = useExerciseLibrary(userProfile.uid)
@@ -421,10 +428,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'perfil' && (
                 <div className="flex-1 overflow-y-auto">
                   <PerfilTab
-                    client={client} logs={logs} alerts={alerts}
+                    client={perfilClient} logs={logs} alerts={alerts}
                     onUpdate={async (updates) => {
                       await supabase.from('clientes').update(updates).eq('id', client.id)
                       Object.assign(client, updates)
+                      setClientPatch(prev => ({ ...prev, ...updates }))
                       toast('Datos actualizados ✓', 'ok')
                     }}
                     labels={labels}

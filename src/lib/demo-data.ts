@@ -451,11 +451,14 @@ export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARI
   'demo-client-001': DEMO_TEST_RESULTS_MARIA,
 }
 
-// ── CICLO (demo) — activado, en fase folicular ─────────
+// ── CICLO (demo) — activado; la fecha se eligió para que las sesiones ya
+// registradas de María (ver offsets más arriba) se repartan entre las 4 fases
+// del ciclo en vez de amontonarse en una sola, así el gráfico de rendimiento
+// por fase se ve representativo para mostrar a futuros clientes.
 export const DEMO_CICLO_MARIA = {
   client_id: 'demo-client-001', trainer_id: DEMO_TRAINER_ID,
   activo: true,
-  ultima_regla: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
+  ultima_regla: new Date(Date.now() - 16 * 86400000).toISOString().split('T')[0],
   duracion_ciclo: 28,
   updated_at: 0,
 }

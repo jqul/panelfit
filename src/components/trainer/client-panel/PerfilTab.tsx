@@ -120,7 +120,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Etiquetas */}
-      {labels && labels.length > 0 && (
+      {labels && labels.length > 0 ? (
         <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Etiquetas</p>
@@ -136,7 +136,6 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                       const current: string[] = c.label_ids || []
                       const updated = active ? current.filter(id => id !== label.id) : [...current, label.id]
                       await onUpdate({ label_ids: updated })
-                      client.label_ids = updated
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                     style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
@@ -149,6 +148,10 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             </div>
             <p className="text-[10px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
           </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-dashed border-border rounded-2xl p-4 text-center">
+          <p className="text-xs text-muted">Aún no tienes etiquetas creadas. Créalas desde la pestaña <span className="font-semibold">Etiquetas</span> del menú lateral para poder asignarlas aquí.</p>
         </div>
       )}
       {/* ── RECORDATORIOS / ALERTAS ── */}
