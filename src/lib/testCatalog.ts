@@ -27,7 +27,8 @@ export interface TestResultado {
 export const CATEGORIAS = ['Fuerza', 'Resistencia', 'Potencia', 'Flexibilidad', 'Equilibrio'] as const
 
 const DEFAULTS: { nombre: string; categoria: string; unidad: string; descripcion: string }[] = [
-  { nombre: 'Salto vertical', categoria: 'Potencia', unidad: 'cm', descripcion: 'Salto máximo sin carrera previa (test de Sargent).' },
+  { nombre: 'Salto vertical (CMJ)', categoria: 'Potencia', unidad: 'cm', descripcion: 'Salto máximo con contramovimiento y sin carrera previa (test de Sargent / CMJ).' },
+  { nombre: 'Drop Jump (RSI)', categoria: 'Potencia', unidad: 'índice', descripcion: 'Caída desde un cajón seguida de salto máximo — mide el Índice de Fuerza Reactiva (RSI = tiempo de vuelo ÷ tiempo de contacto), un indicador de fatiga del sistema nervioso central.' },
   { nombre: 'Test de Cooper', categoria: 'Resistencia', unidad: 'm', descripcion: 'Metros recorridos corriendo en 12 minutos.' },
   { nombre: 'Flexiones en 1 min', categoria: 'Fuerza', unidad: 'reps', descripcion: 'Máximo de flexiones de brazo en 60 segundos.' },
   { nombre: 'Plancha (plank)', categoria: 'Fuerza', unidad: 'segundos', descripcion: 'Tiempo máximo sosteniendo la posición de plancha.' },

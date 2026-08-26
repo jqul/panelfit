@@ -10,24 +10,29 @@ interface LibraryVideo { id: string; exercise_name: string; video_url: string; c
 
 interface Props {
   clientId?: string
-  onComputed: (heightCm: number, note: string) => void
+  mode?: 'jump' | 'dropJump'
+  onComputed: (value: number, note: string) => void
   onClose: () => void
 }
 
-// Calcula la altura de un salto vertical a partir del tiempo de vuelo marcado
-// sobre el propio vídeo (despegue → aterrizaje), en vez de un cronómetro manual.
-// h = g·t²/8 — mismo principio que usan las apps de referencia del sector
-// (My Jump 2), validadas contra plataformas de fuerza de laboratorio.
-export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
+// Calcula la altura de un salto vertical (modo 'jump', ej. CMJ) o el RSI de un
+// Drop Jump (modo 'dropJump') a partir de fotogramas marcados sobre el propio
+// vídeo, en vez de un cronómetro manual. h = g·t²/8 para la altura — mismo
+// principio que usan las apps de referencia del sector (My Jump 2), validadas
+// contra plataformas de fuerza de laboratorio. RSI = tiempo de vuelo ÷ tiempo
+// de contacto para el Drop Jump — indicador de fuerza reactiva / fatiga del SNC.
+export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [fps, setFps] = useState(30)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
+  const [contact, setContact] = useState<number | null>(null)
   const [takeoff, setTakeoff] = useState<number | null>(null)
   const [landing, setLanding] = useState<number | null>(null)
   const [source, setSource] = useState<'file' | 'library'>('file')
   const [library, setLibrary] = useState<LibraryVideo[] | null>(null)
+  const isDropJump = mode === 'dropJump'
 
   useEffect(() => {
     if (source !== 'library' || library !== null || !clientId) return
@@ -44,12 +49,12 @@ export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
     setVideoUrl(url => { if (url) URL.revokeObjectURL(url); return URL.createObjectURL(file) })
-    setTakeoff(null); setLanding(null)
+    setContact(null); setTakeoff(null); setLanding(null)
   }
 
   const pickLibraryVideo = (v: LibraryVideo) => {
     setVideoUrl(v.video_url)
-    setTakeoff(null); setLanding(null)
+    setContact(null); setTakeoff(null); setLanding(null)
   }
 
   const step = (dir: 1 | -1) => {
@@ -68,10 +73,16 @@ export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
   const heightCm = flightTime && flightTime > 0 ? (G * flightTime ** 2 / 8) * 100 : null
   const suspicious = flightTime !== null && flightTime > 0 && (flightTime < 0.2 || flightTime > 1.2)
 
+  // Drop Jump: tiempo de contacto = despegue − contacto inicial. RSI = tiempo
+  // de vuelo ÷ tiempo de contacto (a más alto, más fuerza reactiva/menos fatiga).
+  const contactTime = contact !== null && takeoff !== null ? takeoff - contact : null
+  const rsi = flightTime && flightTime > 0 && contactTime && contactTime > 0 ? flightTime / contactTime : null
+  const contactSuspicious = contactTime !== null && contactTime > 0 && (contactTime < 0.08 || contactTime > 0.6)
+
   return (
     <div className="bg-white border-2 border-accent/30 rounded-xl p-3 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-accent flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> Calcular altura desde vídeo</p>
+        <p className="text-xs font-bold text-accent flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> {isDropJump ? 'Calcular RSI desde vídeo' : 'Calcular altura desde vídeo'}</p>
         <button onClick={onClose} className="text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
       </div>
 
@@ -129,7 +140,13 @@ export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
             <span className="text-[9px] text-muted">A más fps, más precisión — usa cámara lenta si tu móvil la tiene</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`grid gap-2 ${isDropJump ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            {isDropJump && (
+              <button onClick={() => setContact(currentTime)}
+                className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${contact !== null ? 'bg-ok/10 border-ok text-ok' : 'border-border text-muted hover:border-accent'}`}>
+                {contact !== null ? `✓ Contacto ${contact.toFixed(3)}s` : 'Marcar contacto'}
+              </button>
+            )}
             <button onClick={() => setTakeoff(currentTime)}
               className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${takeoff !== null ? 'bg-ok/10 border-ok text-ok' : 'border-border text-muted hover:border-accent'}`}>
               {takeoff !== null ? `✓ Despegue ${takeoff.toFixed(3)}s` : 'Marcar despegue'}
@@ -139,21 +156,42 @@ export function JumpVideoAnalyzer({ clientId, onComputed, onClose }: Props) {
               {landing !== null ? `✓ Aterrizaje ${landing.toFixed(3)}s` : 'Marcar aterrizaje'}
             </button>
           </div>
+          {isDropJump && <p className="text-[9px] text-muted -mt-1">Contacto = el pie toca el suelo tras bajar del cajón (antes de saltar)</p>}
 
-          {flightTime !== null && (
-            flightTime <= 0 ? (
-              <p className="text-xs text-warn">El aterrizaje debe ser posterior al despegue.</p>
-            ) : (
-              <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-1">
-                <p className="text-xs text-muted">Tiempo de vuelo: <strong className="text-ink">{(flightTime * 1000).toFixed(0)} ms</strong></p>
-                <p className="text-lg font-serif font-bold text-accent">{heightCm!.toFixed(1)} cm</p>
-                {suspicious && <p className="text-[10px] text-warn">⚠ Tiempo de vuelo poco habitual — revisa las marcas antes de guardar.</p>}
-                <button
-                  onClick={() => onComputed(Math.round(heightCm! * 10) / 10, `Calculado desde vídeo · t. vuelo ${(flightTime * 1000).toFixed(0)}ms · ${fps}fps`)}
-                  className="w-full mt-1 py-2 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
-                  Usar este resultado
-                </button>
-              </div>
+          {isDropJump ? (
+            contactTime !== null && flightTime !== null && (
+              (contactTime <= 0 || flightTime <= 0) ? (
+                <p className="text-xs text-warn">Las marcas deben ir en orden: contacto → despegue → aterrizaje.</p>
+              ) : (
+                <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-1">
+                  <p className="text-xs text-muted">T. contacto: <strong className="text-ink">{(contactTime * 1000).toFixed(0)} ms</strong> · T. vuelo: <strong className="text-ink">{(flightTime * 1000).toFixed(0)} ms</strong></p>
+                  <p className="text-lg font-serif font-bold text-accent">RSI {rsi!.toFixed(2)}</p>
+                  <p className="text-[10px] text-muted">Altura estimada: {heightCm!.toFixed(1)} cm</p>
+                  {(suspicious || contactSuspicious) && <p className="text-[10px] text-warn">⚠ Algún tiempo poco habitual — revisa las marcas antes de guardar.</p>}
+                  <button
+                    onClick={() => onComputed(Math.round(rsi! * 100) / 100, `Calculado desde vídeo · t. vuelo ${(flightTime * 1000).toFixed(0)}ms · t. contacto ${(contactTime * 1000).toFixed(0)}ms · ${fps}fps`)}
+                    className="w-full mt-1 py-2 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                    Usar este resultado
+                  </button>
+                </div>
+              )
+            )
+          ) : (
+            flightTime !== null && (
+              flightTime <= 0 ? (
+                <p className="text-xs text-warn">El aterrizaje debe ser posterior al despegue.</p>
+              ) : (
+                <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-1">
+                  <p className="text-xs text-muted">Tiempo de vuelo: <strong className="text-ink">{(flightTime * 1000).toFixed(0)} ms</strong></p>
+                  <p className="text-lg font-serif font-bold text-accent">{heightCm!.toFixed(1)} cm</p>
+                  {suspicious && <p className="text-[10px] text-warn">⚠ Tiempo de vuelo poco habitual — revisa las marcas antes de guardar.</p>}
+                  <button
+                    onClick={() => onComputed(Math.round(heightCm! * 10) / 10, `Calculado desde vídeo · t. vuelo ${(flightTime * 1000).toFixed(0)}ms · ${fps}fps`)}
+                    className="w-full mt-1 py-2 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
+                    Usar este resultado
+                  </button>
+                </div>
+              )
             )
           )}
         </>

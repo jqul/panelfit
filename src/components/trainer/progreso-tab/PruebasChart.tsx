@@ -48,7 +48,8 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
         const history = resultados.filter(r => r.test_id === test.id).sort((a, b) => a.fecha.localeCompare(b.fecha))
         const latest = history[history.length - 1]
         const isExpanded = expanded === test.id
-        const isJumpTest = test.nombre.toLowerCase().includes('salto')
+        const isDropJumpTest = test.nombre.toLowerCase().includes('drop jump') || test.nombre.toLowerCase().includes('rsi')
+        const isJumpTest = isDropJumpTest || test.nombre.toLowerCase().includes('salto')
         const chartData = history.slice(-10).map(r => ({
           fecha: new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
           valor: r.valor,
@@ -95,14 +96,15 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     {isJumpTest && !showVideoAnalyzer && (
                       <button onClick={() => setShowVideoAnalyzer(true)}
                         className="w-full py-2 border border-accent/40 text-accent rounded-lg text-xs font-semibold hover:bg-accent/5 transition-colors">
-                        📹 Calcular altura desde vídeo (más preciso que a ojo)
+                        {isDropJumpTest ? '📹 Calcular RSI desde vídeo (más preciso que a ojo)' : '📹 Calcular altura desde vídeo (más preciso que a ojo)'}
                       </button>
                     )}
                     {isJumpTest && showVideoAnalyzer && (
                       <JumpVideoAnalyzer
                         clientId={clientId}
+                        mode={isDropJumpTest ? 'dropJump' : 'jump'}
                         onClose={() => setShowVideoAnalyzer(false)}
-                        onComputed={(heightCm, note) => { setValor(String(heightCm)); setNotas(note); setShowVideoAnalyzer(false) }}
+                        onComputed={(value, note) => { setValor(String(value)); setNotas(note); setShowVideoAnalyzer(false) }}
                       />
                     )}
                     <div className="flex gap-2">
