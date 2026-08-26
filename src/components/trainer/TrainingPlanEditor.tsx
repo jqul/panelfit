@@ -9,7 +9,8 @@ import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
 import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
-import { getYTId } from './training-plan-editor/utils'
+import { getYTId, parseNumSets } from './training-plan-editor/utils'
+import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } from './progreso-tab/helpers'
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
@@ -62,6 +63,20 @@ export function TrainingPlanEditor({
 
   const weeks = plan.weeks || []
   const currentWeek = weeks[activeWeek]
+
+  // Series semanales por grupo muscular — se recalcula solo con lo que hay en
+  // la semana activa, para detectar de un vistazo grupos con poco o demasiado volumen.
+  const libraryMap = useLibraryMuscleMap(library)
+  const weeklyVolumeByGroup = (() => {
+    const tally: Record<string, number> = {}
+    currentWeek?.days.forEach(day => {
+      day.exercises.forEach(ex => {
+        const group = getMuscleGroup(ex.name, libraryMap)
+        tally[group] = (tally[group] || 0) + parseNumSets(ex.sets)
+      })
+    })
+    return Object.entries(tally).filter(([, sets]) => sets > 0).sort((a, b) => b[1] - a[1])
+  })()
 
   const updatePlan = (updates: Partial<TrainingPlan>) => onChange({ ...plan, ...updates })
   const updateWeek = (wi: number, u: Partial<WeekPlan>) => {
@@ -305,6 +320,24 @@ export function TrainingPlanEditor({
                 <button onClick={() => deleteWeek(activeWeek)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
               )}
             </div>
+
+            {weeklyVolumeByGroup.length > 0 && (
+              <div className="px-4 py-2.5 border-b border-border bg-bg-alt/20 flex flex-wrap gap-1.5">
+                {weeklyVolumeByGroup.map(([group, sets]) => {
+                  const status = getVolumeStatus(group, sets)
+                  const color = GROUP_COLORS[group] || GROUP_COLORS['Otros']
+                  return (
+                    <div key={group} title={status ? `${status.label} para ${group} (referencia MEV/MAV/MRV)` : undefined}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                      style={{ backgroundColor: color + '15', color }}>
+                      <span>{group}</span>
+                      <span className="font-bold">{sets}</span>
+                      {status && <span className="opacity-70">· {status.label}</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
 
             <div className="divide-y divide-border">
               {currentWeek.days.map((day, di) => (
