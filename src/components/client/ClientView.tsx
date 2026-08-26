@@ -73,11 +73,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [token])
 
   const checkAuth = async () => {
-    // Enlace de un cliente demo — entra directo, sin registro ni login,
-    // igual que el modo demo del entrenador.
-    if (token.startsWith('demo-')) {
-      const demoClient = DEMO_CLIENTS.find(c => c.token === token)
-      if (!demoClient) { setError('Enlace no válido o expirado.'); setLoading(false); return }
+    // Enlace de uno de nuestros 3 clientes de demostración fijos — entra directo,
+    // sin registro ni login, igual que el modo demo del entrenador. Importante:
+    // solo si el token coincide EXACTO con uno de los 3 — un cliente real cuyo
+    // token generado al azar empiece por "demo-" por pura coincidencia no debe
+    // caer aquí, tiene que seguir el camino normal de abajo (get_client_by_token).
+    const demoClient = DEMO_CLIENTS.find(c => c.token === token)
+    if (demoClient) {
       setClient({
         id: demoClient.id, trainerId: demoClient.trainerId, name: demoClient.name, surname: demoClient.surname,
         weight: demoClient.weight, fatPercentage: demoClient.fatPercentage, muscleMass: demoClient.muscleMass,
