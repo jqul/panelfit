@@ -918,6 +918,20 @@ export const DEMO_SESSION_LOAD_MAP: Record<string, DemoSessionLoadRow[]> = {
   'demo-client-007': DEMO_SESSION_LOAD_LUCAS,
 }
 
+// ── PERFIL FUERZA-VELOCIDAD / Samozino-Morin (demo) ─────
+// Lucas (velocidad/potencia) es el ejemplo natural: 3 saltos con cargas
+// distintas (peso corporal, +20kg, +40kg) el mismo día de test, con la
+// misma distancia de empuje. La altura de salto baja con cada carga —
+// exactamente lo que hace falta para ajustar la recta fuerza-velocidad.
+export const DEMO_FV_PROFILE_TRIALS_LUCAS = [
+  { id: 'demo-fv-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', date: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], load_kg: 0, bodyweight_kg: 72, pushoff_distance_m: 0.40, jump_height_m: 0.38, notes: 'Salto libre (sin carga)', created_at: Date.now() - 20 * 86400000 },
+  { id: 'demo-fv-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', date: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], load_kg: 20, bodyweight_kg: 72, pushoff_distance_m: 0.40, jump_height_m: 0.24, notes: 'Chaleco lastrado +20kg', created_at: Date.now() - 20 * 86400000 + 1 },
+  { id: 'demo-fv-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', date: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], load_kg: 40, bodyweight_kg: 72, pushoff_distance_m: 0.40, jump_height_m: 0.14, notes: 'Barra hexagonal +40kg', created_at: Date.now() - 20 * 86400000 + 2 },
+]
+export const DEMO_FV_PROFILE_TRIALS_MAP: Record<string, typeof DEMO_FV_PROFILE_TRIALS_LUCAS> = {
+  'demo-client-007': DEMO_FV_PROFILE_TRIALS_LUCAS,
+}
+
 // ── CICLO (demo) — activado; la fecha se eligió para que las sesiones ya
 // registradas de María (ver offsets más arriba) se repartan entre las 4 fases
 // del ciclo en vez de amontonarse en una sola, así el gráfico de rendimiento

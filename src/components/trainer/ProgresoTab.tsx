@@ -15,6 +15,7 @@ import { RiesgoChart } from './progreso-tab/RiesgoChart'
 import { VideoFeedbackTab } from './progreso-tab/VideoFeedbackTab'
 import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
 import { PruebasChart } from './progreso-tab/PruebasChart'
+import { FVProfileChart } from './progreso-tab/FVProfileChart'
 import { MonthlyRecap } from './progreso-tab/MonthlyRecap'
 import { CicloCard } from './progreso-tab/CicloCard'
 import { CicloRendimientoChart } from './progreso-tab/CicloRendimientoChart'
@@ -28,7 +29,7 @@ interface Props {
   trainerId?: string
 }
 
-type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo'
+type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile'
 
 const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
@@ -39,6 +40,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
   { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
   { id: 'pruebas',      icon: '🧪', label: 'Pruebas físicas', desc: 'Salto, Cooper, flexibilidad y más' },
+  { id: 'fv_profile',   icon: '🚀', label: 'Perfil F-V',     desc: 'Fuerza-Velocidad del salto (Samozino/Morin)' },
   { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
   { id: 'volumen_grupo', icon: '🧩', label: 'Volumen por grupo', desc: 'Series semanales por grupo muscular' },
   { id: 'comparativa',  icon: '↔️', label: 'Esta semana',   desc: 'Esta semana vs anterior' },
@@ -52,7 +54,7 @@ const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
 ]
 
 const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
-  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'pruebas'] },
+  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'pruebas', 'fv_profile'] },
   { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
   { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'fotos', 'distribucion', 'ciclo'] },
   { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
@@ -116,6 +118,9 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'estandares'   && <StrengthStandardsChart client={client} logs={logs} plan={plan} />}
         {section === 'pruebas'      && (trainerId
           ? <PruebasChart clientId={client.id} trainerId={trainerId} />
+          : <p className="text-xs text-muted">No se pudo determinar el entrenador.</p>)}
+        {section === 'fv_profile'   && (trainerId
+          ? <FVProfileChart client={client} trainerId={trainerId} />
           : <p className="text-xs text-muted">No se pudo determinar el entrenador.</p>)}
         {section === 'racha'        && <RachaStats         logs={logs} />}
         {section === 'fotos'        && <FotosTab           clientId={client.id} />}
