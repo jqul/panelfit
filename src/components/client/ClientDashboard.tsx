@@ -288,24 +288,32 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           </div>
         )}
 
-        {/* Historial 7 días */}
+        {/* Racha semanal — círculos dorados de lunes a domingo, sin ser punitiva */}
         <div className="bg-card border border-border rounded-2xl p-4">
           <h4 className="font-serif font-bold text-sm mb-4">Esta semana</h4>
           <div className="flex gap-1.5 justify-between">
-            {Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(); d.setDate(d.getDate() - (6 - i))
-              const key = d.toISOString().split('T')[0]
-              const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
-              const isToday = i === 6
-              const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className={`w-full rounded-lg transition-all ${count > 0 ? 'bg-ok' : 'bg-bg-alt'} ${isToday ? 'ring-2 ring-accent ring-offset-1' : ''}`}
-                    style={{ height: count > 0 ? '32px' : '8px' }} />
-                  <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
-                </div>
-              )
-            })}
+            {(() => {
+              const now = new Date()
+              const dow = now.getDay() // 0=domingo
+              const monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
+              return Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(monday); d.setDate(monday.getDate() + i)
+                const key = d.toISOString().split('T')[0]
+                const todayKey = now.toISOString().split('T')[0]
+                const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
+                const isToday = key === todayKey
+                const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className={`w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center transition-all ${isToday ? 'ring-2 ring-accent ring-offset-1' : ''}`}
+                      style={count > 0 ? { backgroundColor: '#e0a854' } : undefined}>
+                      {count > 0 && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
 
