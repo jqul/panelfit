@@ -59,7 +59,19 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+@keyframes prPop {
+  0%   { opacity: 0; transform: scale(0.7) translateY(-10px); }
+  15%  { opacity: 1; transform: scale(1.05) translateY(0); }
+  25%  { transform: scale(1); }
+  85%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95) translateY(-6px); }
+}
+@keyframes confettiFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(60px) rotate(200deg); }
+}
 
 .animate-fade-in  { animation: fadeIn  0.2s ease forwards; }
 .animate-slide-up { animation: slideUp 0.25s ease forwards; }
 .pulse-dot        { animation: pulse-dot 2s infinite; }
+.animate-pr-pop   { animation: prPop 3.6s ease forwards; }

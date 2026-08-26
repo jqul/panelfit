@@ -1,7 +1,9 @@
 import { useState, memo } from 'react'
-import { ChevronUp, ChevronDown, Check, Calculator, Zap } from 'lucide-react'
+import { ChevronUp, ChevronDown, Check, Calculator, Zap, CornerLeftDown } from 'lucide-react'
 import { RIR_OPTIONS, getSuggestedWeightChange } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
+
+const round1 = (n: number) => Math.round(n * 10) / 10
 
 interface SetRowProps {
   setNum: number
@@ -28,6 +30,26 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeigh
   const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === rir) : null
   const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
 
+  // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
+  const prevW = parseFloat(prevWeight || '')
+  const targetRange = (() => {
+    if (!prevW) return null
+    if (!suggestion || suggestion.direction === 'hold' || !suggestion.deltaKg) return `${prevW}kg`
+    return suggestion.direction === 'up'
+      ? `${prevW}-${round1(prevW + suggestion.deltaKg)}kg`
+      : `${round1(prevW - suggestion.deltaKg)}-${prevW}kg`
+  })()
+
+  // "Rellenar con anterior": copia el objetivo sugerido (o si no hay, la serie previa tal cual)
+  const fillFromPrevious = () => {
+    if (!prevW) return
+    const w = suggestion?.deltaKg
+      ? String(Math.max(0, suggestion.direction === 'up' ? prevW + suggestion.deltaKg : suggestion.direction === 'down' ? prevW - suggestion.deltaKg : prevW))
+      : prevWeight!
+    const r = prevReps || reps
+    setWeight(w); setReps(r); onCommit(w, r)
+  }
+
   return (
     <>
       {showRir && (
@@ -40,15 +62,21 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeigh
             done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
           }`}>{setNum}</div>
 
-          {/* Anterior — con sugerencia de peso si hay RIR previo */}
+          {/* Anterior + objetivo sugerido para hoy */}
           <div className="text-center leading-tight">
             <p className="text-xs text-muted">
               {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
             </p>
-            {suggestion && (
-              <p className="text-[9px] font-bold" style={{ color: suggestion.color }}>
-                {suggestion.pct > 0 ? '↑' : suggestion.pct < 0 ? '↓' : '='} {suggestion.label}
+            {targetRange && (
+              <p className="text-[9px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
+                🎯 {targetRange}
               </p>
+            )}
+            {!done && prevWeight && (
+              <button type="button" onClick={fillFromPrevious}
+                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[9px] font-semibold text-accent active:scale-95 transition-transform">
+                <CornerLeftDown className="w-2.5 h-2.5" /> Usar
+              </button>
             )}
           </div>
 

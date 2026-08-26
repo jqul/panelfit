@@ -70,7 +70,7 @@ export const RIR_OPTIONS = [
  * autoregulación que JuggernautAI: si sobró margen, sube; si faltó margen,
  * baja o mantiene. Se muestra junto al peso, antes de hacer la serie.
  */
-export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string): { pct: number; label: string; color: string } | null {
+export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string): { pct: number; label: string; color: string; direction: 'up' | 'down' | 'hold'; deltaKg: number } | null {
   if (rir === undefined || rir === null) return null
 
   const targetRIR = rpeToTargetRIR(weekRpe)
@@ -79,13 +79,13 @@ export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: s
     const s = suggestNextLoad(weight, rir, targetRIR)
     const color = s.direction === 'up' ? '#22c55e' : s.direction === 'down' ? '#ef4444' : '#f59e0b'
     const label = s.direction === 'up' ? `Subir +${s.deltaKg}kg` : s.direction === 'down' ? `Bajar -${s.deltaKg}kg` : 'Mantener peso'
-    return { pct: s.direction === 'up' ? 5 : s.direction === 'down' ? -5 : 0, label, color }
+    return { pct: s.direction === 'up' ? 5 : s.direction === 'down' ? -5 : 0, label, color, direction: s.direction, deltaKg: s.deltaKg }
   }
 
-  if (rir <= 1) return { pct: -5, label: 'Bajar peso la próxima', color: '#ef4444' }
-  if (rir <= 2) return { pct: 0, label: 'Mantener peso', color: '#f59e0b' }
-  if (rir <= 3) return { pct: 2.5, label: 'Subir ligero', color: '#84cc16' }
-  return { pct: 5, label: 'Subir peso', color: '#22c55e' }
+  if (rir <= 1) return { pct: -5, label: 'Bajar peso la próxima', color: '#ef4444', direction: 'down', deltaKg: weight ? Math.round(weight * 0.05 * 2) / 2 : 0 }
+  if (rir <= 2) return { pct: 0, label: 'Mantener peso', color: '#f59e0b', direction: 'hold', deltaKg: 0 }
+  if (rir <= 3) return { pct: 2.5, label: 'Subir ligero', color: '#84cc16', direction: 'up', deltaKg: weight ? Math.round(weight * 0.025 * 2) / 2 : 0 }
+  return { pct: 5, label: 'Subir peso', color: '#22c55e', direction: 'up', deltaKg: weight ? Math.round(weight * 0.05 * 2) / 2 : 0 }
 }
 
 /**

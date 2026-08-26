@@ -12,6 +12,7 @@ import { getYTId, parseSet } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { SetRow } from './active-workout/SetRow'
+import { PrAlert } from './active-workout/PrAlert'
 
 interface Props {
   plan: TrainingPlan
@@ -60,6 +61,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
+  const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number } | null>(null)
+  const [sessionRpe, setSessionRpe] = useState<number | null>(null)
   const startTime = useRef(Date.now())
   const setsRef = useRef(sets)
   useEffect(() => { setsRef.current = sets }, [sets])
@@ -106,10 +109,32 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
   }, [dayKey, onLogsChange])
 
+  // Mejor 1RM estimado histórico para un ejercicio, a partir de un snapshot de logs
+  // concreto (no del closure) — así sirve tanto para el render como para la
+  // detección de récord en caliente dentro de toggleSet, con datos siempre frescos.
+  const getBest1RMFromLogs = useCallback((exName: string, logsData: TrainingLogs) => {
+    let best = 0
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logsData[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone) return
+          Object.values(log.sets || {}).forEach(s => {
+            const rm = estimate1RM(parseFloat(s.weight) || 0, parseFloat(s.reps) || 0)
+            if (rm > best) best = rm
+          })
+        })
+      })
+    })
+    return best
+  }, [plan])
+
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
     const today = new Date().toISOString().split('T')[0]
+    const wasDone = setsRef.current[ri]?.[si]?.done
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
@@ -125,11 +150,22 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
 
     // Iniciar timer de descanso solo si no tiene hideRest
-    if (!setsRef.current[ri]?.[si]?.done && !ex.hideRest) {
+    if (!wasDone && !ex.hideRest) {
       const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
       setRestTimer({ secs: restSecs })
     }
-  }, [day, dayKey, onLogsChange, plan])
+
+    // Detección de récord en tiempo real (1RM estimado) — solo al marcar
+    // la serie como hecha, no al desmarcarla.
+    if (!wasDone) {
+      const rm = estimate1RM(parseFloat(weight) || 0, parseInt(reps) || 0)
+      const prevBest = getBest1RMFromLogs(ex.name, logsRef.current)
+      if (rm > 0 && rm > prevBest) {
+        setPrAlert({ name: ex.name, oneRM: Math.round(rm * 10) / 10 })
+        setTimeout(() => setPrAlert(null), 3800)
+      }
+    }
+  }, [day, dayKey, onLogsChange, plan, getBest1RMFromLogs])
 
   const addSet = (ri: number) => {
     const { numReps } = parseSet(day.exercises[ri].sets)
@@ -190,23 +226,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   }
 
   // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
-  const getBest1RM = (exName: string) => {
-    let best = 0
-    plan.weeks.forEach((week, wi) => {
-      week.days.forEach((d, di) => {
-        d.exercises.forEach((planEx, ei) => {
-          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
-          const log = logs[`ex_w${wi}_d${di}_r${ei}`]
-          if (!log?.dateDone) return
-          Object.values(log.sets || {}).forEach(s => {
-            const rm = estimate1RM(parseFloat(s.weight) || 0, parseFloat(s.reps) || 0)
-            if (rm > best) best = rm
-          })
-        })
-      })
-    })
-    return best
-  }
+  const getBest1RM = (exName: string) => getBest1RMFromLogs(exName, logs)
 
   if (!day) return null
 
@@ -216,6 +236,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
       {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
+      {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} />}
 
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
@@ -453,6 +474,19 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               </div>
             )}
             <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted text-center">¿Cómo de duro se sintió en general? (RPE)</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                  <button key={n} onClick={() => setSessionRpe(n)}
+                    className={`py-2 rounded-xl text-sm font-bold transition-all ${
+                      sessionRpe === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
+                    }`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
               <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
               <div className="flex justify-center gap-2">
                 {REACTION_EMOJIS.map(emoji => (
@@ -468,6 +502,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                   className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
               )}
             </div>
+            {allComplete && (
+              <button onClick={() => {
+                  const lines = [
+                    `💪 ¡Entreno completado! — ${day.title}`,
+                    '',
+                    `⏱️ ${formatElapsed()}`,
+                    `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
+                    newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
+                    sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
+                    '',
+                    'Hecho con PanelFit',
+                  ].filter(Boolean).join('\n')
+                  window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 active:scale-[0.98] transition-all"
+                style={{ backgroundColor: '#25D366' }}>
+                📤 Compartir logro
+              </button>
+            )}
             <button onClick={async () => {
                 if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
                 if (reactionEmoji) {
