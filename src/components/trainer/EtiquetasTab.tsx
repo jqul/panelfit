@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, X, Tag, Users, Dumbbell, Calendar as CalendarIcon, ClipboardList } from 'lucide-react'
+import { Plus, X, Tag, Users, Dumbbell, Calendar as CalendarIcon, ClipboardList, ChevronDown, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import { TrainerLabel } from './labels'
@@ -7,6 +7,7 @@ import { TrainerLabel } from './labels'
 interface Props { trainerId: string }
 
 interface SurveyTemplateOption { id: string; name: string }
+interface ClientOption { id: string; name: string; surname: string | null; label_ids: string[] | null }
 
 const LABEL_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6e5438', '#64748b']
 
@@ -17,11 +18,14 @@ function emptyLabel(trainerId: string): TrainerLabel {
 export function EtiquetasTab({ trainerId }: Props) {
   const [labels, setLabels] = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<SurveyTemplateOption[]>([])
+  const [clients, setClients] = useState<ClientOption[]>([])
   const [usage, setUsage] = useState<Record<string, { clients: number; templates: number; programs: number }>>({})
   const [loading, setLoading] = useState(true)
   const [showNew, setShowNew] = useState(false)
   const [newLabel, setNewLabel] = useState<TrainerLabel>(() => emptyLabel(trainerId))
   const [saving, setSaving] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [togglingClientId, setTogglingClientId] = useState<string | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
 
@@ -30,27 +34,47 @@ export function EtiquetasTab({ trainerId }: Props) {
     const [labelsRes, surveysRes, clientesRes, templatesRes, programsRes] = await Promise.all([
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
       supabase.from('survey_templates').select('id, name').eq('trainer_id', trainerId),
-      supabase.from('clientes').select('label_ids').eq('trainerId', trainerId),
+      supabase.from('clientes').select('id, name, surname, label_ids').eq('trainerId', trainerId).order('name'),
       supabase.from('plan_templates').select('label_ids').eq('trainer_id', trainerId),
       supabase.from('programs').select('label_ids').eq('trainer_id', trainerId),
     ])
     const ls = labelsRes.data || []
     setLabels(ls)
     setSurveyTemplates(surveysRes.data || [])
+    setClients(clientesRes.data || [])
+    recomputeUsage(ls, clientesRes.data || [], templatesRes.data || [], programsRes.data || [])
+    setLoading(false)
+  }
 
-    const countFor = (rows: { label_ids?: string[] | null }[] | null, labelId: string) =>
-      (rows || []).filter(r => (r.label_ids || []).includes(labelId)).length
+  const recomputeUsage = (
+    ls: TrainerLabel[], clientRows: ClientOption[],
+    templateRows: { label_ids?: string[] | null }[], programRows: { label_ids?: string[] | null }[]
+  ) => {
+    const countFor = (rows: { label_ids?: string[] | null }[], labelId: string) =>
+      rows.filter(r => (r.label_ids || []).includes(labelId)).length
 
     const usageMap: Record<string, { clients: number; templates: number; programs: number }> = {}
     ls.forEach(l => {
       usageMap[l.id] = {
-        clients: countFor(clientesRes.data, l.id),
-        templates: countFor(templatesRes.data, l.id),
-        programs: countFor(programsRes.data, l.id),
+        clients: countFor(clientRows, l.id),
+        templates: countFor(templateRows, l.id),
+        programs: countFor(programRows, l.id),
       }
     })
     setUsage(usageMap)
-    setLoading(false)
+  }
+
+  const toggleClientLabel = async (client: ClientOption, labelId: string) => {
+    const current = client.label_ids || []
+    const active = current.includes(labelId)
+    const updated = active ? current.filter(id => id !== labelId) : [...current, labelId]
+    setTogglingClientId(client.id)
+    const { error } = await supabase.from('clientes').update({ label_ids: updated }).eq('id', client.id)
+    setTogglingClientId(null)
+    if (error) { toast('Error al actualizar', 'warn'); return }
+    const newClients = clients.map(c => c.id === client.id ? { ...c, label_ids: updated } : c)
+    setClients(newClients)
+    setUsage(u => ({ ...u, [labelId]: { ...u[labelId], clients: (u[labelId]?.clients || 0) + (active ? -1 : 1) } }))
   }
 
   const createLabel = async () => {
@@ -73,6 +97,7 @@ export function EtiquetasTab({ trainerId }: Props) {
     if (totalUses > 0 && !confirm(`Esta etiqueta se usa en ${totalUses} sitio${totalUses > 1 ? 's' : ''}. ¿Eliminarla igualmente?`)) return
     await supabase.from('labels').delete().eq('id', id)
     setLabels(ls => ls.filter(l => l.id !== id))
+    if (expandedId === id) setExpandedId(null)
     toast('Etiqueta eliminada', 'ok')
   }
 
@@ -141,6 +166,7 @@ export function EtiquetasTab({ trainerId }: Props) {
         <div className="space-y-2">
           {labels.map(label => {
             const u = usage[label.id] || { clients: 0, templates: 0, programs: 0 }
+            const isExpanded = expandedId === label.id
             return (
               <div key={label.id} className="bg-card border border-border rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-3">
@@ -148,11 +174,13 @@ export function EtiquetasTab({ trainerId }: Props) {
                     style={{ backgroundColor: label.color + '18', borderColor: label.color + '40', color: label.color }}>
                     <span>{label.emoji}</span><span>{label.name}</span>
                   </span>
-                  <div className="flex-1 flex items-center gap-3 text-xs text-muted">
+                  <button onClick={() => setExpandedId(isExpanded ? null : label.id)}
+                    className="flex-1 flex items-center gap-3 text-xs text-muted hover:text-ink transition-colors">
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" />{u.clients}</span>
                     <span className="flex items-center gap-1"><Dumbbell className="w-3 h-3" />{u.templates}</span>
                     <span className="flex items-center gap-1"><CalendarIcon className="w-3 h-3" />{u.programs}</span>
-                  </div>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  </button>
                   <button onClick={() => deleteLabel(label.id)} className="p-1.5 text-muted hover:text-warn flex-shrink-0"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -163,6 +191,32 @@ export function EtiquetasTab({ trainerId }: Props) {
                     {surveyTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
+
+                {isExpanded && (
+                  <div className="border-t border-border pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Clientes con esta etiqueta</p>
+                    {clients.length === 0 ? (
+                      <p className="text-xs text-muted">Aún no tienes clientes.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto">
+                        {clients.map(c => {
+                          const active = (c.label_ids || []).includes(label.id)
+                          const isToggling = togglingClientId === c.id
+                          return (
+                            <button key={c.id} onClick={() => toggleClientLabel(c, label.id)} disabled={isToggling}
+                              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                                active ? 'opacity-100' : 'opacity-40 hover:opacity-70'
+                              } ${isToggling ? 'opacity-50' : ''}`}
+                              style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
+                              {active && <Check className="w-3 h-3" />}
+                              {c.name} {c.surname || ''}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
