@@ -6,7 +6,7 @@ import {
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
 import { getYTId, parseSet } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
@@ -33,7 +33,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [reactionComment, setReactionComment] = useState('')
   const [showReactionComment, setShowReactionComment] = useState(false)
 
-  type SetState = { weight: string; reps: string; done: boolean; rir?: number }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -48,6 +48,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           reps: log?.sets?.[si]?.reps || String(numReps),
           done: log?.done || false,
           rir: log?.sets?.[si]?.rir,
+          velocity: log?.sets?.[si]?.velocity,
         }
       }
     })
@@ -85,11 +86,12 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     const today = new Date().toISOString().split('T')[0]
     const currentLogs = logsRef.current
     const prevRir = currentLogs[key]?.sets?.[si]?.rir
+    const prevVelocity = currentLogs[key]?.sets?.[si]?.velocity
     onLogsChange({
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}) } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}), ...(prevVelocity !== undefined ? { velocity: prevVelocity } : {}) } },
         done: currentLogs[key]?.done || false,
         dateDone: today,
       }
@@ -106,6 +108,20 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       [key]: {
         ...currentLogs[key],
         sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, rir } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  const setVelocity = useCallback((ri: number, si: number, velocity: number | undefined) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], velocity } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...currentLogs[key],
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...(velocity !== undefined ? { velocity } : {}) } },
       }
     })
   }, [dayKey, onLogsChange])
@@ -131,6 +147,27 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return best
   }, [plan])
 
+  // Perfil carga-velocidad histórico de un ejercicio (VBT): recopila todas las
+  // parejas (peso, velocidad) registradas alguna vez para ese ejercicio y ajusta
+  // la recta que estima el 1RM real de hoy — mismo patrón que getBest1RMFromLogs.
+  const getVelocityProfileFromLogs = useCallback((exName: string, logsData: TrainingLogs) => {
+    const points: VelocityPoint[] = []
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logsData[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone) return
+          Object.values(log.sets || {}).forEach(s => {
+            const w = parseFloat(s.weight) || 0
+            if (w > 0 && s.velocity) points.push({ weight: w, velocity: s.velocity })
+          })
+        })
+      })
+    })
+    return estimateVelocityProfile(points)
+  }, [plan])
+
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
@@ -139,12 +176,12 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir } } }
+      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir, velocity: prev[ri]?.[si]?.velocity } } }
       const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, { weight: string; reps: string; rir?: number }> = {}
+      const setsData: Record<number, { weight: string; reps: string; rir?: number; velocity?: number }> = {}
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}) }
+        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
       }
       onLogsChange({ ...logsRef.current, [key]: { sets: setsData, done: allDone, dateDone: today } })
       return updated
@@ -229,6 +266,9 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
   const getBest1RM = (exName: string) => getBest1RMFromLogs(exName, logs)
 
+  // Perfil carga-velocidad histórico para un ejercicio (VBT)
+  const getVelocityProfile = (exName: string) => getVelocityProfileFromLogs(exName, logs)
+
   if (!day) return null
 
   const allComplete = pct === 100
@@ -311,6 +351,19 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
 
+          // Primera serie A LA MISMA CARGA con velocidad registrada hoy — referencia
+          // para el % de pérdida de velocidad (autorregulación VBT). Se compara
+          // contra el mismo peso, no contra la primera serie de la sesión sin más:
+          // en un esquema de rampa (series de aproximación a menor peso) la
+          // velocidad cae al subir de carga, y eso no es fatiga — mezclarlo daría
+          // un % de "pérdida" que en realidad es solo el efecto de mover más peso.
+          const firstVelocityAtWeight = (weight: string) => {
+            const si0 = Object.keys(exSets).map(Number).sort((a, b) => a - b)
+              .find(si => exSets[si]?.done && exSets[si]?.velocity !== undefined && exSets[si]?.weight === weight)
+            return si0 !== undefined ? exSets[si0].velocity : undefined
+          }
+          const velocityProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+
           return (
             <div key={ri} className="border-b border-border">
               <div className="flex items-center gap-3 px-4 pt-4 pb-2">
@@ -339,6 +392,11 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                       <p className="text-[10px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
                     )
                   })()}
+                  {velocityProfile?.oneRM && (
+                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#6366f1' }}>
+                      ⚡ 1RM real de hoy (por velocidad): ~{velocityProfile.oneRM}kg
+                    </p>
+                  )}
                 </div>
                 <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
               </div>
@@ -384,6 +442,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     initReps={s.reps}
                     done={s.done}
                     rir={s.rir}
+                    velocity={s.velocity}
+                    firstVelocity={firstVelocityAtWeight(s.weight)}
                     prevWeight={prev?.weight}
                     prevReps={prev?.reps}
                     prevRir={prev?.rir}
@@ -393,6 +453,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
                     onSetRir={(rir) => setRir(ri, si, rir)}
+                    onSetVelocity={(v) => setVelocity(ri, si, v)}
                   />
                 )
               })}

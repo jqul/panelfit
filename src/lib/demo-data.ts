@@ -290,6 +290,14 @@ export const DEMO_LOGS_CARLOS: TrainingLogs = (() => {
   const today = new Date()
   // lunes, miércoles, viernes — 6 semanas
   const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27, 30,32,34, 37,39,41]
+  // VBT — velocidad de barra en el press banca principal (dayIdx=1, ri=0), con
+  // un esquema de rampa real: 2 series de aproximación a menor peso y 3 series
+  // al peso top (la 2ª y 3ª ya fatigadas). Esto da a la vez cargas DISTINTAS
+  // en la misma sesión (perfil carga-velocidad → 1RM diario) y series a la
+  // MISMA carga (% de pérdida de velocidad intraserie por fatiga).
+  const BENCH_V0: Record<number, number> = { 100: 0.55, 102.5: 0.52, 105: 0.48, 107.5: 0.46 }
+  const RAMP_OFFSET = [0.20, 0.09, 0, 0, 0]  // m/s de más por ir más ligero en las series de aproximación
+  const TOP_DECAY = [1, 1, 1, 0.92, 0.87]    // fatiga solo entre las series al peso top (posiciones 2,3,4)
   offsets.forEach((offset, idx) => {
     const d = new Date(today); d.setDate(d.getDate() - offset)
     const fecha = d.toISOString().split('T')[0]
@@ -297,11 +305,17 @@ export const DEMO_LOGS_CARLOS: TrainingLogs = (() => {
     const week = Math.floor(idx / 3)
     const baseWeights = [[115,100,155],[117.5,102.5,157.5],[120,105,160],[122.5,107.5,162.5],[122.5,107.5,165],[122.5,107.5,165]]
     const bw = baseWeights[Math.min(week, 5)][dayIdx]
+    const benchTopV = dayIdx === 1 ? BENCH_V0[bw] : undefined
     ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string}> = {}
+      const sets: Record<number, {weight:string;reps:string;velocity?:number}> = {}
       const n = ri === 0 ? 5 : 3
       for (let si = 0; si < n; si++) {
-        sets[si] = { weight: String(bw - (ri * 10)), reps: ri === 0 ? '3' : '6' }
+        if (ri === 0 && dayIdx === 1 && benchTopV !== undefined) {
+          const w = si === 0 ? bw - 20 : si === 1 ? bw - 10 : bw
+          sets[si] = { weight: String(w), reps: '3', velocity: Math.round((benchTopV + RAMP_OFFSET[si]) * TOP_DECAY[si] * 100) / 100 }
+        } else {
+          sets[si] = { weight: String(bw - (ri * 10)), reps: ri === 0 ? '3' : '6' }
+        }
       }
       logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
     })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent } from './strength'
+import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct } from './strength'
 
 describe('estimate1RM', () => {
   it('returns the weight itself for a single rep', () => {
@@ -76,5 +76,52 @@ describe('resolveWeightFromPercent', () => {
   it('returns null when the field is not a percentage or 1RM is unknown', () => {
     expect(resolveWeightFromPercent('80kg', 100)).toBeNull()
     expect(resolveWeightFromPercent('75%', 0)).toBeNull()
+  })
+})
+
+describe('estimateVelocityProfile', () => {
+  it('refuses to estimate from a single data point', () => {
+    const p = estimateVelocityProfile([{ weight: 100, velocity: 0.5 }])
+    expect(p.oneRM).toBeNull()
+    expect(p.points).toBe(1)
+  })
+
+  it('fits a line through two distinct loads and extrapolates to the MVT', () => {
+    // Recta exacta: peso = 133.33 - 66.67·velocidad → a 0.2 m/s, 1RM ≈ 120kg
+    const p = estimateVelocityProfile([
+      { weight: 100, velocity: 0.5 },
+      { weight: 80, velocity: 0.8 },
+    ], 0.2)
+    expect(p.points).toBe(2)
+    expect(p.oneRM).toBeCloseTo(120, 0)
+    expect(p.slope).toBeLessThan(0) // más velocidad, menos peso
+  })
+
+  it('averages repeated sets at the same weight into a single point', () => {
+    const p = estimateVelocityProfile([
+      { weight: 100, velocity: 0.48 },
+      { weight: 100, velocity: 0.52 }, // misma carga, otra serie — cuenta como 1 punto
+      { weight: 80, velocity: 0.8 },
+    ], 0.2)
+    expect(p.points).toBe(2)
+  })
+
+  it('ignores sets with no velocity logged', () => {
+    const p = estimateVelocityProfile([
+      { weight: 100, velocity: 0.5 },
+      { weight: 90, velocity: 0 },
+    ])
+    expect(p.points).toBe(1)
+    expect(p.oneRM).toBeNull()
+  })
+})
+
+describe('velocityLossPct', () => {
+  it('computes the percentage drop from the first set of the exercise', () => {
+    expect(velocityLossPct(0.7, 0.8)).toBeCloseTo(12.5, 1)
+  })
+
+  it('returns null without a valid first-set reference', () => {
+    expect(velocityLossPct(0.7, 0)).toBeNull()
   })
 })

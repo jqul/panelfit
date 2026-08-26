@@ -1,6 +1,6 @@
 import { useState, memo } from 'react'
-import { ChevronUp, ChevronDown, Check, Calculator, Zap, CornerLeftDown } from 'lucide-react'
-import { RIR_OPTIONS, getSuggestedWeightChange } from '../../../lib/strength'
+import { ChevronUp, ChevronDown, Check, Calculator, Zap, Gauge, CornerLeftDown } from 'lucide-react'
+import { RIR_OPTIONS, getSuggestedWeightChange, velocityLossPct } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
 
 const round1 = (n: number) => Math.round(n * 10) / 10
@@ -11,6 +11,8 @@ interface SetRowProps {
   initReps: string
   done: boolean
   rir?: number
+  velocity?: number
+  firstVelocity?: number  // velocidad de la primera serie de este ejercicio en la sesión — referencia para el % de pérdida
   prevWeight?: string
   prevReps?: string
   prevRir?: number
@@ -20,12 +22,27 @@ interface SetRowProps {
   onToggle: (weight: string, reps: string) => void
   onOpenCalc: (weight: string) => void
   onSetRir: (rir: number) => void
+  onSetVelocity: (velocity: number | undefined) => void
 }
 
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeight, prevReps, prevRir, weekRpe, isMain, onCommit, onToggle, onOpenCalc, onSetRir }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
+  const [editingVelocity, setEditingVelocity] = useState(false)
+  const [velocityInput, setVelocityInput] = useState('')
+
+  // % de pérdida de velocidad frente a la primera serie de este ejercicio en la
+  // sesión — indicador de fatiga neuromuscular (VBT) para autorregular el corte
+  // de la serie (potencia: -10% · hipertrofia atlética: -20/-30%).
+  const lossPct = velocity !== undefined && firstVelocity !== undefined ? velocityLossPct(velocity, firstVelocity) : null
+  const lossColor = lossPct !== null && lossPct >= 20 ? '#ef4444' : lossPct !== null && lossPct >= 10 ? '#f59e0b' : null
+
+  const commitVelocity = () => {
+    const num = parseFloat(velocityInput)
+    onSetVelocity(isNaN(num) || num <= 0 ? undefined : Math.round(num * 100) / 100)
+    setEditingVelocity(false)
+  }
 
   // Math.floor porque un RIR fraccionario (1.5) no calza con ningún o.value
   // entero — sin esto, la insignia perdía el color/descripción y volvía a
@@ -148,9 +165,33 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, prevWeigh
           </button>
         </div>
 
-        {/* Badge RIR — aparece debajo de la fila cuando la serie está marcada como hecha */}
+        {/* Badges RIR / Velocidad (VBT) — aparecen debajo de la fila cuando la serie está marcada como hecha */}
         {done && (
-          <div className="flex items-center justify-end mt-1 pr-1">
+          <div className="flex items-center justify-end gap-1.5 mt-1 pr-1 flex-wrap">
+            {isMain && (
+              editingVelocity ? (
+                <input
+                  type="number" inputMode="decimal" step="0.01" autoFocus
+                  value={velocityInput}
+                  onChange={e => setVelocityInput(e.target.value)}
+                  onBlur={commitVelocity}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  placeholder="m/s"
+                  className="w-16 text-center text-[10px] font-semibold py-1 rounded-full border border-accent outline-none"
+                />
+              ) : (
+                <button
+                  onClick={() => { setVelocityInput(velocity !== undefined ? String(velocity) : ''); setEditingVelocity(true) }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+                  style={{
+                    backgroundColor: velocity !== undefined ? (lossColor ? lossColor + '15' : '#eef2ff') : '#f3f4f6',
+                    color: velocity !== undefined ? (lossColor || '#6366f1') : '#9ca3af',
+                  }}>
+                  <Gauge className="w-2.5 h-2.5" />
+                  {velocity !== undefined ? `${velocity} m/s${lossPct !== null && lossPct > 0.5 ? ` (-${lossPct}%)` : ''}` : '+ Velocidad'}
+                </button>
+              )
+            )}
             <button onClick={() => setShowRir(true)}
               className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
               style={{

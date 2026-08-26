@@ -106,3 +106,65 @@ export function resolveWeightFromPercent(weightField: string, estimated1RM: numb
   if (pct === null || !estimated1RM) return null
   return round(estimated1RM * (pct / 100))
 }
+
+// ── VBT (Velocity Based Training) ─────────────────────────
+// Umbral de velocidad mínima (MVT) al que se llega al fallo/1RM en press de
+// banca, sentadilla o peso muerto con barra — valor orientativo consensuado
+// en la literatura de VBT (González-Badillo, Jovanović & Flanagan), no una
+// medición individual. Se usa como ancla para extrapolar el 1RM a partir del
+// perfil carga-velocidad REAL del cliente, no de una curva poblacional genérica.
+export const DEFAULT_MVT = 0.2 // m/s
+
+export interface VelocityPoint { weight: number; velocity: number }
+
+export interface VelocityProfile {
+  oneRM: number | null       // 1RM estimado extrapolando la recta hasta el MVT
+  slope: number | null       // kg por cada m/s de velocidad — cuanto más pronunciado, más "explosivo" el perfil
+  points: number             // nº de cargas distintas usadas para el ajuste
+}
+
+/**
+ * Ajusta una recta peso = a + b·velocidad por mínimos cuadrados sobre el
+ * historial REAL de (peso, velocidad) del cliente para un ejercicio, y
+ * extrapola el 1RM del día como el peso correspondiente al MVT. Requiere al
+ * menos 2 cargas distintas — con una sola serie no hay recta que ajustar, y
+ * es preferible no estimar nada a inventar un número con un solo punto.
+ */
+export function estimateVelocityProfile(rawPoints: VelocityPoint[], mvt = DEFAULT_MVT): VelocityProfile {
+  // Si hay varias series a la misma carga, nos quedamos con la velocidad
+  // media de esa carga — cada carga cuenta una vez en el ajuste, no una vez
+  // por serie repetida.
+  const byWeight = new Map<number, number[]>()
+  rawPoints.forEach(p => {
+    if (!p.weight || !p.velocity || p.velocity <= 0) return
+    const arr = byWeight.get(p.weight) || []
+    arr.push(p.velocity)
+    byWeight.set(p.weight, arr)
+  })
+  const points = [...byWeight.entries()].map(([weight, vs]) => ({
+    weight, velocity: vs.reduce((a, b) => a + b, 0) / vs.length,
+  }))
+
+  if (points.length < 2) return { oneRM: null, slope: null, points: points.length }
+
+  const n = points.length
+  const sumV = points.reduce((a, p) => a + p.velocity, 0)
+  const sumW = points.reduce((a, p) => a + p.weight, 0)
+  const sumVV = points.reduce((a, p) => a + p.velocity * p.velocity, 0)
+  const sumVW = points.reduce((a, p) => a + p.velocity * p.weight, 0)
+  const denom = n * sumVV - sumV * sumV
+  if (denom === 0) return { oneRM: null, slope: null, points: n }
+
+  const b = (n * sumVW - sumV * sumW) / denom // pendiente (kg por m/s)
+  const a = (sumW - b * sumV) / n             // intersección (peso a velocidad 0)
+  const oneRM = a + b * mvt
+
+  return { oneRM: oneRM > 0 ? round(oneRM) : null, slope: Math.round(b * 10) / 10, points: n }
+}
+
+/** % de caída de velocidad de una serie frente a la primera de ese ejercicio
+ * en la sesión — para cortar la serie por fatiga neuromuscular (VBT). */
+export function velocityLossPct(currentVelocity: number, firstVelocity: number): number | null {
+  if (!firstVelocity || firstVelocity <= 0 || !currentVelocity) return null
+  return Math.round((1 - currentVelocity / firstVelocity) * 1000) / 10
+}

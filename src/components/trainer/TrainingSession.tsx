@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
 import { VideoModal } from '../client/VideoModal'
 import { toast } from '../shared/Toast'
-import { RIR_OPTIONS, getSuggestedWeightChange } from '../../lib/strength'
+import { RIR_OPTIONS, getSuggestedWeightChange, velocityLossPct } from '../../lib/strength'
 import { compressVideo } from '../../lib/videoCompress'
 
 interface Props {
@@ -163,6 +163,11 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const setSetRir = (ri: number, si: number, rir: number) => {
     const log = getLog(ri)
     updateLog(ri, { sets: { ...log.sets, [si]: { ...log.sets[si], rir } } })
+  }
+
+  const setSetVelocity = (ri: number, si: number, velocity: number | undefined) => {
+    const log = getLog(ri)
+    updateLog(ri, { sets: { ...log.sets, [si]: { ...log.sets[si], ...(velocity !== undefined ? { velocity } : {}) } } })
   }
 
   // Sets de la última vez que se hizo este mismo ejercicio (otra semana), para
@@ -611,6 +616,35 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
                         </button>
                       </div>
                     )}
+                    {/* Velocidad (VBT) — solo en ejercicios principales, para el 1RM diario y el corte por % de pérdida */}
+                    {isDone && exercises[activeIdx]?.isMain && (() => {
+                      // Referencia a la misma carga, no a la primera serie sin más —
+                      // en un esquema de rampa la velocidad ya baja solo por subir de
+                      // peso, y eso no es fatiga (ver mismo criterio en ActiveWorkout).
+                      const firstSi = Array.from({ length: totalSeries }, (_, i) => i)
+                        .find(i => log.sets[i]?.velocity !== undefined && log.sets[i]?.weight === s?.weight)
+                      const firstV = firstSi !== undefined ? log.sets[firstSi].velocity : undefined
+                      const loss = s?.velocity !== undefined && firstV !== undefined ? velocityLossPct(s.velocity, firstV) : null
+                      const lossColor = loss !== null && loss >= 20 ? '#ef4444' : loss !== null && loss >= 10 ? '#f59e0b' : '#8a8278'
+                      return (
+                        <div className="flex items-center gap-1.5 px-4 pb-3 flex-shrink-0">
+                          <span className="text-[9px] text-muted uppercase tracking-wider flex-shrink-0">Vel.</span>
+                          <input
+                            key={`vel-${activeIdx}-${si}`}
+                            type="number" inputMode="decimal" step="0.01" placeholder="m/s"
+                            defaultValue={s?.velocity ?? ''}
+                            onBlur={e => {
+                              const v = parseFloat(e.target.value)
+                              setSetVelocity(activeIdx, si, isNaN(v) || v <= 0 ? undefined : Math.round(v * 100) / 100)
+                            }}
+                            className="w-16 px-2 py-1 rounded-full border border-border text-[10px] text-center outline-none"
+                          />
+                          {loss !== null && loss > 0.5 && (
+                            <span className="text-[10px] font-bold" style={{ color: lossColor }}>-{loss}%</span>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )
               })}
