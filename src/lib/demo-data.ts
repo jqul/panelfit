@@ -1,5 +1,5 @@
 // Datos del modo demo — entrenador ficticio con clientes de ejemplo
-import { ClientData, TrainingPlan, TrainingLogs, TrainingTemplate } from '../types'
+import { ClientData, TrainingPlan, TrainingLogs, TrainingTemplate, WeekPlan } from '../types'
 
 export const DEMO_TRAINER_ID = 'demo-trainer-001'
 
@@ -133,6 +133,94 @@ export const DEMO_LABELS = [
   { id: DEMO_LABEL_IDS.atletismo, trainer_id: DEMO_TRAINER_ID, name: 'Atletismo', color: '#64748b', emoji: '🏃', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 9 },
 ]
 
+// ── HISTORIAL DE VARIAS SEMANAS (helpers) ───────────────
+// En vez de mantener arrays de progresión de peso por separado del propio
+// plan (lo que causó un bug real: los pesos logueados de todos los
+// ejercicios del día se sacaban de una única tabla indexada por día, no por
+// ejercicio, así que "Anterior" mostraba el MISMO peso para el press banca,
+// las mancuernas y los fondos), el peso logueado de cada semana se DERIVA
+// del propio peso prescrito en el plan para esa semana. Nunca puede
+// desincronizarse del plan porque es la misma fuente.
+function parseWeightNum(w: string): number | null {
+  const m = w?.trim().match(/^(\d+(\.\d+)?)\s*kg$/i)
+  return m ? parseFloat(m[1]) : null
+}
+function stepFor(w: number): number {
+  return w >= 40 ? 2.5 : w >= 15 ? 1 : 0.5
+}
+function parseSetsStrDemo(s: string): { numSets: number; repsText: string } {
+  const m = s?.match(/^(\d+)\s*[×x]\s*(.+)$/)
+  return m ? { numSets: parseInt(m[1]), repsText: m[2] } : { numSets: 3, repsText: '10' }
+}
+// Clona una semana subiendo (o bajando, si weeksForward es negativo) el peso
+// de cada ejercicio cargado un "step" por semana de diferencia. Los
+// ejercicios sin peso numérico (peso corporal, tiempo, "+5kg" añadido...) se
+// dejan tal cual — mejor no tocar lo que no se puede derivar con confianza.
+function bumpWeek(base: WeekPlan, weeksForward: number, label: string, isCurrent: boolean): WeekPlan {
+  return {
+    ...base, label, isCurrent,
+    days: base.days.map(day => ({
+      ...day,
+      exercises: day.exercises.map(ex => {
+        const n = parseWeightNum(ex.weight)
+        if (n === null) return { ...ex }
+        const bumped = Math.max(stepFor(n), n + stepFor(n) * weeksForward)
+        return { ...ex, weight: `${bumped}kg` }
+      }),
+    })),
+  }
+}
+/** Genera N semanas de plan a partir de UNA semana ya autorada (la trata como
+ * la semana ACTUAL) — las anteriores se generan bajando el peso semana a
+ * semana. Conserva ejercicios/vídeos/comentarios idénticos entre semanas
+ * (igual que un plan real con progresión de carga sin cambiar de ejercicio). */
+function expandToWeeks(currentWeek: WeekPlan, numWeeks: number, labelPrefix = 'Semana'): WeekPlan[] {
+  return Array.from({ length: numWeeks }, (_, i) => {
+    const weeksForward = i - (numWeeks - 1) // negativo = semanas atrás, 0 = la actual
+    // La semana actual conserva su etiqueta original tal cual (ej. "Semana 6 —
+    // Fortalecimiento inicial") — las anteriores se numeran de forma simple.
+    const label = i === numWeeks - 1 ? currentWeek.label : `${labelPrefix} ${i + 1}`
+    return bumpWeek(currentWeek, weeksForward, label, i === numWeeks - 1)
+  })
+}
+/**
+ * Genera logs realistas para TODO el historial ya definido en `plan.weeks`,
+ * derivando el peso logueado del propio peso prescrito en cada semana (nunca
+ * puede desincronizarse del plan). La última semana se deja "en curso" —
+ * `doneInLastWeek` días hechos de los que tiene, el resto sin empezar,
+ * igual que un cliente real a mitad de semana.
+ */
+function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number): TrainingLogs {
+  const logs: TrainingLogs = {}
+  const numWeeks = plan.weeks.length
+  const today = new Date()
+  for (let weekIdx = numWeeks - 1; weekIdx >= 0; weekIdx--) {
+    const week = plan.weeks[weekIdx]
+    const numDays = week.days.length
+    const weeksAgo = numWeeks - 1 - weekIdx
+    const isCurrent = weekIdx === numWeeks - 1
+    const doneCount = isCurrent ? Math.min(doneInLastWeek ?? numDays - 1, numDays) : numDays
+    // Fatiga: RIR más bajo (más cerca del fallo) cuanto más reciente la semana
+    const baseRir = weeksAgo === 0 ? 1 : weeksAgo === 1 ? 2 : 3
+    for (let dayIdx = 0; dayIdx < doneCount; dayIdx++) {
+      const dayOffsetWithinWeek = Math.round((numDays - 1 - dayIdx) * (7 / numDays))
+      const totalOffsetDays = weeksAgo * 7 + dayOffsetWithinWeek + (isCurrent ? 1 : 0)
+      const fecha = new Date(today.getTime() - totalOffsetDays * 86400000).toISOString().split('T')[0]
+      week.days[dayIdx].exercises.forEach((ex, ri) => {
+        const plannedW = parseWeightNum(ex.weight)
+        const { numSets, repsText } = parseSetsStrDemo(ex.sets)
+        const sets: Record<number, { weight: string; reps: string; rir: number }> = {}
+        for (let si = 0; si < numSets; si++) {
+          const w = plannedW !== null ? Math.max(0, plannedW - si * stepFor(plannedW)) : null
+          sets[si] = { weight: w !== null ? String(w) : ex.weight, reps: repsText, rir: Math.max(0, baseRir - Math.floor(si / 2)) }
+        }
+        logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+      })
+    }
+  }
+  return logs
+}
+
 // ── PERFIL ENTRENADOR DEMO ─────────────────────────────
 export const DEMO_TRAINER_PROFILE = {
   displayName: 'Alex Martínez',
@@ -247,37 +335,9 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
   ]
 }
 
-// ── LOGS MARÍA — 8 semanas de historial ───────────────
-export const DEMO_LOGS_MARIA: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, viernes, sábado durante 5 semanas
-  const offsets = [1,3,5,7, 8,10,12,14, 15,17,19,21, 22,24,26,28, 29,31,33,35]
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const weekIdx = offset < 7 ? 1 : 0
-    const dayIdx = idx % 4
-    ;[0,1,2,3].forEach(ri => {
-      const baseWeights: Record<number, number[]> = {
-        0: [60,62.5,65,67.5,70], 1: [70,72.5,75,77.5,80],
-        2: [80,82.5,85,87.5,90], 3: [50,52.5,55,57.5,60]
-      }
-      const progression = Math.min(Math.floor(offset / 7), 4)
-      const bw = (baseWeights[dayIdx] || [60,62.5,65,67.5,70])[progression]
-      // RIR: más fatiga (RIR bajo) en la semana más reciente, para que el
-      // semáforo de riesgo tenga algo real que mostrar en la demo.
-      const baseRir = offset <= 7 ? 1 : offset <= 14 ? 2 : 3
-      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
-      const n = ri === 0 ? 4 : 3
-      for (let si = 0; si < n; si++) {
-        sets[si] = { weight: String(bw - (si * 2.5)), reps: String(ri === 0 ? 8 : 10), rir: Math.max(0, baseRir - Math.floor(si / 2)) }
-      }
-      logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS MARÍA ──────────────────────────────────────────
+// Semana 2 (actual) con DÍA D todavía sin empezar — igual que antes.
+export const DEMO_LOGS_MARIA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_MARIA, 3)
 
 // ── PLAN CARLOS (Powerlifting) ─────────────────────────
 export const DEMO_PLAN_CARLOS: TrainingPlan = {
@@ -290,8 +350,7 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
   diasSemana: 3,
   coachNotes: 'Carlos está en fase pico. No tocar técnica ahora — solo progresión de carga. Competición en 3 semanas.',
   macros: { kcal: 3200, protein: 200, carbs: 380, fats: 90, notaMacros: 'Surplus calórico moderado. Come bien antes y después de entrenar.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 6 — Pico',
       rpe: '@9', isCurrent: true,
       days: [
@@ -323,47 +382,27 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 6),
 }
 
-// ── LOGS CARLOS ────────────────────────────────────────
+// ── LOGS CARLOS — 6 semanas de historial ───────────────
+// El press banca de la semana actual conserva el esquema de rampa VBT
+// (2 series de aproximación + 3 al peso top, fatigadas) — el resto del
+// historial se deriva genéricamente del propio plan de cada semana.
 export const DEMO_LOGS_CARLOS: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, viernes — 6 semanas
-  const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27, 30,32,34, 37,39,41]
-  // VBT — velocidad de barra en el press banca principal (dayIdx=1, ri=0), con
-  // un esquema de rampa real: 2 series de aproximación a menor peso y 3 series
-  // al peso top (la 2ª y 3ª ya fatigadas). Esto da a la vez cargas DISTINTAS
-  // en la misma sesión (perfil carga-velocidad → 1RM diario) y series a la
-  // MISMA carga (% de pérdida de velocidad intraserie por fatiga).
-  const BENCH_V0: Record<number, number> = { 100: 0.55, 102.5: 0.52, 105: 0.48, 107.5: 0.46 }
-  const RAMP_OFFSET = [0.20, 0.09, 0, 0, 0]  // m/s de más por ir más ligero en las series de aproximación
-  const TOP_DECAY = [1, 1, 1, 0.92, 0.87]    // fatiga solo entre las series al peso top (posiciones 2,3,4)
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 3
-    const week = Math.floor(idx / 3)
-    const baseWeights = [[115,100,155],[117.5,102.5,157.5],[120,105,160],[122.5,107.5,162.5],[122.5,107.5,165],[122.5,107.5,165]]
-    const bw = baseWeights[Math.min(week, 5)][dayIdx]
-    const benchTopV = dayIdx === 1 ? BENCH_V0[bw] : undefined
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string;velocity?:number}> = {}
-      const n = ri === 0 ? 5 : 3
-      for (let si = 0; si < n; si++) {
-        if (ri === 0 && dayIdx === 1 && benchTopV !== undefined) {
-          const w = si === 0 ? bw - 20 : si === 1 ? bw - 10 : bw
-          sets[si] = { weight: String(w), reps: '3', velocity: Math.round((benchTopV + RAMP_OFFSET[si]) * TOP_DECAY[si] * 100) / 100 }
-        } else {
-          sets[si] = { weight: String(bw - (ri * 10)), reps: ri === 0 ? '3' : '6' }
-        }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
+  const base = buildDemoLogsFromPlan(DEMO_PLAN_CARLOS, 2) // día 3 (peso muerto) de esta semana aún sin hacer
+  const lastWeekIdx = DEMO_PLAN_CARLOS.weeks.length - 1
+  const benchKey = `ex_w${lastWeekIdx}_d1_r0`
+  const benchDate = base[benchKey]?.dateDone
+  if (!benchDate) return base
+  const bw = 105 // peso de esta semana para el press banca (ver plan)
+  const v0 = 0.48 // velocidad media a 105kg — ver estimateVelocityProfile
+  const rampVelocities = [v0 + 0.20, v0 + 0.09, v0, v0 * 0.92, v0 * 0.87]
+  const sets: Record<number, { weight: string; reps: string; velocity: number }> = {}
+  ;[bw - 20, bw - 10, bw, bw, bw].forEach((w, si) => {
+    sets[si] = { weight: String(w), reps: '3', velocity: Math.round(rampVelocities[si] * 100) / 100 }
   })
-  return logs
+  return { ...base, [benchKey]: { sets, done: true, dateDone: benchDate } }
 })()
 
 // ── PLAN LAURA (Definición) ────────────────────────────
@@ -377,8 +416,7 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
   diasSemana: 3,
   coachNotes: 'Laura empieza muy motivada. Vigilar que no baje demasiado las calorías por su cuenta.',
   macros: { kcal: 1700, protein: 140, carbs: 160, fats: 55, notaMacros: 'Déficit moderado. No pases hambre — si tienes hambre, añade proteína o verduras.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 3 — Progresión',
       rpe: '@7', isCurrent: true,
       days: [
@@ -411,31 +449,11 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 3),
 }
 
-// ── LOGS LAURA ─────────────────────────────────────────
-export const DEMO_LOGS_LAURA: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, sábado — 3 semanas
-  const offsets = [2,4,6, 9,11,13, 16,18,20]
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 3
-    const baseW = [20, 35, 45]
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string}> = {}
-      for (let si = 0; si < 3; si++) {
-        sets[si] = { weight: String((baseW[dayIdx] || 20) + ri * 2), reps: '12' }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS LAURA — 3 semanas de historial ────────────────
+export const DEMO_LOGS_LAURA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_LAURA, 2)
 
 // ── PLAN DIEGO (Powerlifting — fase de volumen, a 3 meses de competir) ──
 export const DEMO_PLAN_DIEGO: TrainingPlan = {
@@ -448,8 +466,7 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
   diasSemana: 4,
   coachNotes: 'A 3 meses de su competición. Fase de acumulación de volumen — no buscamos RPE 9 todavía, prioriza técnica y consistencia. La bajada de intensidad y el pico llegarán en el último mes.',
   macros: { kcal: 3000, protein: 190, carbs: 350, fats: 85, notaMacros: 'Ligero superávit para sostener el volumen de esta fase. Ajustaremos según cómo evolucione el peso.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 4 — Acumulación',
       rpe: '@7-8', isCurrent: true,
       days: [
@@ -490,40 +507,11 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 4),
 }
 
-// ── LOGS DIEGO ───────────────────────────────────────────
-export const DEMO_LOGS_DIEGO: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, viernes, sábado — 5 semanas. Se procesa de más antiguo a
-  // más reciente para que, si dos fechas caen en la misma clave de ejercicio
-  // (solo hay una "semana" en el plan), sobreviva la más reciente y no una de
-  // hace un mes — si no, la última actividad del cliente saldría mal en el dashboard.
-  const offsets = [1,3,5,7, 8,10,12,14, 15,17,19,21, 22,24,26,28, 29,31,33,35].slice().reverse()
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 4
-    const week = Math.min(Math.floor(offset / 7), 4)
-    const baseWeights: Record<number, number[]> = {
-      0: [92,94,96,98,100], 1: [78,80,82,84,85],
-      2: [120,124,127,129,130], 3: [40,42,43,44,45],
-    }
-    const bw = (baseWeights[dayIdx] || [80,82,84,86,88])[4 - week]
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
-      const n = ri === 0 ? 5 : 3
-      for (let si = 0; si < n; si++) {
-        sets[si] = { weight: String(bw - (ri * 15)), reps: ri === 0 ? '5' : '8', rir: 2 }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS DIEGO — 4 semanas de historial ────────────────
+export const DEMO_LOGS_DIEGO: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_DIEGO, 3)
 
 // ── PLAN MARTA (Rehabilitación de rodilla) ────────────────
 export const DEMO_PLAN_MARTA: TrainingPlan = {
@@ -536,8 +524,7 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
   diasSemana: 3,
   coachNotes: 'Semana 6 post-cirugía de menisco. Progresar rango de movimiento de forma gradual. Ante cualquier dolor agudo (no simple molestia), parar el ejercicio y avisar — nada de "aguantar".',
   macros: { kcal: 1900, protein: 130, carbs: 190, fats: 60, notaMacros: 'Mantenimiento — ahora el objetivo es recuperar movilidad y fuerza, no cambiar composición corporal.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 6 — Fortalecimiento inicial',
       rpe: '@5-6', isCurrent: true,
       days: [
@@ -569,35 +556,11 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 4),
 }
 
-// ── LOGS MARTA ───────────────────────────────────────────
-export const DEMO_LOGS_MARTA: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, viernes — 4 semanas. Cargas bajas y progresión lenta,
-  // acorde a una fase de readaptación (no se busca ni RIR ni intensidad alta).
-  // Se procesa de más antiguo a más reciente para que la clave de ejercicio (solo
-  // hay una "semana" en el plan) se quede con la fecha más reciente, no una vieja.
-  const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27].slice().reverse()
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 3
-    const week = Math.floor(idx / 3)
-    const baseW = [8, 6, 0][dayIdx] // día A (banda/isométrico ~sin peso), B (mancuernas ligeras), C (cardio, sin peso)
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string}> = {}
-      for (let si = 0; si < 3; si++) {
-        sets[si] = { weight: String(baseW + week * 0.5), reps: dayIdx === 2 ? '1' : '12' }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS MARTA — 4 semanas de historial ────────────────
+export const DEMO_LOGS_MARTA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_MARTA, 2)
 
 // ── PLAN BEATRIZ (Primeriza, pérdida de peso) ─────────────
 export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
@@ -610,8 +573,7 @@ export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
   diasSemana: 3,
   coachNotes: 'Primera vez en el gimnasio. Foco 100% en aprender la técnica y crear el hábito — nada de buscar peso máximo todavía. Ánimo en cada sesión: cuesta arrancar, pero ya lleva 4 semanas seguidas sin fallar.',
   macros: { kcal: 1900, protein: 140, carbs: 170, fats: 60, notaMacros: 'Déficit sostenible — prioriza proteína y saciedad, nunca pases hambre.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 4 — Adaptación',
       rpe: '@6', isCurrent: true,
       days: [
@@ -643,36 +605,11 @@ export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 4),
 }
 
-// ── LOGS BEATRIZ ─────────────────────────────────────────
-export const DEMO_LOGS_BEATRIZ: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, miércoles, viernes — 4 semanas. "Ganancias de principiante": progresión
-  // de reps más que de peso, típica en las primeras semanas de alguien sin experiencia.
-  // Se procesa de más antiguo a más reciente para que la clave de ejercicio (solo
-  // hay una "semana" en el plan) se quede con la fecha más reciente, no una vieja.
-  const offsets = [2,4,6, 9,11,13, 16,18,20, 23,25,27].slice().reverse()
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 3
-    const week = Math.floor(idx / 3)
-    const baseW = [0, 5, 0][dayIdx]
-    const baseReps = 8 + week // 8→9→10→11 reps a medida que avanzan las semanas
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string}> = {}
-      for (let si = 0; si < 3; si++) {
-        sets[si] = { weight: String(baseW + ri), reps: dayIdx === 2 && ri === 0 ? '1' : String(baseReps) }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS BEATRIZ — 4 semanas de historial ──────────────
+export const DEMO_LOGS_BEATRIZ: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_BEATRIZ, 2)
 
 // ── PLAN LUCAS (Atletismo — velocidad y potencia) ─────────
 export const DEMO_PLAN_LUCAS: TrainingPlan = {
@@ -685,8 +622,7 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
   diasSemana: 4,
   coachNotes: 'Pretemporada — bloque de fuerza-potencia en el gimnasio antes de afinar la técnica de carrera con el entrenador de pista. Vigilar isquiotibiales, tiene historial de sobrecarga.',
   macros: { kcal: 3100, protein: 180, carbs: 400, fats: 80, notaMacros: 'Carga alta de carbohidratos para las sesiones de velocidad — no entrenar en ayunas los días de sprints.' },
-  weeks: [
-    {
+  weeks: expandToWeeks({
       label: 'Semana 5 — Fuerza-Potencia',
       rpe: '@8', isCurrent: true,
       days: [
@@ -727,39 +663,11 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
           ]
         },
       ]
-    }
-  ]
+    }, 5),
 }
 
-// ── LOGS LUCAS ───────────────────────────────────────────
-export const DEMO_LOGS_LUCAS: TrainingLogs = (() => {
-  const logs: TrainingLogs = {}
-  const today = new Date()
-  // lunes, martes, jueves, viernes — 5 semanas. Se procesa de más antiguo a más
-  // reciente para que la clave de ejercicio (solo hay una "semana" en el plan)
-  // se quede con la fecha más reciente, no una de hace un mes.
-  const offsets = [1,2,4,5, 8,9,11,12, 15,16,18,19, 22,23,25,26, 29,30,32,33].slice().reverse()
-  offsets.forEach((offset, idx) => {
-    const d = new Date(today); d.setDate(d.getDate() - offset)
-    const fecha = d.toISOString().split('T')[0]
-    const dayIdx = idx % 4
-    const week = Math.min(Math.floor(offset / 7), 4)
-    const baseWeights: Record<number, number[]> = {
-      0: [102,104,106,108,110], 1: [55,56,58,59,60],
-      2: [64,66,68,69,70], 3: [45,45,45,45,45],
-    }
-    const bw = (baseWeights[dayIdx] || [60,62,64,66,68])[4 - week]
-    ;[0,1,2,3].forEach(ri => {
-      const sets: Record<number, {weight:string;reps:string;rir:number}> = {}
-      const n = ri === 0 ? 4 : 3
-      for (let si = 0; si < n; si++) {
-        sets[si] = { weight: String(bw - (ri * 10)), reps: dayIdx >= 2 && ri === 0 ? '1' : '6', rir: 1 }
-      }
-      logs[`ex_w0_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
-    })
-  })
-  return logs
-})()
+// ── LOGS LUCAS — 5 semanas de historial ────────────────
+export const DEMO_LOGS_LUCAS: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_LUCAS, 3)
 
 // ── PESOS CORPORALES (para localStorage en demo) ───────
 export const DEMO_WEIGHTS_MARIA = [

@@ -78,7 +78,7 @@ export function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: Trainin
             <defs><linearGradient id="gFuerza" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6e5438" stopOpacity={0.2} /><stop offset="95%" stopColor="#6e5438" stopOpacity={0} /></linearGradient></defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
             <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis domain={[min * 0.95, max * 1.05]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis domain={[min * 0.95, max * 1.05]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} tickFormatter={v => String(Math.round(v))} />
             <Tooltip content={<CustomTooltip />} />
             <Area type="monotone" dataKey="kg" name="Peso" stroke="#6e5438" strokeWidth={2.5} fill="url(#gFuerza)" dot={{ fill: '#6e5438', r: 3 }} activeDot={{ r: 5 }} />
           </AreaChart>

@@ -26,7 +26,7 @@ export function PesoChart({ clientId }: { clientId: string }) {
             <defs><linearGradient id="gPeso" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4caf7d" stopOpacity={0.2} /><stop offset="95%" stopColor="#4caf7d" stopOpacity={0} /></linearGradient></defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
             <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis domain={[min * 0.98, max * 1.02]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis domain={[min * 0.98, max * 1.02]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} tickFormatter={v => String(Math.round(v * 10) / 10)} />
             <Tooltip content={<CustomTooltip />} />
             <Area type="monotone" dataKey="kg" name="Peso" stroke="#4caf7d" strokeWidth={2.5} fill="url(#gPeso)" dot={{ fill: '#4caf7d', r: 3 }} activeDot={{ r: 5 }} />
           </AreaChart>
