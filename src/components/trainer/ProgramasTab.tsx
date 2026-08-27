@@ -10,6 +10,7 @@ import {
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
 import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
+import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -491,6 +492,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
   const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
+    if (trainerId === DEMO_TRAINER_ID) { setCohortes(DEMO_COHORTES.map(c => ({ id: c.id, name: c.nombre }))); return }
     supabase.from('cohortes').select('id, name').eq('trainer_id', trainerId).then(({ data }) => setCohortes(data || []))
   }, [trainerId])
 
@@ -619,6 +621,14 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setPrograms(DEMO_PROGRAMS as unknown as Program[])
+      setLabels(DEMO_LABELS)
+      setSurveyTemplates([{ id: 'demo-tmpl-001', name: 'Check-in semanal' }])
+      setPlanTemplates(DEMO_PLAN_TEMPLATES.map(t => ({ id: t.id, name: t.name, type: t.type })))
+      setLoading(false)
+      return
+    }
     const [progRes, labelRes, surveyRes, planRes] = await Promise.all([
       supabase.from('programs').select('*').eq('trainer_id', trainerId).order('created_at', { ascending: false }),
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
@@ -633,22 +643,24 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   }
 
   const saveProgram = async (prog: Program) => {
-    const { error } = await supabase.from('programs').upsert(prog, { onConflict: 'id' })
-    if (error) { toast('Error al guardar', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('programs').upsert(prog, { onConflict: 'id' })
+      if (error) { toast('Error al guardar', 'warn'); return }
+    }
     setPrograms(ps => ps.find(p => p.id === prog.id) ? ps.map(p => p.id === prog.id ? prog : p) : [prog, ...ps])
     setEditing(null)
     toast('Programa guardado ✓', 'ok')
   }
 
   const deleteProgram = async (id: string) => {
-    await supabase.from('programs').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('programs').delete().eq('id', id)
     setPrograms(ps => ps.filter(p => p.id !== id))
     toast('Eliminado', 'ok')
   }
 
   const duplicate = async (prog: Program) => {
     const copy: Program = { ...JSON.parse(JSON.stringify(prog)), id: `prog_${Date.now()}`, name: `${prog.name} (copia)`, created_at: Date.now(), updated_at: Date.now() }
-    await supabase.from('programs').insert(copy)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('programs').insert(copy)
     setPrograms(ps => [copy, ...ps])
     toast('Duplicado ✓', 'ok')
   }

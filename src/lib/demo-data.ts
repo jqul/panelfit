@@ -1,7 +1,22 @@
 // Datos del modo demo — entrenador ficticio con clientes de ejemplo
-import { ClientData, TrainingPlan, TrainingLogs } from '../types'
+import { ClientData, TrainingPlan, TrainingLogs, TrainingTemplate } from '../types'
 
 export const DEMO_TRAINER_ID = 'demo-trainer-001'
+
+// ── ETIQUETAS DEMO ──────────────────────────────────────
+// Definidas antes de DEMO_CLIENTS para poder asignarlas por id a cada cliente.
+export const DEMO_LABEL_IDS = {
+  vip: 'demo-lbl-vip',
+  powerlifting: 'demo-lbl-powerlifting',
+  hipertrofia: 'demo-lbl-hipertrofia',
+  perdidaGrasa: 'demo-lbl-perdida-grasa',
+  rehab: 'demo-lbl-rehab',
+  primeriza: 'demo-lbl-primeriza',
+  altoRendimiento: 'demo-lbl-alto-rendimiento',
+  riesgoAbandono: 'demo-lbl-riesgo-abandono',
+  ciclo: 'demo-lbl-ciclo',
+  atletismo: 'demo-lbl-atletismo',
+}
 
 export const DEMO_CLIENTS: ClientData[] = [
   {
@@ -9,53 +24,62 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'María', surname: 'García',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-maria-001',
+    phone: '+34 611 22 33 01',
     objetivo: 'hipertrofia',
     weight: 62, fatPercentage: 22, muscleMass: 45, totalLifted: 0,
     planDescription: 'Programa hipertrofia 4 días',
     isActive: true,
     createdAt: Date.now() - 60 * 86400000,
     precio_mensual: 80,
+    label_ids: [DEMO_LABEL_IDS.hipertrofia, DEMO_LABEL_IDS.vip, DEMO_LABEL_IDS.ciclo],
   },
   {
     id: 'demo-client-002',
     name: 'Carlos', surname: 'López',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-carlos-002',
+    phone: '+34 611 22 33 02',
     objetivo: 'fuerza',
     weight: 85, fatPercentage: 18, muscleMass: 68, totalLifted: 0,
     planDescription: 'Powerlifting intermedio',
     isActive: true,
     createdAt: Date.now() - 90 * 86400000,
     precio_mensual: 100,
+    label_ids: [DEMO_LABEL_IDS.powerlifting, DEMO_LABEL_IDS.vip, DEMO_LABEL_IDS.riesgoAbandono],
   },
   {
     id: 'demo-client-003',
     name: 'Laura', surname: 'Martín',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-laura-003',
+    phone: '+34 611 22 33 03',
     objetivo: 'perdida_grasa',
     weight: 70, fatPercentage: 28, muscleMass: 47, totalLifted: 0,
     planDescription: 'Definición 3 días',
     isActive: true,
     createdAt: Date.now() - 30 * 86400000,
+    label_ids: [DEMO_LABEL_IDS.perdidaGrasa, DEMO_LABEL_IDS.riesgoAbandono],
   },
   {
     id: 'demo-client-004',
     name: 'Diego', surname: 'Fernández',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-diego-004',
+    phone: '+34 611 22 33 04',
     objetivo: 'fuerza',
     weight: 90, fatPercentage: 20, muscleMass: 70, totalLifted: 0,
     planDescription: 'Powerlifting — fase de volumen (a 3 meses de competir)',
     isActive: true,
     createdAt: Date.now() - 75 * 86400000,
     precio_mensual: 100,
+    label_ids: [DEMO_LABEL_IDS.powerlifting],
   },
   {
     id: 'demo-client-005',
     name: 'Marta', surname: 'Ruiz',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-marta-005',
+    phone: '+34 611 22 33 05',
     objetivo: 'rehabilitacion',
     weight: 64, fatPercentage: 26, muscleMass: 42, totalLifted: 0,
     planDescription: 'Readaptación post-quirúrgica de rodilla',
@@ -63,31 +87,50 @@ export const DEMO_CLIENTS: ClientData[] = [
     createdAt: Date.now() - 40 * 86400000,
     lesiones: 'Rotura parcial de menisco interno (rodilla derecha) — cirugía artroscópica hace 6 semanas. Sin sentadilla profunda ni impacto hasta autorización del fisio.',
     precio_mensual: 70,
+    label_ids: [DEMO_LABEL_IDS.rehab],
   },
   {
     id: 'demo-client-006',
     name: 'Beatriz', surname: 'Soto',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-beatriz-006',
+    phone: '+34 611 22 33 06',
     objetivo: 'perdida_grasa',
     weight: 96.5, fatPercentage: 38, muscleMass: 55, totalLifted: 0,
     planDescription: 'Primeros pasos — pérdida de peso, sin experiencia previa',
     isActive: true,
     createdAt: Date.now() - 25 * 86400000,
     precio_mensual: 65,
+    label_ids: [DEMO_LABEL_IDS.perdidaGrasa, DEMO_LABEL_IDS.primeriza],
   },
   {
     id: 'demo-client-007',
     name: 'Lucas', surname: 'Vega',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-lucas-007',
+    phone: '+34 611 22 33 07',
     objetivo: 'rendimiento',
     weight: 72, fatPercentage: 10, muscleMass: 62, totalLifted: 0,
     planDescription: 'Preparación física para atletismo — velocidad y potencia',
     isActive: true,
     createdAt: Date.now() - 55 * 86400000,
     precio_mensual: 110,
+    label_ids: [DEMO_LABEL_IDS.altoRendimiento, DEMO_LABEL_IDS.atletismo],
   },
+]
+
+// TrainerLabel completo (id, trainer_id, name, color, emoji, survey_template_id, created_at)
+export const DEMO_LABELS = [
+  { id: DEMO_LABEL_IDS.vip, trainer_id: DEMO_TRAINER_ID, name: 'VIP', color: '#eab308', emoji: '⭐', survey_template_id: null, created_at: Date.now() - 80 * 86400000 },
+  { id: DEMO_LABEL_IDS.powerlifting, trainer_id: DEMO_TRAINER_ID, name: 'Powerlifting', color: '#6e5438', emoji: '🏋️', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 1 },
+  { id: DEMO_LABEL_IDS.hipertrofia, trainer_id: DEMO_TRAINER_ID, name: 'Hipertrofia', color: '#3b82f6', emoji: '💪', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 2 },
+  { id: DEMO_LABEL_IDS.perdidaGrasa, trainer_id: DEMO_TRAINER_ID, name: 'Pérdida de grasa', color: '#22c55e', emoji: '🎯', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 3 },
+  { id: DEMO_LABEL_IDS.rehab, trainer_id: DEMO_TRAINER_ID, name: 'Rehabilitación', color: '#06b6d4', emoji: '🩹', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 4 },
+  { id: DEMO_LABEL_IDS.primeriza, trainer_id: DEMO_TRAINER_ID, name: 'Primeriza', color: '#8b5cf6', emoji: '🌱', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 5 },
+  { id: DEMO_LABEL_IDS.altoRendimiento, trainer_id: DEMO_TRAINER_ID, name: 'Alto rendimiento', color: '#ec4899', emoji: '🔥', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 6 },
+  { id: DEMO_LABEL_IDS.riesgoAbandono, trainer_id: DEMO_TRAINER_ID, name: 'Riesgo de abandono', color: '#ef4444', emoji: '🚩', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 7 },
+  { id: DEMO_LABEL_IDS.ciclo, trainer_id: DEMO_TRAINER_ID, name: 'Ciclo menstrual', color: '#f97316', emoji: '🌙', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 8 },
+  { id: DEMO_LABEL_IDS.atletismo, trainer_id: DEMO_TRAINER_ID, name: 'Atletismo', color: '#64748b', emoji: '🏃', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 9 },
 ]
 
 // ── PERFIL ENTRENADOR DEMO ─────────────────────────────
@@ -824,6 +867,13 @@ export const DEMO_SURVEY_TEMPLATE = {
   created_at: Date.now() - 30*86400000,
 }
 
+// Programación de la encuesta demo — a todos los clientes cada lunes, y una
+// puntual a Carlos (de baja) ya pausada
+export const DEMO_SURVEY_SCHEDULES = [
+  { id: 'demo-sched-1', trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001', client_id: null, frequency: 'weekly' as const, day_of_week: 1, active: true, last_sent_at: Date.now() - 6 * 86400000 },
+  { id: 'demo-sched-2', trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001', client_id: 'demo-client-002', frequency: 'weekly' as const, day_of_week: 1, active: false, last_sent_at: Date.now() - 20 * 86400000 },
+]
+
 export const DEMO_LOGS_MAP: Record<string, TrainingLogs> = {
   'demo-client-001': DEMO_LOGS_MARIA,
   'demo-client-002': DEMO_LOGS_CARLOS,
@@ -860,9 +910,50 @@ export const DEMO_READINESS_MARIA: DemoReadinessRow[] = [0,1,2,3,4,5,6].map(i =>
   ][i]
   return { ...vals, date: d.toISOString().split('T')[0] }
 })
+// Genera 7 días de check-in a partir de un patrón base (para variar sin repetir a mano)
+function genReadiness(pattern: { sleep: number; soreness: number; stress: number; motivation: number }[]): DemoReadinessRow[] {
+  return pattern.map((vals, i) => ({ ...vals, date: new Date(Date.now() - (pattern.length - 1 - i) * 86400000).toISOString().split('T')[0] }))
+}
+// Carlos: motivación cayendo — coherente con su etiqueta de riesgo de abandono
+export const DEMO_READINESS_CARLOS: DemoReadinessRow[] = genReadiness([
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 3, motivation: 3 },
+  { sleep: 3, soreness: 3, stress: 4, motivation: 2 },
+  { sleep: 2, soreness: 2, stress: 4, motivation: 2 },
+  { sleep: 3, soreness: 2, stress: 4, motivation: 2 },
+  { sleep: 2, soreness: 2, stress: 5, motivation: 1 },
+  { sleep: 2, soreness: 1, stress: 5, motivation: 1 },
+])
+// Diego: estable, buena recuperación (fase de volumen sin prisa)
+export const DEMO_READINESS_DIEGO: DemoReadinessRow[] = genReadiness([
+  { sleep: 4, soreness: 4, stress: 4, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 4, motivation: 4 },
+  { sleep: 4, soreness: 4, stress: 3, motivation: 5 },
+  { sleep: 5, soreness: 4, stress: 4, motivation: 4 },
+  { sleep: 4, soreness: 4, stress: 4, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 4, motivation: 5 },
+  { sleep: 5, soreness: 4, stress: 4, motivation: 5 },
+])
+// Beatriz: primeriza con agujetas fuertes las primeras semanas
+export const DEMO_READINESS_BEATRIZ: DemoReadinessRow[] = genReadiness([
+  { sleep: 3, soreness: 1, stress: 3, motivation: 5 },
+  { sleep: 3, soreness: 1, stress: 3, motivation: 5 },
+  { sleep: 4, soreness: 2, stress: 2, motivation: 4 },
+  { sleep: 3, soreness: 2, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 2, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 2, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 2, motivation: 4 },
+])
 export const DEMO_READINESS_MAP: Record<string, DemoReadinessRow[]> = {
   'demo-client-001': DEMO_READINESS_MARIA,
+  'demo-client-002': DEMO_READINESS_CARLOS,
+  'demo-client-004': DEMO_READINESS_DIEGO,
+  'demo-client-006': DEMO_READINESS_BEATRIZ,
 }
+// Igual que DEMO_READINESS_MAP pero aplanado con clientId en cada fila — lo
+// que necesita la Bandeja para mostrar check-ins de TODOS los clientes juntos.
+export const DEMO_READINESS_FLAT: ({ clientId: string } & DemoReadinessRow)[] =
+  Object.entries(DEMO_READINESS_MAP).flatMap(([clientId, rows]) => rows.map(r => ({ clientId, ...r })))
 
 // ── PRUEBAS FÍSICAS (demo) ──────────────────────────────
 export const DEMO_TEST_CATALOG = [
@@ -967,3 +1058,130 @@ export const DEMO_VIDEO_FEEDBACK_MARIA = [
 export const DEMO_VIDEO_FEEDBACK_MAP: Record<string, typeof DEMO_VIDEO_FEEDBACK_MARIA> = {
   'demo-client-001': DEMO_VIDEO_FEEDBACK_MARIA,
 }
+
+// ── PLANTILLAS DE WORKOUT (demo) ────────────────────────
+// La mayoría reutiliza las semanas ya construidas de los propios clientes
+// (con ejercicios, vídeos, descansos... reales) en vez de inventar contenido
+// nuevo — así el catálogo se ve lleno sin duplicar trabajo de autoría.
+export const DEMO_PLAN_TEMPLATES: TrainingTemplate[] = [
+  { id: 'demo-tmpl-fuerza', trainerId: DEMO_TRAINER_ID, name: 'Fuerza 5×3 — Powerlifting', type: 'Fuerza', description: 'Sentadilla/banca/peso muerto a 5×3, en fase de pico.', weeks: DEMO_PLAN_CARLOS.weeks, createdAt: Date.now() - 70 * 86400000, updatedAt: Date.now() - 20 * 86400000, label_ids: [DEMO_LABEL_IDS.powerlifting], isPublic: false },
+  { id: 'demo-tmpl-volumen', trainerId: DEMO_TRAINER_ID, name: 'Volumen tren inferior — Powerlifting', type: 'Volumen', description: 'Base de volumen a 3 meses de competir, técnica por encima de la carga.', weeks: DEMO_PLAN_DIEGO.weeks, createdAt: Date.now() - 65 * 86400000, updatedAt: Date.now() - 15 * 86400000, label_ids: [DEMO_LABEL_IDS.powerlifting], isPublic: false },
+  { id: 'demo-tmpl-hipertrofia', trainerId: DEMO_TRAINER_ID, name: 'Hipertrofia 4 días', type: 'Hipertrofia', description: 'Split de 4 días con RIR objetivo por semana.', weeks: DEMO_PLAN_MARIA.weeks, createdAt: Date.now() - 55 * 86400000, updatedAt: Date.now() - 10 * 86400000, label_ids: [DEMO_LABEL_IDS.hipertrofia], isPublic: true },
+  { id: 'demo-tmpl-definicion', trainerId: DEMO_TRAINER_ID, name: 'Definición 3 días', type: 'Pérdida de grasa', description: 'Full body + HIIT, pensado para 3 sesiones/semana con déficit moderado.', weeks: DEMO_PLAN_LAURA.weeks, createdAt: Date.now() - 28 * 86400000, updatedAt: Date.now() - 5 * 86400000, label_ids: [DEMO_LABEL_IDS.perdidaGrasa], isPublic: false },
+  { id: 'demo-tmpl-rehab-rodilla', trainerId: DEMO_TRAINER_ID, name: 'Readaptación de rodilla (post-quirúrgico)', type: 'Rehabilitación', description: 'Progresión sin sentadilla profunda ni impacto — isométricos y control motor.', weeks: DEMO_PLAN_MARTA.weeks, createdAt: Date.now() - 38 * 86400000, updatedAt: Date.now() - 3 * 86400000, label_ids: [DEMO_LABEL_IDS.rehab], isPublic: false },
+  { id: 'demo-tmpl-iniciacion', trainerId: DEMO_TRAINER_ID, name: 'Iniciación — primeros pasos', type: 'Iniciación', description: 'Full body para alguien sin experiencia previa, técnica antes que carga.', weeks: DEMO_PLAN_BEATRIZ.weeks, createdAt: Date.now() - 24 * 86400000, updatedAt: Date.now() - 2 * 86400000, label_ids: [DEMO_LABEL_IDS.primeriza], isPublic: true },
+  { id: 'demo-tmpl-rendimiento', trainerId: DEMO_TRAINER_ID, name: 'Rendimiento — velocidad y potencia', type: 'Rendimiento', description: 'Sprints, pliometría y fuerza — preparación física para atletismo.', weeks: DEMO_PLAN_LUCAS.weeks, createdAt: Date.now() - 50 * 86400000, updatedAt: Date.now() - 1 * 86400000, label_ids: [DEMO_LABEL_IDS.altoRendimiento, DEMO_LABEL_IDS.atletismo], isPublic: false },
+  {
+    id: 'demo-tmpl-fullbody', trainerId: DEMO_TRAINER_ID, name: 'Full body 3 días — Mantenimiento', type: 'Mantenimiento', description: 'Para clientes de temporada baja: mantener sin sobrecargar la agenda.',
+    weeks: [{
+      label: 'Semana 1', rpe: '@7', isCurrent: true,
+      days: [
+        { title: 'DÍA A', focus: 'Full body', exercises: [
+          { name: 'Sentadilla goblet', sets: '3×10', weight: '24kg', isMain: true, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          { name: 'Press banca mancuernas', sets: '3×10', weight: '20kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          { name: 'Remo mancuerna', sets: '3×10', weight: '18kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+        ] },
+        { title: 'DÍA B', focus: 'Full body', exercises: [
+          { name: 'Peso muerto rumano', sets: '3×10', weight: '40kg', isMain: true, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          { name: 'Press militar mancuernas', sets: '3×10', weight: '12kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          { name: 'Jalón al pecho', sets: '3×12', weight: '40kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+        ] },
+        { title: 'DÍA C', focus: 'Full body', exercises: [
+          { name: 'Zancadas con mancuernas', sets: '3×10', weight: '14kg', isMain: true, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+          { name: 'Press inclinado mancuernas', sets: '3×10', weight: '16kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+          { name: 'Remo en polea baja', sets: '3×12', weight: '35kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+        ] },
+      ]
+    }], createdAt: Date.now() - 45 * 86400000, updatedAt: Date.now() - 45 * 86400000, label_ids: [], isPublic: true,
+  },
+  {
+    id: 'demo-tmpl-test-inicial', trainerId: DEMO_TRAINER_ID, name: 'Test inicial — Valoración física', type: 'Test inicial', description: 'Primera sesión con un cliente nuevo: valorar movilidad, fuerza básica y forma física.',
+    weeks: [{
+      label: 'Semana 1', rpe: '@6', isCurrent: true,
+      days: [
+        { title: 'VALORACIÓN', focus: 'Movilidad, fuerza y resistencia básica', exercises: [
+          { name: 'Sentadilla goblet', sets: '2×10', weight: '10kg', isMain: true, comment: 'Valorar profundidad y control de rodillas', videoUrl: '', restSets: 60, restAfter: 60 },
+          { name: 'Flexiones (push-ups)', sets: '2×AMRAP', weight: '-', isMain: false, comment: 'Al fallo técnico', videoUrl: '', restSets: 60, restAfter: 60 },
+          { name: 'Plancha', sets: '2×30s', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
+          { name: 'Test de Cooper', sets: '1×12min', weight: '-', isMain: false, comment: 'Metros recorridos', videoUrl: '', restSets: 0, restAfter: 0 },
+        ] },
+      ]
+    }], createdAt: Date.now() - 90 * 86400000, updatedAt: Date.now() - 90 * 86400000, label_ids: [], isPublic: false,
+  },
+]
+
+// ── PROGRAMAS (demo) — periodización con tareas por día ──
+export const DEMO_PROGRAMS = [
+  {
+    id: 'demo-prog-recomp', trainer_id: DEMO_TRAINER_ID, name: 'Reto 8 semanas — Recomposición corporal', tipo: 'Pérdida de grasa',
+    label_ids: [DEMO_LABEL_IDS.perdidaGrasa], created_at: Date.now() - 40 * 86400000, updated_at: Date.now() - 5 * 86400000,
+    weeks: Array.from({ length: 2 }, (_, wi) => ({
+      label: `Semana ${wi + 1}`,
+      days: Array.from({ length: 7 }, (_, di) => {
+        const tasks = []
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t_${wi}_${di}_w`, type: 'workout', title: 'Full body + HIIT', data: { objective: 'Definición 3 días' } })
+        if (di === 1) tasks.push({ id: `t_${wi}_${di}_c`, type: 'cardio', title: 'Cardio suave 30min', data: { objective: 'Caminar a paso ligero' } })
+        if (di === 6 && wi === 0) tasks.push({ id: `t_${wi}_${di}_e`, type: 'evolucion', title: 'Fotos + peso', data: { objective: 'Registro quincenal' } })
+        if (di === 0) tasks.push({ id: `t_${wi}_${di}_m`, type: 'mensaje', title: 'Recordatorio motivacional', data: { text: '¡Vamos con todo esta semana! 💪' } })
+        return { tasks }
+      }),
+    })),
+  },
+  {
+    id: 'demo-prog-531', trainer_id: DEMO_TRAINER_ID, name: 'Programa Fuerza 5/3/1', tipo: 'Fuerza',
+    label_ids: [DEMO_LABEL_IDS.powerlifting], created_at: Date.now() - 85 * 86400000, updated_at: Date.now() - 10 * 86400000,
+    weeks: Array.from({ length: 4 }, (_, wi) => ({
+      label: wi < 3 ? `Semana ${wi + 1} — ciclo de intensidad` : 'Semana 4 — descarga',
+      days: Array.from({ length: 7 }, (_, di) => {
+        const tasks = []
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t531_${wi}_${di}_w`, type: 'workout', title: wi < 3 ? 'Sentadilla/banca/peso muerto 5/3/1' : 'Descarga — técnica ligera', data: { objective: wi < 3 ? `Semana ${wi + 1} de intensidad` : 'Semana de descarga' } })
+        if (di === 5) tasks.push({ id: `t531_${wi}_${di}_v`, type: 'video', title: 'Vídeo de ejecución sentadilla', data: { objective: 'Revisar profundidad y técnica' } })
+        return { tasks }
+      }),
+    })),
+  },
+  {
+    id: 'demo-prog-rehab', trainer_id: DEMO_TRAINER_ID, name: 'Vuelta al deporte — Rehabilitación de rodilla', tipo: 'Rehabilitación',
+    label_ids: [DEMO_LABEL_IDS.rehab], created_at: Date.now() - 42 * 86400000, updated_at: Date.now() - 2 * 86400000,
+    weeks: Array.from({ length: 3 }, (_, wi) => ({
+      label: `Fase ${wi + 1}`,
+      days: Array.from({ length: 7 }, (_, di) => {
+        const tasks = []
+        if ([0, 3].includes(di)) tasks.push({ id: `trh_${wi}_${di}_w`, type: 'workout', title: 'Readaptación de rodilla', data: { objective: 'Sin sentadilla profunda ni impacto' } })
+        if (di === 5) tasks.push({ id: `trh_${wi}_${di}_f`, type: 'formulario', title: 'Cuestionario de dolor', data: { objective: 'Escala de dolor 0-10' } })
+        return { tasks }
+      }),
+    })),
+  },
+]
+
+// ── GRUPOS / RETOS (demo) ────────────────────────────────
+export const DEMO_COHORTES = [
+  { id: 'demo-coh-fuerza', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Fuerza Otoño', descripcion: 'Grupo de powerlifting rumbo a competición — puntos por sesión completada.', color: '#6e5438', fecha_inicio: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], activa: true, created_at: Date.now() - 30 * 86400000, puntos_por_sesion: 10 },
+  { id: 'demo-coh-grasa', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Recomposición 8 semanas', descripcion: 'Clientes en fase de pérdida de grasa, seguimiento conjunto.', color: '#22c55e', fecha_inicio: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() + 36 * 86400000).toISOString().split('T')[0], activa: true, created_at: Date.now() - 20 * 86400000, puntos_por_sesion: 10 },
+  { id: 'demo-coh-verano', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Verano (cerrado)', descripcion: 'Reto de verano ya finalizado — se mantiene como historial.', color: '#f59e0b', fecha_inicio: new Date(Date.now() - 120 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0], activa: false, created_at: Date.now() - 120 * 86400000, puntos_por_sesion: 5 },
+]
+export const DEMO_COHORTE_CLIENTES = [
+  { id: 'demo-cc-1', cohorte_id: 'demo-coh-fuerza', client_id: 'demo-client-002', joined_at: Date.now() - 30 * 86400000 },
+  { id: 'demo-cc-2', cohorte_id: 'demo-coh-fuerza', client_id: 'demo-client-004', joined_at: Date.now() - 30 * 86400000 },
+  { id: 'demo-cc-3', cohorte_id: 'demo-coh-grasa', client_id: 'demo-client-003', joined_at: Date.now() - 20 * 86400000 },
+  { id: 'demo-cc-4', cohorte_id: 'demo-coh-grasa', client_id: 'demo-client-006', joined_at: Date.now() - 20 * 86400000 },
+  { id: 'demo-cc-5', cohorte_id: 'demo-coh-verano', client_id: 'demo-client-001', joined_at: Date.now() - 120 * 86400000 },
+]
+
+// ── CALENDARIO (demo) — sesiones pasadas y próximas ─────
+function citaAt(daysOffset: number, hour: number, min = 0): { start_at: string; end_at: string } {
+  const d = new Date(); d.setHours(hour, min, 0, 0); d.setDate(d.getDate() + daysOffset)
+  const end = new Date(d.getTime() + 60 * 60000)
+  return { start_at: d.toISOString(), end_at: end.toISOString() }
+}
+export const DEMO_CITAS = [
+  { id: 'demo-cita-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', title: 'Sesión — María', ...citaAt(1, 9), status: 'confirmada' as const, notes: '', recurring: 'weekly' as const, recurring_until: new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0] },
+  { id: 'demo-cita-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-002', title: 'Sesión — Carlos (pico)', ...citaAt(1, 18), status: 'confirmada' as const, notes: 'Revisar RPE del press banca', recurring: null, recurring_until: null },
+  { id: 'demo-cita-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', title: 'Test Fuerza-Velocidad — Lucas', ...citaAt(2, 17), status: 'pendiente' as const, notes: 'Traer chaleco lastrado y barra hexagonal', recurring: null, recurring_until: null },
+  { id: 'demo-cita-4', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-005', title: 'Sesión — Marta (rehab)', ...citaAt(3, 10), status: 'confirmada' as const, notes: '', recurring: 'weekly' as const, recurring_until: new Date(Date.now() + 45 * 86400000).toISOString().split('T')[0] },
+  { id: 'demo-cita-5', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-003', title: 'Sesión — Laura', ...citaAt(-1, 19), status: 'completada' as const, notes: '', recurring: null, recurring_until: null },
+  { id: 'demo-cita-6', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-006', title: 'Sesión — Beatriz', ...citaAt(-2, 11), status: 'completada' as const, notes: 'Primera sesión con sentadilla goblet', recurring: null, recurring_until: null },
+  { id: 'demo-cita-7', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-004', title: 'Sesión — Diego', ...citaAt(4, 18), status: 'pendiente' as const, notes: '', recurring: null, recurring_until: null },
+  { id: 'demo-cita-8', trainer_id: DEMO_TRAINER_ID, client_id: null, title: 'Bloqueado — formación', ...citaAt(5, 16), status: 'confirmada' as const, notes: 'No disponible', recurring: null, recurring_until: null },
+]

@@ -7,6 +7,7 @@ import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, Arro
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
+import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 
 interface Props {
   trainerId: string
@@ -94,6 +95,12 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setTemplates(DEMO_PLAN_TEMPLATES)
+      setLabels(DEMO_LABELS)
+      setLoading(false)
+      return
+    }
     const migrated = localStorage.getItem(LS_MIGRATED(trainerId))
     if (!migrated) {
       try {
@@ -118,11 +125,14 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   }
 
   const persist = async (tmpl: TrainingTemplate) => {
-    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [], is_public: tmpl.isPublic || false }
-    const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
-    if (error) throw error
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [], is_public: tmpl.isPublic || false }
+      const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+      if (error) throw error
+    }
     const updated = templates.find(t => t.id === tmpl.id) ? templates.map(t => t.id === tmpl.id ? tmpl : t) : [tmpl, ...templates]
-    setTemplates(updated); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+    setTemplates(updated)
+    if (trainerId !== DEMO_TRAINER_ID) localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
   }
 
   const togglePublic = async (tmpl: TrainingTemplate) => {
@@ -144,9 +154,10 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   }
 
   const deleteTemplate = async (id: string) => {
-    await supabase.from('plan_templates').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('plan_templates').delete().eq('id', id)
     const updated = templates.filter(t => t.id !== id)
-    setTemplates(updated); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+    setTemplates(updated)
+    if (trainerId !== DEMO_TRAINER_ID) localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
     toast('Workout eliminado', 'ok')
   }
 

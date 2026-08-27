@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
 import { TrainerLabel, LabelPill } from './labels'
+import { DEMO_TRAINER_ID, DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES, DEMO_SURVEY_SCHEDULES, DEMO_LABELS } from '../../lib/demo-data'
 
 interface Question {
   id: string
@@ -87,10 +88,12 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
     if (!name.trim() || !questions.length) return
     setSaving(true)
     const tmpl: SurveyTemplate = { id: initial?.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: name.trim(), questions, created_at: initial?.created_at || Date.now() }
-    const { error } = initial
-      ? await supabase.from('survey_templates').update({ name: tmpl.name, questions: tmpl.questions }).eq('id', tmpl.id)
-      : await supabase.from('survey_templates').insert(tmpl)
-    if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = initial
+        ? await supabase.from('survey_templates').update({ name: tmpl.name, questions: tmpl.questions }).eq('id', tmpl.id)
+        : await supabase.from('survey_templates').insert(tmpl)
+      if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
+    }
     onSave(tmpl); setSaving(false)
   }
 
@@ -174,8 +177,10 @@ function ScheduleEditor({ trainerId, templates, clients, initial, onSave, onCanc
     if (!templateId) return
     setSaving(true)
     const sched: SurveySchedule = { id: initial?.id || `sched_${Date.now()}`, trainer_id: trainerId, template_id: templateId, client_id: clientId, frequency, day_of_week: dayOfWeek, active: true, last_sent_at: null }
-    const { error } = initial ? await supabase.from('survey_schedules').update(sched).eq('id', sched.id) : await supabase.from('survey_schedules').insert(sched)
-    if (error) { toast('Error al programar', 'warn'); setSaving(false); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = initial ? await supabase.from('survey_schedules').update(sched).eq('id', sched.id) : await supabase.from('survey_schedules').insert(sched)
+      if (error) { toast('Error al programar', 'warn'); setSaving(false); return }
+    }
     onSave(sched); setSaving(false)
   }
 
@@ -296,6 +301,14 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setTemplates([DEMO_SURVEY_TEMPLATE as SurveyTemplate])
+      setSchedules(DEMO_SURVEY_SCHEDULES as SurveySchedule[])
+      setResponses(DEMO_SURVEY_RESPONSES as SurveyResponse[])
+      setLabels(DEMO_LABELS)
+      setLoading(false)
+      return
+    }
     const [tmplRes, schedRes, respRes, labelRes] = await Promise.all([
       supabase.from('survey_templates').select('*').eq('trainer_id', trainerId).order('created_at'),
       supabase.from('survey_schedules').select('*').eq('trainer_id', trainerId).order('created_at'),
@@ -311,18 +324,18 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
 
   const deleteTemplate = async (id: string) => {
     if (!confirm('¿Eliminar esta plantilla?')) return
-    await supabase.from('survey_templates').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('survey_templates').delete().eq('id', id)
     setTemplates(ts => ts.filter(t => t.id !== id))
     toast('Plantilla eliminada', 'ok')
   }
 
   const deleteSchedule = async (id: string) => {
-    await supabase.from('survey_schedules').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('survey_schedules').delete().eq('id', id)
     setSchedules(ss => ss.filter(s => s.id !== id))
   }
 
   const toggleSchedule = async (id: string, active: boolean) => {
-    await supabase.from('survey_schedules').update({ active }).eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('survey_schedules').update({ active }).eq('id', id)
     setSchedules(ss => ss.map(s => s.id === id ? { ...s, active } : s))
   }
 

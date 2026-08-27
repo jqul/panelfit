@@ -7,6 +7,7 @@ import {
   Plus, X, Trash2, CheckCircle2, ChevronLeft, ChevronRight,
   Clock, Users, Repeat, Ban
 } from 'lucide-react'
+import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
 
 interface Props {
   trainerId: string
@@ -60,6 +61,11 @@ export function CalendarTab({ trainerId, clients }: Props) {
 
   const loadCitas = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setCitas(DEMO_CITAS as Cita[])
+      setLoading(false)
+      return
+    }
     const { data, error } = await supabase
       .from('citas').select('*').eq('trainer_id', trainerId).order('start_at')
     if (error) { logError('CalendarTab:load', error); toast('Error al cargar el calendario', 'warn') }
@@ -98,6 +104,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
       notes: '',
     }
 
+    let newRows: Cita[]
     if (form.recurring && form.recurringUntil) {
       const until = new Date(form.recurringUntil + 'T23:59:59')
       const rows = []
@@ -107,27 +114,36 @@ export function CalendarTab({ trainerId, clients }: Props) {
         rows.push({ ...base, start_at: cursor.toISOString(), end_at: cEnd.toISOString(), recurring: 'weekly' as const, recurring_until: form.recurringUntil })
         cursor = addDays(cursor, 7)
       }
-      const { error } = await supabase.from('citas').insert(rows)
-      if (error) { logError('CalendarTab:saveRecurring', error); toast('Error al crear las sesiones', 'warn'); setSaving(false); return }
+      if (trainerId !== DEMO_TRAINER_ID) {
+        const { error } = await supabase.from('citas').insert(rows)
+        if (error) { logError('CalendarTab:saveRecurring', error); toast('Error al crear las sesiones', 'warn'); setSaving(false); return }
+      }
+      newRows = rows.map((r, i) => ({ ...r, id: `demo-cita-new-${Date.now()}-${i}` }))
       toast(`${rows.length} sesiones creadas ✓`, 'ok')
     } else {
-      const { error } = await supabase.from('citas').insert(base)
-      if (error) { logError('CalendarTab:save', error); toast('Error al crear la sesión', 'warn'); setSaving(false); return }
+      if (trainerId !== DEMO_TRAINER_ID) {
+        const { error } = await supabase.from('citas').insert(base)
+        if (error) { logError('CalendarTab:save', error); toast('Error al crear la sesión', 'warn'); setSaving(false); return }
+      }
+      newRows = [{ ...base, id: `demo-cita-new-${Date.now()}`, recurring: null, recurring_until: null }]
       toast('Sesión creada ✓', 'ok')
     }
 
     setSaving(false)
     setShowForm(null)
-    loadCitas()
+    if (trainerId === DEMO_TRAINER_ID) setCitas(prev => [...prev, ...newRows]); else loadCitas()
   }
 
   const updateStatus = async (cita: Cita, status: Cita['status']) => {
-    const { error } = await supabase.from('citas').update({ status }).eq('id', cita.id)
-    if (error) { logError('CalendarTab:status', error); toast('Error al actualizar', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('citas').update({ status }).eq('id', cita.id)
+      if (error) { logError('CalendarTab:status', error); toast('Error al actualizar', 'warn'); return }
+    }
     setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, status } : c))
   }
 
   const deleteCita = async (cita: Cita) => {
+    if (trainerId === DEMO_TRAINER_ID) { setCitas(prev => prev.filter(c => c.id !== cita.id)); toast('Sesión eliminada', 'ok'); return }
     const { error } = await supabase.from('citas').delete().eq('id', cita.id)
     if (error) { logError('CalendarTab:delete', error); toast('Error al borrar', 'warn'); return }
     setCitas(prev => prev.filter(c => c.id !== cita.id))

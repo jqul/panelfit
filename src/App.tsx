@@ -34,9 +34,12 @@ const BlogConseguirClientes        = lazy(() => import('./components/BlogConsegu
 const BlogAppEnviarPlanes          = lazy(() => import('./components/BlogAppEnviarPlanes').then(m => ({ default: m.BlogAppEnviarPlanes })))
 
 // ── Perfil demo constante ─────────────────────────────────
+// planName: 'studio' — el modo demo debe enseñar TODO lo que la app es capaz de
+// hacer, incluidas las funciones de pago más altas (encuestas, dashboard de
+// negocio, marca blanca...), no quedarse bloqueado tras el paywall del plan Free.
 const DEMO_PROFILE: UserProfile = {
   uid: DEMO_TRAINER_ID, email: 'demo@panelfit.app', displayName: 'Alex Trainer',
-  role: 'trainer', approved: true, createdAt: Date.now(),
+  role: 'trainer', approved: true, createdAt: Date.now(), planName: 'studio',
 }
 
 // ── Componentes pequeños ──────────────────────────────────

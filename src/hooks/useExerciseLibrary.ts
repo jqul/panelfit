@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
 import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
+import { DEMO_TRAINER_ID } from '../lib/demo-data'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
@@ -79,6 +80,18 @@ export function useExerciseLibrary(trainerId: string) {
 
   const loadLibrary = async () => {
     setLoading(true)
+
+    // Modo demo: biblioteca de serie directamente en memoria, sin tocar
+    // Supabase (el trainer_id falso no es un UUID real).
+    if (trainerId === DEMO_TRAINER_ID) {
+      const demo: LibraryExercise[] = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
+        id: `ex_demo_${i}`, trainerId, name: e.name, description: '', category: e.category,
+        especialidades: [], videos: [], tags: [], createdAt: Date.now(),
+      }))
+      setExercises(demo)
+      setLoading(false)
+      return
+    }
 
     // 1. Cargar caché local inmediatamente (UX instantánea)
     const cached = localStorage.getItem(LS_KEY(trainerId))
@@ -214,6 +227,7 @@ export function useExerciseLibrary(trainerId: string) {
 
     // Optimistic update
     const updated = [...exercises, ex].sort((a, b) => a.name.localeCompare(b.name))
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return ex }
     saveLocal(updated)
 
     // Persistir en Supabase
@@ -232,6 +246,7 @@ export function useExerciseLibrary(trainerId: string) {
 
   const updateExercise = useCallback(async (id: string, updates: Partial<LibraryExercise>) => {
     const updated = exercises.map(e => e.id === id ? { ...e, ...updates } : e)
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
     const ex = updated.find(e => e.id === id)
@@ -248,6 +263,7 @@ export function useExerciseLibrary(trainerId: string) {
   const deleteExercise = useCallback(async (id: string) => {
     // Optimistic update
     const updated = exercises.filter(e => e.id !== id)
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
     // Soft delete en Supabase
@@ -267,6 +283,7 @@ export function useExerciseLibrary(trainerId: string) {
     clientId?: string,
     especialidad?: string
   ) => {
+    if (trainerId === DEMO_TRAINER_ID) return
     // Fire and forget — no bloquea la UI
     supabase.from('exercise_usage_events').insert({
       id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,

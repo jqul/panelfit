@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Inbox, CheckCircle2, Moon, ChevronRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
+import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT } from '../../lib/demo-data'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 
@@ -34,11 +35,12 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   useEffect(() => {
     const clientIds = clients.map(c => c.id)
     if (clientIds.length === 0) { setLoading(false); return }
+    if (trainerId === DEMO_TRAINER_ID) { setReadiness(DEMO_READINESS_FLAT); setLoading(false); return }
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
     supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
       .in('clientId', clientIds).gte('date', since.toISOString().split('T')[0]).order('date', { ascending: false })
       .then(({ data }) => { setReadiness((data || []) as ReadinessRow[]); setLoading(false) })
-  }, [clients])
+  }, [clients, trainerId])
 
   const items = useMemo(() => {
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)

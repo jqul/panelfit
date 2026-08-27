@@ -3,6 +3,7 @@ import { Plus, X, Tag, Users, Dumbbell, Calendar as CalendarIcon, ClipboardList,
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import { TrainerLabel } from './labels'
+import { DEMO_TRAINER_ID, DEMO_LABELS, DEMO_CLIENTS, DEMO_PLAN_TEMPLATES, DEMO_PROGRAMS } from '../../lib/demo-data'
 
 interface Props { trainerId: string }
 
@@ -31,6 +32,16 @@ export function EtiquetasTab({ trainerId }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      const ls = DEMO_LABELS
+      const clientRows = DEMO_CLIENTS.map(c => ({ id: c.id, name: c.name, surname: c.surname, label_ids: c.label_ids || [] }))
+      setLabels(ls)
+      setSurveyTemplates([{ id: 'demo-tmpl-001', name: 'Check-in semanal' }])
+      setClients(clientRows)
+      recomputeUsage(ls, clientRows, DEMO_PLAN_TEMPLATES, DEMO_PROGRAMS)
+      setLoading(false)
+      return
+    }
     const [labelsRes, surveysRes, clientesRes, templatesRes, programsRes] = await Promise.all([
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
       supabase.from('survey_templates').select('id, name').eq('trainer_id', trainerId),
@@ -69,9 +80,11 @@ export function EtiquetasTab({ trainerId }: Props) {
     const active = current.includes(labelId)
     const updated = active ? current.filter(id => id !== labelId) : [...current, labelId]
     setTogglingClientId(client.id)
-    const { error } = await supabase.from('clientes').update({ label_ids: updated }).eq('id', client.id)
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('clientes').update({ label_ids: updated }).eq('id', client.id)
+      if (error) { setTogglingClientId(null); toast('Error al actualizar', 'warn'); return }
+    }
     setTogglingClientId(null)
-    if (error) { toast('Error al actualizar', 'warn'); return }
     const newClients = clients.map(c => c.id === client.id ? { ...c, label_ids: updated } : c)
     setClients(newClients)
     setUsage(u => ({ ...u, [labelId]: { ...u[labelId], clients: (u[labelId]?.clients || 0) + (active ? -1 : 1) } }))
@@ -81,8 +94,10 @@ export function EtiquetasTab({ trainerId }: Props) {
     if (!newLabel.name.trim()) return
     setSaving(true)
     const label = { ...newLabel, name: newLabel.name.trim() }
-    const { error } = await supabase.from('labels').insert(label)
-    if (error) { toast('Error al crear etiqueta', 'warn'); setSaving(false); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('labels').insert(label)
+      if (error) { toast('Error al crear etiqueta', 'warn'); setSaving(false); return }
+    }
     setLabels(ls => [...ls, label])
     setUsage(u => ({ ...u, [label.id]: { clients: 0, templates: 0, programs: 0 } }))
     setNewLabel(emptyLabel(trainerId))
@@ -95,14 +110,14 @@ export function EtiquetasTab({ trainerId }: Props) {
     const u = usage[id]
     const totalUses = (u?.clients || 0) + (u?.templates || 0) + (u?.programs || 0)
     if (totalUses > 0 && !confirm(`Esta etiqueta se usa en ${totalUses} sitio${totalUses > 1 ? 's' : ''}. ¿Eliminarla igualmente?`)) return
-    await supabase.from('labels').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('labels').delete().eq('id', id)
     setLabels(ls => ls.filter(l => l.id !== id))
     if (expandedId === id) setExpandedId(null)
     toast('Etiqueta eliminada', 'ok')
   }
 
   const linkSurvey = async (labelId: string, surveyTemplateId: string | null) => {
-    await supabase.from('labels').update({ survey_template_id: surveyTemplateId }).eq('id', labelId)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('labels').update({ survey_template_id: surveyTemplateId }).eq('id', labelId)
     setLabels(ls => ls.map(l => l.id === labelId ? { ...l, survey_template_id: surveyTemplateId } : l))
     toast(surveyTemplateId ? 'Encuesta vinculada ✓' : 'Desvinculada', 'ok')
   }

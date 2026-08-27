@@ -6,6 +6,7 @@ import {
   Plus, Users, X, Check, ChevronRight, Edit2, Trash2,
   UserPlus, UserMinus
 } from 'lucide-react'
+import { DEMO_TRAINER_ID, DEMO_COHORTES, DEMO_COHORTE_CLIENTES } from '../../lib/demo-data'
 
 interface Props {
   trainerId: string
@@ -61,6 +62,12 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setCohortes(DEMO_COHORTES as Cohorte[])
+      setMemberships(DEMO_COHORTE_CLIENTES as CohorteCliente[])
+      setLoading(false)
+      return
+    }
     const [cohRes, memRes] = await Promise.all([
       supabase.from('cohortes').select('*').eq('trainer_id', trainerId).order('created_at', { ascending: false }),
       supabase.from('cohorte_clientes').select('*'),
@@ -78,8 +85,10 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
   const createCohorte = async () => {
     if (!form.nombre.trim()) return
     const row: Cohorte = { ...form, id: `coh_${Date.now()}`, created_at: Date.now(), nombre: form.nombre.trim() }
-    const { error } = await supabase.from('cohortes').insert(row)
-    if (error) { toast('Error al crear grupo', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('cohortes').insert(row)
+      if (error) { toast('Error al crear grupo', 'warn'); return }
+    }
     setCohortes(c => [row, ...c])
     setForm(emptyCohorte(trainerId))
     setShowNew(false)
@@ -88,17 +97,19 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
 
   const updateCohorte = async () => {
     if (!editing) return
-    const { error } = await supabase.from('cohortes')
-      .update({ nombre: editing.nombre, descripcion: editing.descripcion, color: editing.color, fecha_inicio: editing.fecha_inicio, fecha_fin: editing.fecha_fin, puntos_por_sesion: editing.puntos_por_sesion })
-      .eq('id', editing.id)
-    if (error) { toast('Error al guardar', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('cohortes')
+        .update({ nombre: editing.nombre, descripcion: editing.descripcion, color: editing.color, fecha_inicio: editing.fecha_inicio, fecha_fin: editing.fecha_fin, puntos_por_sesion: editing.puntos_por_sesion })
+        .eq('id', editing.id)
+      if (error) { toast('Error al guardar', 'warn'); return }
+    }
     setCohortes(c => c.map(x => x.id === editing.id ? editing : x))
     setEditing(null)
     toast('Guardado ✓', 'ok')
   }
 
   const deleteCohorte = async (id: string) => {
-    await supabase.from('cohortes').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('cohortes').delete().eq('id', id)
     setCohortes(c => c.filter(x => x.id !== id))
     setMemberships(m => m.filter(x => x.cohorte_id !== id))
     if (selectedCohorte?.id === id) setSelectedCohorte(null)
@@ -107,19 +118,21 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
 
   const toggleActiva = async (cohorte: Cohorte) => {
     const updated = { ...cohorte, activa: !cohorte.activa }
-    await supabase.from('cohortes').update({ activa: updated.activa }).eq('id', cohorte.id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('cohortes').update({ activa: updated.activa }).eq('id', cohorte.id)
     setCohortes(c => c.map(x => x.id === cohorte.id ? updated : x))
   }
 
   const addClientToCohorte = async (cohorteId: string, clientId: string) => {
     const row: CohorteCliente = { id: `cc_${Date.now()}_${clientId.slice(0, 6)}`, cohorte_id: cohorteId, client_id: clientId, joined_at: Date.now() }
-    const { error } = await supabase.from('cohorte_clientes').insert(row)
-    if (error) { toast('Ya está en este grupo o hubo un error', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('cohorte_clientes').insert(row)
+      if (error) { toast('Ya está en este grupo o hubo un error', 'warn'); return }
+    }
     setMemberships(m => [...m, row])
   }
 
   const removeClientFromCohorte = async (cohorteId: string, clientId: string) => {
-    await supabase.from('cohorte_clientes').delete().eq('cohorte_id', cohorteId).eq('client_id', clientId)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('cohorte_clientes').delete().eq('cohorte_id', cohorteId).eq('client_id', clientId)
     setMemberships(m => m.filter(x => !(x.cohorte_id === cohorteId && x.client_id === clientId)))
   }
 
