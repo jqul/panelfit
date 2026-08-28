@@ -4,6 +4,7 @@ import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
 import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
 import { DEMO_TRAINER_ID } from '../lib/demo-data'
+import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
@@ -90,6 +91,12 @@ export function useExerciseLibrary(trainerId: string) {
       }))
       setExercises(demo)
       setLoading(false)
+      // Las descripciones se cargan aparte (no van en el bundle) y se
+      // rellenan en cuanto llegan, sin bloquear el primer render de la lista.
+      loadExerciseDescriptions().then(descriptions => {
+        if (!Object.keys(descriptions).length) return
+        setExercises(prev => prev.map(ex => descriptions[ex.name] ? { ...ex, description: descriptions[ex.name] } : ex))
+      })
       return
     }
 
@@ -145,8 +152,11 @@ export function useExerciseLibrary(trainerId: string) {
   }
 
   const seedDefaultLibrary = async (list: DefaultExercise[]) => {
+    // Recurso aparte (no va en el bundle) — si falla la carga, se siembra
+    // igualmente sin descripción, no bloquea el alta del entrenador.
+    const descriptions = await loadExerciseDescriptions()
     const rows = list.map((e, i) => ({
-      id: `ex_default_${Date.now()}_${i}`, trainer_id: trainerId, name: e.name, description: '', category: e.category,
+      id: `ex_default_${Date.now()}_${i}`, trainer_id: trainerId, name: e.name, description: descriptions[e.name] || '', category: e.category,
       especialidades: [], videos: [], tags: [], use_count: 0, video_use_count: 0, created_at: Date.now(), updated_at: Date.now(),
     }))
     const { error } = await supabase.from('exercise_library').insert(rows)
