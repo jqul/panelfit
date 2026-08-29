@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star, Dumbbell } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
@@ -479,7 +479,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const tags     = load<CustomTag[]>(TAGS_KEY(trainerId), [])
   const allEsps  = [...ESPECIALIDADES.map(e=>({id:e.value,label:e.label,emoji:e.emoji})), ...esps]
 
-  const filtered = exercises.filter(ex => {
+  const filtered = useMemo(() => exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false
     if (filterCat && ex.category !== filterCat) return false
     if (filterEsp && !(ex.especialidades||[]).includes(filterEsp)) return false
@@ -488,7 +488,21 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
     if (filterVideos === 'sin_esp' && !(ex.videos||[]).some(v => !v.especialidades?.length)) return false
     if (filterVideos === 'sin_video' && (ex.videos||[]).length > 0) return false
     return true
-  })
+  }), [exercises, search, filterCat, filterEsp, filterTag, filterVideos])
+
+  // Con una biblioteca de 1500+ ejercicios, pintar la lista sin filtrar de
+  // golpe bloquea el hilo principal varios segundos (cada fila trae su
+  // pictograma + insignias) — un móvil de gama media lo nota mucho más que
+  // este entorno de desarrollo. Se muestran de N en N con un botón "Mostrar
+  // más", y el contador vuelve a 60 en cuanto cambia cualquier filtro.
+  const PAGE_SIZE = 60
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, filterCat, filterEsp, filterTag, filterVideos])
+  const sortedFiltered = useMemo(
+    () => [...filtered].sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0)),
+    [filtered, favs]
+  )
+  const visible = sortedFiltered.slice(0, visibleCount)
 
   const startEdit = (ex: LibraryExercise) => {
     setEditInitial({
@@ -613,7 +627,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
         )
       ) : (
         <div className="space-y-2">
-          {[...filtered].sort((a,b) => (favs.has(b.id)?1:0) - (favs.has(a.id)?1:0)).map(ex => {
+          {visible.map(ex => {
             const exTags = ex.tags||[]
             return (
               <div key={ex.id}>
@@ -675,6 +689,12 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
               </div>
             )
           })}
+          {visibleCount < sortedFiltered.length && (
+            <button onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
+              Mostrar más ({sortedFiltered.length - visibleCount} restantes)
+            </button>
+          )}
         </div>
       )}
     </div>
