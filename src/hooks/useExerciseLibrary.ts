@@ -129,9 +129,14 @@ export function useExerciseLibrary(trainerId: string) {
       localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
       await seedDefaultLibrary(DEFAULT_EXERCISE_LIBRARY)
       await syncFromSupabase()
-    } else if (isRealUuid && alreadySeeded) {
-      // 5. La cuenta ya tenía la siembra de serie (de una versión anterior de la
-      //    biblioteca) -> añadir solo los ejercicios nuevos que le falten, sin duplicar.
+    } else if (isRealUuid && hadData) {
+      // 5. La cuenta ya tenía ejercicios (sembrados antes, o los suyos propios) ->
+      //    añadir solo los de serie que le falten, sin duplicar. Se comprueba
+      //    `hadData` (verdad de Supabase), NO el flag `alreadySeeded` de
+      //    localStorage — ese flag es por navegador/dispositivo, así que un
+      //    entrenador que abre PanelFit desde un móvil nuevo o tras borrar datos
+      //    del navegador nunca lo tendría puesto y se quedaría sin el top-up
+      //    para siempre aunque su cuenta sí necesite los ejercicios nuevos.
       const topupVersion = Number(localStorage.getItem(LS_DEFAULT_TOPUP(trainerId)) || '1')
       if (topupVersion < DEFAULT_LIBRARY_VERSION) {
         const { data: existing } = await supabase
