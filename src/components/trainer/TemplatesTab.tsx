@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
+import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 
 interface Props {
   trainerId: string
@@ -80,6 +81,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
     try { return JSON.parse(localStorage.getItem(LS_TYPES(trainerId)) || '[]') } catch { return [] }
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [exportingId, setExportingId] = useState<string | null>(null)
   const [showGallery, setShowGallery] = useState(false)
   const library = useExerciseLibrary(trainerId)
 
@@ -164,6 +166,17 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   const duplicate = async (tmpl: TrainingTemplate) => {
     const copy: TrainingTemplate = { ...tmpl, id: `tmpl_${Date.now()}`, name: `${tmpl.name} (copia)`, createdAt: Date.now(), updatedAt: Date.now() }
     await persist(copy); toast('Duplicado ✓', 'ok')
+  }
+
+  const exportExcel = async (tmpl: TrainingTemplate) => {
+    setExportingId(tmpl.id)
+    try {
+      await exportWorkoutToExcel(tmpl)
+    } catch (e) {
+      console.error('[PanelFit] Error al exportar a Excel:', e)
+      toast('Error al exportar — inténtalo de nuevo', 'warn')
+    }
+    setExportingId(null)
   }
 
   const startNew = () => {
@@ -340,6 +353,10 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                       className={`p-1.5 rounded-lg ${tmpl.isPublic ? 'text-ok hover:text-warn' : 'text-muted hover:text-ok'}`}><Globe className="w-3.5 h-3.5" /></button>
                     <button onClick={() => startEdit(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => duplicate(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => exportExcel(tmpl)} disabled={exportingId === tmpl.id} title="Exportar a Excel"
+                      className="p-1.5 text-muted hover:text-accent rounded-lg disabled:opacity-40">
+                      <FileSpreadsheet className={`w-3.5 h-3.5 ${exportingId === tmpl.id ? 'animate-pulse' : ''}`} />
+                    </button>
                     <button onClick={() => deleteTemplate(tmpl.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => setExpanded(expanded === tmpl.id ? null : tmpl.id)} className="p-1.5 text-muted rounded-lg">
                       {expanded === tmpl.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
