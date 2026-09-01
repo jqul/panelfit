@@ -42,12 +42,92 @@ export interface ParsedWorkout {
   weeks: WeekPlan[]
 }
 
+// ── Formato alternativo: bloques de día + semanas en columnas ──────
+// Muy habitual cuando se programa a mano: varios bloques de día en la misma
+// hoja (cada uno con un título de una sola celda, p.ej. "LUNES — EMPUJE"),
+// seguido de una cabecera "Ejercicio / Series x Reps / S1 @5 / S2 @6 / ...".
+// Los mismos ejercicios se repiten en todas las semanas — lo que cambia por
+// columna es el peso (se rellena semana a semana, puede venir vacío) y el
+// RPE objetivo, que va pegado al número de semana en la propia cabecera.
+const WEEK_COL_RE = /^(?:s|sem|semana|w|week)\s*0*(\d+)\b\s*(.*)$/i
+
+interface RawDayBlock {
+  title: string
+  weekCols: { index: number; weekNum: number; label: string }[]
+  exercises: { name: string; sets: string; weights: Record<number, string> }[]
+}
+
+function parseBlockFormat(rawRows: unknown[][]): Omit<ParsedWorkout, 'name'> | null {
+  const grid = rawRows.map(r => (r || []).map(c => (c === undefined || c === null ? '' : String(c).trim())))
+  const blocks: RawDayBlock[] = []
+  let i = 0
+  while (i < grid.length) {
+    const row = grid[i]
+    if (row.every(c => c === '')) { i++; continue }
+
+    const col0 = (row[0] || '').toLowerCase()
+    if (!['ejercicio', 'exercise', 'nombre'].includes(col0)) { i++; continue }
+
+    const weekCols: RawDayBlock['weekCols'] = []
+    for (let c = 1; c < row.length; c++) {
+      const m = row[c].match(WEEK_COL_RE)
+      if (m) weekCols.push({ index: c, weekNum: parseInt(m[1], 10), label: m[2].trim() })
+    }
+    if (weekCols.length === 0) { i++; continue } // cabecera de ejercicio "normal", no de este formato
+
+    // El título del día es la fila de una sola celda justo antes de la cabecera
+    let title = `Día ${blocks.length + 1}`
+    for (let back = i - 1; back >= 0; back--) {
+      const prev = grid[back].filter(c => c !== '')
+      if (prev.length === 0) continue
+      if (prev.length === 1) title = prev[0]
+      break
+    }
+
+    i++
+    const exercises: RawDayBlock['exercises'] = []
+    while (i < grid.length && grid[i].some(c => c !== '') && grid[i][0] !== '') {
+      const r = grid[i]
+      const weights: Record<number, string> = {}
+      weekCols.forEach(wc => { const v = r[wc.index] || ''; if (v) weights[wc.weekNum] = v })
+      exercises.push({ name: r[0], sets: r[1] || '', weights })
+      i++
+    }
+    if (exercises.length) blocks.push({ title, weekCols, exercises })
+  }
+
+  if (blocks.length === 0) return null
+  const weekNums = Array.from(new Set(blocks.flatMap(b => b.weekCols.map(w => w.weekNum)))).sort((a, b) => a - b)
+  if (weekNums.length === 0) return null
+
+  const weeks: WeekPlan[] = weekNums.map((wn, idx) => {
+    const rpe = blocks.flatMap(b => b.weekCols).find(w => w.weekNum === wn)?.label || ''
+    const days: DayPlan[] = blocks.map(b => ({
+      title: b.title,
+      focus: '',
+      exercises: b.exercises.map(ex => ({
+        name: ex.name,
+        sets: ex.sets,
+        weight: ex.weights[wn] || '',
+        isMain: false,
+        comment: '',
+        videoUrl: '',
+      })),
+    }))
+    return { label: `Semana ${wn}`, rpe, isCurrent: idx === weekNums.length - 1, days }
+  })
+
+  return { weeks }
+}
+
 /**
- * Reconstruye semanas/días/ejercicios a partir de un .xlsx/.xls/.csv — una
- * fila por ejercicio, agrupando por columna "Semana" y "Día" en el orden en
- * que aparecen. Acepta tanto el formato exacto que genera "Exportar a
- * Excel" como uno hecho a mano, mientras tenga al menos una columna de
- * nombre de ejercicio reconocible.
+ * Reconstruye semanas/días/ejercicios a partir de un .xlsx/.xls/.csv.
+ * Reconoce dos formatos:
+ *  1. Una fila por ejercicio y semana, agrupando por columnas "Semana" y
+ *     "Día" — el que genera "Exportar a Excel" o uno hecho a mano siguiendo
+ *     ese mismo esquema.
+ *  2. Bloques de día con las semanas como columnas (ver parseBlockFormat) —
+ *     el formato habitual al programar un bloque de olas a mano.
  */
 export async function parseWorkoutExcel(file: File): Promise<ParsedWorkout> {
   const XLSX = await loadXLSX()
@@ -56,11 +136,16 @@ export async function parseWorkoutExcel(file: File): Promise<ParsedWorkout> {
 
   const sheetName = wb.SheetNames[0]
   if (!sheetName) throw new Error('El archivo no tiene ninguna hoja de cálculo')
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName], { defval: '' })
+  const ws = wb.Sheets[sheetName]
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' })
   if (!rows.length) throw new Error('La hoja está vacía')
 
+  const name = file.name.replace(/\.(xlsx|xls|csv)$/i, '').trim() || 'Workout importado'
   const headerMap = buildHeaderMap(rows[0])
   if (!headerMap.ejercicio) {
+    const raw = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' })
+    const blockParsed = parseBlockFormat(raw)
+    if (blockParsed) return { name, ...blockParsed }
     throw new Error('No se encontró una columna de ejercicio (ej. "Ejercicio") — revisa las cabeceras de la primera fila')
   }
 
@@ -113,6 +198,5 @@ export async function parseWorkoutExcel(file: File): Promise<ParsedWorkout> {
     return { label, rpe: '', isCurrent: i === weeksOrder.length - 1, days }
   })
 
-  const name = file.name.replace(/\.(xlsx|xls|csv)$/i, '').trim() || 'Workout importado'
   return { name, weeks }
 }

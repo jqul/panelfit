@@ -19,6 +19,18 @@ async function buildFile(rows: Record<string, unknown>[], filename = 'test.xlsx'
   return new File([buffer], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 }
 
+// Para el formato de bloques de día + semanas en columnas hace falta una
+// hoja con filas "sueltas" (título de día, fila en blanco...) que no encajan
+// en json_to_sheet (pensado para una fila = un objeto con las mismas claves).
+async function buildFileFromRows(rows: unknown[][], filename = 'test.xlsx'): Promise<File> {
+  const XLSX = await import('xlsx')
+  const ws = XLSX.utils.aoa_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Hoja1')
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+  return new File([buffer], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+}
+
 function sampleTemplate(): TrainingTemplate {
   return {
     id: 'tmpl_test', trainerId: 'trainer_test',
@@ -102,5 +114,42 @@ describe('buildWorkoutRows → parseWorkoutExcel (roundtrip real, mismas utilida
     expect(parsed.weeks[0].label).toBe('W1')
     expect(parsed.weeks[0].days[0].title).toBe('Push')
     expect(parsed.weeks[0].days[0].exercises[0].name).toBe('Bench press')
+  })
+
+  it('reconoce el formato de bloques de día con semanas en columnas', async () => {
+    // Reproduce la estructura real de un bloque de olas hecho a mano: varios
+    // días en la misma hoja, cada uno con su título, una cabecera
+    // "Ejercicio / Series x Reps / S1 @5 / S2 @6 / ..." y los mismos
+    // ejercicios repetidos con el peso de cada semana en su columna.
+    const rows: unknown[][] = [
+      ['LUNES — EMPUJE'],
+      ['Ejercicio', 'Series x Reps', 'S1 @5', 'S2 @6'],
+      ['Sentadilla pesada', '4x5', '', ''],
+      ['Press banca pesado', '4x5', '100kg', '102.5kg'],
+      [],
+      ['MARTES — TIRÓN'],
+      ['Ejercicio', 'Series x Reps', 'S1 @5', 'S2 @6'],
+      ['Peso muerto', '4x5', '', ''],
+    ]
+    const file = await buildFileFromRows(rows, 'Power_Otono_26.xlsx')
+    const parsed = await parseWorkoutExcel(file)
+
+    expect(parsed.name).toBe('Power_Otono_26')
+    expect(parsed.weeks).toHaveLength(2)
+    expect(parsed.weeks[0].label).toBe('Semana 1')
+    expect(parsed.weeks[0].rpe).toBe('@5')
+    expect(parsed.weeks[1].rpe).toBe('@6')
+    expect(parsed.weeks[1].isCurrent).toBe(true)
+
+    expect(parsed.weeks[0].days).toHaveLength(2)
+    expect(parsed.weeks[0].days[0].title).toBe('LUNES — EMPUJE')
+    expect(parsed.weeks[0].days[0].exercises).toHaveLength(2)
+    expect(parsed.weeks[0].days[1].title).toBe('MARTES — TIRÓN')
+
+    // El mismo ejercicio en las dos semanas, con el peso de su propia columna
+    expect(parsed.weeks[0].days[0].exercises[1].weight).toBe('100kg')
+    expect(parsed.weeks[1].days[0].exercises[1].weight).toBe('102.5kg')
+    // Semana sin peso apuntado todavía -> vacío, no un valor inventado
+    expect(parsed.weeks[0].days[0].exercises[0].weight).toBe('')
   })
 })
