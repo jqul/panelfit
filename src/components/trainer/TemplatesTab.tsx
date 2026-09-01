@@ -1,14 +1,15 @@
 import { TrainerLabel, LabelPill, LabelSelector } from './labels'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload } from 'lucide-react'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
+import { parseWorkoutExcel } from '../../lib/importWorkout'
 
 interface Props {
   trainerId: string
@@ -82,6 +83,8 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [showGallery, setShowGallery] = useState(false)
   const library = useExerciseLibrary(trainerId)
 
@@ -179,6 +182,24 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
     setExportingId(null)
   }
 
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo si hace falta reintentar
+    if (!file) return
+    setImporting(true)
+    try {
+      const { name, weeks } = await parseWorkoutExcel(file)
+      const tmpl: TrainingTemplate = { ...emptyTemplate(trainerId), name, weeks }
+      setEditing(tmpl); setEditName(tmpl.name); setEditType(tmpl.type); setEditLabelIds([])
+      setEditingPlan(tmplToPlan(tmpl))
+      toast('Excel importado — revisa el workout antes de guardar', 'ok')
+    } catch (err) {
+      console.error('[PanelFit] Error al importar Excel:', err)
+      toast(err instanceof Error ? err.message : 'No se pudo leer el archivo', 'warn')
+    }
+    setImporting(false)
+  }
+
   const startNew = () => {
     const tmpl = emptyTemplate(trainerId)
     setEditing(tmpl); setEditName(tmpl.name); setEditType(tmpl.type); setEditLabelIds([])
@@ -254,7 +275,12 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
           <h2 className="text-3xl font-serif font-bold">Workouts</h2>
           <p className="text-muted text-sm mt-1">Rutinas reutilizables con ejercicios completos</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50">
+            <Upload className="w-4 h-4" /> {importing ? 'Importando...' : 'Importar Excel'}
+          </button>
           <button onClick={() => setShowGallery(true)}
             className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
             <Store className="w-4 h-4" /> Galería

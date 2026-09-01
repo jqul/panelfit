@@ -19,15 +19,9 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[<>:"/\\|?*]/g, ' ').trim() || 'workout'
 }
 
-/**
- * Exporta un workout (plantilla reutilizable) a un .xlsx — una fila por
- * ejercicio, con la semana y el día como columnas para poder filtrar/ordenar
- * en la propia hoja. Pensado para imprimir en sala o compartir con alguien
- * que no usa PanelFit.
- */
-export async function exportWorkoutToExcel(template: TrainingTemplate) {
-  const XLSX = await loadXLSX()
-
+/** Una fila por ejercicio — separada de la escritura del archivo para poder
+ * testear la forma de los datos sin pasar por la I/O de SheetJS. */
+export function buildWorkoutRows(template: TrainingTemplate): Record<string, string | number>[] {
   const rows: Record<string, string | number>[] = []
   template.weeks.forEach((week, wi) => {
     week.days.forEach((day, di) => {
@@ -57,20 +51,32 @@ export async function exportWorkoutToExcel(template: TrainingTemplate) {
       })
     })
   })
+  return rows
+}
 
-  const ws = XLSX.utils.json_to_sheet(rows)
-  ws['!cols'] = [
-    { wch: 20 }, // Semana
-    { wch: 22 }, // Día
-    { wch: 22 }, // Enfoque
-    { wch: 28 }, // Ejercicio
-    { wch: 14 }, // Series x Reps
-    { wch: 10 }, // Peso
-    { wch: 10 }, // Principal
-    { wch: 34 }, // Comentario
-    { wch: 12 }, // Descanso series
-    { wch: 14 }, // Descanso tras ejercicio
-  ]
+const COLUMN_WIDTHS = [
+  { wch: 20 }, // Semana
+  { wch: 22 }, // Día
+  { wch: 22 }, // Enfoque
+  { wch: 28 }, // Ejercicio
+  { wch: 14 }, // Series x Reps
+  { wch: 10 }, // Peso
+  { wch: 10 }, // Principal
+  { wch: 34 }, // Comentario
+  { wch: 12 }, // Descanso series
+  { wch: 14 }, // Descanso tras ejercicio
+]
+
+/**
+ * Exporta un workout (plantilla reutilizable) a un .xlsx — una fila por
+ * ejercicio, con la semana y el día como columnas para poder filtrar/ordenar
+ * en la propia hoja. Pensado para imprimir en sala o compartir con alguien
+ * que no usa PanelFit.
+ */
+export async function exportWorkoutToExcel(template: TrainingTemplate) {
+  const XLSX = await loadXLSX()
+  const ws = XLSX.utils.json_to_sheet(buildWorkoutRows(template))
+  ws['!cols'] = COLUMN_WIDTHS
 
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, sanitizeSheetName(template.name))
