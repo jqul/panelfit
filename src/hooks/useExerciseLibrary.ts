@@ -68,6 +68,28 @@ function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'us
   }
 }
 
+// PostgREST trunca cualquier select en silencio (sin error) al tope de filas
+// configurado a nivel de proyecto en Supabase — 1000 por defecto — sin
+// importar el .limit() que se pida. Esta paginación con .range() evita
+// depender de ese tope, tanto para leer la biblioteca completa como para
+// comprobar qué ejercicios de serie ya existen antes de un top-up.
+async function fetchAllPages<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<{ rows: T[]; error: unknown }> {
+  const PAGE = 1000
+  let rows: T[] = []
+  let page = 0
+  while (true) {
+    const { data, error } = await buildQuery(page * PAGE, page * PAGE + PAGE - 1)
+    if (error) return { rows, error }
+    if (!data || data.length === 0) break
+    rows = rows.concat(data)
+    if (data.length < PAGE) break // última página
+    page++
+  }
+  return { rows, error: null }
+}
+
 export function useExerciseLibrary(trainerId: string) {
   const [exercises, setExercises] = useState<LibraryExercise[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,11 +161,19 @@ export function useExerciseLibrary(trainerId: string) {
       //    para siempre aunque su cuenta sí necesite los ejercicios nuevos.
       const topupVersion = Number(localStorage.getItem(LS_DEFAULT_TOPUP(trainerId)) || '1')
       if (topupVersion < DEFAULT_LIBRARY_VERSION) {
-        const { data: existing } = await supabase
-          .from('exercise_library')
-          .select('name')
-          .eq('trainer_id', trainerId)
-        const existingNames = new Set((existing || []).map(r => r.name.toLowerCase()))
+        // Sin paginar, esta consulta se quedaba truncada a las primeras ~1000
+        // filas (tope de PostgREST) en cuentas que ya superaban ese número —
+        // "existingNames" salía incompleto, así que exercises que YA existían
+        // (pero caían después de la fila 1000) se creían "missing" y se
+        // volvían a sembrar, duplicándolos.
+        const { rows: existing } = await fetchAllPages<{ name: string }>((from, to) =>
+          supabase
+            .from('exercise_library')
+            .select('name')
+            .eq('trainer_id', trainerId)
+            .range(from, to)
+        )
+        const existingNames = new Set(existing.map(r => r.name.toLowerCase()))
         const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
         localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
         if (missing.length) {
@@ -170,24 +200,26 @@ export function useExerciseLibrary(trainerId: string) {
 
   const syncFromSupabase = async () => {
     setSyncing(true)
-    const { data, error } = await supabase
-      .from('exercise_library')
-      .select('*')
-      .eq('trainer_id', trainerId)
-      .is('deleted_at', null)
-      .order('name')
-      .limit(2000)
+    const { rows, error } = await fetchAllPages<DBExercise>((from, to) =>
+      supabase
+        .from('exercise_library')
+        .select('*')
+        .eq('trainer_id', trainerId)
+        .is('deleted_at', null)
+        .order('name')
+        .range(from, to)
+    )
 
-    if (!error && data) {
-      console.log(`[PanelFit] syncFromSupabase: ${data.length} ejercicios recibidos`)
-      const local = data.map(dbToLocal)
+    if (!error) {
+      console.log(`[PanelFit] syncFromSupabase: ${rows.length} ejercicios recibidos`)
+      const local = rows.map(dbToLocal)
       setExercises(local)
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(local))
-    } else if (error) {
+    } else {
       console.error('[PanelFit] syncFromSupabase error:', error)
     }
     setSyncing(false)
-    return (data?.length ?? 0) > 0
+    return rows.length > 0
   }
 
   // ── Migración one-time desde localStorage ──────────
