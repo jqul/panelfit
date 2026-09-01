@@ -161,7 +161,7 @@ export default function App() {
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
   const [teamContext, setTeamContext] = useState<{ uid: string; displayName: string } | null>(null)
-  const { toasts } = useToast()
+  const { toasts, dismiss } = useToast()
 
   // Si estamos viendo la cuenta de un compañero de equipo, usamos su uid en vez del nuestro
   // para clientes/plantillas/biblioteca, pero conservamos nuestro email/rol reales.
@@ -376,7 +376,7 @@ export default function App() {
         />
       )}
 
-      <ToastContainer toasts={toasts} />
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </Suspense>
   )
 }
