@@ -25,6 +25,7 @@ import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
 import { ValoracionTab } from './client-panel/ValoracionTab'
 import { TrainingSession } from './TrainingSession'
+import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
@@ -51,11 +52,12 @@ const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] 
 
 function useTemplates(trainerId: string) {
   const [templates, setTemplates] = useState<TrainingTemplate[]>(() => {
+    if (trainerId === DEMO_TRAINER_ID) return DEMO_PLAN_TEMPLATES
     try { return JSON.parse(localStorage.getItem(`pf_templates_${trainerId}`) || '[]') } catch { return [] }
   })
 
   useEffect(() => {
-    if (!trainerId) return
+    if (!trainerId || trainerId === DEMO_TRAINER_ID) return
     const syncFromSupabase = async () => {
       const { data } = await supabase.from('plan_templates')
         .select('*').eq('trainer_id', trainerId).order('created_at')
@@ -376,8 +378,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               </button>
             ) : null}
             {activeTab === 'plan' && templates.length > 0 && (
-              <button onClick={() => setShowTemplates(true)} className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
-                <ClipboardCheck className="w-3.5 h-3.5" /> Plantilla
+              <button onClick={() => setShowTemplates(true)} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
+                <ClipboardCheck className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Asignar workout</span>
               </button>
             )}
             {activeTab !== 'perfil' && (
@@ -517,15 +519,15 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           onClose={() => setShowInforme(false)} />
       )}
 
-      {/* Wizard plantilla */}
+      {/* Wizard: asignar workout — copia las semanas del workout al plan real del cliente (con ejercicios de verdad, no un simple task de Programa) */}
       <Modal open={showTemplates} onClose={() => { setShowTemplates(false); setWizardStep(1); setWizardTemplate(null) }}
-        title={wizardStep === 1 ? 'Elegir plantilla' : wizardStep === 2 ? 'Fecha de inicio' : 'Automatizaciones'}>
+        title={wizardStep === 1 ? 'Elegir workout' : wizardStep === 2 ? 'Fecha de inicio' : 'Automatizaciones'}>
         <div className="flex gap-1.5 mb-5">
           {[1,2,3].map(s => <div key={s} className={`flex-1 h-1 rounded-full transition-all ${s <= wizardStep ? 'bg-ink' : 'bg-border'}`} />)}
         </div>
         {wizardStep === 1 && (
           <div className="space-y-2">
-            <p className="text-sm text-muted mb-3">Selecciona la plantilla base para este cliente.</p>
+            <p className="text-sm text-muted mb-3">Selecciona el workout para este cliente — se copian todas sus semanas al plan real.</p>
             {templates.map(t => (
               <button key={t.id} onClick={() => { setWizardTemplate(t); setWizardStep(2) }}
                 className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl hover:border-accent text-left transition-all">
@@ -567,7 +569,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <div className="flex gap-2">
               <button onClick={() => setWizardStep(2)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
               <button onClick={() => applyTemplate(wizardTemplate, wizardFechaInicio, wizardAutoWelcome, wizardAutoCheckin)}
-                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Aplicar plan</button>
+                className="flex-1 py-2.5 bg-ok text-white rounded-xl text-sm font-bold">✓ Asignar workout</button>
             </div>
           </div>
         )}
