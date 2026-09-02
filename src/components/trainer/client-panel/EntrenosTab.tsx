@@ -111,7 +111,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                     <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0"><Dumbbell className="w-3.5 h-3.5 text-muted" /></div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{exName}</p>
-                      <div className="flex gap-1.5 mt-0.5 flex-wrap">{setsArr.map((s, si) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}</span>)}</div>
+                      <div className="flex gap-1.5 mt-0.5 flex-wrap">{setsArr.map((s, si) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}</div>
                     </div>
                     {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[9px] text-muted">mejor</p></div>}
                     {(exHistory[exName]?.length ?? 0) >= 2 && (
