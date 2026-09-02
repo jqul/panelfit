@@ -11,12 +11,15 @@ export const CLIENT_CACHE_KEY = (token: string) => `pf_client_cache_${token}`
 export const PLAN_CACHE_KEY = (clientId: string) => `pf_plan_cache_${clientId}`
 
 export async function pushLogsToServer(clientId: string, newLogs: TrainingLogs): Promise<boolean> {
-  const { error: updateErr } = await supabase.from('registros')
-    .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', clientId)
-  if (updateErr) {
-    const { error: insertErr } = await supabase.from('registros')
-      .insert({ clientId, logs: newLogs, updatedAt: Date.now() })
-    if (insertErr) { logError('ClientView:saveLogs', insertErr); return false }
-  }
+  // OJO: antes esto era un .update() y solo se hacía .insert() si ese update
+  // devolvía error — pero un .update() que no encuentra ninguna fila (cliente
+  // que aún no tiene registro en `registros`, p.ej. su primer entreno) NO
+  // devuelve error en Supabase, simplemente no toca nada. El resultado: el
+  // entreno se marcaba como guardado en el cliente (se borraba el pendiente)
+  // sin haberse escrito nunca en el servidor, y el entrenador nunca lo veía.
+  // upsert() con onConflict evita depender de si la fila ya existe.
+  const { error } = await supabase.from('registros')
+    .upsert({ clientId, logs: newLogs, updatedAt: Date.now() }, { onConflict: 'clientId' })
+  if (error) { logError('ClientView:saveLogs', error); return false }
   return true
 }
