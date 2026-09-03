@@ -673,6 +673,14 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
                   })
                 }
+                if (!allComplete) {
+                  // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
+                  // material estaba ocupado, etc.) — sin esto, el panel seguía
+                  // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque
+                  // el cliente ya la había dado por terminada. done:false a propósito
+                  // — ver comentario en el tipo ExerciseLog.
+                  onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
+                }
                 onFinish()
               }}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${

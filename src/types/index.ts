@@ -78,7 +78,12 @@ export interface LibraryExercise {
 
 // ── REGISTROS ─────────────────────────────────────────
 export interface LogSet { weight: string; reps: string; rir?: number; velocity?: number }
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string }
+// sessionFinished: solo se usa en una entrada sintética con clave
+// `finished_${dayKey}` (sets vacío, done:false) que ActiveWorkout escribe al
+// terminar una sesión con ejercicios sin hacer — deliberadamente NO usa
+// `done`/`dateDone` para no ensuciar los muchos sitios que cuentan
+// ejercicios/fechas iterando todo TrainingLogs sin filtrar por clave.
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sessionFinished?: boolean }
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────

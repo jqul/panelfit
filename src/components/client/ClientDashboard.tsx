@@ -34,13 +34,28 @@ function calcStreak(logs: TrainingLogs): number {
   return streak
 }
 
-function getTodaySession(plan: TrainingPlan) {
+function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
   const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
-  if (!currentWeek) return null
+  if (!currentWeek?.days?.length) return null
   const weekIdx = plan.weeks.findIndex(w => w === currentWeek)
-  const dayOfWeek = new Date().getDay()
-  const dayIdx = Math.min(dayOfWeek === 0 ? 6 : dayOfWeek - 1, (currentWeek.days?.length || 1) - 1)
-  const day = currentWeek.days?.[dayIdx]
+  // ANTES: el índice del día se sacaba directo del día de la semana natural
+  // (lunes=0 ... domingo=6), asumiendo que el plan tiene exactamente 7 días,
+  // uno por cada día del calendario. Casi ningún plan real es así — un split
+  // de 3 o 4 días (p. ej. LUNES/MARTES/JUEVES/VIERNES) tiene menos elementos,
+  // así que el índice de "hoy" se salía del hueco real: un jueves con un plan
+  // de 4 días mostraba days[3] ("Viernes") en vez de days[2] ("Jueves").
+  // Ahora "hoy" es, de verdad, el siguiente día sin terminar de la semana
+  // actual (por orden), sin depender de qué día del calendario es — vuelve a
+  // empezar por el primero si ya se completaron todos.
+  const isDayDone = (di: number) => {
+    if (logs[`finished_w${weekIdx}_d${di}`]?.sessionFinished) return true
+    const dayExs = currentWeek.days[di].exercises || []
+    if (!dayExs.length) return true
+    return dayExs.every((_, ri) => logs[`ex_w${weekIdx}_d${di}_r${ri}`]?.done)
+  }
+  let dayIdx = currentWeek.days.findIndex((_, di) => !isDayDone(di))
+  if (dayIdx === -1) dayIdx = 0
+  const day = currentWeek.days[dayIdx]
   if (!day) return null
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
@@ -82,7 +97,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
   }
 
   const streak = calcStreak(logs)
-  const todaySession = getTodaySession(plan)
+  const todaySession = getTodaySession(plan, logs)
   const totalExDone = Object.values(logs).filter(l => l.done).length
   const pesoActual = weights[0]?.weight || null
 
@@ -92,6 +107,12 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
   const todayDone = todayLogs.filter(l => l?.done).length
   const todayTotal = todaySession?.day.exercises.length || 0
   const todayPct = todayTotal ? Math.round((todayDone / todayTotal) * 100) : 0
+  // El cliente puede dar la sesión por terminada con ejercicios sin hacer (se
+  // acabó el tiempo, etc.) — sin este flag seguiría apareciendo "Continuar"
+  // como si la sesión estuviera a medias en vez de cerrada de verdad. El
+  // progreso (todayPct) se sigue mostrando real; esto solo afecta al CTA.
+  const todayFinishedEarly = todaySession ? !!logs[`finished_${todaySession.dayKey}`]?.sessionFinished : false
+  const todayComplete = todayPct === 100 || todayFinishedEarly
   const estimatedMin = todaySession ? Math.round(estimateMinutes(todaySession.day.exercises)) : 0
 
   const nextExIdx = todaySession
@@ -272,7 +293,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
                 style={{ minHeight: '52px' }}
                 className="w-full flex items-center justify-center gap-3 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
                 <Play className="w-5 h-5" />
-                {todayPct === 100 ? '¡Sesión completada! Repetir' :
+                {todayComplete ? '¡Sesión completada! Repetir' :
                  todayDone > 0 ? `Continuar — ${todayTotal - todayDone} ejercicios restantes` :
                  'Empezar entrenamiento'}
               </button>

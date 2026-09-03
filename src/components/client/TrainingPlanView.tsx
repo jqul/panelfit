@@ -106,7 +106,11 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
           const total = day.exercises.length
           const pct = total ? Math.round(done / total * 100) : 0
           const isOpen = openDays[dayKey]
-          const isComplete = pct === 100
+          // El cliente puede terminar la sesión a propósito con ejercicios sin
+          // hacer (se acabó el tiempo, etc.) — sin este flag, seguiría apareciendo
+          // "Continuar" como si la sesión estuviera a medias en vez de cerrada.
+          const finishedEarly = !!logs[`finished_${dayKey}`]?.sessionFinished
+          const isComplete = pct === 100 || finishedEarly
           const warmup = day.warmup
           const warmupExercises = day.warmupExercises
 
