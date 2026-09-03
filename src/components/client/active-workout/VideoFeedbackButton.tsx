@@ -17,12 +17,15 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
     if (!rawFile) return
     setError('')
     setCompressing(true)
-    // Solo revisión visual de técnica — no necesita fotogramas exactos, así que
-    // se puede comprimir con normalidad para ahorrar espacio.
-    const file = await compressVideo(rawFile)
-    setCompressing(false)
-    setUploading(true)
     try {
+      // Solo revisión visual de técnica — no necesita fotogramas exactos, así que
+      // se puede comprimir con normalidad para ahorrar espacio. (Va dentro del
+      // try: aunque compressVideo no debería rechazar nunca, si lo hiciera nos
+      // dejaría el spinner de "Optimizando..." colgado para siempre sin esto.)
+      const file = await compressVideo(rawFile)
+      setCompressing(false)
+      setUploading(true)
+
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
@@ -45,8 +48,13 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
       setSent(true)
       setTimeout(() => { setShowModal(false); setSent(false); setNote('') }, 1800)
     } catch (e: any) {
-      setError('No se pudo subir el vídeo. Inténtalo de nuevo.')
+      console.error('[PanelFit] Error al subir vídeo de feedback:', e)
+      // Mostrar el motivo real (además del genérico) — sin esto, cualquier fallo
+      // se ve idéntico y es imposible saber qué fue sin mirar la consola.
+      const detail = e?.message || e?.error_description || (typeof e === 'string' ? e : '')
+      setError(`No se pudo subir el vídeo.${detail ? ` (${detail})` : ''} Inténtalo de nuevo.`)
     } finally {
+      setCompressing(false)
       setUploading(false)
     }
   }

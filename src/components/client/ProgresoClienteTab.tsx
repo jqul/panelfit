@@ -397,17 +397,20 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
   const handleFile = async (rawFile: File) => {
     if (!trainerId) return
     setError('')
-    // Compresión más suave que en el resto de la app (más fps, más resolución):
-    // este botón también se usa para vídeos que luego se analizan fotograma a
-    // fotograma (p.ej. altura de salto), donde perder fps rompe la precisión.
-    let file = rawFile
-    if (!skipCompression) {
-      setCompressing(true)
-      file = await compressVideo(rawFile, { maxDimension: 1080, fps: 60 })
-      setCompressing(false)
-    }
-    setUploading(true)
     try {
+      // Compresión más suave que en el resto de la app (más fps, más resolución):
+      // este botón también se usa para vídeos que luego se analizan fotograma a
+      // fotograma (p.ej. altura de salto), donde perder fps rompe la precisión.
+      // Va dentro del try: si compressVideo rechazara, sin esto el spinner de
+      // "Optimizando..." se quedaría colgado para siempre.
+      let file = rawFile
+      if (!skipCompression) {
+        setCompressing(true)
+        file = await compressVideo(rawFile, { maxDimension: 1080, fps: 60 })
+        setCompressing(false)
+      }
+      setUploading(true)
+
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
@@ -421,9 +424,12 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
       if (insertErr) throw insertErr
       setShowModal(false); setLabel('Salto vertical'); setSkipCompression(false)
       onUploaded()
-    } catch {
-      setError('No se pudo subir el vídeo. Inténtalo de nuevo.')
+    } catch (e: any) {
+      console.error('[PanelFit] Error al subir vídeo:', e)
+      const detail = e?.message || e?.error_description || (typeof e === 'string' ? e : '')
+      setError(`No se pudo subir el vídeo.${detail ? ` (${detail})` : ''} Inténtalo de nuevo.`)
     } finally {
+      setCompressing(false)
       setUploading(false)
     }
   }
