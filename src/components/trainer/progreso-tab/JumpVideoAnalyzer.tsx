@@ -99,7 +99,8 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
             <label className="flex flex-col items-center justify-center gap-1.5 py-6 border-2 border-dashed border-border rounded-xl text-xs text-muted cursor-pointer hover:border-accent hover:text-accent">
               <Video className="w-5 h-5" />
               Elegir vídeo del salto
-              <input type="file" accept="video/*" capture="environment" className="hidden" onChange={pickFile} />
+              {/* Sin capture: "elegir" debe abrir la galería/archivos, no forzar la cámara. */}
+              <input type="file" accept="video/*" className="hidden" onChange={pickFile} />
             </label>
           ) : library === null ? (
             <div className="py-6 text-center text-xs text-muted">Cargando vídeos...</div>

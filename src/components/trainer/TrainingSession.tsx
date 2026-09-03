@@ -669,7 +669,9 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
               ) : (
                 <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
                   {uploading === `r${activeIdx}` ? 'Procesando...' : '📹 Grabar / subir vídeo'}
-                  <input type="file" accept="video/*" capture="environment" className="hidden"
+                  {/* Sin capture: si no, el móvil abre la cámara directo y no deja elegir
+                      un vídeo ya grabado, aunque el texto diga "grabar / subir". */}
+                  <input type="file" accept="video/*" className="hidden"
                     disabled={!!uploading}
                     onChange={e => { const f = e.target.files?.[0]; if (f) uploadVideo(`r${activeIdx}`, f) }}
                   />

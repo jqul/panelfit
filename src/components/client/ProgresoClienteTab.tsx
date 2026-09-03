@@ -452,7 +452,9 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
               <span className="text-xs text-muted">No comprimir — voy a analizar el vídeo fotograma a fotograma (ej: medir un salto) y necesito máxima precisión</span>
             </label>
             {error && <p className="text-xs text-warn">{error}</p>}
-            <input ref={fileRef} type="file" accept="video/*" capture="environment" className="hidden"
+            {/* Sin capture: con él el móvil abre la cámara directo y no deja elegir
+                un vídeo ya grabado de la galería, aunque el botón diga "elegir". */}
+            <input ref={fileRef} type="file" accept="video/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
             <button onClick={() => fileRef.current?.click()} disabled={uploading || compressing}
               className="w-full flex items-center justify-center gap-2 py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-50">

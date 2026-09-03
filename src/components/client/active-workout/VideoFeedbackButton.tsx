@@ -79,7 +79,10 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
                 </div>
                 <p className="text-xs text-muted">Grábate haciendo {exerciseName} y tu entrenador te comentará la técnica</p>
 
-                <input ref={fileRef} type="file" accept="video/*" capture="user" className="hidden"
+                {/* Sin el atributo capture: con él, el móvil abre la cámara directamente
+                    y no ofrece la opción de elegir un vídeo ya grabado de la galería —
+                    justo lo contrario de lo que dice el botón ("Grabar o elegir vídeo"). */}
+                <input ref={fileRef} type="file" accept="video/*" className="hidden"
                   onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
 
                 {compressing ? (
