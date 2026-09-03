@@ -494,7 +494,7 @@ export function TrainingPlanEditor({
                                 </div>
 
                                 {/* Log */}
-                                <div className="flex justify-center">
+                                <div className="flex flex-col items-center justify-center gap-0.5">
                                   {(() => {
                                     const key = `ex_w${activeWeek}_d${di}_r${ri}`
                                     const log = logs[key]
@@ -503,6 +503,10 @@ export function TrainingPlanEditor({
                                       ? <span className="text-[10px] font-bold text-ok">{sets.length}×✓</span>
                                       : <span className="text-[10px] text-muted/40">—</span>
                                   })()}
+                                  {logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName && (
+                                    <span title={`Sustituido por: ${logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName}`}
+                                      className="text-[9px] font-semibold text-warn">🔄</span>
+                                  )}
                                 </div>
 
                                 {/* Acciones */}

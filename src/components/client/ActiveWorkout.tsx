@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ChevronDown, Clock, Trophy, ChevronLeft,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap
+  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
 } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
@@ -57,6 +57,37 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
   const logsRef = useRef(logs)
   useEffect(() => { logsRef.current = logs }, [logs])
+
+  // Sustitución de ejercicio (ej. las mancuernas están cogidas y hace la
+  // variante con barra) — se guarda en el log de esa sesión, no cambia el
+  // plan prescrito, así que el entrenador ve tanto lo previsto como lo que
+  // realmente se hizo.
+  const [substitutions, setSubstitutions] = useState<Record<number, string>>(() => {
+    const initial: Record<number, string> = {}
+    day?.exercises.forEach((_, ri) => {
+      const name = logs[`ex_${dayKey}_r${ri}`]?.substituteName
+      if (name) initial[ri] = name
+    })
+    return initial
+  })
+  const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
+  const [substituteDraft, setSubstituteDraft] = useState('')
+
+  const setSubstitute = useCallback((ri: number, name: string) => {
+    const trimmed = name.trim()
+    setSubstitutions(prev => {
+      const updated = { ...prev }
+      if (trimmed) updated[ri] = trimmed; else delete updated[ri]
+      return updated
+    })
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const { substituteName: _drop, ...rest } = currentLogs[key] || { sets: {}, done: false }
+    onLogsChange({
+      ...currentLogs,
+      [key]: { ...rest, ...(trimmed ? { substituteName: trimmed } : {}) },
+    })
+  }, [dayKey, onLogsChange])
 
   const [restTimer, setRestTimer] = useState<{ secs: number } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
@@ -183,7 +214,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
         setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
       }
-      onLogsChange({ ...logsRef.current, [key]: { sets: setsData, done: allDone, dateDone: today } })
+      onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
       return updated
     })
 
@@ -379,9 +410,14 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`font-bold text-base ${allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
+                    <p className={`font-bold text-base ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
                     {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
                   </div>
+                  {substitutions[ri] && (
+                    <p className="text-sm font-bold text-warn flex items-center gap-1 mt-0.5">
+                      <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
+                    </p>
+                  )}
                   {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
@@ -402,6 +438,36 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               </div>
 
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+
+              {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
+              <div className="px-4 mb-3">
+                {editingSubstitute === ri ? (
+                  <div className="flex items-center gap-2">
+                    <input autoFocus value={substituteDraft}
+                      onChange={e => setSubstituteDraft(e.target.value)}
+                      placeholder="¿Qué has hecho en su lugar?"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
+                        if (e.key === 'Escape') setEditingSubstitute(null)
+                      }}
+                      className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
+                    <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
+                      className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
+                    <button onClick={() => setEditingSubstitute(null)}
+                      className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
+                  </div>
+                ) : substitutions[ri] ? (
+                  <button onClick={() => { setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
+                    <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
+                  </button>
+                ) : (
+                  <button onClick={() => { setSubstituteDraft(''); setEditingSubstitute(ri) }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
+                    <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
+                  </button>
+                )}
+              </div>
 
               {/* Vídeo-feedback asíncrono */}
               {trainerId && (

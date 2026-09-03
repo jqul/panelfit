@@ -78,7 +78,7 @@ export interface LibraryExercise {
 
 // ── REGISTROS ─────────────────────────────────────────
 export interface LogSet { weight: string; reps: string; rir?: number; velocity?: number }
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string }
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string }
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────

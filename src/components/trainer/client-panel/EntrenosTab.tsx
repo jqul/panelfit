@@ -73,7 +73,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
   })
   Object.values(exHistory).forEach(arr => arr.sort((a, b) => a.date.localeCompare(b.date)))
 
-  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string }[]> = {}
+  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string; substituteName?: string }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
     if (!log.dateDone) return
     const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
@@ -81,7 +81,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
     const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
     const exName = plan?.weeks?.[wi]?.days?.[di]?.exercises?.[ri]?.name || key
     if (!byDate[log.dateDone]) byDate[log.dateDone] = []
-    byDate[log.dateDone].push({ exName, sets: log.sets, key })
+    byDate[log.dateDone].push({ exName, sets: log.sets, key, substituteName: log.substituteName })
   })
   const dates = Object.keys(byDate).sort().reverse()
   if (!dates.length) return <div className="text-center py-16 text-muted"><ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin entrenamientos aún</p></div>
@@ -102,7 +102,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
             </div>
           )}
           <div className="divide-y divide-border">
-            {byDate[fecha].map(({ exName, sets, key }) => {
+            {byDate[fecha].map(({ exName, sets, key, substituteName }) => {
               const setsArr = Object.values(sets || {})
               const mejor = setsArr.reduce((max, s) => Math.max(max, parseFloat(s.weight) || 0), 0)
               return (
@@ -110,7 +110,10 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                   <div className="flex items-center gap-3 px-4 py-2.5">
                     <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0"><Dumbbell className="w-3.5 h-3.5 text-muted" /></div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{exName}</p>
+                      <p className={`text-sm font-medium truncate ${substituteName ? 'line-through text-muted' : ''}`}>{exName}</p>
+                      {substituteName && (
+                        <p className="text-xs font-semibold text-warn flex items-center gap-1">🔄 {substituteName}</p>
+                      )}
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">{setsArr.map((s, si) => <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}</div>
                     </div>
                     {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[9px] text-muted">mejor</p></div>}
