@@ -14,7 +14,9 @@ import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } fr
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
+import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
+import { useTestCatalog } from '../../lib/testCatalog'
 
 export { getYTId } from './training-plan-editor/utils'
 export type { SeriesTypeDef } from './training-plan-editor/seriesTypes'
@@ -60,6 +62,7 @@ export function TrainingPlanEditor({
   const { blocks: periodizationBlocks, saveBlocks: savePeriodizationBlocks } = useCustomPeriodizationBlocks(trainerId)
 
   const { types: seriesTypes, saveTypes } = useSeriesTypes(trainerId)
+  const { tests: testCatalog } = useTestCatalog(trainerId)
 
   const weeks = plan.weeks || []
   const currentWeek = weeks[activeWeek]
@@ -631,6 +634,12 @@ export function TrainingPlanEditor({
                           <Plus className="w-3.5 h-3.5" /> Añadir ejercicio
                         </button>
                       </div>
+
+                      <DayTestsSection
+                        testIds={day.testIds || []}
+                        tests={testCatalog}
+                        onChange={testIds => updateDay(activeWeek, di, { testIds })}
+                      />
                     </div>
                   )}
                 </div>

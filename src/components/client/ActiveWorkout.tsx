@@ -13,6 +13,8 @@ import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { SetRow } from './active-workout/SetRow'
 import { PrAlert } from './active-workout/PrAlert'
+import { DayTestsCard } from './active-workout/DayTestsCard'
+import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 
 interface Props {
   plan: TrainingPlan
@@ -32,6 +34,23 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [reactionEmoji, setReactionEmoji] = useState<string | null>(null)
   const [reactionComment, setReactionComment] = useState('')
   const [showReactionComment, setShowReactionComment] = useState(false)
+
+  // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
+  // cliente mete su resultado aquí y va directo a Progreso > Pruebas del
+  // entrenador, sin que haga falta decírselo aparte.
+  const { tests: testCatalog } = useTestCatalog(trainerId)
+  const { resultados: testResultados, addResultado: addTestResultado } = useTestResultados(plan.clientId)
+  const dayTests = (day?.testIds || [])
+    .map(id => testCatalog.find(t => t.id === id))
+    .filter((t): t is NonNullable<typeof t> => !!t)
+  const todayDate = new Date().toISOString().split('T')[0]
+  const testResultadosHoy = Object.fromEntries(
+    testResultados.filter(r => r.fecha === todayDate).map(r => [r.test_id, r])
+  )
+  const submitTestResult = (testId: string, valor: number) => {
+    if (!trainerId) return
+    addTestResultado(trainerId, testId, valor, todayDate, '')
+  }
 
   type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
@@ -366,6 +385,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           </div>
         </div>
       )}
+
+      <DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} />
 
       {/* Ejercicios */}
       <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>

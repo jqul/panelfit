@@ -39,7 +39,7 @@ export interface ExerciseVideoUpload {
   videoUrl: string
   uploadedAt: number
 }
-export interface DayPlan { title: string; focus: string; exercises: Exercise[]; warmup?: string; warmupExercises?: Exercise[] }
+export interface DayPlan { title: string; focus: string; exercises: Exercise[]; warmup?: string; warmupExercises?: Exercise[]; testIds?: string[] }
 export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
 
 export interface TrainingPlan {
