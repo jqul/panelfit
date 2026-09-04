@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR, computeSessionLoadACWR, worseAcwr, SessionLoadRow } from '../../../lib/loadRisk'
 import { EmptyState } from './helpers'
 import { CargaTrendChart } from './CargaTrendChart'
+import { HoloRangeBar } from '../../shared/HoloRangeBar'
 import { DEMO_READINESS_MAP, DEMO_SESSION_LOAD_MAP } from '../../../lib/demo-data'
 
 const RISK_META = {
@@ -77,11 +78,38 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
         <p className="text-xs text-muted mt-1">Combina carga de entrenamiento (RIR, volumen, frecuencia) y bienestar (sueño, dolor, estrés, motivación)</p>
       </div>
 
+      {/* Gauges ACWR — 0.8-1.3 es la zona óptima estándar (modelo de Gabbett):
+          por debajo, desentrenamiento; por encima, riesgo de lesión elevado. */}
+      {tonnageAcwr.ratio !== null && (
+        <HoloRangeBar
+          name="ACWR (tonelaje)"
+          unit=""
+          value={tonnageAcwr.ratio}
+          minNormal={0.8}
+          maxNormal={1.3}
+          minScale={0}
+          maxScale={2}
+          note="Ratio de carga aguda (7 días) frente a crónica (28 días). Por debajo de 0.8 hay desentrenamiento — una vuelta brusca a la carga habitual también eleva el riesgo. Por encima de 1.3 empieza la zona de precaución, y por encima de 1.5 el riesgo de lesión es alto."
+        />
+      )}
+      {srpeAcwr.hasData && srpeAcwr.ratio !== null && (
+        <HoloRangeBar
+          name="Carga interna (sRPE)"
+          unit=""
+          value={srpeAcwr.ratio}
+          minNormal={0.8}
+          maxNormal={1.3}
+          minScale={0}
+          maxScale={2}
+          description="Ratio agudo:crónico de duración × RPE (Foster) — zona óptima 0.8-1.3"
+          note="Capta carga que el tonelaje no ve (sprints, pista, técnica sin apenas peso movido). Mismos umbrales que el ACWR de tonelaje."
+        />
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-2xl p-3">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2" title="Tonelaje medio diario, agudo (7d) ÷ crónico (28d) — modelo de Gabbett con EWMA">ACWR (tonelaje)</p>
           <div className="space-y-1.5 text-xs">
-            <div className="flex justify-between"><span className="text-muted">Ratio agudo:crónico</span><span className="font-bold">{tonnageAcwr.ratio !== null ? tonnageAcwr.ratio.toFixed(2) : '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted">Agudo (7d)</span><span className="font-bold">{tonnageAcwr.acute} kg·rep/día</span></div>
             <div className="flex justify-between"><span className="text-muted">Crónico (28d)</span><span className="font-bold">{tonnageAcwr.chronic} kg·rep/día</span></div>
           </div>
@@ -92,7 +120,6 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
           </p>
           {srpeAcwr.hasData ? (
             <div className="space-y-1.5 text-xs">
-              <div className="flex justify-between"><span className="text-muted">Ratio agudo:crónico</span><span className="font-bold">{srpeAcwr.ratio !== null ? srpeAcwr.ratio.toFixed(2) : '—'}</span></div>
               <div className="flex justify-between"><span className="text-muted">Agudo (7d)</span><span className="font-bold">{srpeAcwr.acute} UA/día</span></div>
               <div className="flex justify-between"><span className="text-muted">Crónico (28d)</span><span className="font-bold">{srpeAcwr.chronic} UA/día</span></div>
             </div>
