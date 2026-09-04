@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
 import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload } from 'lucide-react'
+import { ActionMenu } from '../shared/ActionMenu'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
@@ -375,15 +376,27 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => togglePublic(tmpl)} title={tmpl.isPublic ? 'Dejar de compartir' : 'Compartir en la galería'}
-                      className={`p-1.5 rounded-lg ${tmpl.isPublic ? 'text-ok hover:text-warn' : 'text-muted hover:text-ok'}`}><Globe className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => startEdit(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => duplicate(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => exportExcel(tmpl)} disabled={exportingId === tmpl.id} title="Exportar a Excel"
-                      className="p-1.5 text-muted hover:text-accent rounded-lg disabled:opacity-40">
-                      <FileSpreadsheet className={`w-3.5 h-3.5 ${exportingId === tmpl.id ? 'animate-pulse' : ''}`} />
-                    </button>
-                    <button onClick={() => deleteTemplate(tmpl.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => startEdit(tmpl)} title="Editar" className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <ActionMenu>
+                      <button onClick={() => togglePublic(tmpl)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Globe className={`w-3.5 h-3.5 flex-shrink-0 ${tmpl.isPublic ? 'text-ok' : 'text-muted'}`} />
+                        {tmpl.isPublic ? 'Dejar de compartir' : 'Compartir en la galería'}
+                      </button>
+                      <button onClick={() => duplicate(tmpl)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Copy className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Duplicar
+                      </button>
+                      <button onClick={() => exportExcel(tmpl)} disabled={exportingId === tmpl.id}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt disabled:opacity-40">
+                        <FileSpreadsheet className={`w-3.5 h-3.5 text-muted flex-shrink-0 ${exportingId === tmpl.id ? 'animate-pulse' : ''}`} /> Exportar a Excel
+                      </button>
+                      <div className="h-px bg-border my-1" />
+                      <button onClick={() => deleteTemplate(tmpl.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                        <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Eliminar
+                      </button>
+                    </ActionMenu>
                     <button onClick={() => setExpanded(expanded === tmpl.id ? null : tmpl.id)} className="p-1.5 text-muted rounded-lg">
                       {expanded === tmpl.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
