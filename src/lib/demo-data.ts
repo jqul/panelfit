@@ -879,8 +879,21 @@ export const DEMO_TEST_RESULTS_MARIA = [
   { id: 'demo-res-6', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-dropjump', valor: 1.4, fecha: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], notas: 'Calculado desde vídeo · t. vuelo 480ms · t. contacto 340ms · 60fps', created_at: 0 },
   { id: 'demo-res-7', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-dropjump', valor: 1.7, fecha: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0], notas: 'Calculado desde vídeo · t. vuelo 510ms · t. contacto 300ms · 60fps', created_at: 0 },
 ]
+// Lucas (el mismo con ACWR de carga interna disparado — ver LUCAS_SESSIONS
+// más abajo): su salto vertical también cae justo en el mismo bloque de
+// sprints/pliometría intenso — dos señales independientes (carga externa y
+// fatiga neuromuscular) apuntando a lo mismo, que es exactamente el caso de
+// uso de esta alerta (a veces el cuestionario subjetivo no lo refleja, pero
+// el salto sí). Línea base ~41cm, cae a 36cm (-12%) en la última medición.
+export const DEMO_TEST_RESULTS_LUCAS = [
+  { id: 'demo-res-lucas-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 40, fecha: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-lucas-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 42, fecha: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-lucas-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 41, fecha: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
+  { id: 'demo-res-lucas-4', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 36, fecha: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], notas: 'Se ve cansado, cuesta activar', created_at: 0 },
+]
 export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARIA> = {
   'demo-client-001': DEMO_TEST_RESULTS_MARIA,
+  'demo-client-007': DEMO_TEST_RESULTS_LUCAS,
 }
 
 // ── CARGA INTERNA / sRPE (demo) ─────────────────────────
