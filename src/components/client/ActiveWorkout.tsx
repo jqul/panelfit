@@ -6,7 +6,7 @@ import {
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
 import { getYTId, parseSet } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
@@ -197,10 +197,14 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return best
   }, [plan])
 
-  // Perfil carga-velocidad histórico de un ejercicio (VBT): recopila todas las
-  // parejas (peso, velocidad) registradas alguna vez para ese ejercicio y ajusta
-  // la recta que estima el 1RM real de hoy — mismo patrón que getBest1RMFromLogs.
-  const getVelocityProfileFromLogs = useCallback((exName: string, logsData: TrainingLogs) => {
+  // Perfil carga-velocidad de un ejercicio (VBT): recopila las parejas (peso,
+  // velocidad) registradas para ese ejercicio y ajusta la recta que estima el
+  // 1RM por velocidad — mismo patrón que getBest1RMFromLogs. `dateFilter`
+  // permite pedir solo las de hoy (autorregulación dentro de la sesión) o solo
+  // las de antes de hoy (referencia histórica) en vez de todo el historial.
+  const getVelocityProfileFromLogs = useCallback((
+    exName: string, logsData: TrainingLogs, dateFilter?: { only?: string; exclude?: string }
+  ) => {
     const points: VelocityPoint[] = []
     plan.weeks.forEach((week, wi) => {
       week.days.forEach((d, di) => {
@@ -208,6 +212,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
           const log = logsData[`ex_w${wi}_d${di}_r${ei}`]
           if (!log?.dateDone) return
+          if (dateFilter?.only && log.dateDone !== dateFilter.only) return
+          if (dateFilter?.exclude && log.dateDone === dateFilter.exclude) return
           Object.values(log.sets || {}).forEach(s => {
             const w = parseFloat(s.weight) || 0
             if (w > 0 && s.velocity) points.push({ weight: w, velocity: s.velocity })
@@ -415,6 +421,17 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             return si0 !== undefined ? exSets[si0].velocity : undefined
           }
           const velocityProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+          // Autorregulación VBT: 1RM por velocidad de HOY (con lo que ya lleva
+          // hecho en esta sesión) frente al mejor 1RM por velocidad de sesiones
+          // anteriores — si el SNC no responde igual hoy, sugiere ajustar el
+          // peso de las series que quedan en vez de forzar la carga prescrita.
+          const todayVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
+          const historicalVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
+          const vbtSuggestion = getVbtSuggestedWeightChange(
+            todayVelocityProfile?.oneRM ?? null,
+            historicalVelocityProfile?.oneRM ?? null,
+            parseFloat(ex.weight) || undefined
+          )
 
           return (
             <div key={ri} className="border-b border-border">
@@ -452,6 +469,11 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                   {velocityProfile?.oneRM && (
                     <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#6366f1' }}>
                       ⚡ 1RM real de hoy (por velocidad): ~{velocityProfile.oneRM}kg
+                    </p>
+                  )}
+                  {vbtSuggestion && (
+                    <p className="text-[10px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
+                      🎯 {vbtSuggestion.label}
                     </p>
                   )}
                 </div>

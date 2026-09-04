@@ -168,3 +168,35 @@ export function velocityLossPct(currentVelocity: number, firstVelocity: number):
   if (!firstVelocity || firstVelocity <= 0 || !currentVelocity) return null
   return Math.round((1 - currentVelocity / firstVelocity) * 1000) / 10
 }
+
+/**
+ * Autorregulación por velocidad: compara el 1RM estimado por velocidad DE HOY
+ * (con las series que ya lleva hechas en esta sesión) contra su mejor 1RM por
+ * velocidad de sesiones anteriores. Si hoy sale claramente por debajo, el
+ * sistema nervioso no está respondiendo igual que otros días — mejor bajar el
+ * peso de las series que quedan que forzar la carga prescrita a una velocidad
+ * que no le corresponde hoy. Si sale por encima, hay margen para apretar más.
+ * Umbral del 10%: por debajo de eso es ruido de medición normal, no fatiga
+ * real (el propio error de estimar 1RM por regresión ya anda por ese orden).
+ * Mismo formato de salida que getSuggestedWeightChange para reusar el mismo
+ * badge en la UI.
+ */
+export function getVbtSuggestedWeightChange(
+  todayOneRM: number | null,
+  historicalBestOneRM: number | null,
+  nextWeight?: number
+): { pct: number; label: string; color: string; direction: 'up' | 'down' | 'hold'; deltaKg: number } | null {
+  if (!todayOneRM || !historicalBestOneRM) return null
+  const diffPct = Math.round(((todayOneRM - historicalBestOneRM) / historicalBestOneRM) * 100)
+  const weight = nextWeight || 0
+  if (Math.abs(diffPct) < 10) {
+    return { pct: 0, label: 'Velocidad normal para ti — mantener', color: '#6366f1', direction: 'hold', deltaKg: 0 }
+  }
+  const direction = diffPct < 0 ? 'down' : 'up'
+  const deltaKg = weight ? Math.round(Math.abs(weight * (diffPct / 100)) * 2) / 2 : 0
+  const label = direction === 'down'
+    ? `SNC fatigado hoy (${diffPct}%) — bajar${deltaKg ? ` ${deltaKg}kg` : ' peso'}`
+    : `Vas rápido hoy (+${diffPct}%) — puedes subir${deltaKg ? ` ${deltaKg}kg` : ''}`
+  const color = direction === 'down' ? '#ef4444' : '#22c55e'
+  return { pct: diffPct, label, color, direction, deltaKg }
+}

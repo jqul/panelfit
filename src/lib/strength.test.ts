@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct } from './strength'
+import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct, getVbtSuggestedWeightChange } from './strength'
 
 describe('estimate1RM', () => {
   it('returns the weight itself for a single rep', () => {
@@ -123,5 +123,29 @@ describe('velocityLossPct', () => {
 
   it('returns null without a valid first-set reference', () => {
     expect(velocityLossPct(0.7, 0)).toBeNull()
+  })
+})
+
+describe('getVbtSuggestedWeightChange', () => {
+  it('suggests lowering the load when today\'s velocity-1RM is well below the historical best', () => {
+    const s = getVbtSuggestedWeightChange(90, 100, 80) // -10%
+    expect(s?.direction).toBe('down')
+    expect(s?.deltaKg).toBeCloseTo(8, 1) // 10% of 80kg
+  })
+
+  it('suggests raising the load when today is well above the historical best', () => {
+    const s = getVbtSuggestedWeightChange(115, 100, 80) // +15%
+    expect(s?.direction).toBe('up')
+  })
+
+  it('holds within a 10% band — measurement noise, not real fatigue', () => {
+    const s = getVbtSuggestedWeightChange(95, 100, 80) // -5%
+    expect(s?.direction).toBe('hold')
+    expect(s?.deltaKg).toBe(0)
+  })
+
+  it('returns null without both a today and a historical profile', () => {
+    expect(getVbtSuggestedWeightChange(null, 100, 80)).toBeNull()
+    expect(getVbtSuggestedWeightChange(90, null, 80)).toBeNull()
   })
 })
