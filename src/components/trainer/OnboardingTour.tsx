@@ -3,7 +3,7 @@ import { Users, Dumbbell, CalendarDays, TrendingUp, Settings, ArrowRight } from 
 
 const STEPS = [
   { icon: Users, title: 'Tus clientes', desc: 'Añade clientes desde "Clientes" o el acceso rápido del resumen. Cada cliente tiene su propio panel: plan, dieta, progreso y más.' },
-  { icon: Dumbbell, title: 'Workouts y programas', desc: 'Crea plantillas reutilizables en "Workouts" y prográmalas en "Programas". Al asignar una plantilla a un cliente, se adapta automáticamente a la semana en que esté.' },
+  { icon: Dumbbell, title: 'Workouts y programas', desc: 'Crea rutinas reutilizables en "Workouts" (con sus ejercicios, series y pesos) y asígnaselas a un cliente desde su pestaña Plan → "Asignar workout" — se adapta sola a la semana en que esté. "Programas" es otra cosa: un calendario de tareas (cardio, check-ins...) que no lleva ejercicios dentro.' },
   { icon: CalendarDays, title: 'Calendario', desc: 'Agenda sesiones individuales o recurrentes. Tus clientes verán sus próximas citas en su panel.' },
   { icon: TrendingUp, title: 'Progreso y rendimiento', desc: 'Cada cliente tiene 1RM estimado, autoregulación por RIR, niveles de fuerza y volumen por grupo muscular — sin que tengas que calcular nada a mano.' },
   { icon: Settings, title: 'Personaliza tu marca', desc: 'En "Ajustes" configura tu logo, colores y mensajes automáticos. Tus clientes verán tu marca, no la nuestra.' },

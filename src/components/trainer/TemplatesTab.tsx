@@ -111,7 +111,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
       try {
         const local: TrainingTemplate[] = JSON.parse(localStorage.getItem(LS_KEY(trainerId)) || '[]')
         if (local.length > 0) {
-          const rows = local.map(t => ({ id: t.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: t.name || 'Plantilla', description: t.description || '', plan: t, created_at: t.createdAt || Date.now(), updated_at: t.updatedAt || Date.now(), label_ids: [] }))
+          const rows = local.map(t => ({ id: t.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: t.name || 'Workout', description: t.description || '', plan: t, created_at: t.createdAt || Date.now(), updated_at: t.updatedAt || Date.now(), label_ids: [] }))
           const { error } = await supabase.from('plan_templates').upsert(rows, { onConflict: 'id' })
           if (!error) localStorage.setItem(LS_MIGRATED(trainerId), '1')
         } else localStorage.setItem(LS_MIGRATED(trainerId), '1')

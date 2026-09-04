@@ -76,9 +76,9 @@ function useTemplates(trainerId: string) {
       : [...templates, tmpl]
     setTemplates(updated)
     localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
-    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name || 'Plantilla', description: tmpl.description || '', plan: tmpl, created_at: Date.now(), updated_at: Date.now() }
+    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name || 'Workout', description: tmpl.description || '', plan: tmpl, created_at: Date.now(), updated_at: Date.now() }
     const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
-    if (error) { logError('ClientPanel:saveTemplate', error); toast('No se pudo guardar la plantilla en la nube', 'warn') }
+    if (error) { logError('ClientPanel:saveTemplate', error); toast('No se pudo guardar el workout en la nube', 'warn') }
   }
 
   const deleteTemplate = async (id: string) => {
@@ -86,7 +86,7 @@ function useTemplates(trainerId: string) {
     setTemplates(updated)
     localStorage.setItem(`pf_templates_${trainerId}`, JSON.stringify(updated))
     const { error } = await supabase.from('plan_templates').delete().eq('id', id)
-    if (error) { logError('ClientPanel:deleteTemplate', error); toast('No se pudo eliminar la plantilla en la nube', 'warn') }
+    if (error) { logError('ClientPanel:deleteTemplate', error); toast('No se pudo eliminar el workout en la nube', 'warn') }
   }
 
   return { templates, saveTemplate, deleteTemplate }
@@ -232,15 +232,15 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     if (!borradorActivo) {
       if (autoWelcome) {
         const url = `${window.location.origin}?c=${client.token}`
-        const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo programa:\n\n${url}\n\n💪`)
+        const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo plan de entrenamiento:\n\n${url}\n\n💪`)
         setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
         // Push real y automático al cliente — esto sí llega sin que nadie tenga que pulsar nada
-        sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo programa`)
+        sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo plan de entrenamiento`)
       }
       sendPush({ clientId: client.id }, 'Nuevo plan asignado 🏋️', `Tu entrenador te ha asignado "${template.name}"`)
     }
     setShowTemplates(false); setWizardStep(1); setWizardTemplate(null)
-    toast(`Plantilla "${template.name}" aplicada ✓${borradorActivo ? ' (en el borrador)' : ''}`, 'ok')
+    toast(`Workout "${template.name}" asignado ✓${borradorActivo ? ' (en el borrador)' : ''}`, 'ok')
   }
 
   const importFromClient = async (clientId: string): Promise<TrainingPlan | null> => {

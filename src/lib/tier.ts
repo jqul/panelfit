@@ -17,7 +17,7 @@ export const TIER_FEATURES: Record<TrainerTier, string[]> = {
     'Plan de entrenamiento por semanas/días',
     'Plan nutricional con macros',
     'Calendario de sesiones',
-    'Etiquetas y plantillas',
+    'Etiquetas y workouts',
     'Fotos y peso corporal',
   ],
   alto_rendimiento: [
