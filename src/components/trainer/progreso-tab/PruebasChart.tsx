@@ -5,6 +5,7 @@ import { useTestCatalog, useTestResultados, CATEGORIAS } from '../../../lib/test
 import { CustomTooltip, EmptyState } from './helpers'
 import { toast } from '../../shared/Toast'
 import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
+import { VamIntervalGenerator } from './VamIntervalGenerator'
 
 export function PruebasChart({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const { tests, loading: loadingTests, addTest, deleteTest } = useTestCatalog(trainerId)
@@ -15,6 +16,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
   const [notas, setNotas] = useState('')
   const [showVideoAnalyzer, setShowVideoAnalyzer] = useState(false)
+  const [showVamGenerator, setShowVamGenerator] = useState<number | null>(null)
   const [addingTest, setAddingTest] = useState(false)
   const [newNombre, setNewNombre] = useState('')
   const [newCategoria, setNewCategoria] = useState<string>(CATEGORIAS[0])
@@ -50,6 +52,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
         const isExpanded = expanded === test.id
         const isDropJumpTest = test.nombre.toLowerCase().includes('drop jump') || test.nombre.toLowerCase().includes('rsi')
         const isJumpTest = isDropJumpTest || test.nombre.toLowerCase().includes('salto')
+        const isVamTest = /vam|mas\b/i.test(test.nombre) || test.nombre.toLowerCase().includes('velocidad aeróbica')
         const chartData = history.slice(-10).map(r => ({
           fecha: new Date(r.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
           valor: r.valor,
@@ -74,6 +77,13 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
             {isExpanded && (
               <div className="border-t border-border p-4 space-y-3">
                 {test.descripcion && <p className="text-xs text-muted">{test.descripcion}</p>}
+
+                {isVamTest && latest && (
+                  <button onClick={() => setShowVamGenerator(latest.valor)}
+                    className="w-full py-2 border border-accent/40 text-accent rounded-lg text-xs font-semibold hover:bg-accent/5 transition-colors">
+                    🏃 Generar series por %VAM (última: {latest.valor} km/h)
+                  </button>
+                )}
 
                 {chartData.length >= 2 ? (
                   <div className="h-32">
@@ -175,6 +185,10 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
           className="w-full flex items-center justify-center gap-1.5 py-2 border-2 border-dashed border-border rounded-xl text-xs text-muted hover:border-accent hover:text-accent">
           <Plus className="w-3.5 h-3.5" /> Añadir prueba al catálogo
         </button>
+      )}
+
+      {showVamGenerator !== null && (
+        <VamIntervalGenerator masInicial={showVamGenerator} onClose={() => setShowVamGenerator(null)} />
       )}
     </div>
   )

@@ -869,6 +869,7 @@ export const DEMO_TEST_CATALOG = [
   { id: 'demo-test-dropjump', trainer_id: DEMO_TRAINER_ID, nombre: 'Drop Jump (RSI)', categoria: 'Potencia', unidad: 'índice', descripcion: 'Caída desde un cajón seguida de salto máximo — mide el Índice de Fuerza Reactiva (RSI = tiempo de vuelo ÷ tiempo de contacto), un indicador de fatiga del sistema nervioso central.', es_default: true, created_at: Date.now() - 60 * 86400000 },
   { id: 'demo-test-plancha', trainer_id: DEMO_TRAINER_ID, nombre: 'Plancha (plank)', categoria: 'Fuerza', unidad: 'segundos', descripcion: 'Tiempo máximo sosteniendo la posición de plancha.', es_default: true, created_at: Date.now() - 60 * 86400000 },
   { id: 'demo-test-cooper', trainer_id: DEMO_TRAINER_ID, nombre: 'Test de Cooper', categoria: 'Resistencia', unidad: 'm', descripcion: 'Metros recorridos corriendo en 12 minutos.', es_default: true, created_at: Date.now() - 60 * 86400000 },
+  { id: 'demo-test-vam', trainer_id: DEMO_TRAINER_ID, nombre: 'Velocidad Aeróbica Máxima (VAM/MAS)', categoria: 'Resistencia', unidad: 'km/h', descripcion: 'Velocidad de referencia para prescribir series por %VAM. Regístrala en km/h sea cual sea el protocolo: 30-15 IFT (da la velocidad directamente), Course Navette/beep test (palier → km/h, aprox. 8 + 0,5×palier) o 1000m lanzado (velocidad media = distancia/tiempo).', es_default: true, created_at: Date.now() - 60 * 86400000 },
 ]
 export const DEMO_TEST_RESULTS_MARIA = [
   { id: 'demo-res-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', test_id: 'demo-test-salto', valor: 32, fecha: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
@@ -890,6 +891,8 @@ export const DEMO_TEST_RESULTS_LUCAS = [
   { id: 'demo-res-lucas-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 42, fecha: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
   { id: 'demo-res-lucas-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 41, fecha: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], notas: '', created_at: 0 },
   { id: 'demo-res-lucas-4', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-salto', valor: 36, fecha: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], notas: 'Se ve cansado, cuesta activar', created_at: 0 },
+  { id: 'demo-res-lucas-vam-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-vam', valor: 15.5, fecha: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], notas: '1000m lanzado', created_at: 0 },
+  { id: 'demo-res-lucas-vam-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-vam', valor: 16.2, fecha: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], notas: 'Course Navette, palier 16', created_at: 0 },
 ]
 export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARIA> = {
   'demo-client-001': DEMO_TEST_RESULTS_MARIA,

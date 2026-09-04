@@ -30,6 +30,7 @@ const DEFAULTS: { nombre: string; categoria: string; unidad: string; descripcion
   { nombre: 'Salto vertical (CMJ)', categoria: 'Potencia', unidad: 'cm', descripcion: 'Salto máximo con contramovimiento y sin carrera previa (test de Sargent / CMJ).' },
   { nombre: 'Drop Jump (RSI)', categoria: 'Potencia', unidad: 'índice', descripcion: 'Caída desde un cajón seguida de salto máximo — mide el Índice de Fuerza Reactiva (RSI = tiempo de vuelo ÷ tiempo de contacto), un indicador de fatiga del sistema nervioso central.' },
   { nombre: 'Test de Cooper', categoria: 'Resistencia', unidad: 'm', descripcion: 'Metros recorridos corriendo en 12 minutos.' },
+  { nombre: 'Velocidad Aeróbica Máxima (VAM/MAS)', categoria: 'Resistencia', unidad: 'km/h', descripcion: 'Velocidad de referencia para prescribir series por %VAM. Regístrala en km/h sea cual sea el protocolo: 30-15 IFT (da la velocidad directamente), Course Navette/beep test (palier → km/h, aprox. 8 + 0,5×palier) o 1000m lanzado (velocidad media = distancia/tiempo).' },
   { nombre: 'Flexiones en 1 min', categoria: 'Fuerza', unidad: 'reps', descripcion: 'Máximo de flexiones de brazo en 60 segundos.' },
   { nombre: 'Plancha (plank)', categoria: 'Fuerza', unidad: 'segundos', descripcion: 'Tiempo máximo sosteniendo la posición de plancha.' },
   { nombre: 'Sit and reach', categoria: 'Flexibilidad', unidad: 'cm', descripcion: 'Distancia alcanzada en el test de flexibilidad isquiotibial.' },
