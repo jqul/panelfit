@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp, Eye, EyeOff, FileUp } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { parseDietExcel } from '../../lib/importDiet'
 import { toast } from './Toast'
 
 export interface Meal {
@@ -134,6 +135,8 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
   const [showTemplates, setShowTemplates] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [savedTemplates, setSavedTemplates] = useState<DietTemplate[]>(() => {
     if (!trainerId) return []
     try {
@@ -207,6 +210,20 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
     updateDiet({ ...d, meals })
     setShowTemplates(false)
     toast(`Plantilla "${name}" aplicada ✓`, 'ok')
+  }
+
+  const handleImportFile = async (file: File) => {
+    setImporting(true)
+    try {
+      const { meals } = await parseDietExcel(file)
+      updateDiet({ meals })
+      toast(`${meals.length} comida${meals.length > 1 ? 's' : ''} importada${meals.length > 1 ? 's' : ''} ✓ — revisa y pulsa "Guardar dieta"`, 'ok')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Error al leer el archivo', 'warn')
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   const saveDiet = async () => {
@@ -300,6 +317,12 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
             📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
           </button>
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+            className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-semibold text-muted hover:border-accent disabled:opacity-50">
+            <FileUp className="w-4 h-4" />{importing ? 'Leyendo...' : 'Importar Excel/CSV'}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleImportFile(f) }} />
           <button onClick={saveDiet} disabled={saving}
             className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50">
             <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar dieta'}
