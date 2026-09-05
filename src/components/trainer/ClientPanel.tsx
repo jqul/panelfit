@@ -1,4 +1,4 @@
-¡import { TrainerLabel, LabelPill } from './labels'
+import { TrainerLabel, LabelPill } from './labels'
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
