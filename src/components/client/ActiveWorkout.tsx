@@ -582,7 +582,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               )}
 
               {/* Cabecera tabla */}
-              <div className="grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 px-3 pb-1">
+              <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
                 <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">

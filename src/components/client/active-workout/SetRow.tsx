@@ -62,13 +62,23 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
     setWeight(w); setReps(r); onCommit(w, r)
   }
 
+  // El 85% de los ajustes de carga entre series o semanas son de ±2.5kg o
+  // ±5kg (el paso de disco más pequeño habitual, solo o doble) — botones
+  // directos para esos dos saltos en vez de forzar a abrir el teclado del
+  // sistema con las manos sudadas o con magnesio.
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const adjustWeight = (delta: number) => {
+    const v = String(Math.max(0, round1((parseFloat(weight) || 0) + delta)))
+    setWeight(v); onCommit(v, reps)
+  }
+
   return (
     <>
       {showRir && (
         <RirSelector value={rir} onSelect={onSetRir} onClose={() => setShowRir(false)} />
       )}
       <div className={`px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
-        <div className="grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 items-center">
+        <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 items-center">
           {/* Nº serie */}
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
             done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
@@ -92,12 +102,18 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             )}
           </div>
 
-          {/* KG — con paso rápido +/- y calculadora */}
-          <div className="flex flex-col items-stretch gap-0.5">
-            <button type="button" onClick={() => { const v = String(Math.max(0, (parseFloat(weight) || 0) + 2.5)); setWeight(v); onCommit(v, reps) }}
-              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
-              <ChevronUp className="w-3 h-3" />
-            </button>
+          {/* KG — pasos rápidos ±2.5/±5 (el 85% de los ajustes reales) y calculadora */}
+          <div className="flex flex-col items-stretch gap-1">
+            <div className="flex gap-0.5">
+              <button type="button" onClick={() => adjustWeight(5)} tabIndex={-1}
+                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                +5
+              </button>
+              <button type="button" onClick={() => adjustWeight(2.5)} tabIndex={-1}
+                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                +2.5
+              </button>
+            </div>
             <div className="relative">
               <input
                 type="number"
@@ -118,10 +134,16 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                 <Calculator className="w-3.5 h-3.5" />
               </button>
             </div>
-            <button type="button" onClick={() => { const v = String(Math.max(0, (parseFloat(weight) || 0) - 2.5)); setWeight(v); onCommit(v, reps) }}
-              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
-              <ChevronDown className="w-3 h-3" />
-            </button>
+            <div className="flex gap-0.5">
+              <button type="button" onClick={() => adjustWeight(-2.5)} tabIndex={-1}
+                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                -2.5
+              </button>
+              <button type="button" onClick={() => adjustWeight(-5)} tabIndex={-1}
+                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                -5
+              </button>
+            </div>
           </div>
 
           {/* Reps — con paso rápido +/- */}
