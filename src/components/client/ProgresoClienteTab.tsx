@@ -4,6 +4,7 @@ import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
 import { compressVideo } from '../../lib/videoCompress'
+import { useClientWeights } from '../../lib/clientWeight'
 
 interface Props {
   clientId: string
@@ -12,7 +13,6 @@ interface Props {
   plan?: TrainingPlan | null
 }
 
-interface WeightEntry { date: string; weight: number }
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
 
 // ── Helpers ───────────────────────────────────────────────
@@ -537,17 +537,14 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 // ── Main ──────────────────────────────────────────────────
 export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback'>('calendario')
-  const [weights, setWeights] = useState<WeightEntry[]>([])
+  const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
   const [uploading, setUploading] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
 
-  const LS_W = `pf_weight_${clientId}`
-
   useEffect(() => {
-    try { setWeights(JSON.parse(localStorage.getItem(LS_W) || '[]')) } catch {}
     loadPhotos()
   }, [clientId])
 
@@ -567,8 +564,6 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
     }
     setLoadingPhotos(false)
   }
-
-  const saveWeights = (w: WeightEntry[]) => { setWeights(w); localStorage.setItem(LS_W, JSON.stringify(w)) }
 
   const createSession = async () => {
     const id = `s_${Date.now()}`
@@ -590,8 +585,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const addWeight = () => {
     const w = parseFloat(newWeight)
     if (!w || w < 20 || w > 300) return
-    const date = new Date().toISOString().split('T')[0]
-    saveWeights([{ date, weight: w }, ...weights.filter(x => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date)))
+    addWeightEntry(w)
     setNewWeight('')
   }
 
@@ -709,7 +703,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                       {w.weight > weights[i-1].weight ? '+' : ''}{(w.weight - weights[i-1].weight).toFixed(1)}
                     </p>
                   )}
-                  <button onClick={() => saveWeights(weights.filter((_, idx) => idx !== i))} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <button onClick={() => deleteWeight(w.date)} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
                     <Trash2 className="w-3.5 h-3.5 mx-auto" />
                   </button>
                 </div>

@@ -7,13 +7,6 @@ export function getExName(key: string, plan?: TrainingPlan | null) {
   return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || null
 }
 
-export function useWeightHistory(clientId: string) {
-  try {
-    const raw = localStorage.getItem(`pf_weight_${clientId}`)
-    return raw ? JSON.parse(raw) as { date: string; weight: number }[] : []
-  } catch { return [] }
-}
-
 export function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {
   if (!active || !payload?.length) return null
   return (

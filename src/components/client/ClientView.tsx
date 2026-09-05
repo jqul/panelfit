@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
+import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
@@ -35,7 +35,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
-  const [weightHistory] = useState<WeightEntry[]>([])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
@@ -382,7 +381,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                      weightHistory={weightHistory} clientName={clientName} clientId={client.id}
+                      clientName={clientName} clientId={client.id}
                       objetivo={client.objetivo} welcomeMsg={welcomeMsg} motivMsg={motivMsg}
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}

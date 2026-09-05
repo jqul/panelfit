@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchClientWeights, WeightEntry } from '../../lib/clientWeight'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { X, Download, MessageCircle } from 'lucide-react'
 
@@ -11,21 +12,13 @@ interface Props {
   onClose: () => void
 }
 
-interface WeightEntry { date: string; weight: number }
-
-function useWeights(clientId: string) {
-  try {
-    const raw = localStorage.getItem(`pf_weight_${clientId}`)
-    return raw ? JSON.parse(raw) as WeightEntry[] : []
-  } catch { return [] }
-}
-
 export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClose }: Props) {
-  const weights = useWeights(client.id)
+  const [weights, setWeights] = useState<WeightEntry[]>([])
   const [responses, setResponses] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
 
   useEffect(() => {
+    fetchClientWeights(client.id).then(setWeights)
     // Cargar últimas respuestas de encuestas
     Promise.all([
       supabase.from('survey_responses').select('*').eq('client_id', client.id).order('completed_at', { ascending: false }).limit(4),

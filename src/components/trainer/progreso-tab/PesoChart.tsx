@@ -2,10 +2,12 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 import { Scale } from 'lucide-react'
-import { useWeightHistory, CustomTooltip, EmptyState } from './helpers'
+import { CustomTooltip, EmptyState } from './helpers'
+import { useClientWeights } from '../../../lib/clientWeight'
 
 export function PesoChart({ clientId }: { clientId: string }) {
-  const weights = useWeightHistory(clientId)
+  const { weights, loading } = useClientWeights(clientId)
+  if (loading) return null
   if (weights.length < 2) return <EmptyState icon={<Scale className="w-8 h-8 opacity-30" />} text="Sin historial de peso aún" sub="El cliente registra su peso desde su panel" />
   const data = [...weights].reverse().map(w => ({ fecha: new Date(w.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), kg: w.weight }))
   const min = Math.min(...data.map(d => d.kg))

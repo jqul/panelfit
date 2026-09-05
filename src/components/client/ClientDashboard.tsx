@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
-import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
+import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { TrainingSession } from '../trainer/TrainingSession'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { useClientWeights } from '../../lib/clientWeight'
 
 interface Props {
   plan: TrainingPlan
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
-  weightHistory: WeightEntry[]
   clientName: string
   clientId: string
   objetivo?: string
@@ -89,28 +89,24 @@ function estimateMinutes(exercises: any[]): number {
 export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
-  const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
+  const { weights, addWeight } = useClientWeights(clientId)
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [showCalc, setShowCalc] = useState(false)
 
   useEffect(() => {
-    try { setWeights(JSON.parse(localStorage.getItem(`pf_weight_${clientId}`) || '[]')) } catch {}
     const online = () => setIsOnline(true)
     const offline = () => setIsOnline(false)
     window.addEventListener('online', online)
     window.addEventListener('offline', offline)
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
-  }, [clientId])
+  }, [])
 
   const saveWeight = () => {
     const w = parseFloat(newWeight)
     if (!w || w < 20 || w > 300) return
-    const date = new Date().toISOString().split('T')[0]
-    const updated = [{ date, weight: w }, ...weights.filter((x: { date: string; weight: number }) => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date))
-    setWeights(updated)
-    localStorage.setItem(`pf_weight_${clientId}`, JSON.stringify(updated))
+    addWeight(w)
     setNewWeight(''); setShowWeightInput(false)
   }
 

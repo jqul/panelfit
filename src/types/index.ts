@@ -87,7 +87,8 @@ export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────
-export interface WeightEntry { v: number; fecha: string }
+// (el historial de peso corporal usa WeightEntry de lib/clientWeight.ts,
+// que sí coincide con la forma real { date, weight } usada en runtime)
 export interface ProgressPhoto {
   id: string; clientId: string; date: string
   frontUrl?: string; backUrl?: string; sideUrl?: string
