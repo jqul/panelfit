@@ -630,7 +630,7 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
           title: 'DÍA 1 — Fuerza tren inferior', focus: 'Base de fuerza',
           exercises: [
             { name: 'Sentadilla trasera', sets: '4×5', weight: '110kg', isMain: true, comment: '', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 180, restAfter: 120 },
-            { name: 'Peso muerto rumano', sets: '3×6', weight: '90kg', isMain: false, comment: 'Cuidado con el isquiotibial, controla el descenso', videoUrl: '', restSets: 150, restAfter: 90 },
+            { name: 'Peso muerto rumano', sets: '3×6', weight: '90kg', isMain: false, comment: 'Cuidado con el isquiotibial, controla el descenso', videoUrl: '', restSets: 150, restAfter: 90, tempo: '3-1-1-0' },
             { name: 'Zancada con salto', sets: '3×8', weight: '-', isMain: false, comment: 'Explosivo, máxima altura', videoUrl: '', restSets: 120, restAfter: 90 },
             { name: 'Elevación de talones', sets: '4×12', weight: '60kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
           ]

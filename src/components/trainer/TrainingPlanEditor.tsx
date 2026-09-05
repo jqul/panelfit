@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame, Link2 } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame, Link2, Gauge } from 'lucide-react'
 import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { BlockManager } from './training-plan-editor/BlockManager'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
@@ -32,6 +32,11 @@ interface Props {
   clientName?: string
   trainerId?: string
 }
+
+// Tempo = excéntrica-pausa abajo-concéntrica-pausa arriba, en segundos.
+// "X" en vez de un número = fase explosiva (máxima velocidad intencionada,
+// no un tiempo fijo) — estándar en fuerza-potencia y pliometría.
+const TEMPO_PRESETS = ['3-1-1-0', '4-2-1-0', '2-0-2-0', '3-0-X-0', '2-1-X-0']
 
 const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmupExercises: [] })
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
@@ -559,6 +564,29 @@ export function TrainingPlanEditor({
                                         onChange={e => updateExercise(activeWeek, di, ri, { comment: e.target.value })}
                                         placeholder="Indicaciones técnicas para el alumno..."
                                         className="w-full text-xs text-muted bg-bg border border-border/50 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/20" />
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <Gauge className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                                          <input value={ex.tempo || ''}
+                                            onChange={e => updateExercise(activeWeek, di, ri, { tempo: e.target.value })}
+                                            placeholder="Tempo (ej. 3-1-1-0) — opcional"
+                                            className="flex-1 text-xs bg-bg border border-border/50 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 pl-5">
+                                          {TEMPO_PRESETS.map(p => (
+                                            <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { tempo: p })}
+                                              className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              {p}
+                                            </button>
+                                          ))}
+                                          {ex.tempo && (
+                                            <button onClick={() => updateExercise(activeWeek, di, ri, { tempo: '' })}
+                                              className="px-2 py-0.5 rounded-md text-[9px] font-bold text-muted hover:text-warn">
+                                              Quitar
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
                                       <div className="flex items-center gap-2">
                                         <Video className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                                         <input value={ex.videoUrl || ''}

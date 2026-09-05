@@ -11,6 +11,7 @@ import { sendPush } from '../../lib/usePushNotifications'
 import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
+import { TempoWidget } from './active-workout/TempoWidget'
 import { SetRow } from './active-workout/SetRow'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
@@ -614,6 +615,9 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                   </span>
                 </div>
               )}
+
+              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
+              {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">

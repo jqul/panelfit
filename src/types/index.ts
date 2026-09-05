@@ -32,6 +32,7 @@ export interface Exercise {
   seriesType?: string      // id de SeriesTypeDef (normal, dropset, etc.)
   hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
   supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
+  tempo?: string           // cadencia "excéntrica-pausa abajo-concéntrica-pausa arriba" en segundos, ej. "3-1-1-0" ('X' = explosivo)
 }
 
 export interface ExerciseVideoUpload {
