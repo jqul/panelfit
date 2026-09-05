@@ -371,6 +371,18 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return prev?.[1]?.sets || {}
   }
 
+  // Densidad de la sesión: kg/min en vivo, más el tonelaje frente a la sesión
+  // equivalente de la semana pasada cuando hay con qué compararlo — ver subir
+  // el número set a set (0t → 12.4t) es el mismo refuerzo psicológico que un
+  // contador de tonelaje en vivo en TrainHeroic/Whoop, pero con una
+  // referencia real detrás en vez de una barra que sube porque sí.
+  const prevSessionVolume = (day?.exercises || []).reduce((acc, _, ri) => {
+    const prevSets = getPrevSets(ri)
+    return acc + Object.values(prevSets).reduce((a, s: any) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0)
+  }, 0)
+  const densityRate = elapsedSecs >= 30 && totalVolume > 0 ? Math.round(totalVolume / (elapsedSecs / 60)) : 0
+  const densityPct = prevSessionVolume > 0 ? Math.min(100, Math.round((totalVolume / prevSessionVolume) * 100)) : null
+
   // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
   const getBest1RM = (exName: string) => getBest1RMFromLogs(exName, logs)
 
@@ -425,6 +437,28 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             </div>
           </div>
         </div>
+
+        {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
+        {totalVolume > 0 && (
+          <div className="px-4 pb-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
+                <Flame className="w-3 h-3" /> Densidad
+              </p>
+              <p className="text-[10px] text-muted font-bold tabular-nums">
+                {densityRate > 0 && `${densityRate} kg/min · `}
+                {densityPct !== null
+                  ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`
+                  : `${(totalVolume / 1000).toFixed(1)}t movidas`}
+              </p>
+            </div>
+            {densityPct !== null && (
+              <div className="w-full h-2 bg-bg-alt rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${densityPct}%`, background: 'linear-gradient(90deg, #e07b54, #f0a868)' }} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Calentamiento si existe */}
