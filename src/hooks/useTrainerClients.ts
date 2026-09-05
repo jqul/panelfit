@@ -263,7 +263,9 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       toast(`Limite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn')
       return false
     }
-    const token = Math.random().toString(36).slice(2, 14)
+    // Mismo método que ConfigTab.revokeToken() — un entrenador nuevo no debería
+    // recibir un enlace más débil que el que sale de "Regenerar enlace".
+    const token = crypto.randomUUID().replace(/-/g, '')
     const objetivo = newClient.objetivo || 'general'
     const { data: inserted, error } = await supabase.from('clientes').insert({
       trainerId,
