@@ -89,6 +89,24 @@ export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: s
 }
 
 /**
+ * Rango objetivo en texto para una serie (ej. "100-102.5kg") a partir del RIR
+ * y peso de la MISMA serie la semana anterior — la misma autorregulación de
+ * getSuggestedWeightChange, pero como etiqueta lista para mostrar antes de
+ * hacer la serie (fila de la tabla, o la tarjeta de "siguiente serie" del
+ * temporizador de descanso). null si no hay referencia previa.
+ */
+export function getTargetRangeLabel(prevWeight?: string, prevRir?: number, weekRpe?: string): string | null {
+  const prevW = parseFloat(prevWeight || '')
+  if (!prevW) return null
+  const suggestion = getSuggestedWeightChange(prevRir, prevWeight, weekRpe)
+  if (!suggestion || suggestion.direction === 'hold' || !suggestion.deltaKg) return `${prevW}kg`
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  return suggestion.direction === 'up'
+    ? `${prevW}-${round1(prevW + suggestion.deltaKg)}kg`
+    : `${round1(prevW - suggestion.deltaKg)}-${prevW}kg`
+}
+
+/**
  * Programación por %1RM (estilo JuggernautAI/RP): si el campo de peso del
  * ejercicio es un porcentaje ("75%"), calcula el peso objetivo real a
  * partir del mejor 1RM estimado histórico del cliente para ese ejercicio.

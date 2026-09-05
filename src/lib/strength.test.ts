@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct, getVbtSuggestedWeightChange } from './strength'
+import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct, getVbtSuggestedWeightChange, getTargetRangeLabel } from './strength'
 
 describe('estimate1RM', () => {
   it('returns the weight itself for a single rep', () => {
@@ -147,5 +147,30 @@ describe('getVbtSuggestedWeightChange', () => {
   it('returns null without both a today and a historical profile', () => {
     expect(getVbtSuggestedWeightChange(null, 100, 80)).toBeNull()
     expect(getVbtSuggestedWeightChange(90, null, 80)).toBeNull()
+  })
+})
+
+describe('getTargetRangeLabel', () => {
+  it('returns null without a previous weight to anchor on', () => {
+    expect(getTargetRangeLabel(undefined, 3, '8')).toBeNull()
+    expect(getTargetRangeLabel('', 3, '8')).toBeNull()
+  })
+
+  it('returns a flat weight when there is no RIR reference to autoregulate from', () => {
+    expect(getTargetRangeLabel('100', undefined, '8')).toBe('100kg')
+  })
+
+  it('returns an upward range when last time there was room to spare', () => {
+    // RIR 4 vs RPE 8 (RIR objetivo 2) → sobraron 2 reps de margen, sugiere subir un 5%
+    expect(getTargetRangeLabel('100', 4, '8')).toBe('100-105kg')
+  })
+
+  it('returns a downward range when last time it was too hard', () => {
+    // RIR 0 vs RPE 8 (RIR objetivo 2) → faltó margen, sugiere bajar
+    expect(getTargetRangeLabel('100', 0, '8')).toBe('95-100kg')
+  })
+
+  it('returns a flat weight when the suggestion is to hold', () => {
+    expect(getTargetRangeLabel('100', 2, undefined)).toBe('100kg')
   })
 })

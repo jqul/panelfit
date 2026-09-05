@@ -66,11 +66,6 @@
   85%  { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.95) translateY(-6px); }
 }
-@keyframes confettiFall {
-  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
-  100% { opacity: 0; transform: translateY(60px) rotate(200deg); }
-}
-
 .animate-fade-in  { animation: fadeIn  0.2s ease forwards; }
 .animate-slide-up { animation: slideUp 0.25s ease forwards; }
 .pulse-dot        { animation: pulse-dot 2s infinite; }

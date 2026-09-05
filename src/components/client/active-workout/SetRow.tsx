@@ -1,9 +1,7 @@
 import { useState, memo } from 'react'
 import { ChevronUp, ChevronDown, Check, Calculator, Zap, Gauge, CornerLeftDown } from 'lucide-react'
-import { RIR_OPTIONS, getSuggestedWeightChange, velocityLossPct } from '../../../lib/strength'
+import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
-
-const round1 = (n: number) => Math.round(n * 10) / 10
 
 interface SetRowProps {
   setNum: number
@@ -52,13 +50,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
 
   // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
   const prevW = parseFloat(prevWeight || '')
-  const targetRange = (() => {
-    if (!prevW) return null
-    if (!suggestion || suggestion.direction === 'hold' || !suggestion.deltaKg) return `${prevW}kg`
-    return suggestion.direction === 'up'
-      ? `${prevW}-${round1(prevW + suggestion.deltaKg)}kg`
-      : `${round1(prevW - suggestion.deltaKg)}-${prevW}kg`
-  })()
+  const targetRange = getTargetRangeLabel(prevWeight, prevRir, weekRpe)
 
   // "Rellenar con anterior": copia el objetivo sugerido (o si no hay, la serie previa tal cual)
   const fillFromPrevious = () => {

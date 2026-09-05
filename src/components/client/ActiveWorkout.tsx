@@ -6,9 +6,9 @@ import {
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
-import { getYTId, parseSet } from './active-workout/utils'
+import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { SetRow } from './active-workout/SetRow'
@@ -108,11 +108,11 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
   }, [dayKey, onLogsChange])
 
-  const [restTimer, setRestTimer] = useState<{ secs: number } | null>(null)
+  const [restTimer, setRestTimer] = useState<{ secs: number; next: NextSetInfo | null } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
-  const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number } | null>(null)
+  const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
   const [sessionRpeHalf, setSessionRpeHalf] = useState(false)
   const startTime = useRef(Date.now())
@@ -224,6 +224,51 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     return estimateVelocityProfile(points)
   }, [plan])
 
+  // Qué serie viene después de la que se acaba de marcar — para el HUD de
+  // descanso ("modo tarima"): misma serie siguiente del mismo ejercicio si
+  // queda alguna, si no la primera serie sin hacer del siguiente ejercicio
+  // que tenga alguna pendiente. `prevAll` es el estado de sets ANTERIOR a
+  // este toggle (para los ejercicios que no son `afterRi`, que no cambian
+  // en este update); `updatedExSets` es el estado YA actualizado de `afterRi`.
+  const getNextSetInfo = useCallback((
+    afterRi: number, afterSi: number,
+    updatedExSets: Record<number, { weight: string; reps: string; done: boolean; rir?: number }>,
+    prevAll: Record<number, Record<number, { weight: string; reps: string; done: boolean; rir?: number }>>,
+  ): NextSetInfo | null => {
+    const prevSetsFor = (rowIdx: number): Record<number, { weight?: string; reps?: string; rir?: number }> => {
+      const key = `ex_${dayKey}_r${rowIdx}`
+      const pattern = new RegExp(`^ex_w\\d+_d${dayIdx}_r${rowIdx}$`)
+      const found = Object.entries(logsRef.current).find(([k, l]) => pattern.test(k) && k !== key && (l as any).dateDone)
+      return (found?.[1] as any)?.sets || {}
+    }
+    const buildInfo = (rowIdx: number, setIdx: number, totalForRow: number, existing?: { weight?: string; reps?: string }): NextSetInfo => {
+      const rowEx = day.exercises[rowIdx]
+      const { numReps } = parseSet(rowEx.sets)
+      const prevWk = prevSetsFor(rowIdx)[setIdx]
+      return {
+        exerciseName: rowEx.name,
+        setNum: setIdx + 1,
+        totalSets: totalForRow,
+        weight: existing?.weight || prevWk?.weight || '',
+        reps: existing?.reps || prevWk?.reps || String(numReps),
+        targetLabel: getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe),
+      }
+    }
+
+    const { numSets: curNumSets } = parseSet(day.exercises[afterRi].sets)
+    const totalCur = Math.max(curNumSets, Object.keys(updatedExSets).length)
+    if (afterSi + 1 < totalCur) return buildInfo(afterRi, afterSi + 1, totalCur, updatedExSets[afterSi + 1])
+
+    for (let nextRi = afterRi + 1; nextRi < day.exercises.length; nextRi++) {
+      const { numSets: ns } = parseSet(day.exercises[nextRi].sets)
+      const exSetsForRow = prevAll[nextRi] || {}
+      const total = Math.max(ns, Object.keys(exSetsForRow).length)
+      const firstUndone = Array.from({ length: total }, (_, i) => i).find(i => !exSetsForRow[i]?.done)
+      if (firstUndone !== undefined) return buildInfo(nextRi, firstUndone, total, exSetsForRow[firstUndone])
+    }
+    return null
+  }, [day, dayKey, dayIdx, plan, weekIdx])
+
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
@@ -240,14 +285,15 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
         setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
       }
       onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
+
+      // Iniciar timer de descanso solo si no tiene hideRest
+      if (newDone && !ex.hideRest) {
+        const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+        setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
+      }
+
       return updated
     })
-
-    // Iniciar timer de descanso solo si no tiene hideRest
-    if (!wasDone && !ex.hideRest) {
-      const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-      setRestTimer({ secs: restSecs })
-    }
 
     // Detección de récord en tiempo real (1RM estimado) — solo al marcar
     // la serie como hecha, no al desmarcarla.
@@ -255,11 +301,17 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       const rm = estimate1RM(parseFloat(weight) || 0, parseInt(reps) || 0)
       const prevBest = getBest1RMFromLogs(ex.name, logsRef.current)
       if (rm > 0 && rm > prevBest) {
-        setPrAlert({ name: ex.name, oneRM: Math.round(rm * 10) / 10 })
+        setPrAlert({
+          name: ex.name,
+          oneRM: Math.round(rm * 10) / 10,
+          weight: parseFloat(weight) || 0,
+          reps: parseInt(reps) || 0,
+          deltaKg: prevBest > 0 ? Math.round((rm - prevBest) * 10) / 10 : null,
+        })
         setTimeout(() => setPrAlert(null), 3800)
       }
     }
-  }, [day, dayKey, onLogsChange, plan, getBest1RMFromLogs])
+  }, [day, dayKey, onLogsChange, plan, getBest1RMFromLogs, getNextSetInfo])
 
   const addSet = (ri: number) => {
     const { numReps } = parseSet(day.exercises[ri].sets)
@@ -331,9 +383,9 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
   return (
     <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
-      {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
+      {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
-      {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} />}
+      {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
