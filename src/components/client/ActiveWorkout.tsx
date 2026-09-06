@@ -3,11 +3,12 @@ import {
   ChevronDown, Clock, Trophy, ChevronLeft,
   Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
 } from 'lucide-react'
-import { TrainingPlan, TrainingLogs } from '../../types'
+import { DayPlan, TrainingPlan, TrainingLogs } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
+import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
@@ -18,20 +19,28 @@ import { DayTestsCard } from './active-workout/DayTestsCard'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 
 interface Props {
+  day: DayPlan
+  dayKey: string
   plan: TrainingPlan
-  weekIdx: number
-  dayIdx: number
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
   onFinish: () => void
+  // Sin onBack, el botón de "atrás" abre el mismo modal de terminar que el
+  // resto de salidas (comportamiento por defecto de esta pantalla). Con
+  // onBack, quien la usa decide qué significa "atrás" — minimizar a una
+  // píldora flotante (cliente en Hoy) o cerrar sin más (entrenador en vivo).
+  onBack?: () => void
   trainerId?: string
+  clientName?: string   // solo para mostrar de quién es la sesión en modo entrenador
+  trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
 }
 
 const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '👍']
 
-export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish, trainerId }: Props) {
-  const day = plan.weeks[weekIdx]?.days[dayIdx]
-  const dayKey = `w${weekIdx}_d${dayIdx}`
+export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
+  const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
+  const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
+  const dayIdx = dayKeyMatch ? parseInt(dayKeyMatch[2]) : 0
   const [reactionEmoji, setReactionEmoji] = useState<string | null>(null)
   const [reactionComment, setReactionComment] = useState('')
   const [showReactionComment, setShowReactionComment] = useState(false)
@@ -93,6 +102,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
   const [substituteDraft, setSubstituteDraft] = useState('')
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
+  const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
+
+  // Vídeo de ejecución que el entrenador pide para un ejercicio concreto
+  // (ex.requiresVideo) — a diferencia del vídeo-feedback asíncrono de abajo,
+  // este se sube y queda adjunto al propio registro (videoEjecucion), visible
+  // de inmediato, sin pasar por un ciclo de petición/respuesta.
+  const uploadExerciseVideo = useCallback(async (ri: number, rawFile: File) => {
+    if (rawFile.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
+    setUploadingVideoRi(ri)
+    const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
+    const ext = file.name.split('.').pop()
+    const path = `${dayKey}/r${ri}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
+    if (error) { alert('Error al subir vídeo'); setUploadingVideoRi(null); return }
+    const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
+    const key = `ex_${dayKey}_r${ri}`
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], videoEjecucion: data.publicUrl } })
+    setUploadingVideoRi(null)
+  }, [dayKey, onLogsChange])
 
   const setSubstitute = useCallback((ri: number, name: string) => {
     const trimmed = name.trim()
@@ -430,10 +458,13 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+          <button onClick={() => onBack ? onBack() : setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1 font-semibold text-sm truncate">{day.title}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{day.title}</div>
+            {clientName && <p className="text-[10px] text-muted truncate">Sesión de {clientName}</p>}
+          </div>
           <div className="flex items-center gap-1 text-xs text-muted mr-2">
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
@@ -663,8 +694,43 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 )}
               </div>
 
-              {/* Vídeo-feedback asíncrono */}
-              {trainerId && (
+              {/* Vídeo de ejecución requerido por el entrenador para este ejercicio —
+                  se sube y queda adjunto de inmediato al registro, sin pasar por
+                  el ciclo de petición/respuesta del feedback asíncrono de abajo */}
+              {ex.requiresVideo && (() => {
+                const exLog = logs[`ex_${dayKey}_r${ri}`]
+                const videoUploaded = exLog?.videoEjecucion
+                return (
+                  <div className={`mx-4 mb-3 border-2 rounded-2xl p-4 space-y-2 ${videoUploaded ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📹</span>
+                      <div>
+                        <p className="text-sm font-semibold">{trainerMode ? 'Vídeo de ejecución pedido a este cliente' : 'Tu entrenador pide vídeo de este ejercicio'}</p>
+                        <p className="text-xs text-muted">Graba la ejecución y súbela aquí</p>
+                      </div>
+                    </div>
+                    {videoUploaded ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
+                        <video src={videoUploaded} className="h-16 rounded-lg" controls />
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
+                        {uploadingVideoRi === ri ? 'Procesando...' : '📹 Grabar / subir vídeo'}
+                        {/* Sin capture: con él el móvil abre la cámara directo y no deja
+                            elegir un vídeo ya grabado, aunque el texto diga "grabar/subir". */}
+                        <input type="file" accept="video/*" className="hidden"
+                          disabled={uploadingVideoRi !== null}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadExerciseVideo(ri, f) }} />
+                      </label>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
+                  ejecución; no aplica cuando es el propio entrenador quien graba */}
+              {trainerId && !trainerMode && (
                 <div className="px-4 mb-3">
                   <VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} />
                 </div>
@@ -758,9 +824,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               {allComplete ? '¡Sesión completada! 🏆' : '¿Terminar entrenamiento?'}
             </h3>
             {!allComplete && (
-              <p className="text-sm text-muted text-center">
-                Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
-              </p>
+              <>
+                <p className="text-sm text-muted text-center">
+                  Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
+                </p>
+                <div className="bg-warn/5 border border-warn/20 rounded-2xl p-3 space-y-1.5">
+                  {day.exercises.map((ex, ri) => {
+                    const { numSets } = parseSet(ex.sets)
+                    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
+                    if (done >= numSets) return null
+                    return (
+                      <div key={ri} className="flex items-center gap-2 text-sm">
+                        <span className="text-warn text-xs">⚠</span>
+                        <span className="flex-1 truncate font-medium">{ex.name}</span>
+                        <span className="text-xs text-warn flex-shrink-0">{numSets - done} serie{numSets - done !== 1 ? 's' : ''}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
             <div className="grid grid-cols-3 gap-3">
               {[

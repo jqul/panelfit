@@ -63,8 +63,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
   if (activeWorkout) return (
     <ActiveWorkout
       plan={plan}
-      weekIdx={activeWorkout.weekIdx}
-      dayIdx={activeWorkout.dayIdx}
+      day={plan.weeks[activeWorkout.weekIdx].days[activeWorkout.dayIdx]}
+      dayKey={`w${activeWorkout.weekIdx}_d${activeWorkout.dayIdx}`}
       logs={logs}
       onLogsChange={onLogsChange}
       onFinish={() => setActiveWorkout(null)}

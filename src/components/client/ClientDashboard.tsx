@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
-import { TrainingSession } from '../trainer/TrainingSession'
+import { ActiveWorkout } from './ActiveWorkout'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { useClientWeights } from '../../lib/clientWeight'
@@ -13,6 +13,7 @@ interface Props {
   onLogsChange: (logs: TrainingLogs) => void
   clientName: string
   clientId: string
+  trainerId?: string
   objetivo?: string
   welcomeMsg?: string
   motivMsg?: string
@@ -86,7 +87,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
   const { weights, addWeight } = useClientWeights(clientId)
@@ -137,7 +138,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
   const sessionOverlay = session && (
     <>
       {!sessionMinimized && (
-        <TrainingSession
+        <ActiveWorkout
           day={session.day}
           dayKey={session.dayKey}
           plan={plan}
@@ -145,8 +146,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           onLogsChange={onLogsChange}
           onFinish={() => { setSession(null); setSessionMinimized(false) }}
           onBack={() => setSessionMinimized(true)}
-          clientId={clientId}
-          clientName={clientName}
+          trainerId={trainerId}
         />
       )}
       {sessionMinimized && (

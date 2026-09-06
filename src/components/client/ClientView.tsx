@@ -381,7 +381,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                      clientName={clientName} clientId={client.id}
+                      clientName={clientName} clientId={client.id} trainerId={client.trainerId}
                       objetivo={client.objetivo} welcomeMsg={welcomeMsg} motivMsg={motivMsg}
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}

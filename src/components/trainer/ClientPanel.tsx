@@ -24,7 +24,7 @@ import { ConfigTab } from './client-panel/ConfigTab'
 import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
 import { ValoracionTab } from './client-panel/ValoracionTab'
-import { TrainingSession } from './TrainingSession'
+import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
@@ -498,7 +498,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       {/* Sesión en vivo — el entrenador registra desde su propio dispositivo */}
       {liveSession && plan && (
         <div className="fixed inset-0 z-[80] bg-bg">
-          <TrainingSession
+          <ActiveWorkout
             day={plan.weeks[liveSession.weekIdx].days[liveSession.dayIdx]}
             dayKey={`w${liveSession.weekIdx}_d${liveSession.dayIdx}`}
             plan={plan}
@@ -506,8 +506,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             onLogsChange={saveLogs}
             onFinish={() => setLiveSession(null)}
             onBack={() => setLiveSession(null)}
-            clientId={client.id}
+            trainerId={userProfile.uid}
             clientName={client.name}
+            trainerMode
           />
         </div>
       )}
