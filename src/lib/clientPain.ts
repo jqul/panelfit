@@ -13,7 +13,10 @@ function localKey(clientId: string) { return `pf_dolor_${clientId}` }
 export async function fetchClientPain(clientId: string): Promise<PainEntry[]> {
   if (!clientId) return []
   if (clientId.startsWith('demo-client-')) {
-    try { return JSON.parse(localStorage.getItem(localKey(clientId)) || '[]') } catch { return [] }
+    try {
+      const entries: PainEntry[] = JSON.parse(localStorage.getItem(localKey(clientId)) || '[]')
+      return entries.sort((a, b) => b.date.localeCompare(a.date)) // más reciente primero, igual que la consulta real
+    } catch { return [] }
   }
   const { data, error } = await supabase
     .from('registros_dolor')

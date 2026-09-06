@@ -715,6 +715,17 @@ export const DEMO_WEIGHTS_MARTA = [
   { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 64.1 },
 ]
 
+// Marta — seguimiento de dolor de rodilla en rehabilitación: mejora progresiva
+// semana a semana, que es justo lo que este widget está pensado para enseñar.
+export const DEMO_DOLOR_MARTA = [
+  { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab' },
+  { id: 'demo-dolor-2', date: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 5 },
+  { id: 'demo-dolor-3', date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4 },
+  { id: 'demo-dolor-4', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 3 },
+  { id: 'demo-dolor-5', date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 2 },
+  { id: 'demo-dolor-6', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 1, nota: 'Casi sin molestia ya' },
+]
+
 // Beatriz — pérdida de peso sostenida y saludable (~0.6kg/semana)
 export const DEMO_WEIGHTS_BEATRIZ = [
   { date: new Date(Date.now() - 0*86400000).toISOString().split('T')[0], weight: 96.5 },

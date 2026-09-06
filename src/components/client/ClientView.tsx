@@ -18,6 +18,7 @@ import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
+import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
@@ -79,6 +80,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // caer aquí, tiene que seguir el camino normal de abajo (get_client_by_token).
     const demoClient = DEMO_CLIENTS.find(c => c.token === token)
     if (demoClient) {
+      // Enlace directo a un cliente demo sin haber pasado antes por el modo
+      // demo del entrenador (?demo=1) — sin esto, el peso/dolor/etc. de este
+      // cliente concreto nunca se sembraría en localStorage y sus pestañas
+      // se verían vacías aunque el resto del demo sí tenga datos.
+      hydrateDemoStorage()
       setClient({
         id: demoClient.id, trainerId: demoClient.trainerId, name: demoClient.name, surname: demoClient.surname,
         weight: demoClient.weight, fatPercentage: demoClient.fatPercentage, muscleMass: demoClient.muscleMass,

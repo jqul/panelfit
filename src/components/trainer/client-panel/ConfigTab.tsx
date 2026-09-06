@@ -15,8 +15,14 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
+  const isDemo = client.id.startsWith('demo-client-')
   const metricasActivas = useTrainerMetricSettings(trainerId) // null = todas activas para el entrenador
-  const [metricasCliente, setMetricasCliente] = useState<Set<Section>>(new Set((client.metricas_cliente || []) as Section[]))
+  // En demo el cliente no es una fila real de Supabase — mostramos ya todo
+  // marcado (coincide con lo que ProgresoClienteTab enseña siempre en demo)
+  // en vez de partir de "nada activado" solo porque no hay metricas_cliente.
+  const [metricasCliente, setMetricasCliente] = useState<Set<Section>>(
+    new Set((isDemo ? CLIENT_SHAREABLE_SECTIONS : (client.metricas_cliente || [])) as Section[])
+  )
   const [savingMetrica, setSavingMetrica] = useState<Section | null>(null)
 
   const opcionesMetricas = CLIENT_SHAREABLE_SECTIONS.filter(id => !metricasActivas || metricasActivas.has(id))
@@ -25,6 +31,7 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
     const next = new Set(metricasCliente)
     next.has(id) ? next.delete(id) : next.add(id)
     setMetricasCliente(next)
+    if (isDemo) return // nada que persistir — no hay fila real en Supabase
     setSavingMetrica(id)
     const { error } = await supabase.from('clientes').update({ metricas_cliente: Array.from(next) }).eq('id', client.id)
     if (error) { toast('Error al guardar', 'warn'); setMetricasCliente(metricasCliente) }
