@@ -6,7 +6,7 @@ import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
 import { compressVideo } from '../../lib/videoCompress'
 import { useClientWeights } from '../../lib/clientWeight'
 import { useClientPain } from '../../lib/clientPain'
-import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS } from '../../lib/progresoSections'
+import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../lib/progresoSections'
 import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
 import { RMChart } from '../trainer/progreso-tab/RMChart'
 import { VolumenChart } from '../trainer/progreso-tab/VolumenCharts'
@@ -640,6 +640,10 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
   const [metricasVisibles, setMetricasVisibles] = useState<Section[]>([])
+  // Preferencia global del entrenador (Ajustes → Métricas activas) — si ha
+  // desactivado "Peso"/"Récords"/"Fotos"/"Vídeos" porque no las usa, tampoco
+  // tiene sentido que el cliente vea esas pestañas de toma de datos.
+  const metricasActivasEntrenador = useTrainerMetricSettings(trainerId) // null = todas activas
 
   useEffect(() => {
     loadPhotos()
@@ -717,15 +721,18 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const pesoActual = weights[0]?.weight
   const pesoCambio = pesoInicial && pesoActual ? pesoActual - pesoInicial : null
 
+  // null (todavía sin cargar, o entrenador sin preferencia guardada) = activa
+  const metricaActiva = (id: Section) => !metricasActivasEntrenador || metricasActivasEntrenador.has(id)
+
   type SubtabId = typeof subtab
   const TABS: { id: SubtabId; icon: string; label: string }[] = [
     { id: 'calendario', icon: '📅', label: 'Calendario' },
     { id: 'historial',  icon: '📋', label: 'Historial' },
-    { id: 'records',    icon: '🏆', label: 'Récords' },
-    { id: 'peso',       icon: '⚖️', label: 'Peso' },
+    ...(metricaActiva('records') ? [{ id: 'records' as SubtabId, icon: '🏆', label: 'Récords' }] : []),
+    ...(metricaActiva('peso')    ? [{ id: 'peso' as SubtabId, icon: '⚖️', label: 'Peso' }] : []),
     ...(dolorVisible ? [{ id: 'dolor' as SubtabId, icon: '🩹', label: 'Dolor' }] : []),
-    { id: 'fotos',      icon: '📸', label: 'Fotos' },
-    { id: 'feedback',   icon: '🎥', label: 'Feedback' },
+    ...(metricaActiva('fotos')   ? [{ id: 'fotos' as SubtabId, icon: '📸', label: 'Fotos' }] : []),
+    ...(metricaActiva('videos')  ? [{ id: 'feedback' as SubtabId, icon: '🎥', label: 'Feedback' }] : []),
     ...(otrasMetricasVisibles.length > 0 ? [{ id: 'metricas' as SubtabId, icon: '📈', label: 'Métricas' }] : []),
   ]
 
