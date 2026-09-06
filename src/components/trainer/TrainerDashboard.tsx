@@ -36,6 +36,7 @@ import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
 import { PublicPageEditor } from './PublicPageEditor'
 import { EquipoSection } from './EquipoSection'
+import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
@@ -818,6 +819,15 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
   const [saving, setSaving] = useState(false)
   const [autoCheckin, setAutoCheckin] = useState(false)
   const [checkinLoading, setCheckinLoading] = useState(false)
+  // undefined = aún no se ha tocado nada -> todas las métricas activas (compatibilidad)
+  const [metricasActivas, setMetricasActivas] = useState<Set<Section>>(
+    new Set<Section>(saved.metricasActivas || SECTIONS.map(s => s.id))
+  )
+  const toggleMetrica = (id: Section) => setMetricasActivas(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
 
   useEffect(() => {
     supabase.from('entrenadores').select('auto_checkin_enabled').eq('uid', userProfile.uid).maybeSingle()
@@ -838,7 +848,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
     // Fusiona con el perfil más reciente en BD para no pisar campos que gestionan
     // otras pantallas (tier, periodizationBlocks, seriesTypes...).
     const { data } = await supabase.from('entrenadores').select('profile').eq('uid', userProfile.uid).maybeSingle()
-    const profile = { ...(data?.profile || {}), displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, updatedAt: Date.now() }
+    const profile = { ...(data?.profile || {}), displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, metricasActivas: Array.from(metricasActivas), updatedAt: Date.now() }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
@@ -902,6 +912,31 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Métricas activas</h3>
+          <p className="text-xs text-muted mt-0.5">Desmarca las que no uses para que no aparezcan en el menú de Progreso de tus clientes. Puedes afinar cuáles ve cada cliente en concreto desde su ficha → Configuración.</p>
+        </div>
+        <div className="space-y-4">
+          {GROUPS.map(g => (
+            <div key={g.id}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
+              <div className="flex flex-wrap gap-2">
+                {g.sections.map(id => {
+                  const s = SECTIONS.find(x => x.id === id)!
+                  const active = metricasActivas.has(id)
+                  return (
+                    <button key={id} onClick={() => toggleMetrica(id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${active ? 'bg-accent/10 border-accent/40 text-accent' : 'bg-bg border-border text-muted/60 hover:border-accent/40'}`}>
+                      {s.icon} {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">

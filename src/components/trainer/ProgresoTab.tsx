@@ -19,7 +19,9 @@ import { FVProfileChart } from './progreso-tab/FVProfileChart'
 import { MonthlyRecap } from './progreso-tab/MonthlyRecap'
 import { CicloCard } from './progreso-tab/CicloCard'
 import { CicloRendimientoChart } from './progreso-tab/CicloRendimientoChart'
+import { DolorChart } from './progreso-tab/DolorChart'
 import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
+import { Section, SECTIONS, GROUPS, useTrainerMetricSettings } from '../../lib/progresoSections'
 
 interface Props {
   client: ClientData
@@ -29,46 +31,23 @@ interface Props {
   trainerId?: string
 }
 
-type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile'
-
-const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
-  { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
-  { id: 'fatiga',        icon: '🚦', label: 'Riesgo',         desc: 'Semáforo de carga + bienestar' },
-  { id: 'videos',        icon: '🎥', label: 'Vídeos',         desc: 'Feedback de técnica pendiente' },
-  { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },
-  { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
-  { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
-  { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
-  { id: 'pruebas',      icon: '🧪', label: 'Pruebas físicas', desc: 'Salto, Cooper, flexibilidad y más' },
-  { id: 'fv_profile',   icon: '🚀', label: 'Perfil F-V',     desc: 'Fuerza-Velocidad del salto (Samozino/Morin)' },
-  { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
-  { id: 'volumen_grupo', icon: '🧩', label: 'Volumen por grupo', desc: 'Series semanales por grupo muscular' },
-  { id: 'comparativa',  icon: '↔️', label: 'Esta semana',   desc: 'Esta semana vs anterior' },
-  { id: 'resumen_mensual', icon: '🗓️', label: 'Resumen mensual', desc: 'Este mes vs el anterior' },
-  { id: 'distribucion', icon: '🎯', label: 'Músculos',      desc: 'Distribución por grupos musculares' },
-  { id: 'adherencia',   icon: '📅', label: 'Adherencia',    desc: '% días entrenados vs planificados' },
-  { id: 'racha',        icon: '🔥', label: 'Racha',         desc: 'Racha y estadísticas globales' },
-  { id: 'peso',         icon: '⚖️', label: 'Peso',          desc: 'Evolución del peso corporal' },
-  { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
-  { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase actual, guía de intensidad y rendimiento por fase (opcional)' },
-]
-
-const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
-  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'pruebas', 'fv_profile'] },
-  { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
-  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'fotos', 'distribucion', 'ciclo'] },
-  { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
-]
-
 export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Props) {
   const tier = useTrainerTier(trainerId)
-  const visibleSections = tier === 'basico' ? SECTIONS.filter(s => !ADVANCED_SECTIONS.has(s.id)) : SECTIONS
+  const metricasActivasRaw = useTrainerMetricSettings(trainerId) // null = todas activas
+  const sectionsByTier = SECTIONS.filter(s => tier !== 'basico' || !ADVANCED_SECTIONS.has(s.id))
+  // Si el entrenador ha desmarcado literalmente todas las métricas (o algo dejó
+  // la lista corrupta), no lo dejamos sin ninguna sección — mejor mostrarlas
+  // todas que romper la pestaña.
+  const metricasActivas = metricasActivasRaw && sectionsByTier.some(s => metricasActivasRaw.has(s.id)) ? metricasActivasRaw : null
+  const visibleSections = sectionsByTier.filter(s => !metricasActivas || metricasActivas.has(s.id))
   const visibleIds = new Set(visibleSections.map(s => s.id))
   const groups = GROUPS.map(g => ({ ...g, sections: g.sections.filter(id => visibleIds.has(id)) })).filter(g => g.sections.length > 0)
 
   const [section, setSection] = useState<Section>('fuerza')
   const activeGroup = groups.find(g => g.sections.includes(section)) || groups[0]
   const current = visibleSections.find(s => s.id === section) || visibleSections[0]
+
+  if (!current) return <p className="text-sm text-muted">No tienes ninguna métrica activa. Actívalas desde Ajustes → Métricas activas.</p>
 
   return (
     <div className="max-w-2xl space-y-5 animate-fade-in">
@@ -107,6 +86,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
+        {section === 'dolor'        && <DolorChart        clientId={client.id} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
         {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}

@@ -1,10 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2 } from 'lucide-react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
 import { compressVideo } from '../../lib/videoCompress'
 import { useClientWeights } from '../../lib/clientWeight'
+import { useClientPain } from '../../lib/clientPain'
+import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS } from '../../lib/progresoSections'
+import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
+import { RMChart } from '../trainer/progreso-tab/RMChart'
+import { VolumenChart } from '../trainer/progreso-tab/VolumenCharts'
+import { AdherenciaChart } from '../trainer/progreso-tab/AdherenciaChart'
+import { RachaStats } from '../trainer/progreso-tab/RachaStats'
+import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
+import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
+
+const ZONAS_DOLOR = ['Rodilla', 'Hombro', 'Espalda baja', 'Cadera', 'Tobillo', 'Cuello', 'Codo', 'Muñeca', 'Otro']
 
 interface Props {
   clientId: string
@@ -378,6 +389,91 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
   )
 }
 
+// ── Dolor (seguimiento de rehabilitación) ─────────────────
+function DolorTab({ clientId }: { clientId: string }) {
+  const { entries, addEntry, deleteEntry } = useClientPain(clientId)
+  const [zona, setZona] = useState(ZONAS_DOLOR[0])
+  const [intensidad, setIntensidad] = useState(3)
+  const [nota, setNota] = useState('')
+
+  const registrar = () => {
+    addEntry(zona, intensidad, nota.trim() || undefined)
+    setNota('')
+  }
+
+  const colorFor = (v: number) => v >= 7 ? 'text-warn' : v >= 4 ? 'text-accent' : 'text-ok'
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-semibold">Registrar dolor de hoy</p>
+        <div>
+          <label className="block text-xs font-bold text-muted mb-1.5">Zona</label>
+          <select value={zona} onChange={e => setZona(e.target.value)}
+            className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" style={{ fontSize: '16px' }}>
+            {ZONAS_DOLOR.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </div>
+        <div>
+          <div className="flex justify-between mb-1.5">
+            <label className="text-xs font-bold text-muted">Intensidad</label>
+            <span className={`text-sm font-bold ${colorFor(intensidad)}`}>{intensidad}/10</span>
+          </div>
+          <input type="range" min={0} max={10} value={intensidad} onChange={e => setIntensidad(+e.target.value)} className="w-full" />
+        </div>
+        <textarea rows={2} value={nota} onChange={e => setNota(e.target.value)} placeholder="Nota (opcional): cuándo duele, qué lo provoca..."
+          className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" style={{ fontSize: '16px' }} />
+        <button onClick={registrar} className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">+ Registrar</button>
+      </div>
+
+      {entries.length === 0
+        ? <div className="text-center py-8 text-muted"><HeartPulse className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin registros aún</p></div>
+        : <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+            {entries.map(e => (
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                <div className={`w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center text-xs font-bold flex-shrink-0 ${colorFor(e.intensidad)}`}>{e.intensidad}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{e.zona}</p>
+                  {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
+                  <p className="text-[10px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                </div>
+                <button onClick={() => deleteEntry(e.id)} className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <Trash2 className="w-3.5 h-3.5 mx-auto" />
+                </button>
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  )
+}
+
+// ── Métricas compartidas por el entrenador ────────────────
+function MetricasTab({ clientId, logs, plan, visible }: { clientId: string; logs: TrainingLogs; plan?: TrainingPlan | null; visible: Section[] }) {
+  return (
+    <div className="space-y-4">
+      {visible.map(id => {
+        const meta = SECTIONS.find(s => s.id === id)!
+        return (
+          <div key={id} className="bg-card border border-border rounded-2xl p-4">
+            <div className="mb-3">
+              <p className="text-sm font-bold">{meta.icon} {meta.label}</p>
+              <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
+            </div>
+            {id === 'fuerza' && <FuerzaChart logs={logs} plan={plan} />}
+            {id === 'rm' && <RMChart logs={logs} plan={plan} />}
+            {id === 'volumen' && <VolumenChart logs={logs} />}
+            {id === 'adherencia' && <AdherenciaChart logs={logs} plan={plan} />}
+            {id === 'racha' && <RachaStats logs={logs} />}
+            {id === 'fatiga' && <RiesgoChart clientId={clientId} logs={logs} />}
+            {id === 'resumen_mensual' && <MonthlyRecap logs={logs} plan={plan} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Feedback de técnica ───────────────────────────────────
 interface VideoFeedbackRow {
   id: string; exercise_name: string; video_url: string; client_note: string | null
@@ -536,17 +632,30 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 
 // ── Main ──────────────────────────────────────────────────
 export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
-  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback'>('calendario')
+  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('calendario')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
   const [uploading, setUploading] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
+  const [metricasVisibles, setMetricasVisibles] = useState<Section[]>([])
 
   useEffect(() => {
     loadPhotos()
   }, [clientId])
+
+  // Métricas que el entrenador ha decidido enseñar a este cliente en concreto
+  // (lib/trainer/client-panel/ConfigTab) — el cliente no elige, solo consulta.
+  useEffect(() => {
+    if (!clientId) return
+    if (clientId.startsWith('demo-client-')) { setMetricasVisibles(CLIENT_SHAREABLE_SECTIONS); return }
+    supabase.from('clientes').select('metricas_cliente').eq('id', clientId).maybeSingle()
+      .then(({ data }) => setMetricasVisibles(((data?.metricas_cliente || []) as Section[]).filter(id => CLIENT_SHAREABLE_SECTIONS.includes(id))))
+  }, [clientId])
+
+  const dolorVisible = metricasVisibles.includes('dolor')
+  const otrasMetricasVisibles = metricasVisibles.filter(id => id !== 'dolor')
 
   const loadPhotos = async () => {
     setLoadingPhotos(true)
@@ -608,14 +717,17 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const pesoActual = weights[0]?.weight
   const pesoCambio = pesoInicial && pesoActual ? pesoActual - pesoInicial : null
 
-  const TABS = [
+  type SubtabId = typeof subtab
+  const TABS: { id: SubtabId; icon: string; label: string }[] = [
     { id: 'calendario', icon: '📅', label: 'Calendario' },
     { id: 'historial',  icon: '📋', label: 'Historial' },
     { id: 'records',    icon: '🏆', label: 'Récords' },
     { id: 'peso',       icon: '⚖️', label: 'Peso' },
+    ...(dolorVisible ? [{ id: 'dolor' as SubtabId, icon: '🩹', label: 'Dolor' }] : []),
     { id: 'fotos',      icon: '📸', label: 'Fotos' },
     { id: 'feedback',   icon: '🎥', label: 'Feedback' },
-  ] as const
+    ...(otrasMetricasVisibles.length > 0 ? [{ id: 'metricas' as SubtabId, icon: '📈', label: 'Métricas' }] : []),
+  ]
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
@@ -638,6 +750,8 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
       {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
+      {subtab === 'dolor'      && <DolorTab       clientId={clientId} />}
+      {subtab === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
 
       {subtab === 'peso' && (
         <div className="space-y-4">

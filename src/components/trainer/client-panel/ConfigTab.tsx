@@ -3,6 +3,7 @@ import { ClientData, TrainingPlan } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { Button } from '../../shared/Button'
 import { toast } from '../../shared/Toast'
+import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../../lib/progresoSections'
 
 const AUTOMATIONS = [
   { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
@@ -10,10 +11,25 @@ const AUTOMATIONS = [
   { key: 'autoInactividad', label: 'Alerta de inactividad', desc: '+3 días sin entrenar → WhatsApp', emoji: '⚠️' },
 ] as const
 
-export function ConfigTab({ client, plan, onChange }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void }) {
+export function ConfigTab({ client, plan, onChange, trainerId }: { client: ClientData; plan: TrainingPlan | null; onChange: (p: TrainingPlan) => void; trainerId?: string }) {
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
+  const metricasActivas = useTrainerMetricSettings(trainerId) // null = todas activas para el entrenador
+  const [metricasCliente, setMetricasCliente] = useState<Set<Section>>(new Set((client.metricas_cliente || []) as Section[]))
+  const [savingMetrica, setSavingMetrica] = useState<Section | null>(null)
+
+  const opcionesMetricas = CLIENT_SHAREABLE_SECTIONS.filter(id => !metricasActivas || metricasActivas.has(id))
+
+  const toggleMetricaCliente = async (id: Section) => {
+    const next = new Set(metricasCliente)
+    next.has(id) ? next.delete(id) : next.add(id)
+    setMetricasCliente(next)
+    setSavingMetrica(id)
+    const { error } = await supabase.from('clientes').update({ metricas_cliente: Array.from(next) }).eq('id', client.id)
+    if (error) { toast('Error al guardar', 'warn'); setMetricasCliente(metricasCliente) }
+    setSavingMetrica(null)
+  }
 
   const revokeToken = async () => {
     setRevoking(true)
@@ -59,6 +75,27 @@ export function ConfigTab({ client, plan, onChange }: { client: ClientData; plan
                 <button onClick={() => setShowRevoke(false)} className="flex-1 py-2 border border-border rounded-lg text-sm text-muted">Cancelar</button>
                 <button onClick={revokeToken} disabled={revoking} className="flex-1 py-2 bg-warn text-white rounded-lg text-sm font-semibold disabled:opacity-50">{revoking ? 'Regenerando...' : 'Sí, revocar'}</button>
               </div>
+            </div>
+        }
+      </div>
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">🩺 Métricas visibles para {client.name}</h4>
+          <p className="text-xs text-muted mt-0.5">Actívalas cuando quieras enseñárselas en una revisión — se verán en su propio panel a partir de ese momento (útil, por ejemplo, para seguir el dolor en una rehabilitación).</p>
+        </div>
+        {opcionesMetricas.length === 0
+          ? <p className="text-xs text-muted">No tienes métricas activas para compartir. Actívalas primero en Ajustes → Métricas activas.</p>
+          : <div className="flex flex-wrap gap-2">
+              {opcionesMetricas.map(id => {
+                const s = SECTIONS.find(x => x.id === id)!
+                const active = metricasCliente.has(id)
+                return (
+                  <button key={id} onClick={() => toggleMetricaCliente(id)} disabled={savingMetrica === id}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all disabled:opacity-50 ${active ? 'bg-ok/10 border-ok/40 text-ok' : 'bg-bg border-border text-muted hover:border-accent'}`}>
+                    {s.icon} {s.label}{active ? ' ✓' : ''}
+                  </button>
+                )
+              })}
             </div>
         }
       </div>
