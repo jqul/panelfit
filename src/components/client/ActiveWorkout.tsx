@@ -92,6 +92,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   })
   const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
   const [substituteDraft, setSubstituteDraft] = useState('')
+  const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
 
   const setSubstitute = useCallback((ri: number, name: string) => {
     const trimmed = name.trim()
@@ -197,6 +198,32 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     })
     return best
   }, [plan])
+
+  // Historial comparativo instantáneo: últimas sesiones de este ejercicio (por
+  // nombre, en cualquier semana/día del plan, no solo el mismo slot) para
+  // verlas sin salir de la sesión activa — un desplegable en el propio
+  // ejercicio en vez de tener que ir a Progreso. Se excluye la fecha de hoy:
+  // esto es "lo que ya hiciste antes", no lo que estás metiendo ahora mismo.
+  const getExerciseHistory = useCallback((exName: string, limit = 4) => {
+    const today = new Date().toISOString().split('T')[0]
+    const entries: { date: string; weight: number; reps: number }[] = []
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logs[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone || log.dateDone === today) return
+          let bestWeight = 0, bestReps = 0
+          Object.values(log.sets || {}).forEach(s => {
+            const w = parseFloat(s.weight) || 0
+            if (w > bestWeight) { bestWeight = w; bestReps = parseInt(s.reps) || 0 }
+          })
+          if (bestWeight > 0) entries.push({ date: log.dateDone, weight: bestWeight, reps: bestReps })
+        })
+      })
+    })
+    return entries.sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)
+  }, [plan, logs])
 
   // Perfil carga-velocidad de un ejercicio (VBT): recopila las parejas (peso,
   // velocidad) registradas para ese ejercicio y ajusta la recta que estima el
@@ -564,8 +591,45 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     </p>
                   )}
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
+                <button onClick={() => setExpandedHistory(expandedHistory === ri ? null : ri)}
+                  className="p-2 -m-2 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label="Ver historial">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHistory === ri ? 'rotate-180' : ''}`} />
+                </button>
               </div>
+
+              {/* Historial comparativo instantáneo — últimas sesiones de este
+                  ejercicio, sin salir de la sesión activa */}
+              {expandedHistory === ri && (() => {
+                const history = getExerciseHistory(ex.name)
+                return (
+                  <div className="mx-4 mb-3 bg-bg-alt/50 border border-border rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+                    {history.length === 0 ? (
+                      <p className="text-xs text-muted">Sin historial previo para este ejercicio</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {history.map((h, i) => {
+                          const older = history[i + 1]
+                          const delta = older ? Math.round((h.weight - older.weight) * 10) / 10 : null
+                          return (
+                            <div key={h.date} className="flex items-center gap-2 text-xs">
+                              <span className="text-muted w-14 flex-shrink-0">
+                                {new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                              {delta !== null && delta !== 0 && (
+                                <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>
+                                  {delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
 

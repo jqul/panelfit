@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, CheckCircle2, Play, List, Star, Trophy, MessageSquare, AlertTriangle } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Play, List, Star, Trophy, MessageSquare, AlertTriangle } from 'lucide-react'
 import { DayPlan, TrainingPlan, ExerciseLog, TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { CalculadoraDiscos } from '../client/CalculadoraDiscos'
@@ -120,7 +120,10 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
   const [sessionComment, setSessionComment] = useState('')
   const [savingComment, setSavingComment] = useState(false)
   const [halfRir, setHalfRir] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const exercises = day.exercises
+
+  useEffect(() => { setShowHistory(false) }, [activeIdx])
 
   useEffect(() => {
     if (!timerRunning) return
@@ -176,6 +179,30 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
     const key = `ex_${dayKey}_r${ri}`
     const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
     return prev?.[1]?.sets || {}
+  }
+
+  // Historial comparativo instantáneo: últimas sesiones de este ejercicio (por
+  // nombre, en cualquier semana/día del plan) para verlas sin salir de la
+  // sesión activa. Excluye la fecha de hoy — es "lo que ya hiciste antes".
+  const getExerciseHistory = (exName: string, limit = 4) => {
+    const today = new Date().toISOString().split('T')[0]
+    const entries: { date: string; weight: number; reps: number }[] = []
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logs[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone || log.dateDone === today) return
+          let bestWeight = 0, bestReps = 0
+          Object.values(log.sets || {}).forEach((s: any) => {
+            const w = parseFloat(s.weight) || 0
+            if (w > bestWeight) { bestWeight = w; bestReps = parseInt(s.reps) || 0 }
+          })
+          if (bestWeight > 0) entries.push({ date: log.dateDone, weight: bestWeight, reps: bestReps })
+        })
+      })
+    })
+    return entries.sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)
   }
 
   const weekIdx = parseInt(dayKey.match(/^w(\d+)_/)?.[1] || '0')
@@ -436,6 +463,41 @@ export function TrainingSession({ day, dayKey, plan, logs, onLogsChange, onFinis
               {ex.weight && <span>{ex.weight} · </span>}{ex.sets}
             </p>
             {ex.comment && <p className="text-xs text-muted italic mt-1.5 leading-relaxed">"{ex.comment}"</p>}
+            <button onClick={() => setShowHistory(h => !h)}
+              className="mt-2 flex items-center gap-1 text-xs font-semibold text-muted hover:text-accent transition-colors">
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+              {showHistory ? 'Ocultar' : 'Ver'} últimas sesiones
+            </button>
+            {showHistory && (() => {
+              const history = getExerciseHistory(ex.name)
+              return (
+                <div className="mt-2 bg-card border border-border rounded-xl p-3">
+                  {history.length === 0 ? (
+                    <p className="text-xs text-muted">Sin historial previo para este ejercicio</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {history.map((h, i) => {
+                        const older = history[i + 1]
+                        const delta = older ? Math.round((h.weight - older.weight) * 10) / 10 : null
+                        return (
+                          <div key={h.date} className="flex items-center gap-2 text-xs">
+                            <span className="text-muted w-14 flex-shrink-0">
+                              {new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                            {delta !== null && delta !== 0 && (
+                              <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>
+                                {delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Vídeos */}
