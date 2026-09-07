@@ -6,7 +6,7 @@ import { Auth } from './components/shared/Auth'
 import { ResetPassword } from './components/shared/ResetPassword'
 import { DEMO_CLIENTS, DEMO_TRAINER_ID, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
-import { useAuthBootstrap } from './lib/useAuthBootstrap'
+import { useAuthBootstrap, hydrateDemoStorage } from './lib/useAuthBootstrap'
 import { Rocket, Mail } from 'lucide-react'
 import { UserProfile } from './types'
 
@@ -169,6 +169,19 @@ export default function App() {
 
   const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
 
+  // Entrar en modo demo desde cualquier landing/blog — hydrateDemoStorage()
+  // siembra localStorage (peso, dolor, perfil del entrenador...) igual que ya
+  // hace la entrada por ?demo=1; sin esto, un visitante que solo pulsa "Ver
+  // demo en vivo" desde una de estas páginas veía el peso/dolor vacíos aunque
+  // el resto de la demo (datos importados directamente, no vía localStorage)
+  // sí funcionara.
+  const goDemo = (source: string) => {
+    track('demo_clicked', { source })
+    window.history.pushState({}, '', '/')
+    hydrateDemoStorage()
+    setView('demo')
+  }
+
   if (view === 'loading') return <LoadingScreen />
 
   return (
@@ -181,35 +194,35 @@ export default function App() {
       {/* Páginas SEO públicas */}
       {view === 'landing-app-entrenadores' && (
         <LandingAppEntrenadores
-          onDemo={() => { track('demo_clicked', { source: 'app_entrenadores' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('app_entrenadores')}
           onRegister={() => { track('register_intent', { source: 'app_entrenadores' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-software-entrenador' && (
         <LandingSoftwareEntrenador
-          onDemo={() => { track('demo_clicked', { source: 'software_entrenador' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('software_entrenador')}
           onRegister={() => { track('register_intent', { source: 'software_entrenador' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-precios' && (
         <LandingPrecios
-          onDemo={() => { track('demo_clicked', { source: 'precios' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('precios')}
           onRegister={() => { track('register_intent', { source: 'precios' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-alternativa-harbiz' && (
         <LandingAlternativaHarbiz
-          onDemo={() => { track('demo_clicked', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('alternativa_harbiz')}
           onRegister={() => { track('register_intent', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-alternativa-trainerize' && (
         <LandingAlternativaTrainerize
-          onDemo={() => { track('demo_clicked', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('alternativa_trainerize')}
           onRegister={() => { track('register_intent', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
@@ -218,7 +231,7 @@ export default function App() {
       {/* Calculadora */}
       {view === 'calculadora-rm' && (
         <CalculadoraRM
-          onDemo={() => { track('demo_clicked', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('calculadora_rm')}
           onRegister={() => { track('register_intent', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
@@ -227,21 +240,21 @@ export default function App() {
       {/* Alternativas adicionales */}
       {view === 'landing-alternativa-mypthub' && (
         <LandingAlternativaMyPTHub
-          onDemo={() => { track('demo_clicked', { source: 'alt_mypthub' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('alt_mypthub')}
           onRegister={() => { track('register_intent', { source: 'alt_mypthub' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-alternativa-truecoach' && (
         <LandingAlternativaTrueCoach
-          onDemo={() => { track('demo_clicked', { source: 'alt_truecoach' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('alt_truecoach')}
           onRegister={() => { track('register_intent', { source: 'alt_truecoach' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'landing-alternativa-ptdistinction' && (
         <LandingAlternativaPTDistinction
-          onDemo={() => { track('demo_clicked', { source: 'alt_ptdistinction' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('alt_ptdistinction')}
           onRegister={() => { track('register_intent', { source: 'alt_ptdistinction' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
@@ -250,14 +263,14 @@ export default function App() {
       {/* Blog */}
       {view === 'blog-index' && (
         <BlogIndex
-          onDemo={() => { track('demo_clicked', { source: 'blog_index' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_index')}
           onRegister={() => { track('register_intent', { source: 'blog_index' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-organizar-clientes' && (
         <BlogOrganizarClientes
-          onDemo={() => { track('demo_clicked', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_organizar')}
           onRegister={() => { track('register_intent', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
@@ -265,42 +278,42 @@ export default function App() {
 
       {view === 'blog-pagos' && (
         <BlogGestionPagos
-          onDemo={() => { track('demo_clicked', { source: 'blog_pagos' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_pagos')}
           onRegister={() => { track('register_intent', { source: 'blog_pagos' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-plantillas' && (
         <BlogPlantillasEntrenamiento
-          onDemo={() => { track('demo_clicked', { source: 'blog_plantillas' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_plantillas')}
           onRegister={() => { track('register_intent', { source: 'blog_plantillas' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-conseguir-clientes' && (
         <BlogConseguirClientes
-          onDemo={() => { track('demo_clicked', { source: 'blog_conseguir' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_conseguir')}
           onRegister={() => { track('register_intent', { source: 'blog_conseguir' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-app-planes' && (
         <BlogAppEnviarPlanes
-          onDemo={() => { track('demo_clicked', { source: 'blog_app_planes' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_app_planes')}
           onRegister={() => { track('register_intent', { source: 'blog_app_planes' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-mejor-software' && (
         <BlogMejorSoftware
-          onDemo={() => { track('demo_clicked', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_software')}
           onRegister={() => { track('register_intent', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
       {view === 'blog-seguimiento-clientes' && (
         <BlogSeguimientoClientes
-          onDemo={() => { track('demo_clicked', { source: 'blog_seguimiento' }); window.history.pushState({}, '', '/'); setView('demo') }}
+          onDemo={() => goDemo('blog_seguimiento')}
           onRegister={() => { track('register_intent', { source: 'blog_seguimiento' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
@@ -324,7 +337,7 @@ export default function App() {
               // onAuthStateChange lo manejará — solo forzamos si no dispara
             }
           })}
-          onDemo={() => setView('demo')}
+          onDemo={() => goDemo('home')}
         />
       )}
 
