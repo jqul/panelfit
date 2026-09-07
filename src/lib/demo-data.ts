@@ -531,8 +531,8 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
         {
           title: 'DÍA A — Tren inferior controlado', focus: 'Fuerza sin impacto',
           exercises: [
-            { name: 'Sentadilla isométrica en pared', sets: '3×30s', weight: '-', isMain: true, comment: 'Solo hasta 60° de flexión, sin dolor', videoUrl: '', restSets: 90, restAfter: 60 },
-            { name: 'Extensión de rodilla con banda', sets: '3×15', weight: 'Banda media', isMain: false, comment: 'Rango controlado, sin tirones', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Sentadilla isométrica en pared', sets: '3×30s', weight: '-', isMain: true, comment: 'Solo hasta 60° de flexión, sin dolor', videoUrl: '', restSets: 90, restAfter: 60, enReadaptacion: true },
+            { name: 'Extensión de rodilla con banda', sets: '3×15', weight: 'Banda media', isMain: false, comment: 'Rango controlado, sin tirones', videoUrl: '', restSets: 60, restAfter: 60, enReadaptacion: true },
             { name: 'Puente de glúteo', sets: '3×15', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
             { name: 'Elevación de talones sentado', sets: '3×15', weight: '10kg', isMain: false, comment: '', videoUrl: '', restSets: 45, restAfter: 45 },
           ]
@@ -715,16 +715,26 @@ export const DEMO_WEIGHTS_MARTA = [
   { date: new Date(Date.now() - 21*86400000).toISOString().split('T')[0], weight: 64.1 },
 ]
 
-// Marta — seguimiento de dolor de rodilla en rehabilitación: mejora progresiva
-// semana a semana, que es justo lo que este widget está pensado para enseñar.
+// Marta — seguimiento de dolor de rodilla en rehabilitación: mejora real pero
+// todavía activa (8->4, no resuelta del todo) — a propósito, para que además
+// de enseñar la curva de progreso (DolorChart) siga disparando el aviso de
+// incompatibilidad del editor de plan (última semana con intensidad >= 4).
 export const DEMO_DOLOR_MARTA = [
-  { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab' },
-  { id: 'demo-dolor-2', date: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 5 },
-  { id: 'demo-dolor-3', date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4 },
-  { id: 'demo-dolor-4', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 3 },
-  { id: 'demo-dolor-5', date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 2 },
-  { id: 'demo-dolor-6', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 1, nota: 'Casi sin molestia ya' },
+  { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 8, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab', tipo: 'articular' as const },
+  { id: 'demo-dolor-2', date: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' as const },
+  { id: 'demo-dolor-3', date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' as const },
+  { id: 'demo-dolor-4', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 5, tipo: 'articular' as const },
+  { id: 'demo-dolor-5', date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, tipo: 'articular' as const },
+  { id: 'demo-dolor-6', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, nota: 'Mejor que al principio, pero sigue molestando algo', tipo: 'articular' as const },
 ]
+
+// Igual que DEMO_READINESS_MAP/FLAT — para la Bandeja del entrenador, que
+// necesita todos los registros de dolor de todos sus clientes en una lista.
+export const DEMO_DOLOR_MAP: Record<string, typeof DEMO_DOLOR_MARTA> = {
+  'demo-client-005': DEMO_DOLOR_MARTA,
+}
+export const DEMO_DOLOR_FLAT: ({ clientId: string } & (typeof DEMO_DOLOR_MARTA)[number])[] =
+  Object.entries(DEMO_DOLOR_MAP).flatMap(([clientId, rows]) => rows.map(r => ({ clientId, ...r })))
 
 // Beatriz — pérdida de peso sostenida y saludable (~0.6kg/semana)
 export const DEMO_WEIGHTS_BEATRIZ = [

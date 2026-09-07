@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Inbox, CheckCircle2, Moon, ChevronRight } from 'lucide-react'
+import { Inbox, CheckCircle2, Moon, HeartPulse, ChevronRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
-import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT } from '../../lib/demo-data'
+import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT } from '../../lib/demo-data'
+import { PainEntry } from '../../lib/clientPain'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 
@@ -11,10 +12,14 @@ interface InboxItem {
   clientId: string
   clientName: string
   date: string
-  kind: 'sesion' | 'readiness'
+  kind: 'sesion' | 'readiness' | 'dolor'
   detail: string
   warn?: boolean
 }
+
+// Umbral para que una molestia articular aparezca en la Bandeja — por debajo
+// de esto es más ruido que señal (ver DolorChart: >=7 alto, >=4 moderado).
+const DOLOR_ALERTA_MIN = 4
 
 const REVIEWED_KEY = (trainerId: string) => `pf_bandeja_revisados_${trainerId}`
 const DAYS_BACK = 14
@@ -26,6 +31,7 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   onSelectClient: (c: ClientData) => void
 }) {
   const [readiness, setReadiness] = useState<ReadinessRow[]>([])
+  const [dolor, setDolor] = useState<({ clientId: string } & PainEntry)[]>([])
   const [loading, setLoading] = useState(true)
   const [onlyPending, setOnlyPending] = useState(true)
   const [reviewed, setReviewed] = useState<Set<string>>(() => {
@@ -35,11 +41,19 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   useEffect(() => {
     const clientIds = clients.map(c => c.id)
     if (clientIds.length === 0) { setLoading(false); return }
-    if (trainerId === DEMO_TRAINER_ID) { setReadiness(DEMO_READINESS_FLAT); setLoading(false); return }
+    if (trainerId === DEMO_TRAINER_ID) { setReadiness(DEMO_READINESS_FLAT); setDolor(DEMO_DOLOR_FLAT); setLoading(false); return }
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
-    supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
-      .in('clientId', clientIds).gte('date', since.toISOString().split('T')[0]).order('date', { ascending: false })
-      .then(({ data }) => { setReadiness((data || []) as ReadinessRow[]); setLoading(false) })
+    const sinceKey = since.toISOString().split('T')[0]
+    Promise.all([
+      supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
+        .in('clientId', clientIds).gte('date', sinceKey).order('date', { ascending: false }),
+      supabase.from('registros_dolor').select('id, clientId, date, zona, intensidad, nota, tipo')
+        .in('clientId', clientIds).gte('date', sinceKey).order('date', { ascending: false }),
+    ]).then(([readinessRes, dolorRes]) => {
+      setReadiness((readinessRes.data || []) as ReadinessRow[])
+      setDolor((dolorRes.data || []) as ({ clientId: string } & PainEntry)[])
+      setLoading(false)
+    })
   }, [clients, trainerId])
 
   const items = useMemo(() => {
@@ -72,8 +86,19 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
       })
     })
 
+    dolor.forEach(d => {
+      const c = clients.find(cl => cl.id === d.clientId)
+      if (!c || d.intensidad < DOLOR_ALERTA_MIN) return
+      const esArticular = d.tipo === 'articular'
+      list.push({
+        key: `dolor:${d.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: d.date, kind: 'dolor',
+        detail: `${esArticular ? 'Molestia articular' : 'Dolor'} en ${d.zona} (${d.intensidad}/10)${d.nota ? ` — "${d.nota}"` : ''}`,
+        warn: esArticular || d.intensidad >= 7,
+      })
+    })
+
     return list.sort((a, b) => b.date.localeCompare(a.date))
-  }, [clients, logsMap, readiness])
+  }, [clients, logsMap, readiness, dolor])
 
   const visibleItems = onlyPending ? items.filter(i => !reviewed.has(i.key)) : items
   const pendingCount = items.filter(i => !reviewed.has(i.key)).length
@@ -126,8 +151,10 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
                   {isReviewed && <CheckCircle2 className="w-4 h-4 text-white" />}
                 </button>
                 <button onClick={() => client && onSelectClient(client)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${item.kind === 'readiness' ? 'bg-accent/10 text-accent' : 'bg-ok/10 text-ok'}`}>
-                    {item.kind === 'readiness' ? <Moon className="w-3.5 h-3.5" /> : item.clientName[0]?.toUpperCase()}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    item.kind === 'readiness' ? 'bg-accent/10 text-accent' : item.kind === 'dolor' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'
+                  }`}>
+                    {item.kind === 'readiness' ? <Moon className="w-3.5 h-3.5" /> : item.kind === 'dolor' ? <HeartPulse className="w-3.5 h-3.5" /> : item.clientName[0]?.toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{item.clientName}</p>

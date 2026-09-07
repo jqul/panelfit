@@ -11,6 +11,7 @@ import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
 import { getYTId, parseNumSets } from './training-plan-editor/utils'
 import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } from './progreso-tab/helpers'
+import { useRecentPainZonas } from '../../lib/clientPain'
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
@@ -40,6 +41,14 @@ const TEMPO_PRESETS = ['3-1-1-0', '4-2-1-0', '2-0-2-0', '3-0-X-0', '2-1-X-0']
 
 const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmupExercises: [] })
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
+
+// Puente entre el grupo muscular (helpers.tsx, ya usado para el volumen
+// semanal) y la zona de dolor (clientPain.ts) — aproximado a propósito: mejor
+// un aviso de más que uno de menos en algo tan sensible como una lesión.
+const GRUPO_A_ZONA: Record<string, string> = {
+  'Piernas': 'Rodilla', 'Hombros': 'Hombro', 'Espalda': 'Espalda baja', 'Glúteos': 'Cadera',
+  'Bíceps': 'Codo', 'Tríceps': 'Codo',
+}
 
 interface SelectedEx { wi: number; di: number; ri: number }
 
@@ -75,6 +84,14 @@ export function TrainingPlanEditor({
   // Series semanales por grupo muscular — se recalcula solo con lo que hay en
   // la semana activa, para detectar de un vistazo grupos con poco o demasiado volumen.
   const libraryMap = useLibraryMuscleMap(library)
+  // Molestia articular activa (últimos 7 días) del cliente — para avisar al
+  // añadir un ejercicio que carga esa misma zona (item 4).
+  const zonasConDolor = useRecentPainZonas(plan.clientId)
+  const getPainWarning = (exName: string): string | null => {
+    if (zonasConDolor.size === 0) return null
+    const zona = GRUPO_A_ZONA[getMuscleGroup(exName, libraryMap)]
+    return zona && zonasConDolor.has(zona) ? zona : null
+  }
   const weeklyVolumeByGroup = (() => {
     const tally: Record<string, number> = {}
     currentWeek?.days.forEach(day => {
@@ -421,6 +438,7 @@ export function TrainingPlanEditor({
                           const isRestPopupOpen = restPopup?.wi === activeWeek && restPopup?.di === di && restPopup?.ri === ri
                           const seriesTypeId = ex.seriesType || 'normal'
                           const seriesMeta = seriesTypes.find(s => s.id === seriesTypeId) || seriesTypes[0] || DEFAULT_SERIES_TYPES[0]
+                          const painWarning = getPainWarning(ex.name)
 
                           return (
                             <div key={ri}
@@ -452,6 +470,10 @@ export function TrainingPlanEditor({
                                     placeholder="Nombre del ejercicio"
                                     className={`text-sm bg-transparent outline-none w-full truncate ${isSelected ? 'font-semibold text-accent' : 'font-medium'}`}
                                   />
+                                  {painWarning && (
+                                    <span title={`Molestia articular reciente en ${painWarning} · valora una variante más suave`}
+                                      className="flex-shrink-0 text-sm cursor-help">⚠️</span>
+                                  )}
                                   {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-8 h-5 object-cover rounded flex-shrink-0" alt="" />}
                                 </div>
 
@@ -558,6 +580,12 @@ export function TrainingPlanEditor({
                                     </button>
                                   </div>
 
+                                  {painWarning && (
+                                    <div className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 bg-warn/10 border border-warn/30 rounded-lg text-xs text-warn font-medium">
+                                      <span>⚠️</span>
+                                      <span>Molestia activa en {painWarning} (últimos 7 días) · Considerar una variante más suave para este ejercicio</span>
+                                    </div>
+                                  )}
                                   <div className="grid grid-cols-2 divide-x divide-border/50">
                                     <div className="p-3 space-y-2">
                                       <input value={ex.comment}
@@ -600,6 +628,14 @@ export function TrainingPlanEditor({
                                         }`}>
                                         <span>📹</span>
                                         {ex.requiresVideo ? '✓ Pidiendo vídeo de ejecución' : 'Pedir vídeo de ejecución al cliente'}
+                                      </button>
+                                      <button onClick={() => updateExercise(activeWeek, di, ri, { enReadaptacion: !ex.enReadaptacion })}
+                                        title="El cliente puntúa el dolor percibido (0-10) al terminar este ejercicio — para saber si la carga está en la ventana terapéutica"
+                                        className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${
+                                          ex.enReadaptacion ? 'bg-warn/10 border-warn/30 text-warn' : 'border-border/50 text-muted hover:border-warn/40 hover:text-warn'
+                                        }`}>
+                                        <span>🩹</span>
+                                        {ex.enReadaptacion ? '✓ En readaptación — pide dolor EVA 0-10' : 'Marcar como terapéutico / en readaptación'}
                                       </button>
                                     </div>
                                     <div className="p-3 space-y-3">

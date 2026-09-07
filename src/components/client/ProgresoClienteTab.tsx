@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
 import { compressVideo } from '../../lib/videoCompress'
 import { useClientWeights } from '../../lib/clientWeight'
-import { useClientPain } from '../../lib/clientPain'
+import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../lib/progresoSections'
 import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
 import { RMChart } from '../trainer/progreso-tab/RMChart'
@@ -15,7 +15,6 @@ import { RachaStats } from '../trainer/progreso-tab/RachaStats'
 import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
 import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
 
-const ZONAS_DOLOR = ['Rodilla', 'Hombro', 'Espalda baja', 'Cadera', 'Tobillo', 'Cuello', 'Codo', 'Muñeca', 'Otro']
 
 interface Props {
   clientId: string

@@ -35,6 +35,7 @@ export interface Exercise {
   hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
   supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
   tempo?: string           // cadencia "excéntrica-pausa abajo-concéntrica-pausa arriba" en segundos, ej. "3-1-1-0" ('X' = explosivo)
+  enReadaptacion?: boolean // ejercicio terapéutico/de readaptación — pide dolor EVA 0-10 durante la sesión
 }
 
 export interface ExerciseVideoUpload {
@@ -86,7 +87,7 @@ export interface LogSet { weight: string; reps: string; rir?: number; velocity?:
 // terminar una sesión con ejercicios sin hacer — deliberadamente NO usa
 // `done`/`dateDone` para no ensuciar los muchos sitios que cuentan
 // ejercicios/fechas iterando todo TrainingLogs sin filtrar por clave.
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sessionFinished?: boolean }
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sessionFinished?: boolean; dolorEva?: number }
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────
