@@ -214,7 +214,11 @@ function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number): Tra
           const w = plannedW !== null ? Math.max(0, plannedW - si * stepFor(plannedW)) : null
           sets[si] = { weight: w !== null ? String(w) : ex.weight, reps: repsText, rir: Math.max(0, baseRir - Math.floor(si / 2)) }
         }
-        logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha }
+        // Ejercicios "en readaptación" (ver ActiveWorkout: escala EVA 0-10):
+        // simula la misma mejora progresiva que su historial de dolor, para
+        // que el badge de EntrenosTab ya se vea sin tener que registrar nada.
+        const dolorEva = ex.enReadaptacion ? Math.min(10, 2 + weeksAgo) : undefined
+        logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets, done: true, dateDone: fecha, ...(dolorEva !== undefined ? { dolorEva } : {}) }
       })
     }
   }
