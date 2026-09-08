@@ -3,6 +3,8 @@ import { Search, Video, Check, Plus, Filter, ChevronDown } from 'lucide-react'
 import { LibraryExercise, Exercise } from '../../types'
 import { EXERCISE_CATEGORIES } from '../../lib/constants'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
+import { useLibraryMuscleMap } from './progreso-tab/helpers'
+import { usePainWarning } from '../../lib/painWarning'
 
 function getYTId(url: string) {
   const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
@@ -67,6 +69,8 @@ interface Props {
 const LAST_FILTER_KEY = 'pf_picker_last_filter'
 
 export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad, trackUsage, clientId }: Props) {
+  const libraryMap = useLibraryMuscleMap(library)
+  const getPainWarning = usePainWarning(clientId, libraryMap)
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState(() => localStorage.getItem(LAST_FILTER_KEY) || 'Todos')
   const [espFilter, setEspFilter] = useState<Especialidad | ''>('')
@@ -219,6 +223,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
               const color = mainEsp ? ESP_COLORS[mainEsp] : null
+              const painWarning = getPainWarning(ex.name)
               return (
                 <button key={ex.id} onClick={() => handleSelect(ex)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
@@ -230,7 +235,13 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                     {mainEsp ? ESPECIALIDADES.find(e => e.value === mainEsp)?.emoji : '🌐'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{ex.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{ex.name}</p>
+                      {painWarning && (
+                        <span title={`Molestia articular reciente en ${painWarning} · valora una variante más suave`}
+                          className="flex-shrink-0 text-xs cursor-help">⚠️</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       {ex.category && <span className="text-[9px] text-muted">{ex.category}</span>}
                       {(!ex.especialidades || ex.especialidades.length === 0) && (
@@ -325,6 +336,13 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {selected && getPainWarning(selected.name) && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-warn/10 border border-warn/30 rounded-lg text-xs text-warn font-medium flex-shrink-0">
+              <span>⚠️</span>
+              <span>Molestia activa en {getPainWarning(selected.name)} (últimos 7 días) · Considerar una variante más suave</span>
             </div>
           )}
 

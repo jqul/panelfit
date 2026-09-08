@@ -17,6 +17,7 @@ import { SetRow } from './active-workout/SetRow'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
+import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 
 interface Props {
   day: DayPlan
@@ -35,7 +36,8 @@ interface Props {
   trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
 }
 
-const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '👍']
+const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '🤕', '👍']
+const MOLESTIA_EMOJI = '🤕'
 
 export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
@@ -44,6 +46,11 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [reactionEmoji, setReactionEmoji] = useState<string | null>(null)
   const [reactionComment, setReactionComment] = useState('')
   const [showReactionComment, setShowReactionComment] = useState(false)
+  // 🤕 "Con molestias" al terminar la sesión — igual que el clasificador del
+  // check-in diario, pero sin ambigüedad: si eliges este emoji ya nos dices
+  // que es una molestia, así que vamos directos a pedir la zona.
+  const [molestiaZona, setMolestiaZona] = useState<string | null>(null)
+  const { addEntry: addPainEntry } = useClientPain(plan.clientId)
 
   // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
   // cliente mete su resultado aquí y va directo a Progreso > Pruebas del
@@ -943,12 +950,30 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
               <div className="flex justify-center gap-2">
                 {REACTION_EMOJIS.map(emoji => (
-                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true) }}
+                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true); if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null) }}
                     className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${reactionEmoji === emoji ? 'bg-accent/15 ring-2 ring-accent' : 'bg-bg hover:bg-bg-alt'}`}>
                     {emoji}
                   </button>
                 ))}
               </div>
+              {/* Con 🤕 vamos directos a la zona — el emoji ya nos dice que es
+                  molestia, no agujetas normales, así que no hace falta el
+                  clasificador que sí usa el check-in diario (ahí "agujetas" es ambiguo) */}
+              {reactionEmoji === MOLESTIA_EMOJI && (
+                <div className="bg-warn/5 border border-warn/20 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-center">¿En qué zona?</p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
+                      <button key={z} onClick={() => setMolestiaZona(z)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                          molestiaZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
+                        }`}>
+                        {z}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {showReactionComment && (
                 <textarea value={reactionComment} onChange={e => setReactionComment(e.target.value)} rows={2}
                   placeholder="¿Algo que comentar? (opcional)"
@@ -982,6 +1007,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     clientId: plan.clientId, dayTitle: day.title, date: today,
                     emoji: reactionEmoji, comment: reactionComment.trim() || null,
                   })
+                }
+                // 🤕 con zona elegida -> queda como registro real de dolor, no
+                // solo como reacción de la sesión — para que salga en Progreso
+                // > Dolor y en la Bandeja igual que el del check-in diario.
+                if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
+                  await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
                 }
                 // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente
                 // puso un RPE global. Alimenta el ACWR de carga interna, complementario

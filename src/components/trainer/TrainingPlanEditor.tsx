@@ -11,7 +11,7 @@ import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
 import { getYTId, parseNumSets } from './training-plan-editor/utils'
 import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } from './progreso-tab/helpers'
-import { useRecentPainZonas } from '../../lib/clientPain'
+import { usePainWarning } from '../../lib/painWarning'
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
@@ -41,14 +41,6 @@ const TEMPO_PRESETS = ['3-1-1-0', '4-2-1-0', '2-0-2-0', '3-0-X-0', '2-1-X-0']
 
 const emptyDay = (n: number): DayPlan => ({ title: `DÍA ${n}`, focus: '', exercises: [], warmupExercises: [] })
 const emptyWeek = (n: number): WeekPlan => ({ label: `Semana ${n}`, rpe: '@7', isCurrent: false, days: [] })
-
-// Puente entre el grupo muscular (helpers.tsx, ya usado para el volumen
-// semanal) y la zona de dolor (clientPain.ts) — aproximado a propósito: mejor
-// un aviso de más que uno de menos en algo tan sensible como una lesión.
-const GRUPO_A_ZONA: Record<string, string> = {
-  'Piernas': 'Rodilla', 'Hombros': 'Hombro', 'Espalda': 'Espalda baja', 'Glúteos': 'Cadera',
-  'Bíceps': 'Codo', 'Tríceps': 'Codo',
-}
 
 interface SelectedEx { wi: number; di: number; ri: number }
 
@@ -85,13 +77,8 @@ export function TrainingPlanEditor({
   // la semana activa, para detectar de un vistazo grupos con poco o demasiado volumen.
   const libraryMap = useLibraryMuscleMap(library)
   // Molestia articular activa (últimos 7 días) del cliente — para avisar al
-  // añadir un ejercicio que carga esa misma zona (item 4).
-  const zonasConDolor = useRecentPainZonas(plan.clientId)
-  const getPainWarning = (exName: string): string | null => {
-    if (zonasConDolor.size === 0) return null
-    const zona = GRUPO_A_ZONA[getMuscleGroup(exName, libraryMap)]
-    return zona && zonasConDolor.has(zona) ? zona : null
-  }
+  // añadir un ejercicio que carga esa misma zona.
+  const getPainWarning = usePainWarning(plan.clientId, libraryMap)
   const weeklyVolumeByGroup = (() => {
     const tally: Record<string, number> = {}
     currentWeek?.days.forEach(day => {
