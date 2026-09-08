@@ -723,21 +723,36 @@ export const DEMO_WEIGHTS_MARTA = [
 // todavía activa (8->4, no resuelta del todo) — a propósito, para que además
 // de enseñar la curva de progreso (DolorChart) siga disparando el aviso de
 // incompatibilidad del editor de plan (última semana con intensidad >= 4).
-export const DEMO_DOLOR_MARTA = [
-  { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 8, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab', tipo: 'articular' as const },
-  { id: 'demo-dolor-2', date: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' as const },
-  { id: 'demo-dolor-3', date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' as const },
-  { id: 'demo-dolor-4', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 5, tipo: 'articular' as const },
-  { id: 'demo-dolor-5', date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, tipo: 'articular' as const },
-  { id: 'demo-dolor-6', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, nota: 'Mejor que al principio, pero sigue molestando algo', tipo: 'articular' as const },
+type DemoDolorEntry = { id: string; date: string; zona: string; intensidad: number; nota?: string; tipo?: 'articular' }
+
+export const DEMO_DOLOR_MARTA: DemoDolorEntry[] = [
+  { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 8, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab', tipo: 'articular' },
+  { id: 'demo-dolor-2', date: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' },
+  { id: 'demo-dolor-3', date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, tipo: 'articular' },
+  { id: 'demo-dolor-4', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 5, tipo: 'articular' },
+  { id: 'demo-dolor-5', date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, tipo: 'articular' },
+  { id: 'demo-dolor-6', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, nota: 'Mejor que al principio, pero sigue molestando algo', tipo: 'articular' },
+]
+
+// Lucas — historia distinta a la de Marta a propósito: no es rehabilitación,
+// es una sobrecarga que empieza a asomar EN PARALELO a su ACWR ya disparado
+// (1.58, ver DEMO_SESSION_LOAD_LUCAS) y a la caída de su altura de salto de
+// estos últimos días (41cm -> 36cm, ver DEMO_TEST_RESULTS_LUCAS — "Se ve
+// cansado, cuesta activar"). Mismo patrón de sobrecarga, tres señales
+// distintas que apuntan al mismo sitio y en la misma ventana de tiempo.
+export const DEMO_DOLOR_LUCAS: DemoDolorEntry[] = [
+  { id: 'demo-dolor-lucas-1', date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 2, nota: 'Empezó a notarlo tras meter más volumen de saltos con carga' },
+  { id: 'demo-dolor-lucas-2', date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 4, tipo: 'articular' },
+  { id: 'demo-dolor-lucas-3', date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 6, nota: 'Duele al aterrizar en los saltos con carga', tipo: 'articular' },
 ]
 
 // Igual que DEMO_READINESS_MAP/FLAT — para la Bandeja del entrenador, que
 // necesita todos los registros de dolor de todos sus clientes en una lista.
-export const DEMO_DOLOR_MAP: Record<string, typeof DEMO_DOLOR_MARTA> = {
+export const DEMO_DOLOR_MAP: Record<string, DemoDolorEntry[]> = {
   'demo-client-005': DEMO_DOLOR_MARTA,
+  'demo-client-007': DEMO_DOLOR_LUCAS,
 }
-export const DEMO_DOLOR_FLAT: ({ clientId: string } & (typeof DEMO_DOLOR_MARTA)[number])[] =
+export const DEMO_DOLOR_FLAT: ({ clientId: string } & DemoDolorEntry)[] =
   Object.entries(DEMO_DOLOR_MAP).flatMap(([clientId, rows]) => rows.map(r => ({ clientId, ...r })))
 
 // Beatriz — pérdida de peso sostenida y saludable (~0.6kg/semana)

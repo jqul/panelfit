@@ -86,7 +86,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
-        {section === 'dolor'        && <DolorChart        clientId={client.id} />}
+        {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
         {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
