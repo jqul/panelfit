@@ -35,11 +35,18 @@ export const GROUP_COLORS: Record<string, string> = {
   'Bíceps': '#3b82f6', 'Tríceps': '#8b5cf6', 'Core': '#ec4899', 'Glúteos': '#06b6d4', 'Otros': '#94a3b8',
 }
 
+// El "press" a secas SOLO en Pecho capturaba también press militar/hombro/
+// francés antes de que le tocara el turno a Hombros o Tríceps (se recorre en
+// este mismo orden y para en el primer grupo que matchea) — cualquier
+// ejercicio de hombro con "press" en el nombre (el más común: "Press militar")
+// se contaba entero como Pecho y Hombros se quedaba a 0 series aunque sí se
+// hubiera entrenado. Ahora Pecho solo matchea variantes de press específicas
+// de pecho; press militar/hombro cae correctamente en Hombros.
 const MUSCLE_GROUPS: Record<string, string[]> = {
-  'Pecho':     ['press','pecho','bench','aperturas','fondos'],
+  'Pecho':     ['press banca','press inclinado','press declinado','pecho','bench','aperturas','fondos'],
   'Espalda':   ['remo','dominadas','jalón','pull','espalda','trapecio','lumbar','jalon'],
   'Piernas':   ['squat','sentadilla','prensa','leg','femoral','cuádricep','gemelo','pantorrilla','lunges','zancada','cuadricep'],
-  'Hombros':   ['press hombro','elevaciones','deltoides','hombro','military'],
+  'Hombros':   ['press hombro','press militar','elevación lateral','elevaciones','deltoides','hombro','militar','military','arnold'],
   'Bíceps':    ['curl','bícep','bicep'],
   'Tríceps':   ['trícep','tricep','extensión','francés','frances'],
   'Core':      ['plancha','abdominales','crunch','core','oblicuos'],
