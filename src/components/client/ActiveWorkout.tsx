@@ -345,27 +345,30 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
     const today = new Date().toISOString().split('T')[0]
-    const wasDone = setsRef.current[ri]?.[si]?.done
+    const prev = setsRef.current
+    const wasDone = prev[ri]?.[si]?.done
 
-    setSets(prev => {
-      const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir, velocity: prev[ri]?.[si]?.velocity } } }
-      const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
-      const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, { weight: string; reps: string; rir?: number; velocity?: number }> = {}
-      for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
-      }
-      onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
+    // Se computa fuera de la función actualizadora de setSets: React puede
+    // invocar esa función durante el render, así que no debe disparar
+    // setState de otros componentes (onLogsChange -> setLogs del padre) ni
+    // efectos secundarios (setRestTimer) desde dentro de ella.
+    const newDone = !prev[ri]?.[si]?.done
+    const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir, velocity: prev[ri]?.[si]?.velocity } } }
+    const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
+    const key = `ex_${dayKey}_r${ri}`
+    const setsData: Record<number, { weight: string; reps: string; rir?: number; velocity?: number }> = {}
+    for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
+      setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
+    }
 
-      // Iniciar timer de descanso solo si no tiene hideRest
-      if (newDone && !ex.hideRest) {
-        const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-        setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
-      }
+    setSets(updated)
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
 
-      return updated
-    })
+    // Iniciar timer de descanso solo si no tiene hideRest
+    if (newDone && !ex.hideRest) {
+      const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+      setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
+    }
 
     // Detección de récord en tiempo real (1RM estimado) — solo al marcar
     // la serie como hecha, no al desmarcarla.
