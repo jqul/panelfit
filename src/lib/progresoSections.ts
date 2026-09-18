@@ -7,7 +7,7 @@ import { supabase } from './supabase'
 export type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile' | 'dolor'
 
 export const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
-  { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado' },
+  { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado — si lo desactivas, tampoco se le muestra al cliente durante la serie' },
   { id: 'fatiga',        icon: '🚦', label: 'Riesgo',         desc: 'Semáforo de carga + bienestar' },
   { id: 'videos',        icon: '🎥', label: 'Vídeos',         desc: 'Feedback de técnica pendiente' },
   { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },

@@ -20,6 +20,7 @@ import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
+import { useTrainerMetricSettings } from '../../lib/progresoSections'
 
 interface Props {
   day: DayPlan
@@ -53,6 +54,14 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // que es una molestia, así que vamos directos a pedir la zona.
   const [molestiaZona, setMolestiaZona] = useState<string | null>(null)
   const { addEntry: addPainEntry } = useClientPain(plan.clientId, trainerId)
+
+  // "Pesos sugeridos" en vivo (objetivo de hoy + sugerencia VBT) — el
+  // entrenador que prefiere ajustar el peso él mismo en vez de que el
+  // cliente vea un algoritmo durante la serie puede desactivarlo en
+  // Ajustes > Métricas activas, mismo interruptor que ya usa el análisis
+  // de Progreso (lib/progresoSections.ts) — activo por defecto.
+  const metricasActivas = useTrainerMetricSettings(trainerId)
+  const showPesosSugeridos = !metricasActivas || metricasActivas.has('pesos_sugeridos')
 
   // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
   // cliente mete su resultado aquí y va directo a Progreso > Pruebas del
@@ -333,7 +342,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         totalSets: totalForRow,
         weight: existing?.weight || prevWk?.weight || '',
         reps: existing?.reps || prevWk?.reps || String(numReps),
-        targetLabel: getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe),
+        targetLabel: showPesosSugeridos ? getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe) : null,
       }
     }
 
@@ -349,7 +358,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       if (firstUndone !== undefined) return buildInfo(nextRi, firstUndone, total, exSetsForRow[firstUndone])
     }
     return null
-  }, [day, dayKey, dayIdx, plan, weekIdx])
+  }, [day, dayKey, dayIdx, plan, weekIdx, showPesosSugeridos])
 
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
@@ -598,11 +607,11 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           // peso de las series que quedan en vez de forzar la carga prescrita.
           const todayVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
           const historicalVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
-          const vbtSuggestion = getVbtSuggestedWeightChange(
+          const vbtSuggestion = showPesosSugeridos ? getVbtSuggestedWeightChange(
             todayVelocityProfile?.oneRM ?? null,
             historicalVelocityProfile?.oneRM ?? null,
             parseFloat(ex.weight) || undefined
-          )
+          ) : null
 
           return (
             <div key={ri} className="border-b border-border">
@@ -851,6 +860,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     prevRir={prev?.rir}
                     weekRpe={plan.weeks?.[weekIdx]?.rpe}
                     isMain={ex.isMain}
+                    showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}

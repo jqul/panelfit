@@ -16,6 +16,7 @@ interface SetRowProps {
   prevRir?: number
   weekRpe?: string
   isMain: boolean
+  showTarget?: boolean  // "pesos sugeridos" — el entrenador puede desactivarlo en Ajustes
   onCommit: (weight: string, reps: string) => void
   onToggle: (weight: string, reps: string) => void
   onOpenCalc: (weight: string) => void
@@ -23,7 +24,7 @@ interface SetRowProps {
   onSetVelocity: (velocity: number | undefined) => void
 }
 
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -49,13 +50,16 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
   const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
 
   // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
+  // — null si el entrenador ha desactivado "pesos sugeridos" en Ajustes.
   const prevW = parseFloat(prevWeight || '')
-  const targetRange = getTargetRangeLabel(prevWeight, prevRir, weekRpe)
+  const targetRange = showTarget ? getTargetRangeLabel(prevWeight, prevRir, weekRpe) : null
 
-  // "Rellenar con anterior": copia el objetivo sugerido (o si no hay, la serie previa tal cual)
+  // "Rellenar con anterior": con pesos sugeridos activos, copia el objetivo
+  // calculado; si no, simplemente repite el peso de la vez anterior (el
+  // entrenador prefiere ajustar él mismo la progresión, no un algoritmo).
   const fillFromPrevious = () => {
     if (!prevW) return
-    const w = suggestion?.deltaKg
+    const w = (showTarget && suggestion?.deltaKg)
       ? String(Math.max(0, suggestion.direction === 'up' ? prevW + suggestion.deltaKg : suggestion.direction === 'down' ? prevW - suggestion.deltaKg : prevW))
       : prevWeight!
     const r = prevReps || reps
@@ -90,14 +94,15 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
             </p>
             {targetRange && (
-              <p className="text-[9px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
+              <p className="text-[10px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
                 🎯 {targetRange}
               </p>
             )}
             {!done && prevWeight && (
               <button type="button" onClick={fillFromPrevious}
-                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[9px] font-semibold text-accent active:scale-95 transition-transform">
-                <CornerLeftDown className="w-2.5 h-2.5" /> Usar
+                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[11px] font-semibold text-accent active:scale-95 transition-transform py-1"
+                style={{ minHeight: '28px' }}>
+                <CornerLeftDown className="w-3 h-3" /> Usar
               </button>
             )}
           </div>
@@ -106,11 +111,11 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           <div className="flex flex-col items-stretch gap-1">
             <div className="flex gap-0.5">
               <button type="button" onClick={() => adjustWeight(5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 +5
               </button>
               <button type="button" onClick={() => adjustWeight(2.5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 +2.5
               </button>
             </div>
@@ -122,7 +127,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                 onChange={e => setWeight(e.target.value)}
                 onBlur={() => onCommit(weight, reps)}
                 placeholder={prevWeight || '0'}
-                className={`w-full text-center text-sm font-semibold py-1.5 pr-6 rounded-xl border outline-none ${
+                className={`w-full text-center text-base font-semibold py-2 pr-6 rounded-xl border outline-none ${
                   done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
                 }`}
               />
@@ -136,11 +141,11 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             </div>
             <div className="flex gap-0.5">
               <button type="button" onClick={() => adjustWeight(-2.5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 -2.5
               </button>
               <button type="button" onClick={() => adjustWeight(-5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 -5
               </button>
             </div>
@@ -159,7 +164,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               onChange={e => setReps(e.target.value)}
               onBlur={() => onCommit(weight, reps)}
               placeholder={prevReps || '10'}
-              className={`w-full text-center text-sm font-semibold py-1.5 rounded-xl border outline-none ${
+              className={`w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${
                 done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
               }`}
             />
