@@ -21,6 +21,8 @@ import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
+import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
+import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 
 interface Props {
   day: DayPlan
@@ -127,6 +129,21 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const substituteSuggestions = substituteDraft.trim().length >= 2
     ? libraryNames.filter(e => e.name.toLowerCase().includes(substituteDraft.trim().toLowerCase())).slice(0, 6)
     : []
+  const libraryMuscleMap = useLibraryMuscleMap(libraryNames)
+
+  // Sustitución inteligente por molestia — a diferencia de "Sustitúyelo" (que
+  // es libre, por disponibilidad de material), aquí el cliente dice qué zona
+  // le duele AHORA MISMO y se le proponen ejercicios del mismo grupo muscular
+  // que no cargan esa zona, para no parar del todo la sesión ni forzar la
+  // molestia.
+  const [molestiaPickerRi, setMolestiaPickerRi] = useState<number | null>(null)
+  const [molestiaPickerZona, setMolestiaPickerZona] = useState<string | null>(null)
+  const openMolestiaPicker = (ri: number, exName: string) => {
+    setEditingSubstitute(null)
+    setMolestiaPickerRi(ri)
+    setMolestiaPickerZona(guessZonaForExercise(exName, libraryMuscleMap))
+  }
+  const closeMolestiaPicker = () => { setMolestiaPickerRi(null); setMolestiaPickerZona(null) }
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
   const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
 
@@ -731,16 +748,78 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     )}
                   </div>
                 ) : substitutions[ri] ? (
-                  <button onClick={() => { setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
-                    <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
+                      <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
+                    </button>
+                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
+                      🤕 Me molesta
+                    </button>
+                  </div>
                 ) : (
-                  <button onClick={() => { setSubstituteDraft(''); setEditingSubstitute(ri) }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
-                    <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(''); setEditingSubstitute(ri) }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
+                      <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
+                    </button>
+                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
+                      🤕 Me molesta
+                    </button>
+                  </div>
                 )}
+
+                {/* Sustitución inteligente por molestia — el cliente dice qué
+                    zona le duele ahora mismo y se le proponen ejercicios del
+                    mismo grupo muscular que no cargan esa zona, sin tener que
+                    parar la sesión ni forzar la molestia. */}
+                {molestiaPickerRi === ri && (() => {
+                  const alternatives = molestiaPickerZona
+                    ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
+                    : []
+                  return (
+                    <div className="mt-2 border border-warn/30 bg-warn/5 rounded-2xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold">🤕 ¿Dónde te molesta?</p>
+                        <button onClick={closeMolestiaPicker} className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
+                          <button key={z} onClick={() => setMolestiaPickerZona(z)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                              molestiaPickerZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
+                            }`}>{z}</button>
+                        ))}
+                      </div>
+                      {molestiaPickerZona && (
+                        <div className="space-y-1.5 pt-1 border-t border-warn/20">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                            {alternatives.length > 0 ? 'Alternativas seguras para hoy' : 'Sin alternativa clara en tu lista'}
+                          </p>
+                          {alternatives.length > 0 ? alternatives.map(alt => (
+                            <button key={alt.id} onClick={() => {
+                              setSubstitute(ri, alt.name)
+                              addPainEntry(molestiaPickerZona, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+                              closeMolestiaPicker()
+                            }} className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-border rounded-xl text-left text-sm font-semibold hover:border-ok hover:bg-ok/5 transition-colors">
+                              <Repeat className="w-3.5 h-3.5 text-ok flex-shrink-0" /> {alt.name}
+                            </button>
+                          )) : (
+                            <p className="text-xs text-muted">No hay nada en tu lista que trabaje lo mismo sin cargar esa zona — avisamos a tu entrenador.</p>
+                          )}
+                          <button onClick={() => {
+                            addPainEntry(molestiaPickerZona, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
+                            closeMolestiaPicker()
+                          }} className="w-full text-center py-1.5 text-xs font-semibold text-warn hover:underline">
+                            Solo avisar a mi entrenador
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
