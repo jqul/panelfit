@@ -6,6 +6,7 @@ import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from '../lib/demo-data'
+import { localDateKey } from '../lib/dates'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -68,10 +69,6 @@ function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number
   return days >= AT_RISK_INACTIVE_DAYS
 }
 
-function toLocalISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
   if (!fechaInicio || !weeksLen) return {}
   const start = new Date(fechaInicio + 'T00:00:00')
@@ -79,7 +76,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000)
   return {
-    planEndDate: toLocalISODate(end),
+    planEndDate: localDateKey(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
   }
 }
@@ -129,7 +126,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     if (demoClients) {
       const lm = demoLogsMap || {}
       setLogsMap(lm)
-      const hoy = new Date().toISOString().split('T')[0]
+      const hoy = localDateKey()
       const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
       const jumpTestNames: Record<string, string> = {}
       DEMO_TEST_CATALOG.forEach(t => { if (isJumpTest(t.categoria, t.nombre)) jumpTestNames[t.id] = t.nombre })
@@ -178,7 +175,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       label_ids: (data || [])[i]?.label_ids || [],
     }))
 
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = localDateKey()
     const haceUnaS = new Date()
     haceUnaS.setDate(haceUnaS.getDate() - 7)
 

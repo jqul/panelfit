@@ -18,6 +18,8 @@ import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { localDateKey } from '../../lib/dates'
+import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 
 interface Props {
   day: DayPlan
@@ -60,7 +62,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const dayTests = (day?.testIds || [])
     .map(id => testCatalog.find(t => t.id === id))
     .filter((t): t is NonNullable<typeof t> => !!t)
-  const todayDate = new Date().toISOString().split('T')[0]
+  const todayDate = localDateKey()
   const testResultadosHoy = Object.fromEntries(
     testResultados.filter(r => r.fecha === todayDate).map(r => [r.test_id, r])
   )
@@ -108,6 +110,14 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   })
   const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
   const [substituteDraft, setSubstituteDraft] = useState('')
+  // Sustituir por texto libre rompía las estadísticas del entrenador (grupo
+  // muscular, récords...) al no coincidir con ningún nombre conocido — ahora
+  // se elige de la biblioteca real del entrenador; el texto libre queda como
+  // último recurso si de verdad no está en la lista.
+  const { names: libraryNames } = useTrainerExerciseNames(trainerId)
+  const substituteSuggestions = substituteDraft.trim().length >= 2
+    ? libraryNames.filter(e => e.name.toLowerCase().includes(substituteDraft.trim().toLowerCase())).slice(0, 6)
+    : []
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
   const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
 
@@ -170,7 +180,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
     const key = `ex_${dayKey}_r${ri}`
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const currentLogs = logsRef.current
     const prevRir = currentLogs[key]?.sets?.[si]?.rir
     const prevVelocity = currentLogs[key]?.sets?.[si]?.velocity
@@ -249,7 +259,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // ejercicio en vez de tener que ir a Progreso. Se excluye la fecha de hoy:
   // esto es "lo que ya hiciste antes", no lo que estás metiendo ahora mismo.
   const getExerciseHistory = useCallback((exName: string, limit = 4) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const entries: { date: string; weight: number; reps: number }[] = []
     plan.weeks.forEach((week, wi) => {
       week.days.forEach((d, di) => {
@@ -344,7 +354,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const wasDone = setsRef.current[ri]?.[si]?.done
 
     setSets(prev => {
@@ -683,19 +693,33 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
               <div className="px-4 mb-3">
                 {editingSubstitute === ri ? (
-                  <div className="flex items-center gap-2">
-                    <input autoFocus value={substituteDraft}
-                      onChange={e => setSubstituteDraft(e.target.value)}
-                      placeholder="¿Qué has hecho en su lugar?"
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
-                        if (e.key === 'Escape') setEditingSubstitute(null)
-                      }}
-                      className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
-                    <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
-                      className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
-                    <button onClick={() => setEditingSubstitute(null)}
-                      className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
+                  <div className="relative">
+                    <div className="flex items-center gap-2">
+                      <input autoFocus value={substituteDraft}
+                        onChange={e => setSubstituteDraft(e.target.value)}
+                        placeholder="Busca el ejercicio que has hecho..."
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
+                          if (e.key === 'Escape') setEditingSubstitute(null)
+                        }}
+                        className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
+                      <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
+                        title="Usar tal cual lo has escrito, si no está en la lista"
+                        className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
+                      <button onClick={() => setEditingSubstitute(null)}
+                        className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
+                    </div>
+                    {substituteSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-12 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+                        {substituteSuggestions.map(s => (
+                          <button key={s.id} onClick={() => { setSubstitute(ri, s.name); setEditingSubstitute(null) }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-bg-alt transition-colors">
+                            <span className="flex-1 truncate">{s.name}</span>
+                            {s.category && <span className="text-[10px] text-muted flex-shrink-0">{s.category}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : substitutions[ri] ? (
                   <button onClick={() => { setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
@@ -1002,7 +1026,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
             <button onClick={async () => {
                 if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
                 if (reactionEmoji) {
-                  const today = new Date().toISOString().split('T')[0]
+                  const today = localDateKey()
                   await supabase.from('session_reactions').insert({
                     clientId: plan.clientId, dayTitle: day.title, date: today,
                     emoji: reactionEmoji, comment: reactionComment.trim() || null,
@@ -1018,7 +1042,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 // puso un RPE global. Alimenta el ACWR de carga interna, complementario
                 // al de tonelaje (esencial para quien combina gimnasio con pista/campo).
                 if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
-                  const today = new Date().toISOString().split('T')[0]
+                  const today = localDateKey()
                   const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
                   await supabase.from('session_load').insert({
                     client_id: plan.clientId, trainer_id: trainerId, date: today,
