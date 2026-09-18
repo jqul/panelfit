@@ -50,7 +50,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // check-in diario, pero sin ambigüedad: si eliges este emoji ya nos dices
   // que es una molestia, así que vamos directos a pedir la zona.
   const [molestiaZona, setMolestiaZona] = useState<string | null>(null)
-  const { addEntry: addPainEntry } = useClientPain(plan.clientId)
+  const { addEntry: addPainEntry } = useClientPain(plan.clientId, trainerId)
 
   // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
   // cliente mete su resultado aquí y va directo a Progreso > Pruebas del

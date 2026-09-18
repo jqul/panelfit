@@ -389,8 +389,8 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
 }
 
 // ── Dolor (seguimiento de rehabilitación) ─────────────────
-function DolorTab({ clientId }: { clientId: string }) {
-  const { entries, addEntry, deleteEntry } = useClientPain(clientId)
+function DolorTab({ clientId, trainerId }: { clientId: string; trainerId?: string }) {
+  const { entries, addEntry, deleteEntry } = useClientPain(clientId, trainerId)
   const [zona, setZona] = useState(ZONAS_DOLOR[0])
   const [intensidad, setIntensidad] = useState(3)
   const [nota, setNota] = useState('')
@@ -756,7 +756,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
       {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
-      {subtab === 'dolor'      && <DolorTab       clientId={clientId} />}
+      {subtab === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
       {subtab === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
 
       {subtab === 'peso' && (

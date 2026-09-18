@@ -393,7 +393,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       seriesTypes={seriesTypes}
                     />
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
-                    <ReadinessCheckin clientId={client.id} />
+                    <ReadinessCheckin clientId={client.id} trainerId={client.trainerId} />
                     <ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} />
                     <BadgesWidget logs={logs} />
                     <HabitosWidget clientId={client.id} />

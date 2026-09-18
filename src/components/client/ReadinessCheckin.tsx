@@ -15,7 +15,7 @@ const METRICS: Metric[] = [
   { key: 'stress', label: 'Estrés', emoji: '🧠', lowLabel: 'Alto', highLabel: 'Bajo' },
 ]
 
-export function ReadinessCheckin({ clientId }: { clientId: string }) {
+export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; trainerId?: string }) {
   const [loading, setLoading] = useState(true)
   const [doneToday, setDoneToday] = useState(false)
   const [values, setValues] = useState<Record<string, number>>({ sleep: 3, soreness: 3, stress: 3, motivation: 3 })
@@ -27,7 +27,7 @@ export function ReadinessCheckin({ clientId }: { clientId: string }) {
   // quede un registro real (registros_dolor) y no se pierda en un simple
   // número del check-in.
   const [painStep, setPainStep] = useState<'none' | 'classify' | 'zone' | 'thanks'>('none')
-  const { addEntry } = useClientPain(clientId)
+  const { addEntry } = useClientPain(clientId, trainerId)
   const today = new Date().toISOString().split('T')[0]
 
   useEffect(() => {

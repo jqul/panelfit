@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { sendPush } from './usePushNotifications'
 
 // Historial de dolor del cliente — pensado para seguimiento de rehabilitación
 // (zona + intensidad 0-10 a lo largo del tiempo). Mismo patrón que
@@ -35,7 +36,7 @@ export async function fetchClientPain(clientId: string): Promise<PainEntry[]> {
  * Hook para el lado del cliente: lectura + registro de su propio dolor.
  * Igual que useClientWeights, actualiza el estado de forma optimista.
  */
-export function useClientPain(clientId?: string) {
+export function useClientPain(clientId?: string, trainerId?: string) {
   const [entries, setEntries] = useState<PainEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -53,14 +54,23 @@ export function useClientPain(clientId?: string) {
     const entry: PainEntry = { id: crypto.randomUUID().replace(/-/g, ''), date: date || new Date().toISOString().split('T')[0], zona, intensidad, nota, tipo }
     const updated = [entry, ...entries].sort((a, b) => b.date.localeCompare(a.date))
     setEntries(updated)
-    if (clientId.startsWith('demo-client-')) {
+    const isDemo = clientId.startsWith('demo-client-')
+    if (isDemo) {
       try { localStorage.setItem(localKey(clientId), JSON.stringify(updated)) } catch {}
-      return
+    } else {
+      const { error } = await supabase.from('registros_dolor')
+        .insert({ id: entry.id, clientId, date: entry.date, zona, intensidad, nota: nota || null, tipo: tipo || null, created_at: Date.now() })
+      if (error) { await reload(); return } // si el guardado falló, no dejar al cliente creyendo que se subió
     }
-    const { error } = await supabase.from('registros_dolor')
-      .insert({ id: entry.id, clientId, date: entry.date, zona, intensidad, nota: nota || null, tipo: tipo || null, created_at: Date.now() })
-    if (error) await reload() // si el guardado falló, no dejar al cliente creyendo que se subió
-  }, [clientId, entries, reload])
+    // Aviso inmediato al entrenador — solo para lo que de verdad puede ser una
+    // lesión (molestia articular explícita, o dolor alto aunque no se haya
+    // clasificado): no queremos que cada agujeta normal genere una notificación.
+    if (trainerId && !isDemo && (tipo === 'articular' || intensidad >= 7)) {
+      const { data: c } = await supabase.from('clientes').select('name, surname').eq('id', clientId).maybeSingle()
+      const nombre = c ? `${c.name} ${c.surname}`.trim() : 'Un cliente'
+      sendPush({ trainerId }, '⚠️ Molestia reportada', `${nombre} — ${zona} (${intensidad}/10)${nota ? `: "${nota}"` : ''}`)
+    }
+  }, [clientId, trainerId, entries, reload])
 
   const deleteEntry = useCallback(async (id: string) => {
     if (!clientId) return
