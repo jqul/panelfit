@@ -5,6 +5,7 @@ import { ActiveWorkout } from './ActiveWorkout'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 interface Props {
   plan: TrainingPlan
@@ -57,8 +58,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
   const allSeriesTypes = seriesTypes?.length ? seriesTypes : DEFAULT_SERIES_TYPES
 
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
-  const weekIdx = plan.weeks?.indexOf(currentWeek) ?? 0
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
 
   if (activeWorkout) return (
     <ActiveWorkout

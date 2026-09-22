@@ -6,6 +6,7 @@ import { ActiveWorkout } from './ActiveWorkout'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { useClientWeights } from '../../lib/clientWeight'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 interface Props {
   plan: TrainingPlan
@@ -44,9 +45,9 @@ function weekdayFromTitle(title: string): number | null {
 }
 
 function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
   if (!currentWeek?.days?.length) return null
-  const weekIdx = plan.weeks.findIndex(w => w === currentWeek)
   const isDayDone = (di: number) => {
     if (logs[`finished_w${weekIdx}_d${di}`]?.sessionFinished) return true
     const dayExs = currentWeek.days[di].exercises || []

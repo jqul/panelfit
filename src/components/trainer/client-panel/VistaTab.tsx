@@ -1,10 +1,11 @@
 import { Eye } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
+import { getEffectiveWeekIdx } from '../../../lib/planWeek'
 
 export function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
   if (!plan?.weeks?.length) return <div className="text-center py-16 text-muted"><Eye className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin plan asignado</p></div>
-  const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
-  const weekIdx = plan.weeks.indexOf(currentWeek)
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks[weekIdx]
   return (
     <div className="max-w-2xl space-y-4">
       <div><h3 className="font-serif font-bold text-lg">Vista del cliente</h3><p className="text-xs text-muted mt-0.5">Semana activa: <span className="font-semibold text-ink">{currentWeek.label}</span></p></div>
