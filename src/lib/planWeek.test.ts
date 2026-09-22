@@ -8,8 +8,12 @@ function day(title: string, n: number): DayPlan {
 function week(label: string, isCurrent: boolean, days: DayPlan[]): WeekPlan {
   return { label, rpe: '@8', isCurrent, days }
 }
-function plan(weeks: WeekPlan[]): TrainingPlan {
-  return { clientId: 'c1', restMain: 90, restAcc: 60, restWarn: 20, message: '', weeks }
+function plan(weeks: WeekPlan[], fechaInicio?: string): TrainingPlan {
+  return { clientId: 'c1', type: 'hipertrofia', restMain: 90, restAcc: 60, restWarn: 20, message: '', weeks, ...(fechaInicio ? { fechaInicio } : {}) }
+}
+function daysAgo(n: number): string {
+  const d = new Date(); d.setDate(d.getDate() - n)
+  return d.toISOString().split('T')[0]
 }
 function doneLog(weekIdx: number, dayIdx: number, exCount: number): TrainingLogs {
   const logs: TrainingLogs = {}
@@ -63,5 +67,35 @@ describe('getEffectiveWeekIdx', () => {
     ])
     const logs = doneLog(0, 0, 1)
     expect(getEffectiveWeekIdx(p, logs)).toBe(1)
+  })
+
+  // Con fecha de inicio (plan de Javi: powerlifting 13 semanas, fechaInicio
+  // real, isCurrent clavado en Semana 1 en la BD) manda el calendario, no la
+  // finalización de días — reproduce el bug reportado.
+  it('con fecha de inicio, avanza por calendario aunque isCurrent siga en la semana 1', () => {
+    const weeks = Array.from({ length: 13 }, (_, i) => week(`Semana ${i + 1}`, i === 0, [day('Día A', 4)]))
+    const p = plan(weeks, daysAgo(20)) // 20 días → semana índice 2 (floor(20/7))
+    expect(getEffectiveWeekIdx(p, {})).toBe(2) // sin ningún log — ni un día hecho
+  })
+
+  it('con fecha de inicio, avanza igual aunque la semana en curso no se completara del todo', () => {
+    const weeks = [
+      week('Semana 1', true, [day('Día A', 4)]),
+      week('Semana 2', false, [day('Día A', 4)]),
+    ]
+    const p = plan(weeks, daysAgo(8)) // ya en semana índice 1
+    // semana 1: solo 3 de 4 ejercicios de su único día — nunca llega a "completa"
+    const logs: TrainingLogs = {
+      ex_w0_d0_r0: { sets: {}, done: true },
+      ex_w0_d0_r1: { sets: {}, done: true },
+      ex_w0_d0_r2: { sets: {}, done: true },
+    }
+    expect(getEffectiveWeekIdx(p, logs)).toBe(1)
+  })
+
+  it('con fecha de inicio, se queda en la última semana al superar la duración del plan', () => {
+    const weeks = Array.from({ length: 13 }, (_, i) => week(`Semana ${i + 1}`, i === 0, [day('Día A', 1)]))
+    const p = plan(weeks, daysAgo(200))
+    expect(getEffectiveWeekIdx(p, {})).toBe(12)
   })
 })

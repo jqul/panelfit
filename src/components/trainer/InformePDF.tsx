@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fetchClientWeights, WeightEntry } from '../../lib/clientWeight'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { X, Download, MessageCircle } from 'lucide-react'
 
 interface Props {
@@ -183,7 +184,7 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
 
             {/* Plan actual */}
             {plan?.weeks && plan.weeks.length > 0 && (() => {
-              const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
+              const currentWeek = plan.weeks[getEffectiveWeekIdx(plan, logs)]
               return (
                 <div>
                   <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">

@@ -26,6 +26,7 @@ import { PlanTab } from './client-panel/PlanTab'
 import { ValoracionTab } from './client-panel/ValoracionTab'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
@@ -478,9 +479,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       {/* Selector de día para sesión en vivo */}
       <Modal open={showDayPicker} onClose={() => setShowDayPicker(false)} title="¿Qué día vais a entrenar?">
         <div className="space-y-2">
-          {plan?.weeks?.map((week, wi) => (
-            <div key={wi} className={week.isCurrent ? '' : 'opacity-60'}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{week.isCurrent ? ' · actual' : ''}</p>
+          {plan?.weeks?.map((week, wi) => {
+            const isActualWeek = wi === getEffectiveWeekIdx(plan, logs)
+            return (
+            <div key={wi} className={isActualWeek ? '' : 'opacity-60'}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{isActualWeek ? ' · actual' : ''}</p>
               <div className="space-y-1.5 mb-3">
                 {week.days.map((day, di) => (
                   <button key={di} onClick={() => { setLiveSession({ weekIdx: wi, dayIdx: di }); setShowDayPicker(false) }}
@@ -491,7 +494,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 ))}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </Modal>
 
