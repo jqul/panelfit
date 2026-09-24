@@ -4,7 +4,10 @@ import { TrainingPlan } from '../../../types'
 export function getExName(key: string, plan?: TrainingPlan | null) {
   const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m || !plan) return null
-  return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || null
+  const ex = plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]
+  // Las carreras (kg×reps vacíos) no cuentan en fuerza/volumen/récords: van a su propia gráfica de cardio.
+  if (ex?.kind === 'run') return null
+  return ex?.name || null
 }
 
 export function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {

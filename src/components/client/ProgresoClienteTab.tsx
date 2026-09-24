@@ -8,6 +8,7 @@ import { useClientWeights } from '../../lib/clientWeight'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../lib/progresoSections'
 import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
+import { CardioChart } from '../trainer/progreso-tab/CardioChart'
 import { RMChart } from '../trainer/progreso-tab/RMChart'
 import { VolumenChart } from '../trainer/progreso-tab/VolumenCharts'
 import { AdherenciaChart } from '../trainer/progreso-tab/AdherenciaChart'
@@ -460,6 +461,7 @@ function MetricasTab({ clientId, logs, plan, visible }: { clientId: string; logs
               <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
             </div>
             {id === 'fuerza' && <FuerzaChart logs={logs} plan={plan} />}
+            {id === 'cardio' && <CardioChart logs={logs} />}
             {id === 'rm' && <RMChart logs={logs} plan={plan} />}
             {id === 'volumen' && <VolumenChart logs={logs} />}
             {id === 'adherencia' && <AdherenciaChart logs={logs} plan={plan} />}

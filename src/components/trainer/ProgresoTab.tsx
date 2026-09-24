@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { FuerzaChart } from './progreso-tab/FuerzaChart'
+import { CardioChart } from './progreso-tab/CardioChart'
 import { PesoChart } from './progreso-tab/PesoChart'
 import { VolumenChart, VolumenGrupoChart } from './progreso-tab/VolumenCharts'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
@@ -85,6 +86,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
+        {section === 'cardio'       && <CardioChart       logs={logs} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}

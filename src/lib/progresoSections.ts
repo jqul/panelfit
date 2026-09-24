@@ -4,13 +4,14 @@ import { supabase } from './supabase'
 // Secciones de ProgresoTab (entrenador) — extraído a módulo compartido para que
 // tanto ProgresoTab como los Ajustes del entrenador (activar/desactivar) y el
 // portal del cliente (qué le enseño) trabajen con la misma lista de ids.
-export type Section = 'fuerza' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile' | 'dolor'
+export type Section = 'fuerza' | 'cardio' | 'peso' | 'volumen' | 'volumen_grupo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile' | 'dolor'
 
 export const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado — si lo desactivas, tampoco se le muestra al cliente durante la serie' },
   { id: 'fatiga',        icon: '🚦', label: 'Riesgo',         desc: 'Semáforo de carga + bienestar' },
   { id: 'videos',        icon: '🎥', label: 'Vídeos',         desc: 'Feedback de técnica pendiente' },
   { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },
+  { id: 'cardio',       icon: '🏃', label: 'Cardio',        desc: 'Carrera y pista: distancia, tiempos por tirada y ritmo' },
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
   { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
@@ -30,7 +31,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
 ]
 
 export const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
-  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'pruebas', 'fv_profile'] },
+  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'cardio', 'pruebas', 'fv_profile'] },
   { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
   { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'dolor', 'fotos', 'distribucion', 'ciclo'] },
   { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
@@ -41,7 +42,7 @@ export const GROUPS: { id: string; label: string; icon: string; sections: Sectio
 // y las que necesitan props extra que el portal del cliente no calcula
 // (volumen_grupo/distribucion piden la biblioteca de ejercicios, pruebas/
 // fv_profile/estándares piden datos adicionales del cliente).
-export const CLIENT_SHAREABLE_SECTIONS: Section[] = ['fuerza', 'rm', 'volumen', 'adherencia', 'racha', 'fatiga', 'dolor', 'resumen_mensual']
+export const CLIENT_SHAREABLE_SECTIONS: Section[] = ['fuerza', 'cardio', 'rm', 'volumen', 'adherencia', 'racha', 'fatiga', 'dolor', 'resumen_mensual']
 
 // Métricas activas del entrenador: qué secciones usa en general (para no
 // llenarle el menú de cosas que no usa, ej. un entrenador que nunca hace

@@ -6,7 +6,9 @@ import { WendlerModal } from './training-plan-editor/WendlerModal'
 import { ConditioningModal } from './training-plan-editor/ConditioningModal'
 import { Modal } from '../shared/Modal'
 import { ExercisePicker } from './ExercisePicker'
-import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
+import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs, RunSpec } from '../../types'
+import { RunEditor } from './training-plan-editor/RunEditor'
+import { runDefaultName, runLabel } from '../../lib/run'
 import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
 import { getYTId, parseNumSets } from './training-plan-editor/utils'
@@ -83,6 +85,7 @@ export function TrainingPlanEditor({
     const tally: Record<string, number> = {}
     currentWeek?.days.forEach(day => {
       day.exercises.forEach(ex => {
+        if (ex.kind === 'run') return
         const group = getMuscleGroup(ex.name, libraryMap)
         tally[group] = (tally[group] || 0) + parseNumSets(ex.sets)
       })
@@ -175,6 +178,17 @@ export function TrainingPlanEditor({
 
   const addExercise = (wi: number, di: number, exercise: Exercise) => {
     updateDay(wi, di, { exercises: [...(weeks[wi].days[di]?.exercises || []), exercise] })
+  }
+  const addRunExercise = (wi: number, di: number) => {
+    const run: RunSpec = { reps: 6, distanceM: 200, recoveryM: 100, intensity: 'RPE 5-6' }
+    addExercise(wi, di, { name: runDefaultName(run), sets: '6x1', weight: '', isMain: false, comment: '', videoUrl: '', kind: 'run', run, hideRest: true })
+  }
+  // El nombre y las series ("NxM" que lee el resto de la app) siguen a la
+  // definición de la carrera mientras el nombre sea el automático.
+  const updateRun = (wi: number, di: number, ri: number, ex: Exercise, patch: Partial<RunSpec>) => {
+    const run: RunSpec = { ...ex.run!, ...patch }
+    const wasAuto = !ex.name || ex.name === runDefaultName(ex.run!)
+    updateExercise(wi, di, ri, { run, sets: `${run.durationSec ? 1 : run.reps}x1`, ...(wasAuto ? { name: runDefaultName(run) } : {}) })
   }
   const copyExercise = (wi: number, di: number, ri: number) => {
     const copy: Exercise = JSON.parse(JSON.stringify(weeks[wi].days[di].exercises[ri]))
@@ -464,6 +478,13 @@ export function TrainingPlanEditor({
                                   {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-8 h-5 object-cover rounded flex-shrink-0" alt="" />}
                                 </div>
 
+                                {ex.kind === 'run' && ex.run ? (
+                                  /* Carrera: un solo resumen legible en vez de series y kg (se edita en el panel) */
+                                  <div className="px-2 py-1.5 mx-1 text-xs font-bold text-accent bg-accent/5 border border-accent/20 rounded-lg text-center truncate"
+                                    style={{ gridColumn: 'span 2' }} title="Ejercicio de carrera — edítalo al desplegar">
+                                    🏃 {runLabel(ex.run)}
+                                  </div>
+                                ) : (<>
                                 {/* Series */}
                                 <input value={ex.sets}
                                   onChange={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { sets: e.target.value }) }}
@@ -480,6 +501,7 @@ export function TrainingPlanEditor({
                                   title="Puedes escribir un % (ej. 75%) y se calculará el peso real a partir del 1RM estimado del cliente"
                                   className="text-xs bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 w-full mx-1"
                                 />
+                                </>)}
 
                                 {/* Tipo serie */}
                                 <div onClick={e => e.stopPropagation()} className="px-1">
@@ -553,6 +575,10 @@ export function TrainingPlanEditor({
                               {/* Panel expandido */}
                               {isSelected && (
                                 <div className="mx-4 mb-2 rounded-xl border border-accent/20 bg-accent/3 overflow-hidden" onClick={e => e.stopPropagation()}>
+
+                                  {ex.kind === 'run' && ex.run && (
+                                    <RunEditor run={ex.run} onChange={patch => updateRun(activeWeek, di, ri, ex, patch)} />
+                                  )}
 
                                   {/* Tipo serie — info */}
                                   <div className="px-4 py-2.5 border-b border-accent/10 bg-accent/5 flex items-center gap-3">
@@ -679,10 +705,15 @@ export function TrainingPlanEditor({
                         })}
                       </div>
 
-                      <div className="px-4 py-2">
+                      <div className="px-4 py-2 flex gap-2">
                         <button onClick={() => setPickerFor({ dayIdx: di })}
-                          className="w-full border border-dashed border-border rounded-lg py-2 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
+                          className="flex-1 border border-dashed border-border rounded-lg py-2 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
                           <Plus className="w-3.5 h-3.5" /> Añadir ejercicio
+                        </button>
+                        <button onClick={() => addRunExercise(activeWeek, di)}
+                          title="Tiradas por metros o test de tiempo, con registro de tiempo y ritmo"
+                          className="border border-dashed border-border rounded-lg py-2 px-4 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
+                          🏃 Añadir carrera
                         </button>
                       </div>
 

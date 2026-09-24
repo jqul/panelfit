@@ -3,7 +3,7 @@ import {
   ChevronDown, Clock, Trophy, ChevronLeft,
   Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
 } from 'lucide-react'
-import { DayPlan, TrainingPlan, TrainingLogs } from '../../types'
+import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
@@ -14,6 +14,7 @@ import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
 import { SetRow } from './active-workout/SetRow'
+import { RunSets } from './active-workout/RunSets'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
@@ -82,7 +83,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     addTestResultado(trainerId, testId, valor, todayDate, '')
   }
 
-  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; timeSec?: number; distanceM?: number; isTest?: boolean }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -98,6 +99,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           done: log?.done || false,
           rir: log?.sets?.[si]?.rir,
           velocity: log?.sets?.[si]?.velocity,
+          timeSec: log?.sets?.[si]?.timeSec,
+          distanceM: log?.sets?.[si]?.distanceM,
+          isTest: log?.sets?.[si]?.isTest,
         }
       }
     })
@@ -249,6 +253,22 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     })
   }, [dayKey, onLogsChange])
 
+  // Tiempo / distancia de una tirada de carrera — mismo patrón que RIR y
+  // velocidad: se guarda al momento, sin esperar a marcar la serie como hecha.
+  const setRunData = useCallback((ri: number, si: number, patch: { timeSec?: number; distanceM?: number; isTest?: boolean }) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...(prev[ri]?.[si] ?? { weight: '', reps: '1', done: false }), ...patch } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '1' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...(currentLogs[key] || { done: false }),
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...patch } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
   // Dolor EVA 0-10 percibido durante un ejercicio "en readaptación" — a nivel
   // de ejercicio, no de serie: lo que importa aquí es si la carga de HOY se
   // mantuvo en la ventana terapéutica, no el detalle serie a serie.
@@ -385,17 +405,28 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir, velocity: prev[ri]?.[si]?.velocity } } }
+      // En carrera por tiradas, la distancia de la tirada es la prescrita; en
+      // un test de tiempo fijo la escribe el cliente (setRunData).
+      const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
+      const prevSet = prev[ri]?.[si]
+      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
       const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, { weight: string; reps: string; rir?: number; velocity?: number }> = {}
+      const setsData: Record<number, LogSet> = {}
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
+        const st = updated[ri][i]
+        setsData[i] = {
+          weight: st?.weight || '', reps: st?.reps || '',
+          ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
+          ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
+          ...(st?.isTest ? { isTest: true } : {}),
+        }
       }
       onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
 
-      // Iniciar timer de descanso solo si no tiene hideRest
-      if (newDone && !ex.hideRest) {
+      // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
+      // recuperación es andando una distancia, no una cuenta atrás)
+      if (newDone && !ex.hideRest && ex.kind !== 'run') {
         const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
         setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
       }
@@ -602,7 +633,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
           const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-          const hideRest = ex.hideRest || false
+          const hideRest = ex.hideRest || ex.kind === 'run'
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
 
@@ -910,6 +941,16 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
+              {ex.kind === 'run' && ex.run ? (
+                <RunSets
+                  run={ex.run}
+                  totalSets={totalExSets}
+                  sets={exSets}
+                  prevSets={prevSets}
+                  onSetData={(si, patch) => setRunData(ri, si, patch)}
+                  onToggle={si => toggleSet(ri, si, '', '1')}
+                />
+              ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
                 <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
@@ -953,6 +994,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Agregar Serie
               </button>
+              </>)}
             </div>
           )
         })}
