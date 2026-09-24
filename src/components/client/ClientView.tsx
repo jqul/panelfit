@@ -10,6 +10,7 @@ import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
+import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
@@ -154,9 +155,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (planRow?.plan?.P) {
       const p = planRow.plan.P as TrainingPlan
       if (p.fechaInicio && p.weeks?.length) {
-        const inicio = new Date(p.fechaInicio + 'T00:00:00')
-        const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-        const semActual = Math.min(Math.floor(dias / 7), p.weeks.length - 1)
+        const semActual = weekIdxFromStart(p.fechaInicio, p.weeks.length)
         p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
       setPlan(p)

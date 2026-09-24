@@ -20,12 +20,29 @@ function isWeekDone(logs: TrainingLogs, weekIdx: number, week: WeekPlan): boolea
  * (esto es justo lo que le pasaba al plan de powerlifting de 13 semanas de
  * Javi — isCurrent se quedaba clavado en la semana 1 en la base de datos, un
  * flag estático que nadie recalculaba).
+ *
+ * Las semanas van de lunes a domingo: la semana 1 es la que contiene la fecha
+ * de inicio. Contar 7 días desde la fecha de inicio partía la semana del
+ * cliente a mitad (plan iniciado en miércoles → cambiaba de semana cada
+ * miércoles y los días ya entrenados el lunes y martes se quedaban en la
+ * semana anterior).
  */
-function getDateBasedWeekIdx(plan: TrainingPlan): number | null {
+function mondayOf(d: Date): Date {
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  m.setDate(m.getDate() - (m.getDay() === 0 ? 6 : m.getDay() - 1))
+  return m
+}
+
+export function weekIdxFromStart(fechaInicio: string, numWeeks: number, now: Date = new Date()): number {
+  const [y, mo, d] = fechaInicio.split('-').map(Number)
+  const start = mondayOf(new Date(y, mo - 1, d))
+  const semanas = Math.round((mondayOf(now).getTime() - start.getTime()) / (7 * 86400000))
+  return Math.max(0, Math.min(semanas, numWeeks - 1))
+}
+
+function getDateBasedWeekIdx(plan: TrainingPlan, now: Date): number | null {
   if (!plan.fechaInicio || !plan.weeks?.length) return null
-  const inicio = new Date(plan.fechaInicio + 'T00:00:00')
-  const dias = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 86400000))
-  return Math.min(Math.floor(dias / 7), plan.weeks.length - 1)
+  return weekIdxFromStart(plan.fechaInicio, plan.weeks.length, now)
 }
 
 /**
@@ -37,9 +54,9 @@ function getDateBasedWeekIdx(plan: TrainingPlan): number | null {
  * cuando esa semana está completa del todo, en vez de quedarse fija ahí para
  * siempre.
  */
-export function getEffectiveWeekIdx(plan: TrainingPlan, logs: TrainingLogs): number {
+export function getEffectiveWeekIdx(plan: TrainingPlan, logs: TrainingLogs, now: Date = new Date()): number {
   if (!plan.weeks?.length) return 0
-  const dateIdx = getDateBasedWeekIdx(plan)
+  const dateIdx = getDateBasedWeekIdx(plan, now)
   if (dateIdx !== null) return dateIdx
 
   let idx = plan.weeks.findIndex(w => w.isCurrent)

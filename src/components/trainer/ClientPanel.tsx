@@ -26,7 +26,7 @@ import { PlanTab } from './client-panel/PlanTab'
 import { ValoracionTab } from './client-panel/ValoracionTab'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
-import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
 
@@ -222,9 +222,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
   const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
     if (!plan) return
-    const inicio = new Date(fechaInicio + 'T00:00:00')
-    const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-    const semanaActual = Math.min(Math.floor(dias / 7), template.weeks.length - 1)
+    const semanaActual = weekIdxFromStart(fechaInicio, template.weeks.length)
     const weeks = JSON.parse(JSON.stringify(template.weeks))
     weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
     const newPlan: TrainingPlan = { ...plan, type: template.type, weeks, fechaInicio, autoCheckin }
