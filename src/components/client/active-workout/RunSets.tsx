@@ -55,8 +55,9 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
         const prev = prevSets[si]
         const isRunning = running?.si === si
         const liveSec = isRunning ? Math.max(0, Math.round((now - running!.startedAt) / 1000)) : undefined
-        const pace = !isTest ? paceSecPerKm(s.timeSec || 0, run.distanceM) : paceSecPerKm(run.durationSec || 0, s.distanceM || 0)
-        const prevPace = prev ? (isTest ? paceSecPerKm(run.durationSec || 0, prev.distanceM || 0) : paceSecPerKm(prev.timeSec || 0, run.distanceM)) : null
+        // El ritmo usa la distancia REGISTRADA (si difiere de la prescrita, ej. cardio libre) y solo si no, la de la tirada
+        const pace = !isTest ? paceSecPerKm(s.timeSec || 0, s.distanceM || run.distanceM) : paceSecPerKm(run.durationSec || 0, s.distanceM || 0)
+        const prevPace = prev ? (isTest ? paceSecPerKm(run.durationSec || 0, prev.distanceM || 0) : paceSecPerKm(prev.timeSec || 0, prev.distanceM || run.distanceM)) : null
 
         return (
           <div key={si} className={`px-3 py-2.5 transition-colors ${s.done ? 'bg-ok/8' : ''}`}>
