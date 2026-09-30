@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
-import { Check, X, Users, LogOut, RefreshCw, Shield, Mail, Clock, Zap } from 'lucide-react'
+import { Check, X, Users, LogOut, RefreshCw, Shield, Mail, Clock, Zap, FileText } from 'lucide-react'
+import { TrainerTier, TIER_LABEL } from '../../lib/tier'
+import { ProposalModal } from './ProposalModal'
 
 interface Entrenador {
   uid: string
@@ -10,11 +12,16 @@ interface Entrenador {
   approved: boolean
   rol: string
   createdAt?: string
-  profile?: { planName?: 'free' | 'starter' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number }
+  profile?: { planName?: 'free' | 'starter' | 'trial' | 'pro' | 'studio'; clientLimit?: number; trialEndsAt?: number; tier?: TrainerTier }
   clientsCount?: number
 }
 
 interface Props { onLogout: () => void }
+
+const TIERS: { tier: TrainerTier; active: string; inactive: string }[] = [
+  { tier: 'basico', active: 'bg-ink text-white border-ink', inactive: 'border-border text-muted hover:border-ink hover:text-ink' },
+  { tier: 'alto_rendimiento', active: 'bg-accent text-white border-accent', inactive: 'border-accent/30 text-accent hover:bg-accent hover:text-white' },
+]
 
 const PLANES = [
   { plan: 'free'    as const, limit: 3,    days: 0,  label: 'Free',    title: 'Máximo 3 clientes',              active: 'bg-gray-200 text-gray-700 border-gray-300',         inactive: 'border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300' },
@@ -31,6 +38,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   // Plan seleccionado por entrenador pendiente antes de aprobar
   const [selectedPlan, setSelectedPlan] = useState<Record<string, 'free' | 'starter' | 'trial' | 'pro' | 'studio'>>({})
+  const [showProposal, setShowProposal] = useState(false)
 
   useEffect(() => { loadEntrenadores() }, [])
 
@@ -94,6 +102,19 @@ export function SuperAdminPanel({ onLogout }: Props) {
     toast('Entrenador eliminado', 'ok')
   }
 
+  const saveTier = async (e: Entrenador, tier: TrainerTier) => {
+    setUpdatingId(e.uid)
+    const profile = { ...(e.profile || {}), tier, updatedAt: Date.now() }
+    const { error } = await supabase.from('entrenadores').update({ profile }).eq('uid', e.uid)
+    if (error) {
+      toast('No se pudo guardar el nivel', 'warn')
+    } else {
+      setEntrenadores(prev => prev.map(x => x.uid === e.uid ? { ...x, profile } : x))
+      toast(`Nivel actualizado a ${TIER_LABEL[tier]} ✓`, 'ok')
+    }
+    setUpdatingId(null)
+  }
+
   const savePlan = async (
     e: Entrenador,
     planName: 'free' | 'starter' | 'trial' | 'pro' | 'studio',
@@ -132,6 +153,10 @@ export function SuperAdminPanel({ onLogout }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={() => setShowProposal(true)}
+              className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
+              <FileText className="w-3.5 h-3.5" /> Generar propuesta
+            </button>
             <button onClick={loadEntrenadores} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
@@ -284,12 +309,30 @@ export function SuperAdminPanel({ onLogout }: Props) {
                       )}
                     </div>
                   )}
+                  {!isPending && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] text-muted uppercase tracking-wider font-semibold mr-1">Nivel:</span>
+                      {TIERS.map(({ tier, active, inactive }) => {
+                        const isActive = (e.profile?.tier || 'alto_rendimiento') === tier
+                        return (
+                          <button
+                            key={tier}
+                            onClick={() => saveTier(e, tier)}
+                            disabled={updatingId === e.uid || isActive}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all disabled:cursor-default ${isActive ? active : inactive}`}>
+                            {isActive ? '✓ ' : ''}{TIER_LABEL[tier]}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
         )}
       </main>
+      {showProposal && <ProposalModal onClose={() => setShowProposal(false)} />}
     </div>
   )
 }

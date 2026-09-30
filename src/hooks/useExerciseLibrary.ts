@@ -2,9 +2,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
+import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
+import { DEMO_TRAINER_ID } from '../lib/demo-data'
+import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
+const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
+// Versión de la biblioteca de serie. Subir este número cuando se añadan
+// ejercicios nuevos a DEFAULT_EXERCISE_LIBRARY para que las cuentas que ya
+// fueron sembradas reciban solo los que les faltan (sin duplicar).
+const DEFAULT_LIBRARY_VERSION = 5
+const LS_DEFAULT_TOPUP = (uid: string) => `pf_library_default_topup_${uid}`
 
 export type { Especialidad }
 
@@ -37,11 +46,11 @@ function dbToLocal(row: DBExercise): LibraryExercise {
     name: row.name,
     description: row.description,
     category: row.category,
-    especialidades: (row.especialidades || []) as Especialidad[],
+    especialidades: row.especialidades || [],
     videos: row.videos || [],
     tags: row.tags || [],
     createdAt: row.created_at,
-  } as LibraryExercise & { tags: string[] }
+  }
 }
 
 function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'use_count' | 'video_use_count' | 'deleted_at'> {
@@ -51,12 +60,34 @@ function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'us
     name: ex.name,
     description: ex.description || '',
     category: ex.category || '',
-    especialidades: (ex.especialidades || []) as string[],
+    especialidades: ex.especialidades || [],
     videos: ex.videos || [],
-    tags: (ex as any).tags || [],
+    tags: ex.tags || [],
     created_at: ex.createdAt || Date.now(),
     updated_at: Date.now(),
   }
+}
+
+// PostgREST trunca cualquier select en silencio (sin error) al tope de filas
+// configurado a nivel de proyecto en Supabase — 1000 por defecto — sin
+// importar el .limit() que se pida. Esta paginación con .range() evita
+// depender de ese tope, tanto para leer la biblioteca completa como para
+// comprobar qué ejercicios de serie ya existen antes de un top-up.
+async function fetchAllPages<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+): Promise<{ rows: T[]; error: unknown }> {
+  const PAGE = 1000
+  let rows: T[] = []
+  let page = 0
+  while (true) {
+    const { data, error } = await buildQuery(page * PAGE, page * PAGE + PAGE - 1)
+    if (error) return { rows, error }
+    if (!data || data.length === 0) break
+    rows = rows.concat(data)
+    if (data.length < PAGE) break // última página
+    page++
+  }
+  return { rows, error: null }
 }
 
 export function useExerciseLibrary(trainerId: string) {
@@ -73,6 +104,24 @@ export function useExerciseLibrary(trainerId: string) {
   const loadLibrary = async () => {
     setLoading(true)
 
+    // Modo demo: biblioteca de serie directamente en memoria, sin tocar
+    // Supabase (el trainer_id falso no es un UUID real).
+    if (trainerId === DEMO_TRAINER_ID) {
+      const demo: LibraryExercise[] = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
+        id: `ex_demo_${i}`, trainerId, name: e.name, description: '', category: e.category,
+        especialidades: [], videos: [], tags: [], createdAt: Date.now(),
+      }))
+      setExercises(demo)
+      setLoading(false)
+      // Las descripciones se cargan aparte (no van en el bundle) y se
+      // rellenan en cuanto llegan, sin bloquear el primer render de la lista.
+      loadExerciseDescriptions().then(descriptions => {
+        if (!Object.keys(descriptions).length) return
+        setExercises(prev => prev.map(ex => descriptions[ex.name] ? { ...ex, description: descriptions[ex.name] } : ex))
+      })
+      return
+    }
+
     // 1. Cargar caché local inmediatamente (UX instantánea)
     const cached = localStorage.getItem(LS_KEY(trainerId))
     if (cached) {
@@ -86,26 +135,91 @@ export function useExerciseLibrary(trainerId: string) {
     }
 
     // 3. Cargar desde Supabase (fuente de verdad)
-    await syncFromSupabase()
+    const hadData = await syncFromSupabase()
+
+    // 4. Sin ningún ejercicio real en Supabase (ni propio ni migrado) -> sembrar
+    //    la biblioteca de serie, para que todas las cuentas arranquen con algo.
+    //    Nota: no miramos la caché local — una caché vacía ("[]") de una sesión
+    //    anterior no debe bloquear esto, lo único que importa es lo que hay en BD.
+    //    (Solo para cuentas reales — el modo demo antiguo usa un id falso, no UUID.)
+    const isRealUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trainerId)
+    const alreadySeeded = localStorage.getItem(LS_DEFAULT_SEEDED(trainerId))
+    if (isRealUuid && !hadData && !alreadySeeded) {
+      // Marcar el flag ANTES de insertar para que un segundo montaje casi
+      // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
+      localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
+      localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+      await seedDefaultLibrary(DEFAULT_EXERCISE_LIBRARY)
+      await syncFromSupabase()
+    } else if (isRealUuid && hadData) {
+      // 5. La cuenta ya tenía ejercicios (sembrados antes, o los suyos propios) ->
+      //    añadir solo los de serie que le falten, sin duplicar. Se comprueba
+      //    `hadData` (verdad de Supabase), NO el flag `alreadySeeded` de
+      //    localStorage — ese flag es por navegador/dispositivo, así que un
+      //    entrenador que abre PanelFit desde un móvil nuevo o tras borrar datos
+      //    del navegador nunca lo tendría puesto y se quedaría sin el top-up
+      //    para siempre aunque su cuenta sí necesite los ejercicios nuevos.
+      const topupVersion = Number(localStorage.getItem(LS_DEFAULT_TOPUP(trainerId)) || '1')
+      if (topupVersion < DEFAULT_LIBRARY_VERSION) {
+        // Sin paginar, esta consulta se quedaba truncada a las primeras ~1000
+        // filas (tope de PostgREST) en cuentas que ya superaban ese número —
+        // "existingNames" salía incompleto, así que exercises que YA existían
+        // (pero caían después de la fila 1000) se creían "missing" y se
+        // volvían a sembrar, duplicándolos.
+        const { rows: existing } = await fetchAllPages<{ name: string }>((from, to) =>
+          supabase
+            .from('exercise_library')
+            .select('name')
+            .eq('trainer_id', trainerId)
+            .range(from, to)
+        )
+        const existingNames = new Set(existing.map(r => r.name.toLowerCase()))
+        const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
+        localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+        if (missing.length) {
+          await seedDefaultLibrary(missing)
+          await syncFromSupabase()
+        }
+      }
+    }
+
     setLoading(false)
+  }
+
+  const seedDefaultLibrary = async (list: DefaultExercise[]) => {
+    // Recurso aparte (no va en el bundle) — si falla la carga, se siembra
+    // igualmente sin descripción, no bloquea el alta del entrenador.
+    const descriptions = await loadExerciseDescriptions()
+    const rows = list.map((e, i) => ({
+      id: `ex_default_${Date.now()}_${i}`, trainer_id: trainerId, name: e.name, description: descriptions[e.name] || '', category: e.category,
+      especialidades: [], videos: [], tags: [], use_count: 0, video_use_count: 0, created_at: Date.now(), updated_at: Date.now(),
+    }))
+    const { error } = await supabase.from('exercise_library').insert(rows)
+    if (error) console.error('[PanelFit] Error al sembrar biblioteca por defecto:', error)
   }
 
   const syncFromSupabase = async () => {
     setSyncing(true)
-    const { data, error } = await supabase
-      .from('exercise_library')
-      .select('*')
-      .eq('trainer_id', trainerId)
-      .is('deleted_at', null)
-      .order('name')
+    const { rows, error } = await fetchAllPages<DBExercise>((from, to) =>
+      supabase
+        .from('exercise_library')
+        .select('*')
+        .eq('trainer_id', trainerId)
+        .is('deleted_at', null)
+        .order('name')
+        .range(from, to)
+    )
 
-    if (!error && data) {
-      const local = data.map(dbToLocal)
+    if (!error) {
+      console.log(`[PanelFit] syncFromSupabase: ${rows.length} ejercicios recibidos`)
+      const local = rows.map(dbToLocal)
       setExercises(local)
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(local))
+    } else {
+      console.error('[PanelFit] syncFromSupabase error:', error)
     }
     setSyncing(false)
-    return !error
+    return rows.length > 0
   }
 
   // ── Migración one-time desde localStorage ──────────
@@ -143,10 +257,10 @@ export function useExerciseLibrary(trainerId: string) {
     description = '',
     category = '',
     videos: LibraryVideo[] = [],
-    especialidades: Especialidad[] = [],
+    especialidades: string[] = [],
     tags: string[] = []
   ) => {
-    const ex: LibraryExercise & { tags: string[] } = {
+    const ex: LibraryExercise = {
       id: `ex_${Date.now()}`,
       trainerId,
       name: name.trim(),
@@ -160,6 +274,7 @@ export function useExerciseLibrary(trainerId: string) {
 
     // Optimistic update
     const updated = [...exercises, ex].sort((a, b) => a.name.localeCompare(b.name))
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return ex }
     saveLocal(updated)
 
     // Persistir en Supabase
@@ -178,6 +293,7 @@ export function useExerciseLibrary(trainerId: string) {
 
   const updateExercise = useCallback(async (id: string, updates: Partial<LibraryExercise>) => {
     const updated = exercises.map(e => e.id === id ? { ...e, ...updates } : e)
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
     const ex = updated.find(e => e.id === id)
@@ -194,6 +310,7 @@ export function useExerciseLibrary(trainerId: string) {
   const deleteExercise = useCallback(async (id: string) => {
     // Optimistic update
     const updated = exercises.filter(e => e.id !== id)
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
     // Soft delete en Supabase
@@ -213,6 +330,7 @@ export function useExerciseLibrary(trainerId: string) {
     clientId?: string,
     especialidad?: string
   ) => {
+    if (trainerId === DEMO_TRAINER_ID) return
     // Fire and forget — no bloquea la UI
     supabase.from('exercise_usage_events').insert({
       id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -229,9 +347,12 @@ export function useExerciseLibrary(trainerId: string) {
 
     // Incrementar contador en el ejercicio
     if (eventType === 'added_to_plan') {
-      supabase.from('exercise_library')
-        .update({ use_count: supabase.rpc('increment' as any, { x: 1 }) as any })
-        .eq('id', exerciseId)
+      supabase.from('exercise_library').select('use_count').eq('id', exerciseId).maybeSingle()
+        .then(({ data }) => {
+          supabase.from('exercise_library')
+            .update({ use_count: (data?.use_count || 0) + 1 })
+            .eq('id', exerciseId)
+        })
     }
   }, [trainerId])
 

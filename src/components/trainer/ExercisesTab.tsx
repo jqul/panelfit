@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Plus, Trash2, Edit2, X, Video, Search, Settings2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star, Dumbbell } from 'lucide-react'
 import { LibraryExercise, LibraryVideo } from '../../types'
-import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
+import { ESPECIALIDADES } from '../../lib/especialidades'
+import { MuscleDiagram } from './MuscleDiagram'
 
 // ── Persistencia ───────────────────────────────────────────
 const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
 const CATS_KEY      = (uid: string) => `pf_cats_${uid}`
 const ESPS_KEY      = (uid: string) => `pf_esps_${uid}`
+const FAV_KEY       = (uid: string) => `pf_fav_${uid}`
 
-const DEFAULT_CATS = ['Piernas','Pecho','Espalda','Hombros','Bíceps','Tríceps','Core','Cardio','General']
+const DEFAULT_CATS = ['Pecho','Espalda','Hombros','Bíceps','Tríceps','Antebrazo','Piernas','Glúteos','Core','Cardio','Funcional/Olímpico','General']
 
 export interface CustomTag  { id: string; label: string; emoji: string; colorIdx: number }
 export interface CustomEsp  { id: string; label: string; emoji: string }
@@ -175,7 +177,6 @@ function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onC
             {tags.length > 0 && (
               <div className="space-y-2">
                 {tags.map(tag => {
-                  const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
                   return (
                     <div key={tag.id} className="flex items-center gap-2">
                       <input value={tag.emoji} onChange={e=>editTag(tag.id,{emoji:e.target.value})}
@@ -253,7 +254,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 
   const addVideo = () => {
     if (!newVideoUrl.trim()) return
-    const nv: LibraryVideo = { url:newVideoUrl.trim(), label:newVideoLabel.trim()||undefined, especialidades:newVideoEsps as any }
+    const nv: LibraryVideo = { url:newVideoUrl.trim(), label:newVideoLabel.trim()||undefined, especialidades:newVideoEsps }
     setForm(f => ({ ...f, videos:[...f.videos, nv] }))
     setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
   }
@@ -263,6 +264,12 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">{title}</h3>
         <button onClick={onCancel}><X className="w-4 h-4 text-muted"/></button>
+      </div>
+
+      <div className="flex items-center justify-center bg-bg border border-border rounded-2xl py-3 min-h-[90px]">
+        {form.name.trim() || form.category
+          ? <MuscleDiagram category={form.category} name={form.name} size={72} />
+          : <p className="text-xs text-muted">Escribe un nombre o elige grupo muscular para ver el pictograma</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -291,7 +298,10 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 
       {/* Especialidades (sistema + custom) */}
       <div>
-        <label className="block text-xs font-semibold text-muted mb-2">Especialidades</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-semibold text-muted">Especialidades del ejercicio</label>
+          <span className="text-[10px] text-muted">Añade más en ⚙️ Configurar</span>
+        </div>
         <div className="flex flex-wrap gap-2">
           {allEsps.map(e => (
             <button key={e.id} type="button" onClick={()=>toggle('especialidades',e.id)}
@@ -338,13 +348,13 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 <div className="flex flex-wrap gap-1">
                   <span className="text-[9px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
                   {allEsps.map(e => {
-                    const active = (v.especialidades||[]).includes(e.id as any)
+                    const active = (v.especialidades||[]).includes(e.id)
                     return (
                       <button key={e.id} type="button"
                         onClick={()=>{
                           const vs=[...form.videos]
-                          const esps=(vs[i].especialidades||[]) as string[]
-                          vs[i]={...vs[i],especialidades:(active?esps.filter(x=>x!==e.id):[...esps,e.id]) as any}
+                          const esps=vs[i].especialidades||[]
+                          vs[i]={...vs[i],especialidades:active?esps.filter(x=>x!==e.id):[...esps,e.id]}
                           setForm(f=>({...f,videos:vs}))
                         }}
                         className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
@@ -389,30 +399,30 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
               }}/>
           </label>
         )}
-        {/* Especialidades para el vídeo subido localmente */}
-        {videoMode==='file' && (
-          <div className="flex flex-wrap gap-1.5">
-            {allEsps.map(e => {
-              const active = uploadVideoEsps.includes(e.id)
-              return (
-                <button key={e.id} type="button" onClick={()=>setUploadVideoEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
-                  {e.emoji} {e.label}
-                </button>
-              )
-            })}
-          </div>
+        {/* Opciones extra — solo cuando hay URL/archivo */}
+        {newVideoUrl.trim() && (
+          <>
+            <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
+              placeholder="Etiqueta del vídeo (opcional)" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
+            <div>
+              <p className="text-[9px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {allEsps.map(e => {
+                  const esps = videoMode === 'file' ? uploadVideoEsps : newVideoEsps
+                  const setEsps = videoMode === 'file' ? setUploadVideoEsps : setNewVideoEsps
+                  const active = esps.includes(e.id)
+                  return (
+                    <button key={e.id} type="button" onClick={()=>setEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
+                      {e.emoji} {e.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[9px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
+            </div>
+          </>
         )}
-        <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
-          placeholder="Etiqueta del vídeo" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
-        <div className="flex flex-wrap gap-1.5">
-          {allEsps.map(e => (
-            <button key={e.id} type="button" onClick={()=>setNewVideoEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${newVideoEsps.includes(e.id)?'bg-accent text-white border-accent':'border-border text-muted'}`}>
-              {e.emoji} {e.label}
-            </button>
-          ))}
-        </div>
         <button onClick={addVideo} disabled={!newVideoUrl.trim()||uploading}
           className="w-full py-2 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
           + Añadir vídeo
@@ -444,6 +454,14 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [filterEsp, setFilterEsp]   = useState('')
   const [filterTag, setFilterTag]   = useState('')
   const [filterVideos, setFilterVideos] = useState<''|'con_esp'|'sin_esp'|'sin_video'>('')
+  const [favs, setFavs] = useState<Set<string>>(() => new Set(load(FAV_KEY(trainerId), [] as string[])))
+
+  const toggleFav = (id: string) => {
+    const next = new Set(favs)
+    next.has(id) ? next.delete(id) : next.add(id)
+    setFavs(next)
+    save(FAV_KEY(trainerId), Array.from(next))
+  }
   const [editId, setEditId]         = useState<string|null>(null)
   const [showNew, setShowNew]       = useState(false)
   const [showConfig, setShowConfig] = useState(false)
@@ -451,27 +469,46 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [, forceUpdate] = useState(0)
   const refresh = () => forceUpdate(n=>n+1)
 
-  const cats     = load(CATS_KEY(trainerId), DEFAULT_CATS)
+  const storedCats = load(CATS_KEY(trainerId), DEFAULT_CATS)
+  // Unimos las categorías guardadas con las que de verdad tienen ejercicios
+  // (p.ej. las de la biblioteca de serie, que usan nombres más detallados
+  // como "Hombro" o "Pierna — Cuádriceps") para que el filtro no las oculte.
+  const usedCats = Array.from(new Set(exercises.map(e => e.category).filter(Boolean)))
+  const cats     = Array.from(new Set([...storedCats, ...usedCats]))
   const esps     = load<{id:string;label:string;emoji:string}[]>(ESPS_KEY(trainerId), [])
   const tags     = load<CustomTag[]>(TAGS_KEY(trainerId), [])
   const allEsps  = [...ESPECIALIDADES.map(e=>({id:e.value,label:e.label,emoji:e.emoji})), ...esps]
 
-  const filtered = exercises.filter(ex => {
+  const filtered = useMemo(() => exercises.filter(ex => {
     if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false
     if (filterCat && ex.category !== filterCat) return false
-    if (filterEsp && !(ex.especialidades||[]).includes(filterEsp as any)) return false
-    if (filterTag && !((ex as any).tags||[]).includes(filterTag)) return false
+    if (filterEsp && !(ex.especialidades||[]).includes(filterEsp)) return false
+    if (filterTag && !(ex.tags||[]).includes(filterTag)) return false
     if (filterVideos === 'con_esp' && !(ex.videos||[]).some(v => v.especialidades?.length)) return false
     if (filterVideos === 'sin_esp' && !(ex.videos||[]).some(v => !v.especialidades?.length)) return false
     if (filterVideos === 'sin_video' && (ex.videos||[]).length > 0) return false
     return true
-  })
+  }), [exercises, search, filterCat, filterEsp, filterTag, filterVideos])
+
+  // Con una biblioteca de 1500+ ejercicios, pintar la lista sin filtrar de
+  // golpe bloquea el hilo principal varios segundos (cada fila trae su
+  // pictograma + insignias) — un móvil de gama media lo nota mucho más que
+  // este entorno de desarrollo. Se muestran de N en N con un botón "Mostrar
+  // más", y el contador vuelve a 60 en cuanto cambia cualquier filtro.
+  const PAGE_SIZE = 60
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, filterCat, filterEsp, filterTag, filterVideos])
+  const sortedFiltered = useMemo(
+    () => [...filtered].sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0)),
+    [filtered, favs]
+  )
+  const visible = sortedFiltered.slice(0, visibleCount)
 
   const startEdit = (ex: LibraryExercise) => {
     setEditInitial({
       name:ex.name, description:ex.description||'', category:ex.category||'',
-      especialidades:(ex.especialidades||[]) as string[],
-      videos:ex.videos||[], tags:(ex as any).tags||[],
+      especialidades:ex.especialidades||[],
+      videos:ex.videos||[], tags:ex.tags||[],
     })
     setEditId(ex.id); setShowNew(false)
   }
@@ -530,7 +567,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
           </select>
         )}
         {/* Filtro rápido vídeos */}
-        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as any)}
+        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as ''|'con_esp'|'sin_esp'|'sin_video')}
           className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
           <option value="">Todos los vídeos</option>
           <option value="con_esp">🎯 Con vídeos esp.</option>
@@ -550,22 +587,57 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
 
       {/* Lista */}
       {filtered.length===0 ? (
-        <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
-          <p className="font-serif text-lg">Sin ejercicios</p>
-          <p className="text-sm mt-1">Añade ejercicios a tu biblioteca para reutilizarlos en los planes.</p>
-        </div>
+        exercises.length === 0 ? (
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-accent/8 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Dumbbell className="w-8 h-8 text-accent opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu biblioteca de ejercicios</p>
+              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Añade ejercicios una vez y reutilízalos en todos tus planes. Puedes incluir vídeos de referencia para cada uno.</p>
+              <button onClick={() => { setShowNew(true); setEditId(null) }} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                + Añadir primer ejercicio
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>
+              <div className="flex items-start gap-6 flex-wrap">
+                {[
+                  { step: '1', label: 'Crea ejercicios', desc: 'Con vídeo de YouTube o propio', color: 'bg-accent/10 text-accent' },
+                  { step: '2', label: 'Crea workouts', desc: 'Combina ejercicios en rutinas', color: 'bg-ok/10 text-ok' },
+                  { step: '3', label: 'Asígnalos', desc: 'A clientes desde su plan', color: 'bg-ink/10 text-ink' },
+                ].map(({ step, label, desc, color }) => (
+                  <div key={step} className="flex items-start gap-3 flex-1 min-w-36">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{label}</p>
+                      <p className="text-xs text-muted">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
+            <p className="font-serif text-lg">Sin resultados</p>
+            <p className="text-sm mt-1">Prueba con otro término o categoría.</p>
+            <button onClick={() => { setSearch(''); setFilterCat(''); setFilterTag('') }} className="mt-3 text-accent text-sm hover:underline">Limpiar filtros</button>
+          </div>
+        )
       ) : (
         <div className="space-y-2">
-          {filtered.map(ex => {
-            const exTags = ((ex as any).tags||[]) as string[]
+          {visible.map(ex => {
+            const exTags = ex.tags||[]
             return (
               <div key={ex.id}>
                 {editId===ex.id ? (
                   <ExForm key={`edit-${ex.id}`} initial={editInitial} trainerId={trainerId} title={`Editar: ${ex.name}`}
-                    onSave={f=>{onUpdate(ex.id,{...f,tags:f.tags} as any);setEditId(null)}}
+                    onSave={f=>{onUpdate(ex.id,f);setEditId(null)}}
                     onCancel={()=>setEditId(null)}/>
                 ) : (
                   <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
+                    <MuscleDiagram category={ex.category} name={ex.name} size={28} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold">{ex.name}</p>
@@ -606,6 +678,9 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                       )}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={()=>toggleFav(ex.id)} className="p-1.5">
+                        <Star className={`w-3.5 h-3.5 transition-colors ${favs.has(ex.id) ? 'fill-amber-400 text-amber-400' : 'text-border hover:text-amber-300'}`}/>
+                      </button>
                       <button onClick={()=>startEdit(ex)} className="p-1.5 text-muted hover:text-accent"><Edit2 className="w-3.5 h-3.5"/></button>
                       <button onClick={()=>onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5"/></button>
                     </div>
@@ -614,6 +689,12 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
               </div>
             )
           })}
+          {visibleCount < sortedFiltered.length && (
+            <button onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
+              Mostrar más ({sortedFiltered.length - visibleCount} restantes)
+            </button>
+          )}
         </div>
       )}
     </div>

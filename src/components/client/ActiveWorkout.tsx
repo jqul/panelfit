@@ -1,167 +1,89 @@
-import { useState, useEffect, useRef, useCallback, memo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  ChevronDown, Check, Clock, Trophy,
-  Play, Pause, SkipForward, ChevronLeft,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2
+  ChevronDown, Clock, Trophy, ChevronLeft,
+  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
 } from 'lucide-react'
-import { TrainingPlan, TrainingLogs } from '../../types'
+import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
+import { supabase } from '../../lib/supabase'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
+import { sendPush } from '../../lib/usePushNotifications'
+import { compressVideo } from '../../lib/videoCompress'
+import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
+import { RestTimer } from './active-workout/RestTimer'
+import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
+import { TempoWidget } from './active-workout/TempoWidget'
+import { SetRow } from './active-workout/SetRow'
+import { RunSets } from './active-workout/RunSets'
+import { PrAlert } from './active-workout/PrAlert'
+import { DayTestsCard } from './active-workout/DayTestsCard'
+import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
+import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { localDateKey } from '../../lib/dates'
+import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
+import { useTrainerMetricSettings } from '../../lib/progresoSections'
+import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
+import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 
 interface Props {
+  day: DayPlan
+  dayKey: string
   plan: TrainingPlan
-  weekIdx: number
-  dayIdx: number
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
   onFinish: () => void
+  // Sin onBack, el botón de "atrás" abre el mismo modal de terminar que el
+  // resto de salidas (comportamiento por defecto de esta pantalla). Con
+  // onBack, quien la usa decide qué significa "atrás" — minimizar a una
+  // píldora flotante (cliente en Hoy) o cerrar sin más (entrenador en vivo).
+  onBack?: () => void
+  trainerId?: string
+  clientName?: string   // solo para mostrar de quién es la sesión en modo entrenador
+  trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
 }
 
-function getYTId(url: string) {
-  const m = url?.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
-  return m ? m[1] : null
-}
+const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '🤕', '👍']
+const MOLESTIA_EMOJI = '🤕'
 
-function parseSet(sets: string) {
-  const m = sets?.match(/(\d+)[×x](\d+)/)
-  return { numSets: m ? parseInt(m[1]) : 3, numReps: m ? parseInt(m[2]) : 10 }
-}
+export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
+  const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
+  const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
+  const dayIdx = dayKeyMatch ? parseInt(dayKeyMatch[2]) : 0
+  const [reactionEmoji, setReactionEmoji] = useState<string | null>(null)
+  const [reactionComment, setReactionComment] = useState('')
+  const [showReactionComment, setShowReactionComment] = useState(false)
+  // 🤕 "Con molestias" al terminar la sesión — igual que el clasificador del
+  // check-in diario, pero sin ambigüedad: si eliges este emoji ya nos dices
+  // que es una molestia, así que vamos directos a pedir la zona.
+  const [molestiaZona, setMolestiaZona] = useState<string | null>(null)
+  const { addEntry: addPainEntry } = useClientPain(plan.clientId, trainerId)
 
-function RestTimer({ seconds, onDone, onSkip }: { seconds: number; onDone: () => void; onSkip: () => void }) {
-  const [remaining, setRemaining] = useState(seconds)
-  const [paused, setPaused] = useState(false)
+  // "Pesos sugeridos" en vivo (objetivo de hoy + sugerencia VBT) — el
+  // entrenador que prefiere ajustar el peso él mismo en vez de que el
+  // cliente vea un algoritmo durante la serie puede desactivarlo en
+  // Ajustes > Métricas activas, mismo interruptor que ya usa el análisis
+  // de Progreso (lib/progresoSections.ts) — activo por defecto.
+  const metricasActivas = useTrainerMetricSettings(trainerId)
+  const showPesosSugeridos = !metricasActivas || metricasActivas.has('pesos_sugeridos')
 
-  useEffect(() => {
-    if (paused || remaining <= 0) { if (remaining <= 0) onDone(); return }
-    const t = setInterval(() => setRemaining(r => r - 1), 1000)
-    return () => clearInterval(t)
-  }, [remaining, paused])
-
-  const pct = ((seconds - remaining) / seconds) * 100
-  const min = Math.floor(remaining / 60)
-  const sec = remaining % 60
-
-  return (
-    <div className="fixed inset-0 z-50 bg-ink/95 backdrop-blur-sm flex flex-col items-center justify-center gap-8 p-8">
-      <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Descanso</p>
-      <div className="relative w-44 h-44">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
-          <circle cx="50" cy="50" r="44" fill="none" stroke="white" strokeWidth="6"
-            strokeDasharray={`${2 * Math.PI * 44}`}
-            strokeDashoffset={`${2 * Math.PI * 44 * (1 - pct / 100)}`}
-            strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-white font-serif font-bold text-5xl tabular-nums">
-            {min > 0 ? `${min}:${sec.toString().padStart(2, '0')}` : sec}
-          </p>
-        </div>
-      </div>
-      <div className="flex gap-2">
-        {[-30, -15, +15, +30].map(d => (
-          <button key={d} onClick={() => setRemaining(r => Math.max(0, r + d))}
-            className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs font-semibold hover:bg-white/20">
-            {d > 0 ? `+${d}s` : `${d}s`}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-3">
-        <button onClick={() => setPaused(p => !p)}
-          className="flex items-center gap-2 px-6 py-3.5 bg-white/10 text-white rounded-2xl text-sm font-semibold">
-          {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-          {paused ? 'Reanudar' : 'Pausar'}
-        </button>
-        <button onClick={onSkip}
-          className="flex items-center gap-2 px-6 py-3.5 bg-white text-ink rounded-2xl text-sm font-bold">
-          <SkipForward className="w-4 h-4" /> Saltar
-        </button>
-      </div>
-    </div>
+  // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
+  // cliente mete su resultado aquí y va directo a Progreso > Pruebas del
+  // entrenador, sin que haga falta decírselo aparte.
+  const { tests: testCatalog } = useTestCatalog(trainerId)
+  const { resultados: testResultados, addResultado: addTestResultado } = useTestResultados(plan.clientId)
+  const dayTests = (day?.testIds || [])
+    .map(id => testCatalog.find(t => t.id === id))
+    .filter((t): t is NonNullable<typeof t> => !!t)
+  const todayDate = localDateKey()
+  const testResultadosHoy = Object.fromEntries(
+    testResultados.filter(r => r.fecha === todayDate).map(r => [r.test_id, r])
   )
-}
+  const submitTestResult = (testId: string, valor: number) => {
+    if (!trainerId) return
+    addTestResultado(trainerId, testId, valor, todayDate, '')
+  }
 
-interface SetRowProps {
-  setNum: number
-  initWeight: string
-  initReps: string
-  done: boolean
-  prevWeight?: string
-  prevReps?: string
-  isMain: boolean
-  onCommit: (weight: string, reps: string) => void
-  onToggle: (weight: string, reps: string) => void
-  onOpenCalc: (weight: string) => void
-}
-
-const SetRow = memo(({ setNum, initWeight, initReps, done, prevWeight, prevReps, isMain, onCommit, onToggle, onOpenCalc }: SetRowProps) => {
-  const [weight, setWeight] = useState(initWeight)
-  const [reps, setReps] = useState(initReps)
-
-  return (
-    <div className={`grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 items-center px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
-      {/* Nº serie */}
-      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
-        done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-      }`}>{setNum}</div>
-
-      {/* Anterior */}
-      <p className="text-xs text-muted text-center leading-tight">
-        {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
-      </p>
-
-      {/* KG — con botón calculadora */}
-      <div className="relative">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={weight}
-          onChange={e => setWeight(e.target.value)}
-          onBlur={() => onCommit(weight, reps)}
-          placeholder={prevWeight || '0'}
-          className={`w-full text-center text-sm font-semibold py-2 pr-6 rounded-xl border outline-none ${
-            done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-          }`}
-        />
-        {/* Botón calculadora inline */}
-        <button
-          type="button"
-          onClick={() => onOpenCalc(weight)}
-          className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
-          title="Calculadora de discos">
-          <Calculator className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Reps */}
-      <input
-        type="number"
-        inputMode="numeric"
-        value={reps}
-        onChange={e => setReps(e.target.value)}
-        onBlur={() => onCommit(weight, reps)}
-        placeholder={prevReps || '10'}
-        className={`w-full text-center text-sm font-semibold py-2 rounded-xl border outline-none ${
-          done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-        }`}
-      />
-
-      {/* Check */}
-      <button
-        onClick={() => onToggle(weight, reps)}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
-          done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
-        }`}>
-        <Check className="w-4 h-4" />
-      </button>
-    </div>
-  )
-})
-
-export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFinish }: Props) {
-  const day = plan.weeks[weekIdx]?.days[dayIdx]
-  const dayKey = `w${weekIdx}_d${dayIdx}`
-
-  type SetState = { weight: string; reps: string; done: boolean }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; timeSec?: number; distanceM?: number; isTest?: boolean }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -175,6 +97,11 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           weight: log?.sets?.[si]?.weight || '',
           reps: log?.sets?.[si]?.reps || String(numReps),
           done: log?.done || false,
+          rir: log?.sets?.[si]?.rir,
+          velocity: log?.sets?.[si]?.velocity,
+          timeSec: log?.sets?.[si]?.timeSec,
+          distanceM: log?.sets?.[si]?.distanceM,
+          isTest: log?.sets?.[si]?.isTest,
         }
       }
     })
@@ -184,10 +111,87 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const logsRef = useRef(logs)
   useEffect(() => { logsRef.current = logs }, [logs])
 
-  const [restTimer, setRestTimer] = useState<{ secs: number } | null>(null)
+  // Sustitución de ejercicio (ej. las mancuernas están cogidas y hace la
+  // variante con barra) — se guarda en el log de esa sesión, no cambia el
+  // plan prescrito, así que el entrenador ve tanto lo previsto como lo que
+  // realmente se hizo.
+  const [substitutions, setSubstitutions] = useState<Record<number, string>>(() => {
+    const initial: Record<number, string> = {}
+    day?.exercises.forEach((_, ri) => {
+      const name = logs[`ex_${dayKey}_r${ri}`]?.substituteName
+      if (name) initial[ri] = name
+    })
+    return initial
+  })
+  const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
+  const [substituteDraft, setSubstituteDraft] = useState('')
+  // Sustituir por texto libre rompía las estadísticas del entrenador (grupo
+  // muscular, récords...) al no coincidir con ningún nombre conocido — ahora
+  // se elige de la biblioteca real del entrenador; el texto libre queda como
+  // último recurso si de verdad no está en la lista.
+  const { names: libraryNames } = useTrainerExerciseNames(trainerId)
+  const substituteSuggestions = substituteDraft.trim().length >= 2
+    ? libraryNames.filter(e => e.name.toLowerCase().includes(substituteDraft.trim().toLowerCase())).slice(0, 6)
+    : []
+  const libraryMuscleMap = useLibraryMuscleMap(libraryNames)
+
+  // Sustitución inteligente por molestia — a diferencia de "Sustitúyelo" (que
+  // es libre, por disponibilidad de material), aquí el cliente dice qué zona
+  // le duele AHORA MISMO y se le proponen ejercicios del mismo grupo muscular
+  // que no cargan esa zona, para no parar del todo la sesión ni forzar la
+  // molestia.
+  const [molestiaPickerRi, setMolestiaPickerRi] = useState<number | null>(null)
+  const [molestiaPickerZona, setMolestiaPickerZona] = useState<string | null>(null)
+  const openMolestiaPicker = (ri: number, exName: string) => {
+    setEditingSubstitute(null)
+    setMolestiaPickerRi(ri)
+    setMolestiaPickerZona(guessZonaForExercise(exName, libraryMuscleMap))
+  }
+  const closeMolestiaPicker = () => { setMolestiaPickerRi(null); setMolestiaPickerZona(null) }
+  const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
+  const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
+
+  // Vídeo de ejecución que el entrenador pide para un ejercicio concreto
+  // (ex.requiresVideo) — a diferencia del vídeo-feedback asíncrono de abajo,
+  // este se sube y queda adjunto al propio registro (videoEjecucion), visible
+  // de inmediato, sin pasar por un ciclo de petición/respuesta.
+  const uploadExerciseVideo = useCallback(async (ri: number, rawFile: File) => {
+    if (rawFile.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
+    setUploadingVideoRi(ri)
+    const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
+    const ext = file.name.split('.').pop()
+    const path = `${dayKey}/r${ri}_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
+    if (error) { alert('Error al subir vídeo'); setUploadingVideoRi(null); return }
+    const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
+    const key = `ex_${dayKey}_r${ri}`
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], videoEjecucion: data.publicUrl } })
+    setUploadingVideoRi(null)
+  }, [dayKey, onLogsChange])
+
+  const setSubstitute = useCallback((ri: number, name: string) => {
+    const trimmed = name.trim()
+    setSubstitutions(prev => {
+      const updated = { ...prev }
+      if (trimmed) updated[ri] = trimmed; else delete updated[ri]
+      return updated
+    })
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const { substituteName: _drop, ...rest } = currentLogs[key] || { sets: {}, done: false }
+    onLogsChange({
+      ...currentLogs,
+      [key]: { ...rest, ...(trimmed ? { substituteName: trimmed } : {}) },
+    })
+  }, [dayKey, onLogsChange])
+
+  const [restTimer, setRestTimer] = useState<{ secs: number; next: NextSetInfo | null } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
+  const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
+  const [sessionRpe, setSessionRpe] = useState<number | null>(null)
+  const [sessionRpeHalf, setSessionRpeHalf] = useState(false)
   const startTime = useRef(Date.now())
   const setsRef = useRef(sets)
   useEffect(() => { setsRef.current = sets }, [sets])
@@ -206,43 +210,247 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
   const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
     const key = `ex_${dayKey}_r${ri}`
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const currentLogs = logsRef.current
+    const prevRir = currentLogs[key]?.sets?.[si]?.rir
+    const prevVelocity = currentLogs[key]?.sets?.[si]?.velocity
     onLogsChange({
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}), ...(prevVelocity !== undefined ? { velocity: prevVelocity } : {}) } },
         done: currentLogs[key]?.done || false,
         dateDone: today,
       }
     })
   }, [dayKey, onLogsChange])
 
+  const setRir = useCallback((ri: number, si: number, rir: number) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], rir } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...currentLogs[key],
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, rir } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  const setVelocity = useCallback((ri: number, si: number, velocity: number | undefined) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], velocity } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...currentLogs[key],
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...(velocity !== undefined ? { velocity } : {}) } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  // Tiempo / distancia de una tirada de carrera — mismo patrón que RIR y
+  // velocidad: se guarda al momento, sin esperar a marcar la serie como hecha.
+  const setRunData = useCallback((ri: number, si: number, patch: { timeSec?: number; distanceM?: number; isTest?: boolean }) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...(prev[ri]?.[si] ?? { weight: '', reps: '1', done: false }), ...patch } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '1' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...(currentLogs[key] || { done: false }),
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...patch } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  // Dolor EVA 0-10 percibido durante un ejercicio "en readaptación" — a nivel
+  // de ejercicio, no de serie: lo que importa aquí es si la carga de HOY se
+  // mantuvo en la ventana terapéutica, no el detalle serie a serie.
+  const setExerciseEva = useCallback((ri: number, dolorEva: number) => {
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    onLogsChange({ ...currentLogs, [key]: { ...(currentLogs[key] || { sets: {}, done: false }), dolorEva } })
+  }, [dayKey, onLogsChange])
+
+  // Mejor 1RM estimado histórico para un ejercicio, a partir de un snapshot de logs
+  // concreto (no del closure) — así sirve tanto para el render como para la
+  // detección de récord en caliente dentro de toggleSet, con datos siempre frescos.
+  const getBest1RMFromLogs = useCallback((exName: string, logsData: TrainingLogs) => {
+    let best = 0
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logsData[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone) return
+          Object.values(log.sets || {}).forEach(s => {
+            const rm = estimate1RM(parseFloat(s.weight) || 0, parseFloat(s.reps) || 0)
+            if (rm > best) best = rm
+          })
+        })
+      })
+    })
+    return best
+  }, [plan])
+
+  // Historial comparativo instantáneo: últimas sesiones de este ejercicio (por
+  // nombre, en cualquier semana/día del plan, no solo el mismo slot) para
+  // verlas sin salir de la sesión activa — un desplegable en el propio
+  // ejercicio en vez de tener que ir a Progreso. Se excluye la fecha de hoy:
+  // esto es "lo que ya hiciste antes", no lo que estás metiendo ahora mismo.
+  const getExerciseHistory = useCallback((exName: string, limit = 4) => {
+    const today = localDateKey()
+    const entries: { date: string; weight: number; reps: number }[] = []
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logs[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone || log.dateDone === today) return
+          let bestWeight = 0, bestReps = 0
+          Object.values(log.sets || {}).forEach(s => {
+            const w = parseFloat(s.weight) || 0
+            if (w > bestWeight) { bestWeight = w; bestReps = parseInt(s.reps) || 0 }
+          })
+          if (bestWeight > 0) entries.push({ date: log.dateDone, weight: bestWeight, reps: bestReps })
+        })
+      })
+    })
+    return entries.sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)
+  }, [plan, logs])
+
+  // Perfil carga-velocidad de un ejercicio (VBT): recopila las parejas (peso,
+  // velocidad) registradas para ese ejercicio y ajusta la recta que estima el
+  // 1RM por velocidad — mismo patrón que getBest1RMFromLogs. `dateFilter`
+  // permite pedir solo las de hoy (autorregulación dentro de la sesión) o solo
+  // las de antes de hoy (referencia histórica) en vez de todo el historial.
+  const getVelocityProfileFromLogs = useCallback((
+    exName: string, logsData: TrainingLogs, dateFilter?: { only?: string; exclude?: string }
+  ) => {
+    const points: VelocityPoint[] = []
+    plan.weeks.forEach((week, wi) => {
+      week.days.forEach((d, di) => {
+        d.exercises.forEach((planEx, ei) => {
+          if (planEx.name.toLowerCase() !== exName.toLowerCase()) return
+          const log = logsData[`ex_w${wi}_d${di}_r${ei}`]
+          if (!log?.dateDone) return
+          if (dateFilter?.only && log.dateDone !== dateFilter.only) return
+          if (dateFilter?.exclude && log.dateDone === dateFilter.exclude) return
+          Object.values(log.sets || {}).forEach(s => {
+            const w = parseFloat(s.weight) || 0
+            if (w > 0 && s.velocity) points.push({ weight: w, velocity: s.velocity })
+          })
+        })
+      })
+    })
+    return estimateVelocityProfile(points)
+  }, [plan])
+
+  // Qué serie viene después de la que se acaba de marcar — para el HUD de
+  // descanso ("modo tarima"): misma serie siguiente del mismo ejercicio si
+  // queda alguna, si no la primera serie sin hacer del siguiente ejercicio
+  // que tenga alguna pendiente. `prevAll` es el estado de sets ANTERIOR a
+  // este toggle (para los ejercicios que no son `afterRi`, que no cambian
+  // en este update); `updatedExSets` es el estado YA actualizado de `afterRi`.
+  const getNextSetInfo = useCallback((
+    afterRi: number, afterSi: number,
+    updatedExSets: Record<number, { weight: string; reps: string; done: boolean; rir?: number }>,
+    prevAll: Record<number, Record<number, { weight: string; reps: string; done: boolean; rir?: number }>>,
+  ): NextSetInfo | null => {
+    const prevSetsFor = (rowIdx: number): Record<number, { weight?: string; reps?: string; rir?: number }> => {
+      const key = `ex_${dayKey}_r${rowIdx}`
+      const pattern = new RegExp(`^ex_w\\d+_d${dayIdx}_r${rowIdx}$`)
+      const found = Object.entries(logsRef.current).find(([k, l]) => pattern.test(k) && k !== key && (l as any).dateDone)
+      return (found?.[1] as any)?.sets || {}
+    }
+    const buildInfo = (rowIdx: number, setIdx: number, totalForRow: number, existing?: { weight?: string; reps?: string }): NextSetInfo => {
+      const rowEx = day.exercises[rowIdx]
+      const { numReps } = parseSet(rowEx.sets)
+      const prevWk = prevSetsFor(rowIdx)[setIdx]
+      return {
+        exerciseName: rowEx.name,
+        setNum: setIdx + 1,
+        totalSets: totalForRow,
+        weight: existing?.weight || prevWk?.weight || '',
+        reps: existing?.reps || prevWk?.reps || String(numReps),
+        targetLabel: showPesosSugeridos ? getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe) : null,
+      }
+    }
+
+    const { numSets: curNumSets } = parseSet(day.exercises[afterRi].sets)
+    const totalCur = Math.max(curNumSets, Object.keys(updatedExSets).length)
+    if (afterSi + 1 < totalCur) return buildInfo(afterRi, afterSi + 1, totalCur, updatedExSets[afterSi + 1])
+
+    for (let nextRi = afterRi + 1; nextRi < day.exercises.length; nextRi++) {
+      const { numSets: ns } = parseSet(day.exercises[nextRi].sets)
+      const exSetsForRow = prevAll[nextRi] || {}
+      const total = Math.max(ns, Object.keys(exSetsForRow).length)
+      const firstUndone = Array.from({ length: total }, (_, i) => i).find(i => !exSetsForRow[i]?.done)
+      if (firstUndone !== undefined) return buildInfo(nextRi, firstUndone, total, exSetsForRow[firstUndone])
+    }
+    return null
+  }, [day, dayKey, dayIdx, plan, weekIdx, showPesosSugeridos])
+
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
+    const wasDone = setsRef.current[ri]?.[si]?.done
 
     setSets(prev => {
       const newDone = !prev[ri]?.[si]?.done
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone } } }
+      // En carrera por tiradas, la distancia de la tirada es la prescrita; en
+      // un test de tiempo fijo la escribe el cliente (setRunData).
+      const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
+      const prevSet = prev[ri]?.[si]
+      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
       const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
       const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, { weight: string; reps: string }> = {}
+      const setsData: Record<number, LogSet> = {}
       for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '' }
+        const st = updated[ri][i]
+        setsData[i] = {
+          weight: st?.weight || '', reps: st?.reps || '',
+          ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
+          ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
+          ...(st?.isTest ? { isTest: true } : {}),
+        }
       }
-      onLogsChange({ ...logsRef.current, [key]: { sets: setsData, done: allDone, dateDone: today } })
+      onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
+
+      // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
+      // recuperación es andando una distancia, no una cuenta atrás)
+      if (newDone && !ex.hideRest && ex.kind !== 'run') {
+        const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+        setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
+      }
+
       return updated
     })
 
-    // Iniciar timer de descanso solo si no tiene hideRest
-    if (!setsRef.current[ri]?.[si]?.done && !(ex as any).hideRest) {
-      const restSecs = (ex as any).restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-      setRestTimer({ secs: restSecs })
+    // Detección de récord en tiempo real (1RM estimado) — solo al marcar
+    // la serie como hecha, no al desmarcarla.
+    if (!wasDone) {
+      const rm = estimate1RM(parseFloat(weight) || 0, parseInt(reps) || 0)
+      const prevBest = getBest1RMFromLogs(ex.name, logsRef.current)
+      if (rm > 0 && rm > prevBest) {
+        setPrAlert({
+          name: ex.name,
+          oneRM: Math.round(rm * 10) / 10,
+          weight: parseFloat(weight) || 0,
+          reps: parseInt(reps) || 0,
+          deltaKg: prevBest > 0 ? Math.round((rm - prevBest) * 10) / 10 : null,
+        })
+        setTimeout(() => setPrAlert(null), 3800)
+      }
     }
-  }, [day, dayKey, onLogsChange, plan])
+  }, [day, dayKey, onLogsChange, plan, getBest1RMFromLogs, getNextSetInfo])
 
   const addSet = (ri: number) => {
     const { numReps } = parseSet(day.exercises[ri].sets)
@@ -264,19 +472,61 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
     acc + Object.values(exSets).reduce((a, s) => a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
   const totalSetsDone = Object.values(sets).reduce((acc, exSets) => acc + Object.values(exSets).filter(s => s.done).length, 0)
 
+  // Promedio de RIR de la sesión — útil como indicador de fatiga
+  const allRirs = Object.values(sets).flatMap(exSets => Object.values(exSets).filter(s => s.done && s.rir !== undefined).map(s => s.rir as number))
+  const avgRir = allRirs.length ? Math.round((allRirs.reduce((a, b) => a + b, 0) / allRirs.length) * 10) / 10 : null
+
+  // Mismo ejercicio en semanas anteriores = mismo día de la semana (dayIdx) y misma
+  // posición (ri), solo cambia la semana. `.includes('_r{ri}')` hacía falsos positivos:
+  // "_r1" también casaba con "_r10", "_r11"... y con el mismo ri en OTRO día del plan.
+  const samePlaceInPlan = (ri: number) => new RegExp(`^ex_w\\d+_d${dayIdx}_r${ri}$`)
+
   const isNewRecord = (ri: number) => {
     const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
+    const key = `ex_${dayKey}_r${ri}`
+    const pattern = samePlaceInPlan(ri)
+    // Excluye la entrada de la sesión actual: se va escribiendo en vivo en `logs`
+    // a medida que se marcan series, y si no se excluye, el propio peso recién
+    // metido "compite contra sí mismo" e impide que se detecte el récord.
     const allPrevBest = Object.entries(logs)
-      .filter(([k]) => k.includes(`_r${ri}`))
+      .filter(([k]) => pattern.test(k) && k !== key)
       .flatMap(([, log]) => Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight || '0')))
     return currentBest > 0 && currentBest > Math.max(0, ...allPrevBest)
   }
 
+  // Récords batidos en esta sesión — para el resumen de fin de entreno
+  const newRecords = (day?.exercises || [])
+    .map((ex, ri) => ({
+      name: ex.name,
+      best: Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0'))),
+      isRecord: isNewRecord(ri),
+    }))
+    .filter(r => r.isRecord)
+
   const getPrevSets = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
-    const prev = Object.entries(logs).find(([k, l]) => k.includes(`_r${ri}`) && k !== key && l.dateDone)
+    const pattern = samePlaceInPlan(ri)
+    const prev = Object.entries(logs).find(([k, l]) => pattern.test(k) && k !== key && l.dateDone)
     return prev?.[1]?.sets || {}
   }
+
+  // Densidad de la sesión: kg/min en vivo, más el tonelaje frente a la sesión
+  // equivalente de la semana pasada cuando hay con qué compararlo — ver subir
+  // el número set a set (0t → 12.4t) es el mismo refuerzo psicológico que un
+  // contador de tonelaje en vivo en TrainHeroic/Whoop, pero con una
+  // referencia real detrás en vez de una barra que sube porque sí.
+  const prevSessionVolume = (day?.exercises || []).reduce((acc, _, ri) => {
+    const prevSets = getPrevSets(ri)
+    return acc + Object.values(prevSets).reduce((a, s: any) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0)
+  }, 0)
+  const densityRate = elapsedSecs >= 30 && totalVolume > 0 ? Math.round(totalVolume / (elapsedSecs / 60)) : 0
+  const densityPct = prevSessionVolume > 0 ? Math.min(100, Math.round((totalVolume / prevSessionVolume) * 100)) : null
+
+  // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
+  const getBest1RM = (exName: string) => getBest1RMFromLogs(exName, logs)
+
+  // Perfil carga-velocidad histórico para un ejercicio (VBT)
+  const getVelocityProfile = (exName: string) => getVelocityProfileFromLogs(exName, logs)
 
   if (!day) return null
 
@@ -284,21 +534,24 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
   return (
     <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
-      {restTimer && <RestTimer seconds={restTimer.secs} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
+      {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
+      {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+          <button onClick={() => onBack ? onBack() : setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1 font-semibold text-sm truncate">{day.title}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{day.title}</div>
+            {clientName && <p className="text-[10px] text-muted truncate">Sesión de {clientName}</p>}
+          </div>
           <div className="flex items-center gap-1 text-xs text-muted mr-2">
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
           </div>
-          {/* Botón terminar — más visible cuando todo está completo */}
           <button
             onClick={() => setShowFinish(true)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -316,6 +569,9 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
           <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
           <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
+          {avgRir !== null && (
+            <div><p className="text-muted">RIR medio</p><p className="font-bold" style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</p></div>
+          )}
           <div className="flex-1 text-right">
             <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
             <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
@@ -323,16 +579,38 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
             </div>
           </div>
         </div>
+
+        {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
+        {totalVolume > 0 && (
+          <div className="px-4 pb-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
+                <Flame className="w-3 h-3" /> Densidad
+              </p>
+              <p className="text-[10px] text-muted font-bold tabular-nums">
+                {densityRate > 0 && `${densityRate} kg/min · `}
+                {densityPct !== null
+                  ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`
+                  : `${(totalVolume / 1000).toFixed(1)}t movidas`}
+              </p>
+            </div>
+            {densityPct !== null && (
+              <div className="w-full h-2 bg-bg-alt rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${densityPct}%`, background: 'linear-gradient(90deg, #e07b54, #f0a868)' }} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Calentamiento si existe */}
-      {(day as any).warmupExercises?.length > 0 && (
+      {(day.warmupExercises?.length || 0) > 0 && (
         <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
           <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5" /> Calentamiento
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {(day as any).warmupExercises.map((ex: any, i: number) => (
+            {(day.warmupExercises || []).map((ex, i) => (
               <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
                 <p className="font-semibold text-gray-700">{ex.name}</p>
                 {ex.sets && <p className="text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
@@ -341,6 +619,8 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           </div>
         </div>
       )}
+
+      <DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} />
 
       {/* Ejercicios */}
       <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
@@ -352,10 +632,34 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
           const record = isNewRecord(ri)
           const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
-          const restSecs = (ex as any).restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-          const hideRest = (ex as any).hideRest || false
+          const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+          const hideRest = ex.hideRest || ex.kind === 'run'
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
+
+          // Primera serie A LA MISMA CARGA con velocidad registrada hoy — referencia
+          // para el % de pérdida de velocidad (autorregulación VBT). Se compara
+          // contra el mismo peso, no contra la primera serie de la sesión sin más:
+          // en un esquema de rampa (series de aproximación a menor peso) la
+          // velocidad cae al subir de carga, y eso no es fatiga — mezclarlo daría
+          // un % de "pérdida" que en realidad es solo el efecto de mover más peso.
+          const firstVelocityAtWeight = (weight: string) => {
+            const si0 = Object.keys(exSets).map(Number).sort((a, b) => a - b)
+              .find(si => exSets[si]?.done && exSets[si]?.velocity !== undefined && exSets[si]?.weight === weight)
+            return si0 !== undefined ? exSets[si0].velocity : undefined
+          }
+          const velocityProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+          // Autorregulación VBT: 1RM por velocidad de HOY (con lo que ya lleva
+          // hecho en esta sesión) frente al mejor 1RM por velocidad de sesiones
+          // anteriores — si el SNC no responde igual hoy, sugiere ajustar el
+          // peso de las series que quedan en vez de forzar la carga prescrita.
+          const todayVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
+          const historicalVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
+          const vbtSuggestion = showPesosSugeridos ? getVbtSuggestedWeightChange(
+            todayVelocityProfile?.oneRM ?? null,
+            historicalVelocityProfile?.oneRM ?? null,
+            parseFloat(ex.weight) || undefined
+          ) : null
 
           return (
             <div key={ri} className="border-b border-border">
@@ -372,15 +676,257 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className={`font-bold text-base ${allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
+                    <p className={`font-bold text-base ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
                     {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
                   </div>
+                  {substitutions[ri] && (
+                    <p className="text-sm font-bold text-warn flex items-center gap-1 mt-0.5">
+                      <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
+                    </p>
+                  )}
                   {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                  {parsePercentWeight(ex.weight) !== null && (() => {
+                    const best1RM = getBest1RM(ex.name)
+                    const target = resolveWeightFromPercent(ex.weight, best1RM)
+                    return target ? (
+                      <p className="text-[10px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
+                    ) : (
+                      <p className="text-[10px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
+                    )
+                  })()}
+                  {velocityProfile?.oneRM && (
+                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#6366f1' }}>
+                      ⚡ 1RM real de hoy (por velocidad): ~{velocityProfile.oneRM}kg
+                    </p>
+                  )}
+                  {vbtSuggestion && (
+                    <p className="text-[10px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
+                      🎯 {vbtSuggestion.label}
+                    </p>
+                  )}
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />
+                <button onClick={() => setExpandedHistory(expandedHistory === ri ? null : ri)}
+                  className="p-2 -m-2 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label="Ver historial">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHistory === ri ? 'rotate-180' : ''}`} />
+                </button>
               </div>
 
+              {/* Historial comparativo instantáneo — últimas sesiones de este
+                  ejercicio, sin salir de la sesión activa */}
+              {expandedHistory === ri && (() => {
+                const history = getExerciseHistory(ex.name)
+                return (
+                  <div className="mx-4 mb-3 bg-bg-alt/50 border border-border rounded-xl p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+                    {history.length === 0 ? (
+                      <p className="text-xs text-muted">Sin historial previo para este ejercicio</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {history.map((h, i) => {
+                          const older = history[i + 1]
+                          const delta = older ? Math.round((h.weight - older.weight) * 10) / 10 : null
+                          return (
+                            <div key={h.date} className="flex items-center gap-2 text-xs">
+                              <span className="text-muted w-14 flex-shrink-0">
+                                {new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                              </span>
+                              <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                              {delta !== null && delta !== 0 && (
+                                <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>
+                                  {delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+
+              {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
+              <div className="px-4 mb-3">
+                {editingSubstitute === ri ? (
+                  <div className="relative">
+                    <div className="flex items-center gap-2">
+                      <input autoFocus value={substituteDraft}
+                        onChange={e => setSubstituteDraft(e.target.value)}
+                        placeholder="Busca el ejercicio que has hecho..."
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
+                          if (e.key === 'Escape') setEditingSubstitute(null)
+                        }}
+                        className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
+                      <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
+                        title="Usar tal cual lo has escrito, si no está en la lista"
+                        className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
+                      <button onClick={() => setEditingSubstitute(null)}
+                        className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
+                    </div>
+                    {substituteSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-12 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+                        {substituteSuggestions.map(s => (
+                          <button key={s.id} onClick={() => { setSubstitute(ri, s.name); setEditingSubstitute(null) }}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-bg-alt transition-colors">
+                            <span className="flex-1 truncate">{s.name}</span>
+                            {s.category && <span className="text-[10px] text-muted flex-shrink-0">{s.category}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : substitutions[ri] ? (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
+                      <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
+                    </button>
+                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
+                      🤕 Me molesta
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(''); setEditingSubstitute(ri) }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
+                      <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
+                    </button>
+                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
+                      🤕 Me molesta
+                    </button>
+                  </div>
+                )}
+
+                {/* Sustitución inteligente por molestia — el cliente dice qué
+                    zona le duele ahora mismo y se le proponen ejercicios del
+                    mismo grupo muscular que no cargan esa zona, sin tener que
+                    parar la sesión ni forzar la molestia. */}
+                {molestiaPickerRi === ri && (() => {
+                  const alternatives = molestiaPickerZona
+                    ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
+                    : []
+                  return (
+                    <div className="mt-2 border border-warn/30 bg-warn/5 rounded-2xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold">🤕 ¿Dónde te molesta?</p>
+                        <button onClick={closeMolestiaPicker} className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
+                          <button key={z} onClick={() => setMolestiaPickerZona(z)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                              molestiaPickerZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
+                            }`}>{z}</button>
+                        ))}
+                      </div>
+                      {molestiaPickerZona && (
+                        <div className="space-y-1.5 pt-1 border-t border-warn/20">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                            {alternatives.length > 0 ? 'Alternativas seguras para hoy' : 'Sin alternativa clara en tu lista'}
+                          </p>
+                          {alternatives.length > 0 ? alternatives.map(alt => (
+                            <button key={alt.id} onClick={() => {
+                              setSubstitute(ri, alt.name)
+                              addPainEntry(molestiaPickerZona, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+                              closeMolestiaPicker()
+                            }} className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-border rounded-xl text-left text-sm font-semibold hover:border-ok hover:bg-ok/5 transition-colors">
+                              <Repeat className="w-3.5 h-3.5 text-ok flex-shrink-0" /> {alt.name}
+                            </button>
+                          )) : (
+                            <p className="text-xs text-muted">No hay nada en tu lista que trabaje lo mismo sin cargar esa zona — avisamos a tu entrenador.</p>
+                          )}
+                          <button onClick={() => {
+                            addPainEntry(molestiaPickerZona, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
+                            closeMolestiaPicker()
+                          }} className="w-full text-center py-1.5 text-xs font-semibold text-warn hover:underline">
+                            Solo avisar a mi entrenador
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
+                  fisioterapia deportiva moderna no se busca "cero dolor" sino
+                  dolor tolerable (≤3-4/10) que no empeore a las 24h, así que
+                  el color no penaliza cualquier dolor, solo el que se sale de
+                  esa ventana. */}
+              {ex.enReadaptacion && (() => {
+                const exLog = logs[`ex_${dayKey}_r${ri}`]
+                const eva = exLog?.dolorEva
+                const colorFor = (v: number) => v <= 3 ? '#4caf7d' : v <= 6 ? '#e0a854' : '#dc2626'
+                return (
+                  <div className="mx-4 mb-3 border border-warn/20 bg-warn/5 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🩹</span>
+                      <div>
+                        <p className="text-sm font-semibold">Dolor durante el ejercicio (EVA)</p>
+                        <p className="text-[10px] text-muted">Tolerable hasta ~3-4/10 sin empeorar mañana — no hace falta llegar a 0</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-11 gap-1">
+                      {Array.from({ length: 11 }, (_, v) => v).map(v => (
+                        <button key={v} onClick={() => setExerciseEva(ri, v)}
+                          className="aspect-square rounded-md text-[10px] font-bold flex items-center justify-center border-2 transition-all"
+                          style={eva === v
+                            ? { backgroundColor: colorFor(v), borderColor: colorFor(v), color: '#fff' }
+                            : { borderColor: '#e2ddd4', color: '#8a8278' }}>
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Vídeo de ejecución requerido por el entrenador para este ejercicio —
+                  se sube y queda adjunto de inmediato al registro, sin pasar por
+                  el ciclo de petición/respuesta del feedback asíncrono de abajo */}
+              {ex.requiresVideo && (() => {
+                const exLog = logs[`ex_${dayKey}_r${ri}`]
+                const videoUploaded = exLog?.videoEjecucion
+                return (
+                  <div className={`mx-4 mb-3 border-2 rounded-2xl p-4 space-y-2 ${videoUploaded ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📹</span>
+                      <div>
+                        <p className="text-sm font-semibold">{trainerMode ? 'Vídeo de ejecución pedido a este cliente' : 'Tu entrenador pide vídeo de este ejercicio'}</p>
+                        <p className="text-xs text-muted">Graba la ejecución y súbela aquí</p>
+                      </div>
+                    </div>
+                    {videoUploaded ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
+                        <video src={videoUploaded} className="h-16 rounded-lg" controls />
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
+                        {uploadingVideoRi === ri ? 'Procesando...' : '📹 Grabar / subir vídeo'}
+                        {/* Sin capture: con él el móvil abre la cámara directo y no deja
+                            elegir un vídeo ya grabado, aunque el texto diga "grabar/subir". */}
+                        <input type="file" accept="video/*" className="hidden"
+                          disabled={uploadingVideoRi !== null}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadExerciseVideo(ri, f) }} />
+                      </label>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
+                  ejecución; no aplica cuando es el propio entrenador quien graba */}
+              {trainerId && !trainerMode && (
+                <div className="px-4 mb-3">
+                  <VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} />
+                </div>
+              )}
 
               {/* Descanso — solo si no está oculto */}
               {!hideRest && (
@@ -392,8 +938,21 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               )}
 
+              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
+              {ex.tempo && <TempoWidget tempo={ex.tempo} />}
+
+              {ex.kind === 'run' && ex.run ? (
+                <RunSets
+                  run={ex.run}
+                  totalSets={totalExSets}
+                  sets={exSets}
+                  prevSets={prevSets}
+                  onSetData={(si, patch) => setRunData(ri, si, patch)}
+                  onToggle={si => toggleSet(ri, si, '', '1')}
+                />
+              ) : (<>
               {/* Cabecera tabla */}
-              <div className="grid grid-cols-[32px_1fr_80px_72px_40px] gap-1 px-3 pb-1">
+              <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
                 <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
                 <p className="text-[9px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
@@ -405,7 +964,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
 
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
-                const prev = prevSets[si] as any
+                const prev = prevSets[si]
                 return (
                   <SetRow
                     key={`${ri}-${si}`}
@@ -413,12 +972,20 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                     initWeight={s.weight}
                     initReps={s.reps}
                     done={s.done}
+                    rir={s.rir}
+                    velocity={s.velocity}
+                    firstVelocity={firstVelocityAtWeight(s.weight)}
                     prevWeight={prev?.weight}
                     prevReps={prev?.reps}
+                    prevRir={prev?.rir}
+                    weekRpe={plan.weeks?.[weekIdx]?.rpe}
                     isMain={ex.isMain}
+                    showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+                    onSetRir={(rir) => setRir(ri, si, rir)}
+                    onSetVelocity={(v) => setVelocity(ri, si, v)}
                   />
                 )
               })}
@@ -427,6 +994,7 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Agregar Serie
               </button>
+              </>)}
             </div>
           )
         })}
@@ -460,9 +1028,25 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
               {allComplete ? '¡Sesión completada! 🏆' : '¿Terminar entrenamiento?'}
             </h3>
             {!allComplete && (
-              <p className="text-sm text-muted text-center">
-                Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
-              </p>
+              <>
+                <p className="text-sm text-muted text-center">
+                  Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
+                </p>
+                <div className="bg-warn/5 border border-warn/20 rounded-2xl p-3 space-y-1.5">
+                  {day.exercises.map((ex, ri) => {
+                    const { numSets } = parseSet(ex.sets)
+                    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
+                    if (done >= numSets) return null
+                    return (
+                      <div key={ri} className="flex items-center gap-2 text-sm">
+                        <span className="text-warn text-xs">⚠</span>
+                        <span className="flex-1 truncate font-medium">{ex.name}</span>
+                        <span className="text-xs text-warn flex-shrink-0">{numSets - done} serie{numSets - done !== 1 ? 's' : ''}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
             <div className="grid grid-cols-3 gap-3">
               {[
@@ -477,7 +1061,135 @@ export function ActiveWorkout({ plan, weekIdx, dayIdx, logs, onLogsChange, onFin
                 </div>
               ))}
             </div>
-            <button onClick={onFinish}
+            {newRecords.length > 0 && (
+              <div className="bg-gradient-to-br from-warn/10 to-warn/5 border border-warn/20 rounded-2xl px-4 py-3 space-y-2">
+                <p className="text-xs font-bold text-warn uppercase tracking-wider flex items-center gap-1.5">
+                  🏆 {newRecords.length} récord{newRecords.length > 1 ? 's' : ''} batido{newRecords.length > 1 ? 's' : ''}
+                </p>
+                {newRecords.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />
+                    <p className="text-sm flex-1 truncate"><span className="font-semibold">{r.name}</span></p>
+                    <p className="text-sm font-bold text-warn">{r.best}kg</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {avgRir !== null && (
+              <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
+                <Zap className="w-4 h-4 text-accent flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-muted">RIR medio de la sesión</p>
+                  <p className="text-sm font-bold">{avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted text-center">¿Cómo de duro se sintió en general? (RPE)</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+                  <button key={n} onClick={() => setSessionRpe(n + (sessionRpeHalf && n < 10 ? 0.5 : 0))}
+                    className={`py-2 rounded-xl text-sm font-bold transition-all ${
+                      sessionRpe !== null && Math.floor(sessionRpe) === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
+                    }`}>
+                    {sessionRpe !== null && Math.floor(sessionRpe) === n && sessionRpeHalf && n < 10 ? `${n}.5` : n}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setSessionRpeHalf(h => !h)}
+                className={`w-full py-1.5 rounded-xl text-xs font-semibold border transition-all ${sessionRpeHalf ? 'bg-accent/15 border-accent text-accent' : 'border-border text-muted'}`}>
+                {sessionRpeHalf ? '✓ ' : ''}+0.5 (precisión powerlifting/halterofilia)
+              </button>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
+              <div className="flex justify-center gap-2">
+                {REACTION_EMOJIS.map(emoji => (
+                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true); if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null) }}
+                    className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${reactionEmoji === emoji ? 'bg-accent/15 ring-2 ring-accent' : 'bg-bg hover:bg-bg-alt'}`}>
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {/* Con 🤕 vamos directos a la zona — el emoji ya nos dice que es
+                  molestia, no agujetas normales, así que no hace falta el
+                  clasificador que sí usa el check-in diario (ahí "agujetas" es ambiguo) */}
+              {reactionEmoji === MOLESTIA_EMOJI && (
+                <div className="bg-warn/5 border border-warn/20 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-center">¿En qué zona?</p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
+                      <button key={z} onClick={() => setMolestiaZona(z)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                          molestiaZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
+                        }`}>
+                        {z}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {showReactionComment && (
+                <textarea value={reactionComment} onChange={e => setReactionComment(e.target.value)} rows={2}
+                  placeholder="¿Algo que comentar? (opcional)"
+                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+              )}
+            </div>
+            {allComplete && (
+              <button onClick={() => {
+                  const lines = [
+                    `💪 ¡Entreno completado! — ${day.title}`,
+                    '',
+                    `⏱️ ${formatElapsed()}`,
+                    `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
+                    newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
+                    sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
+                    '',
+                    'Hecho con PanelFit',
+                  ].filter(Boolean).join('\n')
+                  window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 active:scale-[0.98] transition-all"
+                style={{ backgroundColor: '#25D366' }}>
+                📤 Compartir logro
+              </button>
+            )}
+            <button onClick={async () => {
+                if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+                if (reactionEmoji) {
+                  const today = localDateKey()
+                  await supabase.from('session_reactions').insert({
+                    clientId: plan.clientId, dayTitle: day.title, date: today,
+                    emoji: reactionEmoji, comment: reactionComment.trim() || null,
+                  })
+                }
+                // 🤕 con zona elegida -> queda como registro real de dolor, no
+                // solo como reacción de la sesión — para que salga en Progreso
+                // > Dolor y en la Bandeja igual que el del check-in diario.
+                if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
+                  await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
+                }
+                // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente
+                // puso un RPE global. Alimenta el ACWR de carga interna, complementario
+                // al de tonelaje (esencial para quien combina gimnasio con pista/campo).
+                if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
+                  const today = localDateKey()
+                  const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
+                  await supabase.from('session_load').insert({
+                    client_id: plan.clientId, trainer_id: trainerId, date: today,
+                    duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
+                  })
+                }
+                if (!allComplete) {
+                  // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
+                  // material estaba ocupado, etc.) — sin esto, el panel seguía
+                  // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque
+                  // el cliente ya la había dado por terminada. done:false a propósito
+                  // — ver comentario en el tipo ExerciseLog.
+                  onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
+                }
+                onFinish()
+              }}
               className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
                 allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
               }`}>

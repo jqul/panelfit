@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchClientWeights, WeightEntry } from '../../lib/clientWeight'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
-import { X, Download } from 'lucide-react'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { X, Download, MessageCircle } from 'lucide-react'
 
 interface Props {
   client: ClientData
@@ -11,21 +13,13 @@ interface Props {
   onClose: () => void
 }
 
-interface WeightEntry { date: string; weight: number }
-
-function useWeights(clientId: string) {
-  try {
-    const raw = localStorage.getItem(`pf_weight_${clientId}`)
-    return raw ? JSON.parse(raw) as WeightEntry[] : []
-  } catch { return [] }
-}
-
 export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClose }: Props) {
-  const weights = useWeights(client.id)
+  const [weights, setWeights] = useState<WeightEntry[]>([])
   const [responses, setResponses] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
 
   useEffect(() => {
+    fetchClientWeights(client.id).then(setWeights)
     // Cargar últimas respuestas de encuestas
     Promise.all([
       supabase.from('survey_responses').select('*').eq('client_id', client.id).order('completed_at', { ascending: false }).limit(4),
@@ -68,6 +62,22 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
 
   const handlePrint = () => window.print()
 
+  const shareWhatsApp = () => {
+    // No se puede adjuntar el PDF automáticamente por WhatsApp — se manda un
+    // resumen en texto con lo esencial, y el propio informe se descarga aparte.
+    const lines = [
+      `📊 Informe de progreso de ${client.name}`,
+      '',
+      totalSesiones > 0 ? `✅ ${totalSesiones} sesión${totalSesiones !== 1 ? 'es' : ''} completada${totalSesiones !== 1 ? 's' : ''}` : null,
+      pesoActual ? `⚖️ Peso actual: ${pesoActual}kg${pesoCambio !== null ? ` (${Number(pesoCambio) > 0 ? '+' : ''}${pesoCambio}kg)` : ''}` : null,
+      topRecords[0] ? `🏆 Mejor marca: ${topRecords[0][0]} — ${topRecords[0][1]}kg` : null,
+      '',
+      `Generado con PanelFit el ${today}`,
+    ].filter(Boolean).join('\n')
+    const phone = client.phone ? client.phone.replace(/\s+/g, '').replace(/^\+/, '') : ''
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines)}`, '_blank')
+  }
+
   return (
     <>
       {/* Overlay con botones — no se imprime */}
@@ -77,6 +87,10 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between z-10">
             <p className="text-sm font-semibold text-gray-700">Vista previa del informe</p>
             <div className="flex gap-2">
+              <button onClick={shareWhatsApp}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#25D366] transition-opacity hover:opacity-90">
+                <MessageCircle className="w-4 h-4" /> Compartir
+              </button>
               <button onClick={handlePrint}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: brandColor }}>
@@ -170,7 +184,7 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
 
             {/* Plan actual */}
             {plan?.weeks && plan.weeks.length > 0 && (() => {
-              const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
+              const currentWeek = plan.weeks[getEffectiveWeekIdx(plan, logs)]
               return (
                 <div>
                   <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
@@ -239,11 +253,11 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
             )}
 
             {/* Notas del entrenador */}
-            {(plan as any)?.coachNotes && (
+            {plan?.coachNotes && (
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Notas del entrenador</h2>
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{(plan as any).coachNotes}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{plan.coachNotes}</p>
                 </div>
               </div>
             )}

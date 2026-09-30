@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { track } from '@vercel/analytics'
 import { supabase } from '../../lib/supabase'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 
@@ -17,14 +18,14 @@ const FEATURES = [
   { icon: '🥗', title: 'Plan nutricional', desc: 'Crea planes de dieta con macros, comidas y consejos personalizados.' },
   { icon: '💬', title: 'Comunicación directa', desc: 'Comparte rutinas y dietas por WhatsApp con un clic desde el panel.' },
 ]
-const TESTIMONIALS = [
-  { name: 'Carlos M.', role: 'Entrenador personal · Madrid', text: 'Antes mandaba PDFs por WhatsApp. Ahora cada cliente tiene su panel con todo. Cambió mi forma de trabajar.' },
-  { name: 'Laura G.', role: 'Coach de fuerza · Barcelona', text: 'Mis clientes pueden ver sus vídeos de referencia directamente en el panel cuando entrenan. Genial.' },
-  { name: 'Marcos R.', role: 'Entrenador online · Sevilla', text: 'El modo cliente desde el móvil sin instalar nada es lo que más valoran mis alumnos.' },
+const WHY_PANELFIT = [
+  { icon: '🔗', title: 'Un enlace es suficiente', desc: 'El cliente abre su panel desde el móvil sin instalar ninguna app y sin crear cuenta. Tú le mandas el enlace por WhatsApp.' },
+  { icon: '👁️', title: 'Sabes quién entrena y quién no', desc: 'Ve en tiempo real qué clientes han completado sus sesiones esta semana y cuáles llevan días sin actividad.' },
+  { icon: '🗂️', title: 'Todo en un sitio, ordenado', desc: 'Rutinas, dieta, progreso, fotos y comunicación de cada cliente en su propio espacio — sin PDFs desperdigados.' },
 ]
 
 export function Auth({ onAuth, onDemo }: AuthProps) {
-  const [view, setView] = useState<'landing' | 'login' | 'register'>('landing')
+  const [view, setView] = useState<'landing' | 'login' | 'register' | 'forgot'>('landing')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -32,13 +33,23 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [registered, setRegistered] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
 
   const handleLogin = async () => {
     setError(''); setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError('Email o contraseña incorrectos')
-    else onAuth()
+    else { track('login_success'); onAuth() }
     setLoading(false)
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) { setError('Introduce tu email'); return }
+    setError(''); setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    setLoading(false)
+    if (error) { setError(error.message); return }
+    setForgotSent(true)
   }
 
   const handleRegister = async () => {
@@ -48,17 +59,22 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     const { data, error } = await supabase.auth.signUp({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
     if (data.user) {
-      await supabase.from('entrenadores').upsert({ id: data.user.id, nombre: name, email, activo: false }, { onConflict: 'id' })
+      await supabase.from('entrenadores').upsert(
+        { uid: data.user.id, displayName: name, email, approved: false, rol: 'trainer', createdAt: Date.now() },
+        { onConflict: 'uid' }
+      )
     }
-    setLoading(false); setRegistered(true)
+    setLoading(false); track('register_success'); setRegistered(true)
   }
 
   if (view === 'landing') return (
     <div className="min-h-screen bg-bg flex flex-col">
-      <nav className="border-b border-border bg-bg/90 backdrop-blur-sm sticky top-0 z-10">
+      <nav className="border-b border-border bg-bg/90 backdrop-blur-sm sticky top-0 z-10" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <span className="text-xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></span>
           <div className="flex items-center gap-3">
+            <a href="/precios" className="hidden sm:block px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Precios</a>
+            <a href="/blog" className="hidden sm:block px-3 py-2 text-sm text-muted hover:text-ink transition-colors">Blog</a>
             <button onClick={() => setView('login')} className="px-4 py-2 text-sm font-medium text-muted hover:text-ink transition-colors">Entrar →</button>
             <button onClick={() => setView('register')} className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold hover:opacity-90">Solicitar acceso</button>
           </div>
@@ -77,11 +93,11 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </p>
         <div className="relative flex flex-col sm:flex-row gap-3 justify-center mb-16">
           {onDemo && (
-            <button onClick={onDemo} className="flex items-center justify-center gap-2 px-8 py-4 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg">
+            <button onClick={() => { track('demo_clicked', { source: 'home' }); onDemo!() }} className="flex items-center justify-center gap-2 px-8 py-4 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 shadow-lg">
               Ver demo en vivo <ArrowRight className="w-4 h-4" />
             </button>
           )}
-          <button onClick={() => setView('register')} className="flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
+          <button onClick={() => { track('register_intent', { source: 'home' }); setView('register') }} className="flex items-center justify-center gap-2 px-8 py-4 border border-border rounded-xl text-sm font-semibold text-muted hover:border-ink hover:text-ink transition-all">
             Solicitar acceso
           </button>
         </div>
@@ -109,18 +125,22 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
       </section>
       <section className="bg-card border-y border-border">
         <div className="max-w-5xl mx-auto px-6 py-20">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 text-center">Testimonios</p>
-          <h2 className="text-3xl font-serif font-bold text-center mb-12">Lo que dicen los entrenadores</h2>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 text-center">Por qué PanelFit</p>
+          <h2 className="text-3xl font-serif font-bold text-center mb-12">Pensado para cómo trabajan los entrenadores reales</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="bg-bg border border-border rounded-2xl p-6">
-                <p className="text-sm text-ink/80 leading-relaxed mb-6 italic">"{t.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-accent/10 flex items-center justify-center text-sm font-bold text-accent flex-shrink-0">{t.name[0]}</div>
-                  <div><p className="text-sm font-semibold">{t.name}</p><p className="text-[10px] text-muted">{t.role}</p></div>
-                </div>
+            {WHY_PANELFIT.map(w => (
+              <div key={w.title} className="bg-bg border border-border rounded-2xl p-6">
+                <div className="text-3xl mb-4">{w.icon}</div>
+                <p className="font-serif font-bold text-base mb-2">{w.title}</p>
+                <p className="text-sm text-muted leading-relaxed">{w.desc}</p>
               </div>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-10 text-sm">
+            <a href="/app-entrenadores" className="text-accent hover:underline underline-offset-2">App para entrenadores →</a>
+            <a href="/software-entrenador-personal" className="text-accent hover:underline underline-offset-2">Software →</a>
+            <a href="/precios" className="text-accent hover:underline underline-offset-2">Precios →</a>
+            <a href="/blog" className="text-accent hover:underline underline-offset-2">Blog →</a>
           </div>
         </div>
       </section>
@@ -158,6 +178,40 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
     </div>
   )
 
+  if (view === 'forgot') return (
+    <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <h1 className="text-center text-3xl font-serif font-bold mb-8">Panel<span className="text-accent italic">Fit</span></h1>
+        {forgotSent ? (
+          <div className="bg-card border border-border rounded-2xl p-8 text-center">
+            <div className="w-14 h-14 bg-ok/10 rounded-full flex items-center justify-center mx-auto mb-4"><Check className="w-7 h-7 text-ok" /></div>
+            <h2 className="font-serif font-bold text-xl mb-2">Revisa tu email</h2>
+            <p className="text-muted text-sm leading-relaxed">Te hemos mandado un enlace a <strong>{email}</strong> para elegir una nueva contraseña.</p>
+            <button onClick={() => { setForgotSent(false); setView('login') }} className="mt-6 w-full py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90">Volver al inicio de sesión</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-2xl font-serif font-bold mb-2">¿Olvidaste tu contraseña?</h2>
+            <p className="text-muted text-sm mb-8">Te mandamos un enlace a tu email para elegir una nueva.</p>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                placeholder="tu@email.com"
+                className="w-full px-4 py-3 bg-card border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm" />
+            </div>
+            {error && <p className="mt-3 text-sm text-warn">{error}</p>}
+            <button onClick={handleForgotPassword} disabled={loading}
+              className="w-full mt-6 py-3.5 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50">
+              {loading ? 'Enviando...' : 'Enviar enlace'}
+            </button>
+            <button onClick={() => { setError(''); setView('login') }} className="w-full mt-4 text-center text-sm text-muted hover:text-ink">← Volver al inicio de sesión</button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-bg flex">
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-ink text-white p-16">
@@ -168,7 +222,7 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
         </div>
         <button onClick={() => setView('landing')} className="text-white/40 text-xs hover:text-white/70 transition-colors text-left">← Volver a la página principal</button>
       </div>
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-8" style={{ paddingTop: 'max(2rem, env(safe-area-inset-top, 0px))' }}>
         <div className="w-full max-w-sm">
           <div className="lg:hidden text-center mb-8">
             <button onClick={() => setView('landing')} className="text-muted text-xs hover:text-ink mb-4 inline-block">← Volver</button>
@@ -205,6 +259,9 @@ export function Auth({ onAuth, onDemo }: AuthProps) {
               </div>
             </div>
           </div>
+          {view === 'login' && (
+            <button onClick={() => { setError(''); setView('forgot') }} className="mt-2 text-sm text-muted hover:text-accent">¿Olvidaste tu contraseña?</button>
+          )}
           {error && <p className="mt-3 text-sm text-warn">{error}</p>}
           <button className="w-full mt-6 py-3.5 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             onClick={view === 'login' ? handleLogin : handleRegister} disabled={loading}>

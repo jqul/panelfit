@@ -1,15 +1,29 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar } from 'lucide-react'
-import { TrainingPlan, TrainingLogs } from '../../types'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
+import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
+import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
+import { compressVideo } from '../../lib/videoCompress'
+import { useClientWeights } from '../../lib/clientWeight'
+import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../lib/progresoSections'
+import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
+import { CardioChart } from '../trainer/progreso-tab/CardioChart'
+import { RMChart } from '../trainer/progreso-tab/RMChart'
+import { VolumenChart } from '../trainer/progreso-tab/VolumenCharts'
+import { AdherenciaChart } from '../trainer/progreso-tab/AdherenciaChart'
+import { RachaStats } from '../trainer/progreso-tab/RachaStats'
+import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
+import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
+
 
 interface Props {
   clientId: string
+  trainerId: string
   logs: TrainingLogs
   plan?: TrainingPlan | null
 }
 
-interface WeightEntry { date: string; weight: number }
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
 
 // ── Helpers ───────────────────────────────────────────────
@@ -164,7 +178,7 @@ function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {(ex.sets as any[]).map((s, si) => (
+                      {ex.sets.map((s, si) => (
                         <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
@@ -224,7 +238,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const sessions = useMemo(() => {
-    const byDate: Record<string, { exercises: { name: string; sets: any[]; best: number }[]; volume: number }> = {}
+    const byDate: Record<string, { exercises: { name: string; sets: LogSet[]; best: number }[]; volume: number }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.dateDone || !log.done) return
       if (!byDate[log.dateDone]) byDate[log.dateDone] = { exercises: [], volume: 0 }
@@ -290,7 +304,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {(ex.sets as any[]).map((s, si) => (
+                      {ex.sets.map((s, si) => (
                         <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
@@ -375,22 +389,278 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
   )
 }
 
+// ── Dolor (seguimiento de rehabilitación) ─────────────────
+function DolorTab({ clientId, trainerId }: { clientId: string; trainerId?: string }) {
+  const { entries, addEntry, deleteEntry } = useClientPain(clientId, trainerId)
+  const [zona, setZona] = useState(ZONAS_DOLOR[0])
+  const [intensidad, setIntensidad] = useState(3)
+  const [nota, setNota] = useState('')
+
+  const registrar = () => {
+    addEntry(zona, intensidad, nota.trim() || undefined)
+    setNota('')
+  }
+
+  const colorFor = (v: number) => v >= 7 ? 'text-warn' : v >= 4 ? 'text-accent' : 'text-ok'
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-semibold">Registrar dolor de hoy</p>
+        <div>
+          <label className="block text-xs font-bold text-muted mb-1.5">Zona</label>
+          <select value={zona} onChange={e => setZona(e.target.value)}
+            className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" style={{ fontSize: '16px' }}>
+            {ZONAS_DOLOR.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </div>
+        <div>
+          <div className="flex justify-between mb-1.5">
+            <label className="text-xs font-bold text-muted">Intensidad</label>
+            <span className={`text-sm font-bold ${colorFor(intensidad)}`}>{intensidad}/10</span>
+          </div>
+          <input type="range" min={0} max={10} value={intensidad} onChange={e => setIntensidad(+e.target.value)} className="w-full" />
+        </div>
+        <textarea rows={2} value={nota} onChange={e => setNota(e.target.value)} placeholder="Nota (opcional): cuándo duele, qué lo provoca..."
+          className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" style={{ fontSize: '16px' }} />
+        <button onClick={registrar} className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">+ Registrar</button>
+      </div>
+
+      {entries.length === 0
+        ? <div className="text-center py-8 text-muted"><HeartPulse className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin registros aún</p></div>
+        : <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+            {entries.map(e => (
+              <div key={e.id} className="flex items-center gap-3 px-4 py-3">
+                <div className={`w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center text-xs font-bold flex-shrink-0 ${colorFor(e.intensidad)}`}>{e.intensidad}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{e.zona}</p>
+                  {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
+                  <p className="text-[10px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                </div>
+                <button onClick={() => deleteEntry(e.id)} className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <Trash2 className="w-3.5 h-3.5 mx-auto" />
+                </button>
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  )
+}
+
+// ── Métricas compartidas por el entrenador ────────────────
+function MetricasTab({ clientId, logs, plan, visible }: { clientId: string; logs: TrainingLogs; plan?: TrainingPlan | null; visible: Section[] }) {
+  return (
+    <div className="space-y-4">
+      {visible.map(id => {
+        const meta = SECTIONS.find(s => s.id === id)!
+        return (
+          <div key={id} className="bg-card border border-border rounded-2xl p-4">
+            <div className="mb-3">
+              <p className="text-sm font-bold">{meta.icon} {meta.label}</p>
+              <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
+            </div>
+            {id === 'fuerza' && <FuerzaChart logs={logs} plan={plan} />}
+            {id === 'cardio' && <CardioChart logs={logs} />}
+            {id === 'rm' && <RMChart logs={logs} plan={plan} />}
+            {id === 'volumen' && <VolumenChart logs={logs} />}
+            {id === 'adherencia' && <AdherenciaChart logs={logs} plan={plan} />}
+            {id === 'racha' && <RachaStats logs={logs} />}
+            {id === 'fatiga' && <RiesgoChart clientId={clientId} logs={logs} />}
+            {id === 'resumen_mensual' && <MonthlyRecap logs={logs} plan={plan} />}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Feedback de técnica ───────────────────────────────────
+interface VideoFeedbackRow {
+  id: string; exercise_name: string; video_url: string; client_note: string | null
+  trainer_comment: string | null; trainer_comment_video_url: string | null
+  status: 'pendiente' | 'comentado'; created_at: number
+}
+
+function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: string; trainerId: string; onUploaded: () => void }) {
+  const [showModal, setShowModal] = useState(false)
+  const [label, setLabel] = useState('Salto vertical')
+  const [skipCompression, setSkipCompression] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (rawFile: File) => {
+    if (!trainerId) return
+    setError('')
+    try {
+      // Compresión más suave que en el resto de la app (más fps, más resolución):
+      // este botón también se usa para vídeos que luego se analizan fotograma a
+      // fotograma (p.ej. altura de salto), donde perder fps rompe la precisión.
+      // Va dentro del try: si compressVideo rechazara, sin esto el spinner de
+      // "Optimizando..." se quedaría colgado para siempre.
+      let file = rawFile
+      if (!skipCompression) {
+        setCompressing(true)
+        file = await compressVideo(rawFile, { maxDimension: 1080, fps: 60 })
+        setCompressing(false)
+      }
+      setUploading(true)
+
+      const ext = file.name.split('.').pop() || 'mp4'
+      const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
+      const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
+      if (uploadErr) throw uploadErr
+      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
+      const { error: insertErr } = await supabase.from('video_feedback').insert({
+        id: `vf_${Date.now()}`, trainer_id: trainerId, client_id: clientId,
+        exercise_name: label.trim() || 'Vídeo', video_url: urlData.publicUrl,
+        status: 'pendiente', created_at: Date.now(),
+      })
+      if (insertErr) throw insertErr
+      setShowModal(false); setLabel('Salto vertical'); setSkipCompression(false)
+      onUploaded()
+    } catch (e: any) {
+      console.error('[PanelFit] Error al subir vídeo:', e)
+      const detail = e?.message || e?.error_description || (typeof e === 'string' ? e : '')
+      setError(`No se pudo subir el vídeo.${detail ? ` (${detail})` : ''} Inténtalo de nuevo.`)
+    } finally {
+      setCompressing(false)
+      setUploading(false)
+    }
+  }
+
+  if (!trainerId) return null
+
+  return (
+    <>
+      <button onClick={() => setShowModal(true)}
+        className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-sm font-semibold text-muted hover:border-accent hover:text-accent transition-all">
+        <Upload className="w-4 h-4" /> Subir vídeo (ej: salto, técnica...)
+      </button>
+
+      {showModal && (
+        <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center" onClick={() => !uploading && setShowModal(false)}>
+          <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+            <p className="font-serif font-bold text-lg">Subir vídeo</p>
+            <div>
+              <label className="block text-xs font-bold text-muted mb-1.5">¿De qué es el vídeo?</label>
+              <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Ej: Salto vertical"
+                className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
+            </div>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={skipCompression} onChange={e => setSkipCompression(e.target.checked)}
+                className="mt-0.5 w-4 h-4 flex-shrink-0" />
+              <span className="text-xs text-muted">No comprimir — voy a analizar el vídeo fotograma a fotograma (ej: medir un salto) y necesito máxima precisión</span>
+            </label>
+            {error && <p className="text-xs text-warn">{error}</p>}
+            {/* Sin capture: con él el móvil abre la cámara directo y no deja elegir
+                un vídeo ya grabado de la galería, aunque el botón diga "elegir". */}
+            <input ref={fileRef} type="file" accept="video/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            <button onClick={() => fileRef.current?.click()} disabled={uploading || compressing}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-50">
+              {compressing ? <><Loader2 className="w-4 h-4 animate-spin" /> Optimizando...</> : uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subiendo...</> : <><Upload className="w-4 h-4" /> Grabar o elegir vídeo</>}
+            </button>
+            <button onClick={() => setShowModal(false)} disabled={uploading || compressing} className="w-full py-2 text-xs text-muted">Cancelar</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: string }) {
+  const [videos, setVideos] = useState<VideoFeedbackRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadVideos = () => {
+    if (clientId.startsWith('demo-client-')) {
+      setVideos((DEMO_VIDEO_FEEDBACK_MAP[clientId] || []) as VideoFeedbackRow[]); setLoading(false)
+      return
+    }
+    supabase.from('video_feedback').select('*').eq('client_id', clientId).order('created_at', { ascending: false })
+      .then(({ data }) => { setVideos((data || []) as VideoFeedbackRow[]); setLoading(false) })
+  }
+
+  useEffect(loadVideos, [clientId])
+
+  if (loading) return <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
+
+  if (!videos.length) return (
+    <div className="space-y-4">
+      <div className="text-center py-8 text-muted">
+        <Video className="w-8 h-8 mx-auto mb-2 opacity-30" />
+        <p className="text-sm">Pide feedback de técnica desde un ejercicio en tu entreno, o sube un vídeo directamente (ej: para que tu entrenador analice un salto).</p>
+      </div>
+      <UploadVideoButton clientId={clientId} trainerId={trainerId} onUploaded={loadVideos} />
+    </div>
+  )
+
+  return (
+    <div className="space-y-3">
+      <UploadVideoButton clientId={clientId} trainerId={trainerId} onUploaded={loadVideos} />
+      {videos.map(v => (
+        <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
+            <p className="text-sm font-semibold">{v.exercise_name}</p>
+            <span className={`text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+              {v.status === 'pendiente' ? 'Pendiente' : '✓ Comentado'}
+            </span>
+          </div>
+          <div className="p-4 space-y-3">
+            <video src={v.video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+            <p className="text-[10px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+            {v.trainer_comment && (
+              <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
+                <p className="text-sm">{v.trainer_comment}</p>
+              </div>
+            )}
+            {v.trainer_comment_video_url && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
+                <video src={v.trainer_comment_video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────
-export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
-  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records'>('calendario')
-  const [weights, setWeights] = useState<WeightEntry[]>([])
+export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
+  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('calendario')
+  const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
   const [uploading, setUploading] = useState(false)
   const [expandedSession, setExpandedSession] = useState<string | null>(null)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
-
-  const LS_W = `pf_weight_${clientId}`
+  const [metricasVisibles, setMetricasVisibles] = useState<Section[]>([])
+  // Preferencia global del entrenador (Ajustes → Métricas activas) — si ha
+  // desactivado "Peso"/"Récords"/"Fotos"/"Vídeos" porque no las usa, tampoco
+  // tiene sentido que el cliente vea esas pestañas de toma de datos.
+  const metricasActivasEntrenador = useTrainerMetricSettings(trainerId) // null = todas activas
 
   useEffect(() => {
-    try { setWeights(JSON.parse(localStorage.getItem(LS_W) || '[]')) } catch {}
     loadPhotos()
   }, [clientId])
+
+  // Métricas que el entrenador ha decidido enseñar a este cliente en concreto
+  // (lib/trainer/client-panel/ConfigTab) — el cliente no elige, solo consulta.
+  useEffect(() => {
+    if (!clientId) return
+    if (clientId.startsWith('demo-client-')) { setMetricasVisibles(CLIENT_SHAREABLE_SECTIONS); return }
+    supabase.from('clientes').select('metricas_cliente').eq('id', clientId).maybeSingle()
+      .then(({ data }) => setMetricasVisibles(((data?.metricas_cliente || []) as Section[]).filter(id => CLIENT_SHAREABLE_SECTIONS.includes(id))))
+  }, [clientId])
+
+  const dolorVisible = metricasVisibles.includes('dolor')
+  const otrasMetricasVisibles = metricasVisibles.filter(id => id !== 'dolor')
 
   const loadPhotos = async () => {
     setLoadingPhotos(true)
@@ -408,8 +678,6 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
     }
     setLoadingPhotos(false)
   }
-
-  const saveWeights = (w: WeightEntry[]) => { setWeights(w); localStorage.setItem(LS_W, JSON.stringify(w)) }
 
   const createSession = async () => {
     const id = `s_${Date.now()}`
@@ -431,8 +699,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
   const addWeight = () => {
     const w = parseFloat(newWeight)
     if (!w || w < 20 || w > 300) return
-    const date = new Date().toISOString().split('T')[0]
-    saveWeights([{ date, weight: w }, ...weights.filter(x => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date)))
+    addWeightEntry(w)
     setNewWeight('')
   }
 
@@ -455,12 +722,19 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
   const pesoActual = weights[0]?.weight
   const pesoCambio = pesoInicial && pesoActual ? pesoActual - pesoInicial : null
 
-  const TABS = [
+  // null (todavía sin cargar, o entrenador sin preferencia guardada) = activa
+  const metricaActiva = (id: Section) => !metricasActivasEntrenador || metricasActivasEntrenador.has(id)
+
+  type SubtabId = typeof subtab
+  const TABS: { id: SubtabId; icon: string; label: string }[] = [
     { id: 'calendario', icon: '📅', label: 'Calendario' },
     { id: 'historial',  icon: '📋', label: 'Historial' },
-    { id: 'records',    icon: '🏆', label: 'Récords' },
-    { id: 'peso',       icon: '⚖️', label: 'Peso' },
-    { id: 'fotos',      icon: '📸', label: 'Fotos' },
+    ...(metricaActiva('records') ? [{ id: 'records' as SubtabId, icon: '🏆', label: 'Récords' }] : []),
+    ...(metricaActiva('peso')    ? [{ id: 'peso' as SubtabId, icon: '⚖️', label: 'Peso' }] : []),
+    ...(dolorVisible ? [{ id: 'dolor' as SubtabId, icon: '🩹', label: 'Dolor' }] : []),
+    ...(metricaActiva('fotos')   ? [{ id: 'fotos' as SubtabId, icon: '📸', label: 'Fotos' }] : []),
+    ...(metricaActiva('videos')  ? [{ id: 'feedback' as SubtabId, icon: '🎥', label: 'Feedback' }] : []),
+    ...(otrasMetricasVisibles.length > 0 ? [{ id: 'metricas' as SubtabId, icon: '📈', label: 'Métricas' }] : []),
   ]
 
   return (
@@ -470,7 +744,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
       {/* Tabs — scroll horizontal en móvil */}
       <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
         {TABS.map(t => (
-          <button key={t.id} onClick={() => setSubtab(t.id as any)}
+          <button key={t.id} onClick={() => setSubtab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
               subtab === t.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
             }`}
@@ -483,6 +757,9 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
       {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
+      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
+      {subtab === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
+      {subtab === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
 
       {subtab === 'peso' && (
         <div className="space-y-4">
@@ -548,7 +825,7 @@ export function ProgresoClienteTab({ clientId, logs, plan }: Props) {
                       {w.weight > weights[i-1].weight ? '+' : ''}{(w.weight - weights[i-1].weight).toFixed(1)}
                     </p>
                   )}
-                  <button onClick={() => saveWeights(weights.filter((_, idx) => idx !== i))} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <button onClick={() => deleteWeight(w.date)} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
                     <Trash2 className="w-3.5 h-3.5 mx-auto" />
                   </button>
                 </div>

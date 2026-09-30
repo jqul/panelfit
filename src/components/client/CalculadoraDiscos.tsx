@@ -9,6 +9,9 @@ interface Props {
 const DISCOS_DEFAULT = [20, 15, 10, 5, 2.5, 1.25]
 const BARRAS = [
   { label: 'Estándar (20kg)', peso: 20 },
+  { label: 'Técnica (15kg)', peso: 15 },
+  { label: 'Trap Bar (25kg)', peso: 25 },
+  { label: 'Safety Squat Bar (22kg)', peso: 22 },
   { label: 'Corta (10kg)', peso: 10 },
   { label: 'Sin barra (0kg)', peso: 0 },
 ]
@@ -100,10 +103,10 @@ export function CalculadoraDiscos({ pesoObjetivo, onClose }: Props) {
           {/* Barra */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Barra</label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {BARRAS.map(b => (
                 <button key={b.label} onClick={() => setBarra(b)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`py-2.5 px-2 rounded-xl text-xs font-semibold transition-all ${
                     barra.peso === b.peso ? 'bg-ink text-white' : 'bg-card border border-border text-muted'
                   }`}>
                   {b.label}

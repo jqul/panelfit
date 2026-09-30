@@ -1,12 +1,15 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import { ClientData, UserProfile } from '../../types'
+import { UserProfile } from '../../types'
+import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { toast } from '../shared/Toast'
-import { Send, MessageCircle, Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { useScheduledMessages } from '../../lib/scheduledMessages'
+import { sendPush } from '../../lib/usePushNotifications'
+import { Send, MessageCircle, Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, CalendarClock } from 'lucide-react'
 
 interface Props {
   userProfile: UserProfile
-  clients: ClientData[]
+  clients: ClientWithStats[]
 }
 
 interface SurveySchedule {
@@ -25,7 +28,6 @@ interface SurveyTemplate {
   questions: any[]
 }
 
-const DAY_LABELS = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual', once: 'Una vez' }
 
 function formatPhone(phone: string) {
@@ -55,15 +57,28 @@ function schedulesDueThisWeek(sched: SurveySchedule): boolean {
 }
 
 export function MensajesTab({ userProfile, clients }: Props) {
+  const [, setTrainerProfile] = useState<Record<string, any>>({})
   const [schedules, setSchedules] = useState<SurveySchedule[]>([])
   const [templates, setTemplates] = useState<SurveyTemplate[]>([])
-  const [trainerProfile, setTrainerProfile] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState<string | null>(null)
   const [showInactivos, setShowInactivos] = useState(false)
   const [showAlerts, setShowAlerts] = useState(true)
+  const [showUpcoming, setShowUpcoming] = useState(false)
+  const { due: dueScheduled, upcoming: upcomingScheduled, markPushSent, markSent: markScheduledSent, remove: removeScheduled } = useScheduledMessages(userProfile.uid)
+  const pushedRef = useRef(new Set<string>())
 
   const origin = window.location.origin
+
+  // Al detectar un mensaje programado que ya toca, dispara el push real una sola vez.
+  useEffect(() => {
+    dueScheduled.forEach(m => {
+      if (m.pushEnviado || pushedRef.current.has(m.id)) return
+      pushedRef.current.add(m.id)
+      sendPush({ clientId: m.clientId }, 'Tienes un mensaje nuevo', m.mensaje)
+      markPushSent(m.id)
+    })
+  }, [dueScheduled, markPushSent])
 
   useEffect(() => {
     loadData()
@@ -87,13 +102,13 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
   // Clientes sin teléfono registrado
   const clientsSinTelefono = useMemo(() =>
-    clients.filter(c => !(c as any).phone),
+    clients.filter(c => !c.phone),
   [clients])
 
   // Clientes inactivos (más de 5 días sin entreno)
   const clientesInactivos = useMemo(() =>
     clients.filter(c => {
-      const lastActive = (c as any).lastActive
+      const lastActive = c.lastActive
       if (!lastActive) return true
       const days = Math.floor((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
       return days > 4
@@ -116,10 +131,10 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
   const sendEncuesta = async (
     sched: SurveySchedule,
-    client: ClientData,
+    client: ClientWithStats,
     tmplName: string
   ) => {
-    const phone = (client as any).phone
+    const phone = client.phone
     if (!phone) {
       toast(`${client.name} no tiene teléfono guardado`, 'warn')
       return
@@ -139,8 +154,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
     toast(`Enviado a ${client.name} ✓`, 'ok')
   }
 
-  const sendAlerta = (client: ClientData, tipo: 'inactividad' | 'panel') => {
-    const phone = (client as any).phone
+  const sendAlerta = (client: ClientWithStats, tipo: 'inactividad' | 'panel') => {
+    const phone = client.phone
     if (!phone) { toast(`${client.name} no tiene teléfono`, 'warn'); return }
 
     const url = `${origin}?c=${client.token}`
@@ -152,9 +167,42 @@ export function MensajesTab({ userProfile, clients }: Props) {
     toast(`WhatsApp abierto con ${client.name}`, 'ok')
   }
 
+  const sendScheduled = (id: string, client: ClientWithStats | undefined, mensaje: string) => {
+    if (client?.phone) window.open(buildWAUrl(client.phone, mensaje), '_blank')
+    markScheduledSent(id)
+    toast(client ? `Enviado a ${client.name} ✓` : 'Marcado como enviado ✓', 'ok')
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center py-20">
       <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (!clients.length) return (
+    <div className="max-w-md mx-auto py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+        <Send className="w-8 h-8 text-accent opacity-60" />
+      </div>
+      <p className="font-serif text-2xl font-bold mb-2">Mensajes y encuestas</p>
+      <p className="text-sm text-muted leading-relaxed mb-6">
+        Desde aquí enviarás check-ins semanales por WhatsApp y verás qué clientes llevan días sin entrenar. Todo empieza cuando tengas tu primer cliente.
+      </p>
+      <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-2.5">
+        {[
+          { icon: '📋', t: 'Encuestas automáticas', d: 'Programa check-ins semanales para todos tus clientes a la vez.' },
+          { icon: '⚠️', t: 'Alertas de inactividad', d: 'Te avisamos qué clientes llevan más de 4 días sin entrenar.' },
+          { icon: '💬', t: 'Envío directo a WhatsApp', d: 'Un clic abre WhatsApp con el mensaje ya redactado.' },
+        ].map(({ icon, t, d }) => (
+          <div key={t} className="flex items-start gap-3">
+            <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+            <div>
+              <p className="text-sm font-semibold">{t}</p>
+              <p className="text-xs text-muted">{d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 
@@ -188,6 +236,89 @@ export function MensajesTab({ userProfile, clients }: Props) {
           </div>
         </div>
       )}
+
+      {/* ── MENSAJES PROGRAMADOS ── */}
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarClock className="w-4 h-4 text-accent" />
+            <h3 className="font-semibold text-sm">Mensajes programados</h3>
+          </div>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            dueScheduled.length > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+          }`}>
+            {dueScheduled.length} pendiente{dueScheduled.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {dueScheduled.length === 0 ? (
+          <div className="px-5 py-8 text-center text-muted">
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-ok opacity-60" />
+            <p className="text-sm font-semibold">Nada pendiente hoy</p>
+            <p className="text-xs mt-1">Programa un mensaje desde el perfil de cada cliente, en "Mensajes preestablecidos"</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {dueScheduled.map(m => {
+              const client = clients.find(c => c.id === m.clientId)
+              const hasPhone = !!client?.phone
+              return (
+                <div key={m.id} className="px-5 py-3.5 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
+                      {(client?.name || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
+                      <p className="text-xs text-muted">Programado para el {new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                    </div>
+                    <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    <button
+                      onClick={() => sendScheduled(m.id, client, m.mensaje)}
+                      disabled={!hasPhone}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0 ${
+                        hasPhone
+                          ? 'bg-[#25D366] text-white hover:opacity-90'
+                          : 'bg-bg-alt text-muted cursor-not-allowed'
+                      }`}>
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      {hasPhone ? 'Enviar' : 'Sin tel.'}
+                    </button>
+                  </div>
+                  <p className="text-xs italic text-muted pl-11">"{m.mensaje}"</p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {upcomingScheduled.length > 0 && (
+          <>
+            <button
+              className="w-full px-5 py-3 border-t border-border flex items-center justify-between text-xs font-semibold text-muted hover:text-accent"
+              onClick={() => setShowUpcoming(!showUpcoming)}>
+              <span>{upcomingScheduled.length} programado{upcomingScheduled.length !== 1 ? 's' : ''} a futuro</span>
+              {showUpcoming ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {showUpcoming && (
+              <div className="divide-y divide-border">
+                {upcomingScheduled.map(m => {
+                  const client = clients.find(c => c.id === m.clientId)
+                  return (
+                    <div key={m.id} className="px-5 py-3 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
+                        <p className="text-xs text-muted truncate">{new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · "{m.mensaje}"</p>
+                      </div>
+                      <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ── ENCUESTAS ESTA SEMANA ── */}
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -228,7 +359,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                 {/* Un botón por cliente */}
                 <div className="space-y-2">
                   {targetClients.map(client => {
-                    const hasPhone = !!(client as any).phone
+                    const hasPhone = !!client.phone
                     const key = `${sched.id}_${client.id}`
                     return (
                       <div key={client.id} className="flex items-center gap-3 bg-bg rounded-xl px-3 py-2.5">
@@ -238,7 +369,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{client.name} {client.surname}</p>
                           <p className="text-xs text-muted">
-                            {hasPhone ? (client as any).phone : '⚠️ Sin teléfono'}
+                            {hasPhone ? client.phone : '⚠️ Sin teléfono'}
                           </p>
                         </div>
                         <button
@@ -291,8 +422,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
           ) : (
             <div className="divide-y divide-border">
               {clientesInactivos.map(client => {
-                const hasPhone = !!(client as any).phone
-                const lastActive = (client as any).lastActive
+                const hasPhone = !!client.phone
+                const lastActive = client.lastActive
                 const days = lastActive
                   ? Math.floor((Date.now() - new Date(lastActive + 'T00:00:00').getTime()) / 86400000)
                   : null
@@ -342,7 +473,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
         {showInactivos && (
           <div className="divide-y divide-border">
             {clients.map(client => {
-              const hasPhone = !!(client as any).phone
+              const hasPhone = !!client.phone
               return (
                 <div key={client.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">
@@ -350,7 +481,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{client.name} {client.surname}</p>
-                    <p className="text-xs text-muted">{hasPhone ? (client as any).phone : '⚠️ Sin teléfono'}</p>
+                    <p className="text-xs text-muted">{hasPhone ? client.phone : '⚠️ Sin teléfono'}</p>
                   </div>
                   <div className="flex gap-1.5 flex-shrink-0">
                     <button

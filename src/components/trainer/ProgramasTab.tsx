@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
-  Plus, Trash2, Copy, ChevronDown, ChevronUp, Edit2, ArrowLeft,
-  Save, Tag, X, Check, Dumbbell, Timer, Camera, ClipboardList,
-  MessageSquare, Video, Calendar
+  Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
+  Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
+  MessageSquare, Video, Calendar, Tag, Users, Search
 } from 'lucide-react'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
+import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
+import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -35,7 +38,22 @@ export interface Program {
   updated_at: number
 }
 
-interface Props { trainerId: string }
+interface Props { trainerId: string; onManageLabels: () => void; clients: ClientData[] }
+
+function programToWeeks(weeks: ProgramWeek[]): WeekPlan[] {
+  const result = (weeks || []).map(w => ({
+    label: w.label,
+    rpe: '',
+    isCurrent: false,
+    days: (w.days || []).map(d => ({
+      title: d.tasks?.find(t => t.type === 'workout')?.title || 'Día',
+      focus: d.tasks?.filter(t => t.type !== 'workout').map(t => t.title).join(', ') || '',
+      exercises: [],
+    }))
+  }))
+  if (result.length > 0) result[0].isCurrent = true
+  return result
+}
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
@@ -47,7 +65,8 @@ const TASK_TYPES = [
   { id: 'video',      label: 'Vídeo',               color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: Video },
 ] as const
 
-const TIPOS = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
+const TIPOS_DEFAULT = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
+const LS_PROG_TYPES = (uid: string) => `pf_prog_types_${uid}`
 const DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
 const CARDIO_TYPES = ['Correr','Caminar','Ciclismo','Elíptica','Nadar','Subir escaleras','Remo','HIIT']
 const EVOLUCION_LABELS: Record<string, string> = { peso: '⚖️ Peso corporal', fotos: '📸 Fotos de progreso', medidas: '📏 Medidas corporales' }
@@ -122,9 +141,9 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
     if (task) { onAdd(task); onClose() }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+  return createPortal(
+    <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{maxHeight:"85dvh",overflow:"hidden"}} onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
           <h3 className="font-bold text-lg">Añadir tarea — {DAY_NAMES[dayIdx]}</h3>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
@@ -282,7 +301,8 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -297,6 +317,23 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
   const [saving, setSaving] = useState(false)
   const [addTaskModal, setAddTaskModal] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [activeWeek, setActiveWeek] = useState(0)
+  const [addingType, setAddingType] = useState(false)
+  const [newTypeInput, setNewTypeInput] = useState('')
+  const [customTypes, setCustomTypes] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LS_PROG_TYPES(initial.trainer_id)) || '[]') } catch { return [] }
+  })
+  const allTipos = [...TIPOS_DEFAULT, ...customTypes]
+
+  const addCustomType = () => {
+    const tipo = newTypeInput.trim()
+    if (!tipo) return
+    const updated = [...customTypes, tipo]
+    setCustomTypes(updated)
+    localStorage.setItem(LS_PROG_TYPES(initial.trainer_id), JSON.stringify(updated))
+    update({ tipo })
+    setNewTypeInput('')
+    setAddingType(false)
+  }
 
   const update = (u: Partial<Program>) => setProgram(p => ({ ...p, ...u }))
 
@@ -364,12 +401,26 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Tipo</p>
           <div className="flex flex-wrap gap-1.5">
-            {TIPOS.map(tipo => (
+            {allTipos.map(tipo => (
               <button key={tipo} onClick={() => update({ tipo })}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-all ${program.tipo === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent hover:text-accent'}`}>
                 {tipo}
               </button>
             ))}
+            {addingType ? (
+              <div className="flex gap-1.5 items-center">
+                <input autoFocus value={newTypeInput} onChange={e => setNewTypeInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addCustomType(); if (e.key === 'Escape') { setAddingType(false); setNewTypeInput('') } }}
+                  placeholder="Nuevo tipo..." className="px-3 py-1 bg-bg border border-accent/40 rounded-lg text-xs outline-none w-32" />
+                <button onClick={addCustomType} className="px-2 py-1 bg-ink text-white rounded-lg text-xs font-semibold">Crear</button>
+                <button onClick={() => { setAddingType(false); setNewTypeInput('') }} className="px-2 py-1 border border-border rounded-lg text-xs text-muted">✕</button>
+              </div>
+            ) : (
+              <button onClick={() => setAddingType(true)}
+                className="px-3 py-1 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent">
+                + Nuevo tipo
+              </button>
+            )}
           </div>
         </div>
         {labels.length > 0 && (
@@ -429,8 +480,133 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
   )
 }
 
+// ── Asignación masiva ───────────────────────────────────────
+function BulkAssignModal({ program, clients, trainerId, onClose }: {
+  program: Program; clients: ClientData[]; trainerId: string; onClose: () => void
+}) {
+  const [mode, setMode] = useState<'clients' | 'group'>('clients')
+  const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [cohortes, setCohortes] = useState<{ id: string; name: string }[]>([])
+  const [selectedCohorte, setSelectedCohorte] = useState('')
+  const [assigning, setAssigning] = useState(false)
+
+  useEffect(() => {
+    if (trainerId === DEMO_TRAINER_ID) { setCohortes(DEMO_COHORTES.map(c => ({ id: c.id, name: c.nombre }))); return }
+    supabase.from('cohortes').select('id, name').eq('trainer_id', trainerId).then(({ data }) => setCohortes(data || []))
+  }, [trainerId])
+
+  const filteredClients = clients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase()))
+  const toggle = (id: string) => setSelectedIds(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const confirm = async () => {
+    let targetIds: string[] = []
+    if (mode === 'group') {
+      if (!selectedCohorte) { toast('Elige un grupo', 'warn'); return }
+      const { data } = await supabase.from('cohorte_clientes').select('client_id').eq('cohorte_id', selectedCohorte)
+      targetIds = (data || []).map(r => r.client_id)
+    } else {
+      targetIds = [...selectedIds]
+    }
+    if (targetIds.length === 0) { toast('Selecciona al menos un cliente', 'warn'); return }
+
+    setAssigning(true)
+    const weeks = programToWeeks(program.weeks)
+    const results = await Promise.all(targetIds.map(async clientId => {
+      const newPlan: TrainingPlan = {
+        clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
+        weeks: JSON.parse(JSON.stringify(weeks)),
+        programId: program.id, programName: program.name,
+        fechaInicio: new Date().toISOString().split('T')[0],
+      }
+      const { error } = await supabase.from('planes').upsert(
+        { clientId, plan: { P: newPlan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() },
+        { onConflict: 'clientId' }
+      )
+      return !error
+    }))
+    setAssigning(false)
+    const ok = results.filter(Boolean).length
+    toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn')
+    onClose()
+  }
+
+  const targetCount = mode === 'group'
+    ? (selectedCohorte ? undefined : 0)
+    : selectedIds.size
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{ maxHeight: '85dvh', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg">Asignar a varios</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">{program.name} — se publica de inmediato, sin borrador</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="px-6 pt-4 flex gap-2 flex-shrink-0">
+          <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Elegir clientes</button>
+          <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Grupo completo</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-6 py-4">
+          {mode === 'clients' ? (
+            <>
+              <div className="relative mb-3">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
+                  className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
+              </div>
+              <div className="space-y-1 border border-gray-100 rounded-xl p-2 max-h-64 overflow-y-auto">
+                {filteredClients.length === 0 && <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>}
+                {filteredClients.map(c => (
+                  <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+                    <div onClick={() => toggle(c.id)}
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-gray-300'}`}>
+                      {selectedIds.has(c.id) && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="text-sm truncate">{c.name} {c.surname}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          ) : (
+            cohortes.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-6">No tienes grupos creados todavía (pestaña Grupos).</p>
+            ) : (
+              <div className="space-y-1">
+                {cohortes.map(c => (
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedCohorte === c.id ? 'bg-accent/10 border-accent' : 'border-gray-100'}`}>
+                    <input type="radio" name="cohorte" checked={selectedCohorte === c.id} onChange={() => setSelectedCohorte(c.id)} className="accent-accent" />
+                    <span className="text-sm">{c.name}</span>
+                  </label>
+                ))}
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button onClick={confirm} disabled={assigning || targetCount === 0}
+            className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-2">
+            <Users className="w-4 h-4" />
+            {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────
-export function ProgramasTab({ trainerId }: Props) {
+export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   const [programs, setPrograms]   = useState<Program[]>([])
   const [labels, setLabels]       = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<{ id: string; name: string }[]>([])
@@ -439,11 +615,20 @@ export function ProgramasTab({ trainerId }: Props) {
   const [editing, setEditing]     = useState<Program | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterTipo, setFilterTipo]   = useState<string | null>(null)
+  const [bulkAssignFor, setBulkAssignFor] = useState<Program | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setPrograms(DEMO_PROGRAMS as unknown as Program[])
+      setLabels(DEMO_LABELS)
+      setSurveyTemplates([{ id: 'demo-tmpl-001', name: 'Check-in semanal' }])
+      setPlanTemplates(DEMO_PLAN_TEMPLATES.map(t => ({ id: t.id, name: t.name, type: t.type })))
+      setLoading(false)
+      return
+    }
     const [progRes, labelRes, surveyRes, planRes] = await Promise.all([
       supabase.from('programs').select('*').eq('trainer_id', trainerId).order('created_at', { ascending: false }),
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
@@ -458,22 +643,24 @@ export function ProgramasTab({ trainerId }: Props) {
   }
 
   const saveProgram = async (prog: Program) => {
-    const { error } = await supabase.from('programs').upsert(prog, { onConflict: 'id' })
-    if (error) { toast('Error al guardar', 'warn'); return }
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('programs').upsert(prog, { onConflict: 'id' })
+      if (error) { toast('Error al guardar', 'warn'); return }
+    }
     setPrograms(ps => ps.find(p => p.id === prog.id) ? ps.map(p => p.id === prog.id ? prog : p) : [prog, ...ps])
     setEditing(null)
     toast('Programa guardado ✓', 'ok')
   }
 
   const deleteProgram = async (id: string) => {
-    await supabase.from('programs').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('programs').delete().eq('id', id)
     setPrograms(ps => ps.filter(p => p.id !== id))
     toast('Eliminado', 'ok')
   }
 
   const duplicate = async (prog: Program) => {
     const copy: Program = { ...JSON.parse(JSON.stringify(prog)), id: `prog_${Date.now()}`, name: `${prog.name} (copia)`, created_at: Date.now(), updated_at: Date.now() }
-    await supabase.from('programs').insert(copy)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('programs').insert(copy)
     setPrograms(ps => [copy, ...ps])
     toast('Duplicado ✓', 'ok')
   }
@@ -500,10 +687,16 @@ export function ProgramasTab({ trainerId }: Props) {
           <h2 className="text-3xl font-serif font-bold">Programas</h2>
           <p className="text-muted text-sm mt-1">{programs.length} programa{programs.length !== 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => setEditing(emptyProgram(trainerId))}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-          <Plus className="w-4 h-4" /> Nuevo programa
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onManageLabels}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+            <Tag className="w-4 h-4" /> Etiquetas
+          </button>
+          <button onClick={() => setEditing(emptyProgram(trainerId))}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            <Plus className="w-4 h-4" /> Nuevo programa
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -538,15 +731,42 @@ export function ProgramasTab({ trainerId }: Props) {
           {[1,2,3,4].map(i => <div key={i} className="h-32 bg-card border border-border rounded-2xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-border rounded-2xl text-muted">
-          <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-serif text-lg font-bold">Sin programas</p>
-          <p className="text-sm mt-1">Crea programas semanales y asígnalos a tus clientes</p>
-          <button onClick={() => setEditing(emptyProgram(trainerId))}
-            className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
-            Crear programa
-          </button>
-        </div>
+        programs.length > 0 ? (
+          // Tiene programas pero el filtro no devuelve nada
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
+            <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-serif text-lg font-bold">Sin resultados</p>
+            <p className="text-sm mt-1">Prueba otro filtro</p>
+            <button onClick={() => { setFilterLabel(null); setFilterTipo(null) }} className="mt-3 text-accent text-sm hover:underline">Quitar filtros</button>
+          </div>
+        ) : (
+          // No tiene ningún programa
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-accent opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu primer programa</p>
+              <p className="text-sm text-muted mt-2 max-w-sm mx-auto">Un programa es un calendario semanal donde asignas workouts, cardio y tareas a cada día. Créalo una vez y asígnalo a varios clientes.</p>
+              <button onClick={() => setEditing(emptyProgram(trainerId))}
+                className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                Crear programa
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Ejemplo de estructura</p>
+              <div className="grid grid-cols-7 gap-1.5">
+                {['L','M','X','J','V','S','D'].map((d, i) => (
+                  <div key={d} className={`text-center rounded-lg py-2 text-xs font-semibold ${i < 5 ? 'bg-accent/8 text-accent' : 'bg-bg-alt text-muted'}`}>
+                    <p className="text-[10px] mb-1">{d}</p>
+                    {i < 5 ? <div className="w-1.5 h-1.5 bg-accent/40 rounded-full mx-auto" /> : <div className="w-1.5 h-1.5 rounded-full mx-auto" />}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted mt-2 text-center">5 días de entrenamiento + fin de semana libre</p>
+            </div>
+          </div>
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {filtered.map(prog => {
@@ -557,7 +777,7 @@ export function ProgramasTab({ trainerId }: Props) {
               <div key={prog.id}
                 className="bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/40 hover:shadow-sm transition-all cursor-pointer group"
                 onClick={() => setEditing(prog)}>
-                <div className="h-1.5" style={{ background: taskTypes.length ? `linear-gradient(90deg, ${TASK_TYPES.filter(t => taskTypes.includes(t.id as any)).map(t => t.color).join(', ')})` : '#e5e7eb' }} />
+                <div className="h-1.5" style={{ background: taskTypes.length ? `linear-gradient(90deg, ${TASK_TYPES.filter(t => taskTypes.includes(t.id)).map(t => t.color).join(', ')})` : '#e5e7eb' }} />
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -569,6 +789,7 @@ export function ProgramasTab({ trainerId }: Props) {
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setBulkAssignFor(prog)} title="Asignar a varios" className="p-1.5 text-muted hover:text-accent rounded-lg"><Users className="w-3.5 h-3.5" /></button>
                       <button onClick={() => duplicate(prog)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
                       <button onClick={() => deleteProgram(prog.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
@@ -589,6 +810,10 @@ export function ProgramasTab({ trainerId }: Props) {
             )
           })}
         </div>
+      )}
+
+      {bulkAssignFor && (
+        <BulkAssignModal program={bulkAssignFor} clients={clients} trainerId={trainerId} onClose={() => setBulkAssignFor(null)} />
       )}
     </div>
   )

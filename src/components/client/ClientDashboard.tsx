@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
-import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
+import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
-import { TrainingSession } from '../trainer/TrainingSession'
+import { ActiveWorkout } from './ActiveWorkout'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { useClientWeights } from '../../lib/clientWeight'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 interface Props {
   plan: TrainingPlan
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
-  weightHistory: WeightEntry[]
   clientName: string
   clientId: string
+  trainerId?: string
   objetivo?: string
   welcomeMsg?: string
   motivMsg?: string
@@ -34,13 +36,46 @@ function calcStreak(logs: TrainingLogs): number {
   return streak
 }
 
-function getTodaySession(plan: TrainingPlan) {
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
-  if (!currentWeek) return null
-  const weekIdx = plan.weeks.findIndex(w => w === currentWeek)
-  const dayOfWeek = new Date().getDay()
-  const dayIdx = Math.min(dayOfWeek === 0 ? 6 : dayOfWeek - 1, (currentWeek.days?.length || 1) - 1)
-  const day = currentWeek.days?.[dayIdx]
+// Lunes=0 ... domingo=6, igual que Date.getDay() ajustado (domingo=0 -> 6).
+const WEEKDAY_NAMES = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+function weekdayFromTitle(title: string): number | null {
+  const norm = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') // quita acentos: "miércoles" -> "miercoles"
+  const idx = WEEKDAY_NAMES.findIndex(name => norm.includes(name))
+  return idx === -1 ? null : idx
+}
+
+function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
+  if (!currentWeek?.days?.length) return null
+  const isDayDone = (di: number) => {
+    if (logs[`finished_w${weekIdx}_d${di}`]?.sessionFinished) return true
+    const dayExs = currentWeek.days[di].exercises || []
+    if (!dayExs.length) return true
+    return dayExs.every((_, ri) => logs[`ex_w${weekIdx}_d${di}_r${ri}`]?.done)
+  }
+
+  // 1) Si los títulos de los días llevan el nombre del día de la semana (p. ej.
+  //    "LUNES — EMPUJE", "JUEVES — BANCA"...), usar ESE como el de hoy siempre
+  //    que coincida con el día real — es como el propio cliente lo entiende, y
+  //    no depende de qué se haya entrenado antes.
+  const todayWeekday = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1 })()
+  const weekdayMatchIdx = currentWeek.days.findIndex(d => weekdayFromTitle(d.title) === todayWeekday)
+
+  // 2) Si no hay nombres de día (p. ej. "Día A/B/C"), no hay forma de saber a
+  //    qué día del calendario corresponde cada uno — en su lugar, "hoy" es el
+  //    siguiente día sin terminar de la semana actual, por orden, volviendo a
+  //    empezar por el primero si ya se completaron todos. ANTES se usaba el
+  //    índice del día de la semana natural directo sobre el array de días,
+  //    asumiendo 7 días exactos (uno por día del calendario) — con un split de
+  //    3-4 días eso se salía del hueco real (p. ej. un jueves con un plan de 4
+  //    días mostraba days[3] "Viernes" en vez del día que tocaba).
+  let dayIdx = weekdayMatchIdx
+  if (dayIdx === -1) {
+    dayIdx = currentWeek.days.findIndex((_, di) => !isDayDone(di))
+    if (dayIdx === -1) dayIdx = 0
+  }
+  const day = currentWeek.days[dayIdx]
   if (!day) return null
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
@@ -53,36 +88,32 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clientName, clientId, objetivo = 'general', welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438', seriesTypes }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
-  const [weights, setWeights] = useState<{ date: string; weight: number }[]>([])
+  const { weights, addWeight } = useClientWeights(clientId)
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [showCalc, setShowCalc] = useState(false)
 
   useEffect(() => {
-    try { setWeights(JSON.parse(localStorage.getItem(`pf_weight_${clientId}`) || '[]')) } catch {}
     const online = () => setIsOnline(true)
     const offline = () => setIsOnline(false)
     window.addEventListener('online', online)
     window.addEventListener('offline', offline)
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
-  }, [clientId])
+  }, [])
 
   const saveWeight = () => {
     const w = parseFloat(newWeight)
     if (!w || w < 20 || w > 300) return
-    const date = new Date().toISOString().split('T')[0]
-    const updated = [{ date, weight: w }, ...weights.filter((x: { date: string; weight: number }) => x.date !== date)].sort((a, b) => b.date.localeCompare(a.date))
-    setWeights(updated)
-    localStorage.setItem(`pf_weight_${clientId}`, JSON.stringify(updated))
+    addWeight(w)
     setNewWeight(''); setShowWeightInput(false)
   }
 
   const streak = calcStreak(logs)
-  const todaySession = getTodaySession(plan)
+  const todaySession = getTodaySession(plan, logs)
   const totalExDone = Object.values(logs).filter(l => l.done).length
   const pesoActual = weights[0]?.weight || null
 
@@ -92,6 +123,12 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const todayDone = todayLogs.filter(l => l?.done).length
   const todayTotal = todaySession?.day.exercises.length || 0
   const todayPct = todayTotal ? Math.round((todayDone / todayTotal) * 100) : 0
+  // El cliente puede dar la sesión por terminada con ejercicios sin hacer (se
+  // acabó el tiempo, etc.) — sin este flag seguiría apareciendo "Continuar"
+  // como si la sesión estuviera a medias en vez de cerrada de verdad. El
+  // progreso (todayPct) se sigue mostrando real; esto solo afecta al CTA.
+  const todayFinishedEarly = todaySession ? !!logs[`finished_${todaySession.dayKey}`]?.sessionFinished : false
+  const todayComplete = todayPct === 100 || todayFinishedEarly
   const estimatedMin = todaySession ? Math.round(estimateMinutes(todaySession.day.exercises)) : 0
 
   const nextExIdx = todaySession
@@ -102,7 +139,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   const sessionOverlay = session && (
     <>
       {!sessionMinimized && (
-        <TrainingSession
+        <ActiveWorkout
           day={session.day}
           dayKey={session.dayKey}
           plan={plan}
@@ -110,8 +147,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           onLogsChange={onLogsChange}
           onFinish={() => { setSession(null); setSessionMinimized(false) }}
           onBack={() => setSessionMinimized(true)}
-          clientId={clientId}
-          clientName={clientName}
+          trainerId={trainerId}
         />
       )}
       {sessionMinimized && (
@@ -272,7 +308,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
                 style={{ minHeight: '52px' }}
                 className="w-full flex items-center justify-center gap-3 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
                 <Play className="w-5 h-5" />
-                {todayPct === 100 ? '¡Sesión completada! Repetir' :
+                {todayComplete ? '¡Sesión completada! Repetir' :
                  todayDone > 0 ? `Continuar — ${todayTotal - todayDone} ejercicios restantes` :
                  'Empezar entrenamiento'}
               </button>
@@ -288,30 +324,38 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
           </div>
         )}
 
-        {/* Historial 7 días */}
+        {/* Racha semanal — círculos dorados de lunes a domingo, sin ser punitiva */}
         <div className="bg-card border border-border rounded-2xl p-4">
           <h4 className="font-serif font-bold text-sm mb-4">Esta semana</h4>
           <div className="flex gap-1.5 justify-between">
-            {Array.from({ length: 7 }, (_, i) => {
-              const d = new Date(); d.setDate(d.getDate() - (6 - i))
-              const key = d.toISOString().split('T')[0]
-              const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
-              const isToday = i === 6
-              const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                  <div className={`w-full rounded-lg transition-all ${count > 0 ? 'bg-ok' : 'bg-bg-alt'} ${isToday ? 'ring-2 ring-accent ring-offset-1' : ''}`}
-                    style={{ height: count > 0 ? '32px' : '8px' }} />
-                  <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
-                </div>
-              )
-            })}
+            {(() => {
+              const now = new Date()
+              const dow = now.getDay() // 0=domingo
+              const monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
+              return Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(monday); d.setDate(monday.getDate() + i)
+                const key = d.toISOString().split('T')[0]
+                const todayKey = now.toISOString().split('T')[0]
+                const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
+                const isToday = key === todayKey
+                const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className={`w-8 h-8 rounded-full bg-bg-alt flex items-center justify-center transition-all ${isToday ? 'ring-2 ring-accent ring-offset-1' : ''}`}
+                      style={count > 0 ? { backgroundColor: '#e0a854' } : undefined}>
+                      {count > 0 && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
+                  </div>
+                )
+              })
+            })()}
           </div>
         </div>
 
         {/* Macros */}
         {(() => {
-          const macros = (plan as any)?.macros
+          const macros = plan?.macros
           if (!macros?.kcal) return null
           return (
             <div className="bg-card border border-border rounded-2xl p-4">
@@ -346,9 +390,11 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
             <div>
               <p className="text-sm font-bold">{streak} días seguidos entrenando</p>
               <p className="text-xs text-muted mt-0.5">
-                {streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
-                 streak >= 5 ? '¡Casi una semana! Sigue así.' :
-                 '¡Buen ritmo! Mantén la racha.'}
+                {restDayMsg || (
+                  streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
+                  streak >= 5 ? '¡Casi una semana! Sigue así.' :
+                  '¡Buen ritmo! Mantén la racha.'
+                )}
               </p>
             </div>
           </div>
@@ -358,7 +404,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, weightHistory, clien
   )
 }
 
-export function SelectorDias({ plan, clientId, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
+export function SelectorDias({ plan, onUpdate }: { plan: any; clientId: string; onUpdate: (dias: number[]) => void }) {
   const diasSemana = plan?.diasSemana || 0
   const diasElegidos: number[] = plan?.diasElegidos || []
   const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']

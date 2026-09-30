@@ -1,10 +1,11 @@
 import { Especialidad } from '../lib/especialidades'
+import { PlanName } from '../lib/plans'
 // ── USUARIOS ──────────────────────────────────────────
 export interface UserProfile {
   uid: string; email: string; displayName: string; photoURL?: string
   role: 'super_admin' | 'trainer' | 'client'; approved?: boolean; trainerId?: string; createdAt: number
   clientLimit?: number
-  planName?: 'free' | 'trial' | 'pro' | 'studio'
+  planName?: PlanName
 }
 
 // ── CLIENTES ──────────────────────────────────────────
@@ -14,6 +15,13 @@ export interface ClientData {
   trainerId: string; token: string; createdAt: number; isActive?: boolean
   phone?: string  // WhatsApp del cliente
   objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
+  altura?: number; genero?: string; fechanacimiento?: string
+  notas_privadas?: string  // notas privadas del entrenador, nunca se muestran al cliente
+  label_ids?: string[]
+  precio_mensual?: number  // solo para seguimiento del negocio del entrenador, no implica cobro real
+  lesiones?: string        // limitaciones/lesiones relevantes para programar — solo lo ve el entrenador
+  equipo_disponible?: string  // equipo con el que cuenta el cliente para entrenar — solo lo ve el entrenador
+  metricas_cliente?: string[]  // ids de Section (lib/progresoSections) que el cliente puede ver en su propio panel
 }
 
 // ── PLAN ──────────────────────────────────────────────
@@ -23,6 +31,25 @@ export interface Exercise {
   requiresVideo?: boolean  // el entrenador pide vídeo de ejecución
   restSets?: number        // descanso entre series (seg)
   restAfter?: number       // descanso tras el ejercicio (seg)
+  seriesType?: string      // id de SeriesTypeDef (normal, dropset, etc.)
+  hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
+  supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
+  tempo?: string           // cadencia "excéntrica-pausa abajo-concéntrica-pausa arriba" en segundos, ej. "3-1-1-0" ('X' = explosivo)
+  enReadaptacion?: boolean // ejercicio terapéutico/de readaptación — pide dolor EVA 0-10 durante la sesión
+  kind?: 'run'             // ejercicio de carrera/pista: se registra tiempo y distancia en vez de kg × reps (`sets` sigue siendo "NxM" para lo que lo lea)
+  run?: RunSpec
+}
+
+// Ejercicio de carrera. Por tiradas: `reps` tiradas de `distanceM` metros con
+// `recoveryM` metros andando entre ellas (0 = sin recuperación medida; una
+// tirada continua es reps 1). Con `durationSec` es un test de tiempo fijo
+// (ej. Cooper, 12 min): el cliente registra la distancia alcanzada.
+export interface RunSpec {
+  reps: number
+  distanceM: number
+  recoveryM?: number
+  intensity?: string
+  durationSec?: number
 }
 
 export interface ExerciseVideoUpload {
@@ -30,8 +57,8 @@ export interface ExerciseVideoUpload {
   videoUrl: string
   uploadedAt: number
 }
-export interface DayPlan { title: string; focus: string; exercises: Exercise[] }
-export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
+export interface DayPlan { title: string; focus: string; exercises: Exercise[]; warmup?: string; warmupExercises?: Exercise[]; testIds?: string[] }
+export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
 
 export interface TrainingPlan {
   clientId: string; type: string; restMain: number; restAcc: number; restWarn: number
@@ -46,28 +73,45 @@ export interface TrainingPlan {
   diasElegidos?: number[]  // 0=lun,1=mar...6=dom (elegidos por cliente)
   macros?: { kcal: number; protein: number; carbs: number; fats: number; notaMacros?: string }
   weeks: WeekPlan[]
+  programId?: string; programName?: string  // programa de plantilla asignado, si lo hay
+  customMessages?: Record<string, string>  // override por cliente de una plantilla de mensaje, keyed por id de plantilla
 }
 
 // ── PLANTILLAS ────────────────────────────────────────
 export interface TrainingTemplate {
   id: string; trainerId: string; name: string; type: string; description: string
-  weeks: WeekPlan[]; createdAt: number; updatedAt: number
+  weeks: WeekPlan[]; createdAt: number; updatedAt: number; label_ids?: string[]
+  isPublic?: boolean
 }
 
 // ── BIBLIOTECA ────────────────────────────────────────
-export interface LibraryVideo { url: string; label?: string; especialidades?: Especialidad[] }  // especialidades del vídeo — fuente de verdad
+// `especialidades` admite tanto los valores fijos de Especialidad como IDs de
+// especialidades personalizadas que el entrenador puede crear, por eso es string[].
+export interface LibraryVideo { url: string; label?: string; especialidades?: string[] }  // especialidades del vídeo — fuente de verdad
 export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
-  category?: string; especialidades?: Especialidad[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
+  category?: string; especialidades?: string[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
+  tags?: string[]
 }
 
 // ── REGISTROS ─────────────────────────────────────────
-export interface LogSet { weight: string; reps: string }
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string }
+export interface LogSet {
+  weight: string; reps: string; rir?: number; velocity?: number
+  timeSec?: number    // carrera: tiempo de la tirada (o duración fija del test)
+  distanceM?: number  // carrera: metros de la tirada (o alcanzados en el test)
+  isTest?: boolean    // carrera: test de tiempo fijo (Cooper) — distanceM es el resultado
+}
+// sessionFinished: solo se usa en una entrada sintética con clave
+// `finished_${dayKey}` (sets vacío, done:false) que ActiveWorkout escribe al
+// terminar una sesión con ejercicios sin hacer — deliberadamente NO usa
+// `done`/`dateDone` para no ensuciar los muchos sitios que cuentan
+// ejercicios/fechas iterando todo TrainingLogs sin filtrar por clave.
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sessionFinished?: boolean; dolorEva?: number }
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────
-export interface WeightEntry { v: number; fecha: string }
+// (el historial de peso corporal usa WeightEntry de lib/clientWeight.ts,
+// que sí coincide con la forma real { date, weight } usada en runtime)
 export interface ProgressPhoto {
   id: string; clientId: string; date: string
   frontUrl?: string; backUrl?: string; sideUrl?: string

@@ -55,9 +55,9 @@ export function PlanGate({ feature, planName, children, fallback }: Props) {
           <p className="text-xs text-muted mb-3">
             Disponible en el plan <span className="font-bold text-ink">{FEATURE_PLAN[feature]}</span>
           </p>
-          <a href="mailto:javier.quinones.lopez@gmail.com?subject=Quiero actualizar mi plan PanelFit"
+          <a href="/precios"
             className="inline-flex items-center gap-1.5 px-4 py-2 bg-ink text-white rounded-xl text-xs font-semibold hover:opacity-90">
-            Actualizar plan →
+            Ver planes →
           </a>
         </div>
       </div>

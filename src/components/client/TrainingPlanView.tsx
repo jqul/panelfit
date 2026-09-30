@@ -5,12 +5,14 @@ import { ActiveWorkout } from './ActiveWorkout'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 interface Props {
   plan: TrainingPlan
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
+  trainerId?: string
 }
 
 function getYTId(url: string) {
@@ -47,7 +49,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Props) {
+export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId }: Props) {
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -56,17 +58,18 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Prop
 
   const allSeriesTypes = seriesTypes?.length ? seriesTypes : DEFAULT_SERIES_TYPES
 
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
-  const weekIdx = plan.weeks?.indexOf(currentWeek) ?? 0
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
 
   if (activeWorkout) return (
     <ActiveWorkout
       plan={plan}
-      weekIdx={activeWorkout.weekIdx}
-      dayIdx={activeWorkout.dayIdx}
+      day={plan.weeks[activeWorkout.weekIdx].days[activeWorkout.dayIdx]}
+      dayKey={`w${activeWorkout.weekIdx}_d${activeWorkout.dayIdx}`}
       logs={logs}
       onLogsChange={onLogsChange}
       onFinish={() => setActiveWorkout(null)}
+      trainerId={trainerId}
     />
   )
 
@@ -90,6 +93,11 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Prop
         <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
         {currentWeek.rpe && <p className="text-xs text-muted mt-0.5">Intensidad objetivo: {currentWeek.rpe}</p>}
+        {currentWeek.isDeload && (
+          <div className="mt-2 px-3 py-2 bg-warn/10 border border-warn/20 rounded-xl text-xs text-warn font-medium">
+            Semana de descarga: baja un poco la intensidad para recuperar antes del siguiente bloque.
+          </div>
+        )}
       </div>
 
       <div className="px-4 space-y-3">
@@ -99,9 +107,13 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Prop
           const total = day.exercises.length
           const pct = total ? Math.round(done / total * 100) : 0
           const isOpen = openDays[dayKey]
-          const isComplete = pct === 100
-          const warmup = (day as any).warmup as string | undefined
-          const warmupExercises = (day as any).warmupExercises as any[] | undefined
+          // El cliente puede terminar la sesión a propósito con ejercicios sin
+          // hacer (se acabó el tiempo, etc.) — sin este flag, seguiría apareciendo
+          // "Continuar" como si la sesión estuviera a medias en vez de cerrada.
+          const finishedEarly = !!logs[`finished_${dayKey}`]?.sessionFinished
+          const isComplete = pct === 100 || finishedEarly
+          const warmup = day.warmup
+          const warmupExercises = day.warmupExercises
 
           return (
             <div key={di} className={`bg-card border rounded-2xl overflow-hidden transition-all ${isComplete ? 'border-ok/40' : 'border-border'}`}>
@@ -192,7 +204,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes }: Prop
                     {day.exercises.map((ex, ri) => {
                       const log = logs[`ex_${dayKey}_r${ri}`]
                       const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
-                      const seriesTypeId = (ex as any).seriesType || 'normal'
+                      const seriesTypeId = ex.seriesType || 'normal'
                       const seriesMeta = allSeriesTypes.find(s => s.id === seriesTypeId)
                       const showSeriesType = seriesTypeId !== 'normal' && seriesMeta
 

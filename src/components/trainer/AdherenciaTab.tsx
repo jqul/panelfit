@@ -1,16 +1,27 @@
 import { useMemo, useState } from 'react'
-import { ClientData, TrainingLogs, TrainingPlan } from '../../types'
-import { getNudge, getConsejo, OBJETIVOS, Objetivo } from '../../lib/nudges'
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
+import { ClientData, TrainingLogs } from '../../types'
+import { getNudge, Objetivo } from '../../lib/nudges'
+import { TrendingUp, TrendingDown, Minus, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
 
 interface ClientStats {
   client: ClientData
   diasEntrenados: number
   adherencia: number
+  compliance30: number
+  compliance90: number
+  needsAttention: boolean
   racha: number
   ultimoEntreno: string | null
   diasSinEntrenar: number
   tendencia: 'up' | 'down' | 'stable'
+}
+
+// Cuántos días de entreno se esperan en una ventana de N días — misma referencia de
+// 4 días/semana que ya usa el resto del panel (adherenciaMap en useClientStats.ts).
+const EXPECTED_DAYS_PER_WEEK = 4
+function complianceForWindow(diasEnVentana: number, ventanaDias: number): number {
+  const esperados = Math.max(1, Math.round(EXPECTED_DAYS_PER_WEEK * (ventanaDias / 7)))
+  return Math.min(100, Math.round((diasEnVentana / esperados) * 100))
 }
 
 interface Props {
@@ -28,12 +39,22 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
   const hoy = new Date()
   const hace7 = new Date(hoy); hace7.setDate(hace7.getDate() - 7)
   const hace14 = new Date(hoy); hace14.setDate(hace14.getDate() - 14)
+  const hace30 = new Date(hoy); hace30.setDate(hace30.getDate() - 30)
+  const hace90 = new Date(hoy); hace90.setDate(hace90.getDate() - 90)
 
   const diasUltimos7 = fechas.filter(f => new Date(f) >= hace7).length
   const diasAntes7 = fechas.filter(f => new Date(f) >= hace14 && new Date(f) < hace7).length
+  const diasUltimos30 = fechas.filter(f => new Date(f) >= hace30).length
+  const diasUltimos90 = fechas.filter(f => new Date(f) >= hace90).length
 
   const tendencia: 'up' | 'down' | 'stable' =
     diasUltimos7 > diasAntes7 ? 'up' : diasUltimos7 < diasAntes7 ? 'down' : 'stable'
+
+  // "Needs attention" — caída brusca de cumplimiento (no solo inactividad total):
+  // compara el cumplimiento de los últimos 7 días contra los 7 anteriores.
+  const complianceAntes7 = complianceForWindow(diasAntes7, 7)
+  const complianceUltimos7 = complianceForWindow(diasUltimos7, 7)
+  const needsAttention = complianceAntes7 - complianceUltimos7 >= 20
 
   // Racha
   let racha = 0
@@ -52,13 +73,17 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
       ? Math.floor((hoy.getTime() - client.createdAt) / 86400000)
       : 0  // cliente nuevo sin entrenos: contar desde creación
 
-  return { client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100), racha, ultimoEntreno, diasSinEntrenar, tendencia }
+  return {
+    client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100),
+    compliance30: complianceForWindow(diasUltimos30, 30), compliance90: complianceForWindow(diasUltimos90, 90),
+    needsAttention, racha, ultimoEntreno, diasSinEntrenar, tendencia,
+  }
 }
 
 function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin'): string {
   const url = `${window.location.origin}?c=${client.token}`
   const encuestaUrl = `${window.location.origin}?c=${client.token}&encuesta=1`
-  const objetivo = ((client as any).objetivo || 'general') as Objetivo
+  const objetivo = (client.objetivo as Objetivo) || 'general'
   const ctx = { clientName: client.name, diasSinEntrenar: stats.diasSinEntrenar, racha: stats.racha, adherencia: stats.adherencia, url }
   if (tipo === 'recordatorio') return getNudge('recordatorio', objetivo, ctx)
   return getNudge('checkin', objetivo, { ...ctx, url: encuestaUrl })
@@ -66,7 +91,7 @@ function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordato
 
 export function AdherenciaTab({ clients, logsMap }: Props) {
   const [enviados, setEnviados] = useState<Set<string>>(new Set())
-  const [filtro, setFiltro] = useState<'todos' | 'riesgo' | 'ok'>('todos')
+  const [filtro, setFiltro] = useState<'todos' | 'riesgo' | 'atencion' | 'ok'>('todos')
 
   const stats = useMemo(() =>
     clients.map(c => calcStats(c, logsMap[c.id] || {}))
@@ -76,10 +101,11 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
 
   const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 3 && s.client.createdAt < Date.now() - 3 * 86400000)
   const conRacha = stats.filter(s => s.racha >= 3)
+  const necesitanAtencion = stats.filter(s => s.needsAttention)
   const mediaAdherencia = stats.length
     ? Math.round(stats.reduce((a, s) => a + s.adherencia, 0) / stats.length) : 0
 
-  const filtered = filtro === 'riesgo' ? enRiesgo : filtro === 'ok' ? stats.filter(s => s.adherencia >= 70) : stats
+  const filtered = filtro === 'riesgo' ? enRiesgo : filtro === 'atencion' ? necesitanAtencion : filtro === 'ok' ? stats.filter(s => s.adherencia >= 70) : stats
 
   const sendWhatsApp = (client: ClientData, stats: ClientStats, tipo: 'recordatorio' | 'checkin') => {
     const msg = getWhatsAppMsg(client, stats, tipo)
@@ -88,9 +114,29 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
   }
 
   if (!clients.length) return (
-    <div className="text-center py-16 text-muted">
-      <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
-      <p className="font-serif text-lg">Sin clientes aún</p>
+    <div className="max-w-md mx-auto py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-accent/8 flex items-center justify-center mx-auto mb-5">
+        <TrendingUp className="w-8 h-8 text-accent opacity-60" />
+      </div>
+      <p className="font-serif text-2xl font-bold mb-2">Seguimiento de adherencia</p>
+      <p className="text-sm text-muted leading-relaxed mb-6">
+        Aquí verás qué clientes están en racha, cuáles llevan días sin entrenar y mensajes automáticos de motivación que puedes enviar con un clic.
+      </p>
+      <div className="bg-card border border-border rounded-2xl p-5 text-left space-y-2.5">
+        {[
+          { icon: '🔥', t: 'Rachas y cumplimiento', d: 'Cumplimiento en ventanas de 7, 30 y 90 días por cliente.' },
+          { icon: '⚠️', t: 'Alertas de inactividad y caídas', d: 'Detecta clientes sin actividad y también caídas bruscas de cumplimiento, aunque sigan entrenando algo.' },
+          { icon: '💬', t: 'Mensajes con un clic', d: 'Envía un recordatorio personalizado por WhatsApp directo desde aquí.' },
+        ].map(({ icon, t, d }) => (
+          <div key={t} className="flex items-start gap-3">
+            <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+            <div>
+              <p className="text-sm font-semibold">{t}</p>
+              <p className="text-xs text-muted">{d}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 
@@ -102,7 +148,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
       </div>
 
       {/* Stats globales */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className={`text-3xl font-serif font-bold ${mediaAdherencia >= 70 ? 'text-ok' : mediaAdherencia >= 40 ? 'text-accent' : 'text-warn'}`}>
             {mediaAdherencia}%
@@ -112,6 +158,10 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className="text-3xl font-serif font-bold text-warn">{enRiesgo.length}</p>
           <p className="text-[10px] text-muted uppercase tracking-wider mt-1">En riesgo</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-5 text-center">
+          <p className="text-3xl font-serif font-bold text-warn">{necesitanAtencion.length}</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">⚠️ En caída</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-5 text-center">
           <p className="text-3xl font-serif font-bold text-ok">{conRacha.length}</p>
@@ -146,12 +196,13 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
 
       {/* Filtros */}
       <div className="flex gap-1 bg-bg p-1 rounded-xl border border-border w-fit">
-        {[
+        {([
           { id: 'todos', label: `Todos (${stats.length})` },
           { id: 'riesgo', label: `En riesgo (${enRiesgo.length})` },
+          { id: 'atencion', label: `⚠️ En caída (${necesitanAtencion.length})` },
           { id: 'ok', label: `Buena adherencia` },
-        ].map(f => (
-          <button key={f.id} onClick={() => setFiltro(f.id as any)}
+        ] as const).map(f => (
+          <button key={f.id} onClick={() => setFiltro(f.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filtro === f.id ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
             {f.label}
           </button>
@@ -194,11 +245,14 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                      s.diasSinEntrenar === 1 ? 'Ayer' :
                      `${s.diasSinEntrenar} días sin entrenar`}
                   </span>
+                  {s.needsAttention && (
+                    <span className="text-[10px] text-warn font-bold">⚠️ Cumplimiento en caída</span>
+                  )}
                 </div>
               </div>
 
               {/* Barra + % */}
-              <div className="w-20 flex-shrink-0 hidden sm:block">
+              <div className="w-24 flex-shrink-0 hidden sm:block">
                 <div className="flex justify-between mb-1">
                   <span className={`text-xs font-bold ${
                     s.adherencia >= 70 ? 'text-ok' : s.adherencia >= 40 ? 'text-accent' : 'text-warn'
@@ -212,6 +266,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                     s.adherencia >= 70 ? 'bg-ok' : s.adherencia >= 40 ? 'bg-accent' : 'bg-warn'
                   }`} style={{ width: `${s.adherencia}%` }} />
                 </div>
+                <p className="text-[9px] text-muted mt-1">30d: {s.compliance30}% · 90d: {s.compliance90}%</p>
               </div>
 
               {/* Acciones */}

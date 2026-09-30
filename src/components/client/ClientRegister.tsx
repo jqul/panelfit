@@ -1,26 +1,35 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION } from '../../lib/intakeQuestions'
 
 interface Props {
   token: string
+  clientId: string
   clientName: string
   trainerName: string
   brandColor?: string
   brandLogo?: string
+  initialStep?: 'register' | 'login'
   onComplete: () => void
 }
 
-type Step = 'register' | 'login' | 'success'
+type Step = 'register' | 'login' | 'forgot' | 'intake' | 'success'
 
-export function ClientRegister({ token, clientName, trainerName, brandColor = '#6e5438', brandLogo, onComplete }: Props) {
-  const [step, setStep] = useState<Step>('register')
+export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, initialStep = 'register', onComplete }: Props) {
+  const [step, setStep] = useState<Step>(initialStep)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [parqAnswers, setParqAnswers] = useState<Record<number, boolean | null>>({})
+  const [freeAnswers, setFreeAnswers] = useState<Record<string, string>>({})
+  const [forgotSent, setForgotSent] = useState(false)
+  const [waiverAccepted, setWaiverAccepted] = useState(false)
+  const [waiverExpanded, setWaiverExpanded] = useState(false)
+  const [signedName, setSignedName] = useState('')
 
   const firstName = clientName.split(' ')[0]
 
@@ -59,11 +68,8 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
       }
 
       if (authData.user) {
-        // Vincular auth_user_id al cliente
-        const { error: updateError } = await supabase
-          .from('clientes')
-          .update({ auth_user_id: authData.user.id })
-          .eq('token', token)
+        // Vincular auth_user_id al cliente (RPC: solo si la fila aún no tiene cuenta vinculada)
+        const { error: updateError } = await supabase.rpc('claim_client_by_token', { p_token: token })
 
         if (updateError) {
           setError('Error al vincular cuenta. Contacta con tu entrenador.')
@@ -71,8 +77,7 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
           return
         }
 
-        setStep('success')
-        setTimeout(onComplete, 2000)
+        setStep('intake')
       }
     } catch (e) {
       setError('Error inesperado. Inténtalo de nuevo.')
@@ -97,6 +102,38 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
     setLoading(false)
   }
 
+  const handleForgotPassword = async () => {
+    setError('')
+    if (!email.trim()) { setError('Introduce tu email'); return }
+    setLoading(true)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: window.location.origin })
+    setLoading(false)
+    if (resetError) { setError(resetError.message); return }
+    setForgotSent(true)
+  }
+
+  const finishIntake = async () => {
+    setLoading(true)
+    const respuestas = [
+      ...PARQ_QUESTIONS.map((pregunta, i) => ({
+        pregunta, respuesta: parqAnswers[i] === true ? 'Sí' : parqAnswers[i] === false ? 'No' : 'Sin responder'
+      })),
+      ...INTAKE_FREE_QUESTIONS.map(q => ({ pregunta: q.label, respuesta: freeAnswers[q.key]?.trim() || 'Sin responder' })),
+    ]
+    await supabase.from('checkins').insert({
+      id: crypto.randomUUID().replace(/-/g, ''),
+      clientId, respuestas, tipo: 'intake', createdAt: Date.now(),
+    })
+    if (waiverAccepted && signedName.trim()) {
+      await supabase.from('waivers').insert({
+        clientId, signed_name: signedName.trim(), accepted_at: Date.now(), text_version: WAIVER_TEXT_VERSION,
+      })
+    }
+    setStep('success')
+    setLoading(false)
+    setTimeout(onComplete, 1800)
+  }
+
   if (step === 'success') {
     return (
       <div className="min-h-[100dvh] bg-bg flex flex-col items-center justify-center p-6 text-center">
@@ -109,6 +146,104 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
           {[0,1,2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: brandColor, animationDelay: `${i * 0.15}s` }} />
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 'forgot') {
+    return (
+      <div className="min-h-[100dvh] bg-bg flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-full max-w-sm">
+          {forgotSent ? (
+            <>
+              <div className="w-16 h-16 bg-ok/10 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle2 className="w-8 h-8 text-ok" /></div>
+              <h2 className="text-xl font-serif font-bold mb-2">Revisa tu email</h2>
+              <p className="text-sm text-muted leading-relaxed">Te hemos mandado un enlace a <strong>{email}</strong> para elegir una nueva contraseña.</p>
+              <button onClick={() => { setForgotSent(false); setStep('login') }} className="mt-6 w-full py-3.5 rounded-2xl text-white font-bold text-sm" style={{ backgroundColor: brandColor }}>Volver al inicio de sesión</button>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-serif font-bold mb-2">¿Olvidaste tu contraseña?</h1>
+              <p className="text-sm text-muted mb-8">Te mandamos un enlace a tu email para elegir una nueva.</p>
+              <div className="text-left">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Email</label>
+                <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                  placeholder="tu@email.com"
+                  className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:ring-2 focus:border-accent transition-colors" />
+              </div>
+              {error && <p className="mt-3 text-sm text-warn text-left">{error}</p>}
+              <button onClick={handleForgotPassword} disabled={loading}
+                className="w-full mt-6 py-3.5 rounded-2xl text-white font-bold text-sm disabled:opacity-50" style={{ backgroundColor: brandColor }}>
+                {loading ? 'Enviando...' : 'Enviar enlace'}
+              </button>
+              <button onClick={() => { setError(''); setStep('login') }} className="w-full mt-4 text-sm text-muted hover:text-ink">← Volver al inicio de sesión</button>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 'intake') {
+    return (
+      <div className="min-h-[100dvh] bg-bg flex flex-col">
+        <div className="px-6 pt-10 pb-4">
+          <h1 className="text-xl font-serif font-bold">Antes de empezar...</h1>
+          <p className="text-sm text-muted mt-1.5">Unas preguntas rápidas de salud para que tu entrenador adapte tu plan con seguridad.</p>
+        </div>
+        <div className="flex-1 px-6 space-y-5 max-w-sm mx-auto w-full pb-8">
+          <div className="space-y-3">
+            {PARQ_QUESTIONS.map((q, i) => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-3.5">
+                <p className="text-sm mb-2.5">{q}</p>
+                <div className="flex gap-2">
+                  {[{ v: true, label: 'Sí' }, { v: false, label: 'No' }].map(opt => (
+                    <button key={opt.label} onClick={() => setParqAnswers(a => ({ ...a, [i]: opt.v }))}
+                      className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                        parqAnswers[i] === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'
+                      }`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-3">
+            {INTAKE_FREE_QUESTIONS.map(q => (
+              <div key={q.key}>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">{q.label}</label>
+                <textarea value={freeAnswers[q.key] || ''} onChange={e => setFreeAnswers(a => ({ ...a, [q.key]: e.target.value }))}
+                  rows={2} placeholder="Opcional..."
+                  className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-sm outline-none resize-none focus:ring-2 focus:ring-accent/20" />
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-3.5 space-y-2.5">
+            <button onClick={() => setWaiverExpanded(v => !v)} className="text-xs font-semibold uppercase tracking-wider text-muted text-left">
+              Descargo de responsabilidad {waiverExpanded ? '▲' : '▼'}
+            </button>
+            {waiverExpanded && <p className="text-xs text-muted leading-relaxed">{WAIVER_TEXT}</p>}
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={waiverAccepted} onChange={e => setWaiverAccepted(e.target.checked)}
+                className="mt-0.5 w-4 h-4 flex-shrink-0" />
+              <span className="text-sm">He leído y acepto el descargo de responsabilidad</span>
+            </label>
+            {waiverAccepted && (
+              <input value={signedName} onChange={e => setSignedName(e.target.value)} placeholder="Escribe tu nombre completo como firma"
+                className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            )}
+          </div>
+
+          <button onClick={finishIntake} disabled={loading || !waiverAccepted || !signedName.trim()}
+            className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold text-base disabled:opacity-50 transition-opacity active:scale-[0.98]"
+            style={{ backgroundColor: brandColor, minHeight: '56px' }}>
+            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Continuar <ArrowRight className="w-4 h-4" /></>}
+          </button>
         </div>
       </div>
     )
@@ -187,13 +322,19 @@ export function ClientRegister({ token, clientName, trainerName, brandColor = '#
                 onChange={e => { setConfirmPassword(e.target.value); setError('') }}
                 placeholder="Repite la contraseña"
                 onKeyDown={e => e.key === 'Enter' && handleRegister()}
-                className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:ring-2 focus:border-accent transition-colors"
+                className="w-full px-4 py-3.5 bg-card border border-border rounded-2xl text-base outline-none focus:border-accent transition-colors"
               />
               {confirmPassword && password === confirmPassword && (
                 <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ok" />
               )}
             </div>
           </div>
+        )}
+
+        {step === 'login' && (
+          <button onClick={() => { setError(''); setStep('forgot') }} className="text-sm text-muted hover:underline" style={{ color: brandColor }}>
+            ¿Olvidaste tu contraseña?
+          </button>
         )}
 
         {/* Error */}

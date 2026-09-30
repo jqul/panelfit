@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "panelfit-dev",
+      "runtimeExecutable": "E:\\GitHub\\panelfit\\dev-with-node.cmd",
+      "runtimeArgs": [],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "nutrifit-dev",
+      "runtimeExecutable": "E:\\GitHub\\nutrifit\\dev-with-node.cmd",
+      "runtimeArgs": [],
+      "port": 5174
+    },
+    {
+      "name": "vocabulario-viaje-dev",
+      "runtimeExecutable": "E:\\GitHub\\vocabulario-viaje\\dev-with-node.cmd",
+      "runtimeArgs": [],
+      "port": 5175
+    },
+    {
+      "name": "vocabulario-viaje-preview",
+      "runtimeExecutable": "E:\\GitHub\\vocabulario-viaje\\preview-with-node.cmd",
+      "runtimeArgs": [],
+      "port": 4173
+    }
+  ]
+}

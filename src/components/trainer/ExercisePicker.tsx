@@ -3,6 +3,8 @@ import { Search, Video, Check, Plus, Filter, ChevronDown } from 'lucide-react'
 import { LibraryExercise, Exercise } from '../../types'
 import { EXERCISE_CATEGORIES } from '../../lib/constants'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
+import { useLibraryMuscleMap } from './progreso-tab/helpers'
+import { usePainWarning } from '../../lib/painWarning'
 
 function getYTId(url: string) {
   const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
@@ -29,6 +31,32 @@ function EspBadge({ esp, small }: { esp: string; small?: boolean }) {
   )
 }
 
+function ExerciseAlternatives({ selected, library, onPick }: { selected: LibraryExercise; library: LibraryExercise[]; onPick: (ex: LibraryExercise) => void }) {
+  const alternatives = useMemo(() => {
+    if (!selected.category) return []
+    return library.filter(e => e.id !== selected.id && e.category === selected.category).slice(0, 4)
+  }, [selected, library])
+
+  if (!alternatives.length) return null
+
+  return (
+    <div className="mt-2 p-3 bg-bg rounded-xl border border-dashed border-border flex-shrink-0">
+      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">
+        Alternativas · {selected.category}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {alternatives.map(alt => (
+          <button key={alt.id} onClick={() => onPick(alt)}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-card hover:border-accent hover:text-accent transition-all">
+            {alt.name}
+          </button>
+        ))}
+      </div>
+      <p className="text-[9px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
+    </div>
+  )
+}
+
 interface Props {
   library: LibraryExercise[]
   onSelect: (exercise: Exercise) => void
@@ -41,6 +69,8 @@ interface Props {
 const LAST_FILTER_KEY = 'pf_picker_last_filter'
 
 export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad, trackUsage, clientId }: Props) {
+  const libraryMap = useLibraryMuscleMap(library)
+  const getPainWarning = usePainWarning(clientId, libraryMap)
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState(() => localStorage.getItem(LAST_FILTER_KEY) || 'Todos')
   const [espFilter, setEspFilter] = useState<Especialidad | ''>('')
@@ -115,8 +145,8 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
   const cats = ['Todos', ...EXERCISE_CATEGORIES]
 
   return (
-    <div className="flex flex-col" style={{minHeight: "60vh", maxHeight: "80vh"}}>
-      <div className="flex gap-1 mb-4 bg-bg rounded-xl p-1">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex gap-1 mb-4 bg-bg rounded-xl p-1 flex-shrink-0">
         <button onClick={() => setMode('library')}
           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'library' ? 'bg-card shadow-sm text-ink' : 'text-muted'}`}>
           📚 Biblioteca
@@ -139,8 +169,8 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           </button>
         </div>
       ) : (
-        <>
-          <div className="relative mb-2">
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="relative mb-2 flex-shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
             <input autoFocus type="text" value={q} onChange={e => setQ(e.target.value)}
               placeholder="Buscar en tu biblioteca..."
@@ -149,7 +179,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
 
           {clientEspecialidad && (
             <button onClick={() => setOnlyClientEsp(!onlyClientEsp)}
-              className={`mb-2 w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+              className={`mb-2 w-full flex items-center justify-center gap-2 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${
                 onlyClientEsp ? 'bg-accent text-white border-accent' : 'border-border text-muted hover:border-accent'
               }`}>
               <Filter className="w-3 h-3" />
@@ -158,7 +188,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
             </button>
           )}
 
-          <div className="flex gap-1 flex-wrap mb-2">
+          <div className="flex gap-1 flex-wrap mb-2 flex-shrink-0">
             {cats.map(cat => (
               <button key={cat} onClick={() => { setCatFilter(cat); localStorage.setItem(LAST_FILTER_KEY, cat) }}
                 className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
@@ -168,7 +198,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           </div>
 
           {!onlyClientEsp && (
-            <div className="flex gap-1 flex-wrap mb-2">
+            <div className="flex gap-1 flex-wrap mb-2 flex-shrink-0">
               <button onClick={() => setEspFilter('')}
                 className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border transition-all ${
                   espFilter === '' ? 'bg-ink text-white border-ink' : 'border-border text-muted'
@@ -193,6 +223,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
               const color = mainEsp ? ESP_COLORS[mainEsp] : null
+              const painWarning = getPainWarning(ex.name)
               return (
                 <button key={ex.id} onClick={() => handleSelect(ex)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
@@ -204,7 +235,13 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                     {mainEsp ? ESPECIALIDADES.find(e => e.value === mainEsp)?.emoji : '🌐'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{ex.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{ex.name}</p>
+                      {painWarning && (
+                        <span title={`Molestia articular reciente en ${painWarning} · valora una variante más suave`}
+                          className="flex-shrink-0 text-xs cursor-help">⚠️</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                       {ex.category && <span className="text-[9px] text-muted">{ex.category}</span>}
                       {(!ex.especialidades || ex.especialidades.length === 0) && (
@@ -233,9 +270,9 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
             )}
           </div>
 
-          {/* SECCIÓN VÍDEOS — aquí está el fix principal */}
+          {/* SECCIÓN VÍDEOS */}
           {selected && (selected.videos?.length || 0) > 0 && (
-            <div className="mt-3 p-3 bg-bg rounded-xl border border-border space-y-2">
+            <div className="mt-3 p-3 bg-bg rounded-xl border border-border space-y-2 flex-shrink-0 max-h-48 overflow-y-auto">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">
                   Vídeos — selecciona cuáles añadir
@@ -247,7 +284,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                 )}
               </div>
 
-              {/* Layout en lista en vez de grid — más espacio para las etiquetas */}
               <div className="space-y-2">
                 {selected.videos!.map((v, i) => {
                   const ytId = getYTId(v.url)
@@ -260,7 +296,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                         isChecked ? 'border-accent bg-accent/5' : 'border-border opacity-60 hover:opacity-80'
                       }`}>
 
-                      {/* Miniatura */}
                       <div className="flex-shrink-0 w-20 h-14">
                         {ytId
                           ? <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
@@ -268,14 +303,11 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                         }
                       </div>
 
-                      {/* Info del vídeo */}
                       <div className="flex-1 min-w-0 py-2 pr-2 text-left">
-                        {/* Etiqueta del vídeo */}
                         <p className="text-xs font-semibold truncate">
                           {v.label || `Vídeo ${i + 1}`}
                         </p>
 
-                        {/* Especialidades como badges legibles */}
                         <div className="flex gap-1 flex-wrap mt-1">
                           {vEsps.length > 0 ? (
                             vEsps.map(esp => {
@@ -295,7 +327,6 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                         </div>
                       </div>
 
-                      {/* Check */}
                       <div className={`w-5 h-5 rounded-full flex-shrink-0 mr-3 flex items-center justify-center border-2 transition-all ${
                         isChecked ? 'bg-accent border-accent' : 'border-border'
                       }`}>
@@ -308,19 +339,30 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
             </div>
           )}
 
+          {selected && getPainWarning(selected.name) && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-warn/10 border border-warn/30 rounded-lg text-xs text-warn font-medium flex-shrink-0">
+              <span>⚠️</span>
+              <span>Molestia activa en {getPainWarning(selected.name)} (últimos 7 días) · Considerar una variante más suave</span>
+            </div>
+          )}
+
+          {selected && (
+            <ExerciseAlternatives selected={selected} library={library} onPick={handleSelect} />
+          )}
+
           {selected?.description && (
-            <div className="mt-2 p-3 bg-bg rounded-xl border border-border">
+            <div className="mt-2 p-3 bg-bg rounded-xl border border-border flex-shrink-0">
               <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1">Descripción técnica</p>
               <p className="text-xs text-ink/70 leading-relaxed line-clamp-3">{selected.description}</p>
             </div>
           )}
 
           <button onClick={handleConfirm} disabled={!selected}
-            className="mt-3 w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2">
+            className="mt-3 w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2 flex-shrink-0">
             <Plus className="w-4 h-4" />
             {selected ? `Añadir "${selected.name}"` : 'Selecciona un ejercicio'}
           </button>
-        </>
+        </div>
       )}
     </div>
   )

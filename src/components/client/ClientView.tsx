@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, MessageSquare, WifiOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { TrainingPlan, TrainingLogs, WeightEntry } from '../../types'
+import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
 import { ProgresoClienteTab } from './ProgresoClienteTab'
@@ -10,9 +10,20 @@ import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
+import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { ClientRegister } from './ClientRegister'
+import { HabitosWidget } from './HabitosWidget'
+import { BadgesWidget } from './BadgesWidget'
+import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
+import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
+import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
+import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
+import { ProximasSesiones } from './client-view/ProximasSesiones'
+import { MasTab } from './client-view/MasTab'
+import { NoPlanView, SyncIndicator } from './client-view/misc'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -26,12 +37,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
-  const [weightHistory] = useState<WeightEntry[]>([])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
   const [seriesTypes, setSeriesTypes] = useState<SeriesTypeDef[]>(DEFAULT_SERIES_TYPES)
+  const loggingOutRef = useRef(false)
+  const authStateRef = useRef(authState)
+  authStateRef.current = authState
 
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
@@ -40,9 +54,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     window.addEventListener('offline', offline)
 
     // Escuchar cambios de auth — si el cliente inicia sesión, cargar datos
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user && authState === 'needs_login') {
-        loadData(session.user.id)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (loggingOutRef.current) {
+        if (event === 'SIGNED_OUT') loggingOutRef.current = false
+        return
+      }
+      if (session?.user && authStateRef.current === 'needs_login') {
+        loadData()
       }
     })
 
@@ -56,12 +74,48 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [token])
 
   const checkAuth = async () => {
-    // 1. Cargar datos del cliente por token
-    const { data: clientData, error: cErr } = await supabase
-      .from('clientes').select('*').eq('token', token).maybeSingle()
+    // Enlace de uno de nuestros 3 clientes de demostración fijos — entra directo,
+    // sin registro ni login, igual que el modo demo del entrenador. Importante:
+    // solo si el token coincide EXACTO con uno de los 3 — un cliente real cuyo
+    // token generado al azar empiece por "demo-" por pura coincidencia no debe
+    // caer aquí, tiene que seguir el camino normal de abajo (get_client_by_token).
+    const demoClient = DEMO_CLIENTS.find(c => c.token === token)
+    if (demoClient) {
+      // Enlace directo a un cliente demo sin haber pasado antes por el modo
+      // demo del entrenador (?demo=1) — sin esto, el peso/dolor/etc. de este
+      // cliente concreto nunca se sembraría en localStorage y sus pestañas
+      // se verían vacías aunque el resto del demo sí tenga datos.
+      hydrateDemoStorage()
+      setClient({
+        id: demoClient.id, trainerId: demoClient.trainerId, name: demoClient.name, surname: demoClient.surname,
+        weight: demoClient.weight, fatPercentage: demoClient.fatPercentage, muscleMass: demoClient.muscleMass,
+        totalLifted: demoClient.totalLifted, planDescription: demoClient.planDescription,
+        token: demoClient.token, objetivo: demoClient.objetivo, createdAt: demoClient.createdAt,
+      } as ClienteRow)
+      setPlan(DEMO_PLAN_MAP[demoClient.id] || null)
+      setLogs(DEMO_LOGS_MAP[demoClient.id] || {})
+      setTrainerProfile(DEMO_TRAINER_PROFILE)
+      setAuthState('authenticated')
+      setLoading(false)
+      return
+    }
+
+    // 1. Cargar datos del cliente por token (vía RPC: no se puede listar la tabla directamente)
+    const { data: rows, error: cErr } = await supabase.rpc('get_client_by_token', { p_token: token })
     if (cErr) logError('ClientView:loadClient', cErr)
+    let clientData = rows?.[0] || null
+    if (!clientData && cErr) {
+      // Probable fallo de red (sin conexión) en vez de token inválido — si ya se
+      // entró antes con este enlace, sigue con la última copia local en vez de
+      // mostrar "enlace no válido" a un cliente legítimo sin cobertura.
+      try {
+        const cached = JSON.parse(localStorage.getItem(CLIENT_CACHE_KEY(token)) || 'null')
+        if (cached) clientData = cached
+      } catch {}
+    }
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
+    try { localStorage.setItem(CLIENT_CACHE_KEY(token), JSON.stringify(clientData)) } catch {}
 
     // 2. ¿El cliente tiene cuenta creada?
     if (!clientData.auth_user_id) {
@@ -75,7 +129,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user && session.user.id === clientData.auth_user_id) {
       // Sesión activa y coincide — cargar datos
-      await loadData(session.user.id, clientData)
+      await loadData(clientData)
     } else {
       // Tiene cuenta pero no sesión — mostrar login
       setAuthState('needs_login')
@@ -83,35 +137,43 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }
 
-  const loadData = async (userId?: string, preloadedClient?: ClienteRow) => {
+  const loadData = async (preloadedClient?: ClienteRow) => {
     setLoading(true)
     const clientData = preloadedClient || client
     if (!clientData) { setLoading(false); return }
 
     // Cargar logs desde localStorage (offline-first)
     const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
+    const hasPendingLocal = !!localStorage.getItem(PENDING_LOGS_KEY(clientData.id))
     if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
 
-    // Plan
+    // Plan — se guarda una copia en local para poder seguir viendo el entreno de
+    // hoy sin conexión (ej. sótano de gimnasio), en vez de quedarse sin plan.
     const { data: planData } = await supabase
       .from('planes').select('plan').eq('clientId', clientData.id).maybeSingle()
     const planRow = planData as PlanRow | null
     if (planRow?.plan?.P) {
       const p = planRow.plan.P as TrainingPlan
       if (p.fechaInicio && p.weeks?.length) {
-        const inicio = new Date(p.fechaInicio + 'T00:00:00')
-        const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-        const semActual = Math.min(Math.floor(dias / 7), p.weeks.length - 1)
+        const semActual = weekIdxFromStart(p.fechaInicio, p.weeks.length)
         p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
       setPlan(p)
+      try { localStorage.setItem(PLAN_CACHE_KEY(clientData.id), JSON.stringify(p)) } catch {}
+    } else {
+      try {
+        const cachedPlan = localStorage.getItem(PLAN_CACHE_KEY(clientData.id))
+        if (cachedPlan) setPlan(JSON.parse(cachedPlan))
+      } catch {}
     }
 
-    // Registros
+    // Registros — si hay cambios locales aún sin sincronizar, no los pisamos con
+    // la versión (más vieja) del servidor. El efecto de trySyncPendingLogs se
+    // encarga de subirlos en cuanto haya conexión.
     const { data: regData } = await supabase
       .from('registros').select('logs').eq('clientId', clientData.id).maybeSingle()
     const regRow = regData as RegistroRow | null
-    if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
+    if (regRow?.logs && !hasPendingLocal) setLogs(regRow.logs as TrainingLogs)
 
     // Perfil del entrenador
     if (clientData.trainerId) {
@@ -128,6 +190,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           if (local.seriesTypes?.length) setSeriesTypes(local.seriesTypes)
         } catch {}
       }
+      const { data: tmplData } = await supabase
+        .from('plantillas_mensajes').select('*').eq('trainerId', clientData.trainerId)
+      if (tmplData) setMessageTemplates(tmplData as MessageTemplate[])
     }
 
     setAuthState('authenticated')
@@ -138,32 +203,59 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // Después del registro, refrescar sesión y cargar datos
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
-      await loadData(session.user.id)
+      await loadData()
     }
   }
 
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
     setLogs(newLogs)
+    if (client?.id.startsWith('demo-client-')) { setSyncState('saved'); setTimeout(() => setSyncState('idle'), 2000); return }
+    if (!client?.id) return
     setSyncState('saving')
-    if (client?.id) localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
-    if (!navigator.onLine) { setSyncState('offline'); return }
-    if (client?.id) {
-      const { error: updateErr } = await supabase.from('registros')
-        .update({ logs: newLogs, updatedAt: Date.now() }).eq('clientId', client.id)
-      if (updateErr) {
-        const { error: insertErr } = await supabase.from('registros')
-          .insert({ clientId: client.id, logs: newLogs, updatedAt: Date.now() })
-        if (insertErr) { logError('ClientView:saveLogs', insertErr); setSyncState('error'); return }
-      }
-      setSyncState('saved')
-      setTimeout(() => setSyncState('idle'), 2000)
+    localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+    if (!navigator.onLine) {
+      // Queda marcado como pendiente — se reintenta solo en cuanto vuelva la conexión,
+      // en vez de perderse si el cliente cierra la pestaña o limpia la caché antes.
+      localStorage.setItem(PENDING_LOGS_KEY(client.id), '1')
+      setSyncState('offline')
+      return
     }
+    const ok = await pushLogsToServer(client.id, newLogs)
+    if (!ok) { localStorage.setItem(PENDING_LOGS_KEY(client.id), '1'); setSyncState('error'); return }
+    localStorage.removeItem(PENDING_LOGS_KEY(client.id))
+    setSyncState('saved')
+    setTimeout(() => setSyncState('idle'), 2000)
   }, [client?.id])
+
+  // Reintenta subir logs que quedaron guardados solo en local (sin conexión, o un
+  // fallo de red puntual) — al recuperar el cliente.id y cada vez que vuelve la conexión.
+  const trySyncPendingLogs = useCallback(async (clientId: string) => {
+    if (!navigator.onLine || !localStorage.getItem(PENDING_LOGS_KEY(clientId))) return
+    const raw = localStorage.getItem(`pf_logs_${clientId}`)
+    if (!raw) { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    let pendingLogs: TrainingLogs
+    try { pendingLogs = JSON.parse(raw) } catch { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    setSyncState('saving')
+    const ok = await pushLogsToServer(clientId, pendingLogs)
+    if (!ok) { setSyncState('error'); return }
+    localStorage.removeItem(PENDING_LOGS_KEY(clientId))
+    setSyncState('saved')
+    setTimeout(() => setSyncState('idle'), 2000)
+  }, [])
+
+  useEffect(() => {
+    if (!client?.id || client.id.startsWith('demo-client-')) return
+    trySyncPendingLogs(client.id)
+    const handler = () => trySyncPendingLogs(client.id)
+    window.addEventListener('online', handler)
+    return () => window.removeEventListener('online', handler)
+  }, [client?.id, trySyncPendingLogs])
 
   const handleDiasUpdate = useCallback(async (dias: number[]) => {
     if (!plan || !client?.id) return
     const newPlan = { ...plan, diasElegidos: dias }
     setPlan(newPlan)
+    if (client.id.startsWith('demo-client-')) return
     await supabase.from('planes').update({ plan: { P: newPlan }, updatedAt: Date.now() }).eq('clientId', client.id)
   }, [plan, client?.id])
 
@@ -191,6 +283,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     return (
       <ClientRegister
         token={token}
+        clientId={client.id}
         clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
         trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
         brandColor={trainerProf.brandColor}
@@ -207,10 +300,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     return (
       <ClientRegister
         token={token}
+        clientId={client.id}
         clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
         trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
         brandColor={trainerProf.brandColor}
         brandLogo={trainerProf.brandLogo}
+        initialStep="login"
         onComplete={() => loadData()}
       />
     )
@@ -222,10 +317,25 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const brandName = trainerProfile.brandName || 'PanelFit'
   const brandLogo = trainerProfile.brandLogo || null
   const brandColor = trainerProfile.brandColor || '#6e5438'
-  const welcomeMsg = trainerProfile.welcomeMsg || ''
-  const motivMsg = trainerProfile.motivMsg || ''
-  const restDayMsg = trainerProfile.restDayMsg || ''
   const brandBg = trainerProfile.brandBg || ''
+
+  // Series de hoy guardadas en local — para el aviso de "sin conexión" del
+  // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
+  const todayKey = new Date().toISOString().split('T')[0]
+  const pendingSetsCount = Object.values(logs).reduce((acc, log: any) => {
+    if (log?.dateDone !== todayKey) return acc
+    return acc + Object.values(log.sets || {}).filter((s: any) => s?.weight).length
+  }, 0)
+
+  const resolveTemplate = (tipo: 'nueva_rutina' | 'descanso' | 'racha') => {
+    const tmpl = messageTemplates.find(t => t.tipo === tipo)
+    if (!tmpl) return ''
+    const override = plan?.customMessages?.[tmpl.id]
+    return resolveMessage(override ?? tmpl.texto, clientName)
+  }
+  const welcomeMsg = resolveTemplate('nueva_rutina')
+  const motivMsg = resolveTemplate('descanso')
+  const restDayMsg = resolveTemplate('racha')
 
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
@@ -234,21 +344,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     { id: 'dieta' as Tab,    icon: Utensils,       label: 'Dieta' },
     { id: 'mas' as Tab,      icon: MoreHorizontal, label: 'Más' },
   ]
-
-  const SyncIndicator = () => {
-    if (syncState === 'idle') return null
-    return (
-      <div className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${
-        syncState === 'saving' ? 'bg-accent/10 text-accent' :
-        syncState === 'saved' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
-      }`}>
-        {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
-        {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
-        {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />Sin conexión — guardado localmente</>}
-        {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />Error al guardar</>}
-      </div>
-    )
-  }
 
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col"
@@ -274,7 +369,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </header>
 
-      <SyncIndicator />
+      <SyncIndicator syncState={syncState} pendingCount={pendingSetsCount} />
       <PWAInstallBanner />
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
@@ -288,28 +383,36 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <>
-                    <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
+                    {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                      weightHistory={weightHistory} clientName={clientName} clientId={client.id}
+                      clientName={clientName} clientId={client.id} trainerId={client.trainerId}
                       objetivo={client.objetivo} welcomeMsg={welcomeMsg} motivMsg={motivMsg}
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
+                    {/* Secundario: check-ins, próximas citas, logros y hábitos */}
+                    <ReadinessCheckin clientId={client.id} trainerId={client.trainerId} />
+                    <ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} />
+                    <BadgesWidget logs={logs} />
+                    <HabitosWidget clientId={client.id} />
+                    <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                   </>
                 : <NoPlanView />
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} />
+                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} />
                 : <NoPlanView />
             )}
-            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} logs={logs} plan={plan} />}
+            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} />}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
-              await supabase.auth.signOut()
+              loggingOutRef.current = true
               setAuthState('needs_login')
+              setTimeout(() => { loggingOutRef.current = false }, 5000)
+              await supabase.auth.signOut()
             }} />}
           </>
         )}
@@ -329,67 +432,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
           ))}
         </div>
       </nav>
-    </div>
-  )
-}
-
-function NoPlanView() {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 px-6 text-center text-muted">
-      <Dumbbell className="w-12 h-12 mx-auto mb-4 opacity-20" />
-      <p className="font-serif text-xl font-bold mb-2">Sin plan asignado</p>
-      <p className="text-sm">Tu entrenador aún no ha creado tu programa. ¡Pronto lo tendrás!</p>
-    </div>
-  )
-}
-
-function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void }) {
-  const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
-  const waUrl = trainerPhone
-    ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
-    : `https://wa.me/?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
-
-  return (
-    <div className="px-4 py-6 space-y-4 max-w-xl mx-auto pb-24">
-      <h3 className="font-serif font-bold text-xl">Más opciones</h3>
-
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu entrenador</p>
-        </div>
-        <div className="p-4">
-          <a href={waUrl} target="_blank" rel="noreferrer"
-            className="flex items-center gap-3 px-4 py-3 bg-[#25D366]/10 border border-[#25D366]/20 rounded-xl"
-            style={{ minHeight: '56px' }}>
-            <MessageSquare className="w-5 h-5 text-[#25D366] flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Contactar por WhatsApp</p>
-              <p className="text-xs text-muted">Abre WhatsApp con mensaje preparado</p>
-            </div>
-          </a>
-        </div>
-      </div>
-
-      {plan && (
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu programa</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted">Tipo</span><span className="font-semibold capitalize">{plan.type}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan.weeks?.length || 0}</span></div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Tu cuenta</p>
-        <p className="text-sm"><span className="text-muted">Nombre:</span> <span className="font-semibold">{client.name} {client.surname}</span></p>
-      </div>
-
-      {/* Cerrar sesión */}
-      <button onClick={onLogout}
-        className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
-        Cerrar sesión
-      </button>
     </div>
   )
 }

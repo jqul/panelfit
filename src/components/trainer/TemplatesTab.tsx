@@ -1,15 +1,21 @@
 import { TrainerLabel, LabelPill, LabelSelector } from './labels'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, X, Check } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload } from 'lucide-react'
+import { ActionMenu } from '../shared/ActionMenu'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
+import { TemplateGallery } from './TemplateGallery'
+import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
+import { exportWorkoutToExcel } from '../../lib/exportWorkout'
+import { parseWorkoutExcel } from '../../lib/importWorkout'
 
 interface Props {
   trainerId: string
   clients: ClientData[]
+  onManageLabels: () => void
 }
 
 const LS_KEY      = (uid: string) => `pf_templates_${uid}`
@@ -20,11 +26,6 @@ const TIPOS_DEFAULT = [
   'Hipertrofia','Fuerza','Pérdida de grasa','Resistencia',
   'Rehabilitación','Rendimiento','General','Test inicial',
   'Iniciación','Mantenimiento','Peaking','Volumen','Definición',
-]
-
-const LABEL_COLORS = [
-  '#ef4444','#f97316','#eab308','#22c55e','#06b6d4',
-  '#3b82f6','#8b5cf6','#ec4899','#6e5438','#64748b',
 ]
 
 function emptyTemplate(trainerId: string): TrainingTemplate {
@@ -65,7 +66,7 @@ function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan, name: string, ty
 
 // ── Label pill ────────────────────────────────────────────
 
-export function TemplatesTab({ trainerId, clients }: Props) {
+export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   const [templates, setTemplates]     = useState<TrainingTemplate[]>([])
   const [labels, setLabels]           = useState<TrainerLabel[]>([])
   const [loading, setLoading]         = useState(true)
@@ -82,7 +83,12 @@ export function TemplatesTab({ trainerId, clients }: Props) {
     try { return JSON.parse(localStorage.getItem(LS_TYPES(trainerId)) || '[]') } catch { return [] }
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [exportingId, setExportingId] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showGallery, setShowGallery] = useState(false)
   const library = useExerciseLibrary(trainerId)
+
 
   useEffect(() => {
     if (!trainerId) return
@@ -95,12 +101,18 @@ export function TemplatesTab({ trainerId, clients }: Props) {
 
   const loadAll = async () => {
     setLoading(true)
+    if (trainerId === DEMO_TRAINER_ID) {
+      setTemplates(DEMO_PLAN_TEMPLATES)
+      setLabels(DEMO_LABELS)
+      setLoading(false)
+      return
+    }
     const migrated = localStorage.getItem(LS_MIGRATED(trainerId))
     if (!migrated) {
       try {
         const local: TrainingTemplate[] = JSON.parse(localStorage.getItem(LS_KEY(trainerId)) || '[]')
         if (local.length > 0) {
-          const rows = local.map(t => ({ id: t.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: t.name || 'Plantilla', description: t.description || '', plan: t, created_at: t.createdAt || Date.now(), updated_at: t.updatedAt || Date.now(), label_ids: [] }))
+          const rows = local.map(t => ({ id: t.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: t.name || 'Workout', description: t.description || '', plan: t, created_at: t.createdAt || Date.now(), updated_at: t.updatedAt || Date.now(), label_ids: [] }))
           const { error } = await supabase.from('plan_templates').upsert(rows, { onConflict: 'id' })
           if (!error) localStorage.setItem(LS_MIGRATED(trainerId), '1')
         } else localStorage.setItem(LS_MIGRATED(trainerId), '1')
@@ -111,7 +123,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
       supabase.from('labels').select('*').eq('trainer_id', trainerId).order('created_at'),
     ])
     if (tmplRes.data) {
-      const parsed: TrainingTemplate[] = tmplRes.data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description || '', label_ids: r.label_ids || [] }))
+      const parsed: TrainingTemplate[] = tmplRes.data.map((r: any) => ({ ...r.plan, id: r.id, name: r.name, description: r.description || '', label_ids: r.label_ids || [], isPublic: r.is_public || false }))
       setTemplates(parsed); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(parsed))
     }
     if (labelRes.data) setLabels(labelRes.data)
@@ -119,18 +131,27 @@ export function TemplatesTab({ trainerId, clients }: Props) {
   }
 
   const persist = async (tmpl: TrainingTemplate) => {
-    const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: (tmpl as any).label_ids || [] }
-    const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
-    if (error) throw error
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const row = { id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description || '', plan: tmpl, created_at: tmpl.createdAt || Date.now(), updated_at: Date.now(), label_ids: tmpl.label_ids || [], is_public: tmpl.isPublic || false }
+      const { error } = await supabase.from('plan_templates').upsert(row, { onConflict: 'id' })
+      if (error) throw error
+    }
     const updated = templates.find(t => t.id === tmpl.id) ? templates.map(t => t.id === tmpl.id ? tmpl : t) : [tmpl, ...templates]
-    setTemplates(updated); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+    setTemplates(updated)
+    if (trainerId !== DEMO_TRAINER_ID) localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+  }
+
+  const togglePublic = async (tmpl: TrainingTemplate) => {
+    const updated = { ...tmpl, isPublic: !tmpl.isPublic }
+    await persist(updated)
+    toast(updated.isPublic ? `"${tmpl.name}" ahora es público ✓` : `"${tmpl.name}" ya no es público`, 'ok')
   }
 
   const handleSave = async () => {
     if (!editing || !editingPlan) return
     setSaving(true)
     try {
-      const saved = { ...planToTmpl(editing, editingPlan, editName, editType), label_ids: editLabelIds } as any
+      const saved = { ...planToTmpl(editing, editingPlan, editName, editType), label_ids: editLabelIds }
       await persist(saved)
       toast('Workout guardado ✓', 'ok')
       setEditing(null); setEditingPlan(null); setAddingType(false)
@@ -139,15 +160,45 @@ export function TemplatesTab({ trainerId, clients }: Props) {
   }
 
   const deleteTemplate = async (id: string) => {
-    await supabase.from('plan_templates').delete().eq('id', id)
+    if (trainerId !== DEMO_TRAINER_ID) await supabase.from('plan_templates').delete().eq('id', id)
     const updated = templates.filter(t => t.id !== id)
-    setTemplates(updated); localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
+    setTemplates(updated)
+    if (trainerId !== DEMO_TRAINER_ID) localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
     toast('Workout eliminado', 'ok')
   }
 
   const duplicate = async (tmpl: TrainingTemplate) => {
     const copy: TrainingTemplate = { ...tmpl, id: `tmpl_${Date.now()}`, name: `${tmpl.name} (copia)`, createdAt: Date.now(), updatedAt: Date.now() }
     await persist(copy); toast('Duplicado ✓', 'ok')
+  }
+
+  const exportExcel = async (tmpl: TrainingTemplate) => {
+    setExportingId(tmpl.id)
+    try {
+      await exportWorkoutToExcel(tmpl)
+    } catch (e) {
+      console.error('[PanelFit] Error al exportar a Excel:', e)
+      toast('Error al exportar — inténtalo de nuevo', 'warn')
+    }
+    setExportingId(null)
+  }
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite volver a elegir el mismo archivo si hace falta reintentar
+    if (!file) return
+    setImporting(true)
+    try {
+      const { name, weeks } = await parseWorkoutExcel(file)
+      const tmpl: TrainingTemplate = { ...emptyTemplate(trainerId), name, weeks }
+      setEditing(tmpl); setEditName(tmpl.name); setEditType(tmpl.type); setEditLabelIds([])
+      setEditingPlan(tmplToPlan(tmpl))
+      toast('Excel importado — revisa el workout antes de guardar', 'ok')
+    } catch (err) {
+      console.error('[PanelFit] Error al importar Excel:', err)
+      toast(err instanceof Error ? err.message : 'No se pudo leer el archivo', 'warn')
+    }
+    setImporting(false)
   }
 
   const startNew = () => {
@@ -158,7 +209,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
 
   const startEdit = (tmpl: TrainingTemplate) => {
     setEditing(tmpl); setEditName(tmpl.name); setEditType(tmpl.type)
-    setEditLabelIds((tmpl as any).label_ids || [])
+    setEditLabelIds(tmpl.label_ids || [])
     setEditingPlan(tmplToPlan(tmpl))
   }
 
@@ -170,7 +221,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
   }
 
   const allTypes = [...TIPOS_DEFAULT, ...customTypes]
-  const filtered = filterLabel ? templates.filter(t => ((t as any).label_ids || []).includes(filterLabel)) : templates
+  const filtered = filterLabel ? templates.filter(t => (t.label_ids || []).includes(filterLabel)) : templates
 
   // ── Editor ──
   if (editing && editingPlan) return (
@@ -225,10 +276,25 @@ export function TemplatesTab({ trainerId, clients }: Props) {
           <h2 className="text-3xl font-serif font-bold">Workouts</h2>
           <p className="text-muted text-sm mt-1">Rutinas reutilizables con ejercicios completos</p>
         </div>
-        <button onClick={startNew}
-          className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-          <Plus className="w-4 h-4" /> Nuevo workout
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50">
+            <Upload className="w-4 h-4" /> {importing ? 'Importando...' : 'Importar Excel'}
+          </button>
+          <button onClick={() => setShowGallery(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+            <Store className="w-4 h-4" /> Galería
+          </button>
+          <button onClick={onManageLabels}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
+            <Tag className="w-4 h-4" /> Etiquetas
+          </button>
+          <button onClick={startNew}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            <Plus className="w-4 h-4" /> Nuevo workout
+          </button>
+        </div>
       </div>
 
       {/* Filtro etiquetas */}
@@ -239,7 +305,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
             Todos ({templates.length})
           </button>
           {labels.map(label => {
-            const count = templates.filter(t => ((t as any).label_ids || []).includes(label.id)).length
+            const count = templates.filter(t => (t.label_ids || []).includes(label.id)).length
             return (
               <button key={label.id} onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
                 className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${filterLabel === label.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
@@ -254,16 +320,49 @@ export function TemplatesTab({ trainerId, clients }: Props) {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
-          <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-serif text-lg font-bold">{filterLabel ? 'Sin workouts con esta etiqueta' : 'Sin workouts'}</p>
-          <p className="text-sm mt-1">Crea tu primer workout y reutilízalo en tus programas</p>
-          {!filterLabel && <button onClick={startNew} className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Crear workout</button>}
-        </div>
+        filterLabel ? (
+          <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
+            <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-serif text-lg font-bold">Sin workouts con esta etiqueta</p>
+            <p className="text-sm mt-1">Prueba otra etiqueta o crea un nuevo workout</p>
+            <button onClick={() => setFilterLabel(null)} className="mt-3 text-accent text-sm hover:underline">Ver todos</button>
+          </div>
+        ) : (
+          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
+            <div className="px-8 py-10 text-center">
+              <div className="w-16 h-16 bg-ok/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ClipboardCheck className="w-8 h-8 text-ok opacity-60" />
+              </div>
+              <p className="font-serif text-xl font-bold text-ink">Crea tu primer workout</p>
+              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Los workouts son rutinas con ejercicios completos que puedes reutilizar en múltiples clientes y programas.</p>
+              <button onClick={startNew} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                Crear workout
+              </button>
+            </div>
+            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>
+              <div className="flex items-start gap-6 flex-wrap">
+                {[
+                  { step: '1', label: 'Añade ejercicios', desc: 'Ve a Ejercicios y crea tu librería', color: 'bg-accent/10 text-accent' },
+                  { step: '2', label: 'Crea workouts', desc: 'Combina ejercicios en rutinas', color: 'bg-ok/10 text-ok' },
+                  { step: '3', label: 'Arma programas', desc: 'Asigna workouts a días de la semana', color: 'bg-ink/10 text-ink' },
+                ].map(({ step, label, desc, color }) => (
+                  <div key={step} className="flex items-start gap-3 flex-1 min-w-36">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>{step}</div>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{label}</p>
+                      <p className="text-xs text-muted">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           {filtered.map(tmpl => {
-            const tmplLabels = labels.filter(l => ((tmpl as any).label_ids || []).includes(l.id))
+            const tmplLabels = labels.filter(l => (tmpl.label_ids || []).includes(l.id))
             return (
               <div key={tmpl.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/30 transition-colors">
                 <div className="flex items-center gap-3 px-5 py-4">
@@ -272,13 +371,32 @@ export function TemplatesTab({ trainerId, clients }: Props) {
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {tmpl.type && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
                       <p className="text-xs text-muted">{tmpl.weeks?.length || 0} sem · {tmpl.weeks?.[0]?.days?.length || 0} días</p>
+                      {tmpl.isPublic && <span className="text-[10px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => startEdit(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => duplicate(tmpl)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteTemplate(tmpl.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => startEdit(tmpl)} title="Editar" className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <ActionMenu>
+                      <button onClick={() => togglePublic(tmpl)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Globe className={`w-3.5 h-3.5 flex-shrink-0 ${tmpl.isPublic ? 'text-ok' : 'text-muted'}`} />
+                        {tmpl.isPublic ? 'Dejar de compartir' : 'Compartir en la galería'}
+                      </button>
+                      <button onClick={() => duplicate(tmpl)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Copy className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Duplicar
+                      </button>
+                      <button onClick={() => exportExcel(tmpl)} disabled={exportingId === tmpl.id}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt disabled:opacity-40">
+                        <FileSpreadsheet className={`w-3.5 h-3.5 text-muted flex-shrink-0 ${exportingId === tmpl.id ? 'animate-pulse' : ''}`} /> Exportar a Excel
+                      </button>
+                      <div className="h-px bg-border my-1" />
+                      <button onClick={() => deleteTemplate(tmpl.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                        <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Eliminar
+                      </button>
+                    </ActionMenu>
                     <button onClick={() => setExpanded(expanded === tmpl.id ? null : tmpl.id)} className="p-1.5 text-muted rounded-lg">
                       {expanded === tmpl.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
@@ -306,6 +424,7 @@ export function TemplatesTab({ trainerId, clients }: Props) {
           })}
         </div>
       )}
+      {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onImported={() => { setShowGallery(false); loadAll() }} />}
     </div>
   )
 }

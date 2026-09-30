@@ -18,6 +18,8 @@ export interface ClienteRow {
 export interface PlanRow {
   clientId: string
   plan: { P: unknown } | null
+  plan_borrador?: { P: unknown } | null
+  borrador_activo?: boolean
   updatedAt: number
 }
 

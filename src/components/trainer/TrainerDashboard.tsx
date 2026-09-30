@@ -1,210 +1,156 @@
+import { track } from '@vercel/analytics'
 import { AlertasWidget } from './AlertasWidget'
-import { useState, useEffect, useMemo } from 'react'
+import { useTrainerClients } from '../../hooks/useTrainerClients'
+import { useClientStats } from '../../hooks/useClientStats'
+import { useLabels } from '../../hooks/useLabels'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp, Calendar,
-  StickyNote, Activity, Zap, ArrowRight, Send
+  Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, Calendar, CalendarDays, ChevronDown,
+  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { NotificacionesBell } from './NotificacionesBell'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
-import { mapClientes } from '../../lib/mappers'
 import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
-import { TrainerLabel, LabelPill } from './labels'
 import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
 import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
+import { CohortesTab } from './CohortesTab'
+import { BandejaTab } from './BandejaTab'
+import { EtiquetasTab } from './EtiquetasTab'
+import { CalendarTab } from './CalendarTab'
+import { ThemeToggle } from '../shared/ThemeToggle'
+import { PushToggle } from '../shared/PushToggle'
+import { OnboardingTour } from './OnboardingTour'
 import { PlanGate } from '../shared/PlanGate'
+import { PublicPageEditor } from './PublicPageEditor'
+import { EquipoSection } from './EquipoSection'
+import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity'
-
-interface ClientWithStats extends ClientData {
-  lastActive?: string; doneToday?: boolean; hasPlan?: boolean; weeklyDays?: number
-}
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
 
 interface Props {
   userProfile: UserProfile
+  realUserProfile?: UserProfile
+  teamContext?: { uid: string; displayName: string } | null
+  onSwitchTeam?: (team: { uid: string; displayName: string } | null) => void
   onLogout: () => void
   onSelectClient: (client: ClientData) => void
   demoClients?: ClientData[]
+  demoLogsMap?: Record<string, any>
 }
 
-export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoClients }: Props) {
-  const [clients, setClients] = useState<ClientWithStats[]>([])
-  const [loading, setLoading] = useState(true)
+export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
+  const realUid = realUserProfile?.uid || userProfile.uid
+  const clientLimit = userProfile.clientLimit ?? 999
+  const { clients, logsMap, loading, addClient, deleteClient, limitReached } =
+    useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
+  const { labels } = useLabels(userProfile.uid)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (demoClients) return false
+    try { return localStorage.getItem(`pf_onboarding_done_${userProfile.uid}`) !== '1' } catch { return false }
+  })
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
+  const [customObjetivos, setCustomObjetivos] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`pf_custom_objetivos_${userProfile.uid}`) || '[]') } catch { return [] }
+  })
+  const [addingObjetivo, setAddingObjetivo] = useState(false)
+  const [newObjetivoInput, setNewObjetivoInput] = useState('')
+  const addCustomObjetivo = () => {
+    const v = newObjetivoInput.trim(); if (!v) return
+    const updated = [...customObjetivos, v]
+    setCustomObjetivos(updated)
+    localStorage.setItem(`pf_custom_objetivos_${userProfile.uid}`, JSON.stringify(updated))
+    setNewClient(p => ({ ...p, objetivo: v }))
+    setNewObjetivoInput(''); setAddingObjetivo(false)
+  }
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [labels, setLabels] = useState<TrainerLabel[]>([])
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
-  const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const library = useExerciseLibrary(userProfile.uid)
-  const clientLimit = userProfile.clientLimit ?? 999
-  const limitReached = !demoClients && clients.length >= clientLimit
-
-  const fetchClients = async () => {
-    setLoading(true)
-    if (demoClients) { setClients(demoClients as ClientWithStats[]); setLoading(false); return }
-    const { data, error } = await supabase.from('clientes').select('*').eq('trainerId', userProfile.uid)
-    if (error) { console.error('Error:', error); setLoading(false); return }
-    const mapped = mapClientes(data || []).map((c, i) => ({
-      ...c,
-      phone: (data || [])[i]?.phone || '',
-      objetivo: (data || [])[i]?.objetivo || 'general',
-      altura: (data || [])[i]?.altura || null,
-      genero: (data || [])[i]?.genero || null,
-      fechanacimiento: (data || [])[i]?.fechanacimiento || null,
-    }))
-    const hoy = new Date().toISOString().split('T')[0]
-    const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-    if (mapped.length) {
-      const ids = mapped.map(c => c.id)
-      const { data: regs } = await supabase.from('registros').select('clientId,logs').in('clientId', ids)
-      const { data: planes } = await supabase.from('planes').select('clientId,plan').in('clientId', ids)
-      const planMap: Record<string, boolean> = {}
-      ;(planes || []).forEach((p: any) => { planMap[p.clientId] = !!(p.plan?.P?.weeks?.length) })
-      const lm: Record<string, any> = {}
-      ;(regs || []).forEach((r: any) => { lm[r.clientId] = r.logs || {} })
-      setLogsMap(lm)
-      setClients(mapped.map(c => {
-        const reg = (regs || []).find((r: any) => r.clientId === c.id)
-        const logs = reg?.logs || {}
-        const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-        return { ...c, lastActive: dates[0], doneToday: dates[0] === hoy, hasPlan: planMap[c.id] || false, weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length }
-      }))
-    } else setClients([])
-    setLoading(false)
-  }
+  const [myTeams, setMyTeams] = useState<{ uid: string; displayName: string }[]>([])
 
   useEffect(() => {
-    fetchClients()
-    supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at').then(({ data }) => { if (data) setLabels(data) })
-    const channel = supabase.channel('clientes-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clientes', filter: `trainerId=eq.${userProfile.uid}` }, fetchClients)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [userProfile.uid])
+    if (demoClients) return
+    supabase.from('team_members').select('owner_id').eq('member_uid', realUid).then(async ({ data }) => {
+      if (!data?.length) { setMyTeams([]); return }
+      const { data: owners } = await supabase.from('entrenadores').select('uid, "displayName"').in('uid', data.map(d => d.owner_id))
+      setMyTeams((owners || []).map(o => ({ uid: o.uid, displayName: o.displayName || 'Entrenador' })))
+    })
+  }, [realUid, demoClients])
+
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, adherenciaMap,
+    filteredClients, chartData, activityFeed, alerts, formatLastActive } =
+    useClientStats({ clients, logsMap, search, clientFilter })
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
-    if (limitReached) { toast(`Límite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn'); return }
     setAdding(true)
-    const token = Math.random().toString(36).slice(2, 14)
-    const { error } = await supabase.from('clientes').insert({ trainerId: userProfile.uid, name: newClient.name.trim(), surname: newClient.surname.trim(), phone: (newClient.phone || '').trim(), objetivo: newClient.objetivo || 'general', token, createdAt: Date.now(), altura: newClient.altura ? parseFloat(newClient.altura) : null, weight: newClient.peso ? parseFloat(newClient.peso) : 0, genero: newClient.genero || null, fechanacimiento: newClient.fechanacimiento || null, fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '', label_ids: newClientLabelIds })
-    if (error) toast('Error: ' + error.message, 'warn')
-    else { toast('Cliente creado ✓', 'ok'); setShowAdd(false); setNewClientLabelIds([]); setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }); fetchClients() }
+    const ok = await addClient(newClient, newClientLabelIds)
+    if (ok) {
+      if (clients.length === 0) track('first_client_created')
+      setShowAdd(false)
+      setNewClientLabelIds([])
+      setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+    }
     setAdding(false)
   }
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('clientes').delete().eq('id', id)
-    setDeletingId(null); fetchClients(); toast('Cliente eliminado', 'ok')
-  }
-
+  const handleDelete = async (id: string) => { await deleteClient(id); setDeletingId(null) }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n💪`)}`, '_blank')
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
-
-  const hoy = new Date().toISOString().split('T')[0]
-  const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
-  const haceDosSemanas = new Date(); haceDosSemanas.setDate(haceDosSemanas.getDate() - 14)
-
-  const activeToday = clients.filter(c => c.doneToday).length
-  const noPlan = clients.filter(c => !c.hasPlan).length
-  const noActivity7d = clients.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS).length
-  const alerts = clients.filter(c => !c.hasPlan || (!c.lastActive || new Date(c.lastActive) < haceUnaS))
-
-  const activePrevWeek = useMemo(() => {
-    let count = 0
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string)
-      if (dates.some(d => new Date(d) >= haceDosSemanas && new Date(d) < haceUnaS)) count++
-    })
-    return count
-  }, [clients, logsMap])
-
-  const adherenciaMap = useMemo(() => {
-    const map: Record<string, number> = {}
-    clients.forEach(c => { map[c.id] = Math.min(100, Math.round(((c.weeklyDays || 0) / 4) * 100)) })
-    return map
-  }, [clients])
-
-  const filteredClients = useMemo(() => {
-    let list = [...clients]
-    if (clientFilter === 'active') list = list.filter(c => c.doneToday)
-    else if (clientFilter === 'no-plan') list = list.filter(c => !c.hasPlan)
-    else if (clientFilter === 'no-activity') list = list.filter(c => !c.lastActive || new Date(c.lastActive) < haceUnaS)
-    if (search) list = list.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase()))
-    return list
-  }, [clients, clientFilter, search])
-
-  const chartData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().split('T')[0]
-    return { label: d.toLocaleDateString('es-ES', { weekday: 'short' }), count: clients.filter(c => c.lastActive === key).length, key }
-  }), [clients])
-
-  const formatLastActive = (date?: string) => {
-    if (!date) return 'Nunca'
-    const diff = Math.round((new Date().setHours(0,0,0,0) - new Date(date + 'T00:00:00').getTime()) / 86400000)
-    if (diff === 0) return 'Hoy'; if (diff === 1) return 'Ayer'; if (diff < 7) return `Hace ${diff}d`
-    return new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
-  }
-
-  const activityFeed = useMemo(() => {
-    const events: { clientName: string; text: string; date: string }[] = []
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dates = [...new Set(Object.values(logs).filter((l: any) => l.dateDone).map((l: any) => l.dateDone as string))].sort().reverse()
-      if (dates[0]) events.push({ clientName: `${c.name} ${c.surname}`, text: 'completó una sesión', date: dates[0] })
-    })
-    return events.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
-  }, [clients, logsMap])
+  const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
 
   const QUICK_ACTIONS = [
-    { icon: UserPlus,  label: 'Nuevo cliente',   color: 'text-accent',      bg: 'bg-accent/10',   action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,  label: 'Workouts',        color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('templates') },
-    { icon: Send,      label: 'Encuesta',          color: 'text-purple-500',  bg: 'bg-purple-50',   action: () => handleTabChange('encuestas') },
-    { icon: BarChart2, label: 'Adherencia',        color: 'text-warn',        bg: 'bg-warn/10',     action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes',      color: 'text-blue-500',    bg: 'bg-blue-50',     action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp, label: 'Insights',         color: 'text-ok',          bg: 'bg-ok/10',       action: () => handleTabChange('insights') },
+    { icon: UserPlus,      label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8',  action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
+    { icon: Dumbbell,      label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('templates') },
+    { icon: Send,          label: 'Encuesta',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('encuestas') },
+    { icon: BarChart2,     label: 'Adherencia',    color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('adherencia') },
+    { icon: MessageCircle, label: 'Mensajes',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('mensajes') },
+    { icon: TrendingUp,    label: 'Insights',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('insights') },
   ]
 
   const NAV_GROUPS = [
     { label: 'Gestión', items: [
       { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-      { id: 'clients' as Tab, icon: Users, label: 'Clientes', badge: clients.length },
-      { id: 'mensajes' as Tab, icon: MessageCircle, label: 'Mensajes' },
-      { id: 'encuestas' as Tab, icon: ClipboardList, label: 'Encuestas' },
-      { id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio' },
+      { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
+      { id: 'bandeja'   as Tab, icon: Inbox,           label: 'Bandeja' },
+      { id: 'cohortes' as Tab, icon: Users2,          label: 'Grupos' },
+      { id: 'etiquetas' as Tab, icon: TagIcon,        label: 'Etiquetas' },
+      { id: 'calendario' as Tab, icon: CalendarDays,  label: 'Calendario' },
+      { id: 'mensajes'  as Tab, icon: MessageCircle,   label: 'Mensajes' },
+      { id: 'encuestas' as Tab, icon: ClipboardList,   label: 'Encuestas' },
+      { id: 'negocio'   as Tab, icon: TrendingUp,      label: 'Mi negocio' },
     ]},
     { label: 'Contenido', items: [
-      { id: 'exercises' as Tab, icon: Dumbbell, label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: Dumbbell, label: 'Workouts' },
-      { id: 'programas' as Tab, icon: Calendar, label: 'Programas' },
+      { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
+      { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
+      { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
     ]},
     { label: 'Análisis', items: [
-      { id: 'insights' as Tab, icon: BarChart2, label: 'Insights' },
+      { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
       { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
     ]},
     { label: 'Configuración', items: [
@@ -212,14 +158,32 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     ]},
   ]
 
-  const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
-
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-border flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-border flex items-center justify-between" style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}>
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
-        <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-muted"><X className="w-4 h-4" /></button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <NotificacionesBell trainerId={userProfile.uid} onSelectClient={(clientId) => {
+            const client = clients.find(c => c.id === clientId)
+            if (client) onSelectClient(client)
+          }} />
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
+        </div>
       </div>
+      {myTeams.length > 0 && onSwitchTeam && (
+        <div className="px-4 py-2.5 border-b border-border bg-bg-alt/30">
+          <label className="block text-[9px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
+          <select value={teamContext?.uid || ''} onChange={e => {
+              const sel = myTeams.find(t => t.uid === e.target.value)
+              onSwitchTeam(sel || null)
+            }}
+            className="w-full text-xs font-semibold bg-card border border-border rounded-lg px-2 py-1.5 outline-none">
+            <option value="">Tu cuenta</option>
+            {myTeams.map(t => <option key={t.uid} value={t.uid}>Equipo de {t.displayName}</option>)}
+          </select>
+        </div>
+      )}
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center font-bold text-accent text-sm flex-shrink-0">
@@ -231,10 +195,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </div>
       </div>
-
-      {/* Accesos rápidos en sidebar */}
       <div className="px-3 py-3 border-b border-border">
-        <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-2 mb-2">Accesos rápidos</p>
+        <p className="text-[10px] font-semibold text-muted/50 px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
           {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
             <button key={label} onClick={action} disabled={disabled}
@@ -245,13 +207,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           ))}
         </div>
       </div>
-
       <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
         {NAV_GROUPS.map(group => (
           <div key={group.label}>
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted/60 px-3 mb-1">{group.label}</p>
+            <p className="text-[10px] font-semibold text-muted/50 px-3 mb-1 tracking-wider">{group.label}</p>
             <div className="space-y-0.5">
-              {group.items.map(({ id, icon: Icon, label, badge }) => (
+              {group.items.map(({ id, icon: Icon, label, badge }: any) => (
                 <button key={id} onClick={() => handleTabChange(id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
                   <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -265,7 +226,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         ))}
       </nav>
-
       <div className="p-3 border-t border-border space-y-1.5">
         {alerts.length > 0 && (
           <button onClick={() => { setActiveTab('clients'); setClientFilter('no-activity'); setSidebarOpen(false) }}
@@ -284,8 +244,14 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
     </div>
   )
 
+  const closeOnboarding = () => {
+    setShowOnboarding(false)
+    try { localStorage.setItem(`pf_onboarding_done_${userProfile.uid}`, '1') } catch {}
+  }
+
   return (
     <div className="flex min-h-[100dvh] overflow-hidden bg-bg">
+      {showOnboarding && <OnboardingTour onClose={closeOnboarding} />}
       <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border"><SidebarContent /></div>
       {sidebarOpen && (
         <>
@@ -294,20 +260,22 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
         </>
       )}
       <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
-        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><Menu className="w-5 h-5" /></button>
+        <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
+          <button onClick={() => setSidebarOpen(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => !limitReached && setShowAdd(true)} className="p-2 rounded-lg hover:bg-bg-alt text-muted"><UserPlus className="w-5 h-5" /></button>
+          <button onClick={() => !limitReached && setShowAdd(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><UserPlus className="w-5 h-5" /></button>
         </div>
 
         <div className="p-4 lg:p-6">
 
-          {/* DASHBOARD */}
+          {/* ── DASHBOARD ── */}
           {activeTab === 'dashboard' && (
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
+
+              {/* Columna izquierda */}
               <div className="flex-1 min-w-0 space-y-5">
 
-                {/* Header con % de entrenados */}
                 <div className="flex items-end justify-between">
                   <div>
                     <h2 className="text-4xl font-serif font-bold">Resumen</h2>
@@ -321,32 +289,68 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   )}
                 </div>
 
-                {/* Stats con comparativa semana anterior */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Stat cards — borde de color + número prominente */}
+                <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
                   {[
-                    { label: 'Clientes', value: clients.length, prev: undefined, icon: Users, color: 'text-ink', accent: '#6e5438', onClick: () => handleTabChange('clients') },
-                    { label: 'Entrenaron hoy', value: activeToday, prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok', accent: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
-                    { label: 'Sin plan', value: noPlan, prev: undefined, icon: AlertCircle, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
-                    { label: 'Sin actividad', value: noActivity7d, prev: undefined, icon: Clock, color: 'text-warn', accent: '#e07b54', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
-                  ].map(({ label, value, prev, icon: Icon, color, accent, onClick }) => (
-                    <button key={label} onClick={onClick} className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '18' }}>
+                    { label: 'Clientes',       value: clients.length, prev: undefined,     icon: Users,        color: 'text-ink',  accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
+                    { label: 'Entrenaron hoy', value: activeToday,    prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok',   accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
+                    { label: 'Sin plan',       value: noPlan,         prev: undefined,     icon: AlertCircle,  color: noPlan > 0 ? 'text-warn' : 'text-muted',      accent: noPlan > 0 ? '#e07b54' : '#9ca3af',      border: noPlan > 0 ? '#e07b54' : '#e5e7eb',      onClick: () => { setClientFilter('no-plan'); handleTabChange('clients') } },
+                    { label: 'Sin actividad',  value: noActivity7d,  prev: undefined,     icon: Clock,        color: noActivity7d > 0 ? 'text-warn' : 'text-muted', accent: noActivity7d > 0 ? '#e07b54' : '#9ca3af', border: noActivity7d > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('no-activity'); handleTabChange('clients') } },
+                    { label: 'En riesgo',      value: atRiskCount,   prev: undefined,     icon: AlertCircle,  color: atRiskCount > 0 ? 'text-warn' : 'text-muted', accent: atRiskCount > 0 ? '#e07b54' : '#9ca3af', border: atRiskCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('at-risk'); handleTabChange('clients') } },
+                    { label: 'Carga alta',     value: highAcwrCount, prev: undefined,     icon: Zap,          color: highAcwrCount > 0 ? 'text-warn' : 'text-muted', accent: highAcwrCount > 0 ? '#e07b54' : '#9ca3af', border: highAcwrCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('high-acwr'); handleTabChange('clients') } },
+                    { label: 'Caída de salto', value: jumpDropCount, prev: undefined,     icon: TrendingDown, color: jumpDropCount > 0 ? 'text-warn' : 'text-muted', accent: jumpDropCount > 0 ? '#e07b54' : '#9ca3af', border: jumpDropCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('jump-drop'); handleTabChange('clients') } },
+                  ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
+                    <button key={label} onClick={onClick}
+                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
+                      style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                      <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: border }} />
+                      <div className="flex items-center justify-between mb-4 mt-1">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: accent + '15' }}>
                           <Icon className={`w-4 h-4 ${color}`} />
                         </div>
                         {prev !== undefined && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
-                            {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)} vs sem. ant.
+                            {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)}
                           </span>
                         )}
                       </div>
-                      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-                      <p className="text-xs text-muted font-medium mt-0.5">{label}</p>
+                      <p className={`text-4xl font-serif font-bold ${color}`}>{value}</p>
+                      <p className="text-xs text-muted font-medium mt-1">{label}</p>
                     </button>
                   ))}
                 </div>
 
-                {/* Gráfica */}
+
+                {/* Onboarding — solo cuando no hay clientes */}
+                {clients.length === 0 && !loading && (
+                  <div className="rounded-2xl overflow-hidden border border-border">
+                    <div className="px-8 pt-10 pb-6">
+                      <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">Bienvenido a PanelFit</p>
+                      <h3 className="font-serif text-2xl font-bold leading-snug mb-1">Tu primer cliente, listo en 2 minutos</h3>
+                      <p className="text-sm text-muted">Sigue estos 3 pasos y tendrás a un cliente entrenando con su panel móvil hoy mismo.</p>
+                    </div>
+                    <div className="px-8 pb-8 space-y-3">
+                      {[
+                        { n: '1', title: 'Añade al cliente', desc: 'Nombre y objetivo. En 30 segundos.', cta: '+ Nuevo cliente', onClick: () => setShowAdd(true), primary: true },
+                        { n: '2', title: 'Asígnale una rutina', desc: 'Usa una plantilla o créala desde cero.', cta: 'Ver Workouts', onClick: () => handleTabChange('templates'), primary: false },
+                        { n: '3', title: 'Envíale el enlace', desc: 'Un clic lo manda por WhatsApp. Sin instalar nada.', cta: 'Ver Clientes', onClick: () => handleTabChange('clients'), primary: false },
+                      ].map(({ n, title, desc, cta, onClick, primary }) => (
+                        <div key={n} className={`flex items-center gap-4 p-4 rounded-xl border ${primary ? 'bg-ink text-white border-ink' : 'bg-card border-border'}`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-serif font-bold text-sm flex-shrink-0 ${primary ? 'bg-white/15 text-white' : 'bg-bg-alt text-muted'}`}>{n}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${primary ? 'text-white' : 'text-ink'}`}>{title}</p>
+                            <p className={`text-xs mt-0.5 ${primary ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
+                          </div>
+                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-white text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
+                            {cta}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gráfica actividad */}
                 <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
@@ -371,7 +375,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 </div>
 
-                {/* Cumplimiento semanal — NUEVO */}
+                {/* Cumplimiento semanal */}
                 {clients.length > 0 && (
                   <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                     <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
@@ -384,7 +388,14 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       </button>
                     </div>
                     <div className="divide-y divide-border/40">
-                      {clients.slice(0, 6).map(c => {
+                      {clients.every(c => (adherenciaMap[c.id] ?? 0) === 0) && (
+                        <div className="px-5 py-8 text-center">
+                          <div className="text-3xl mb-2">💪</div>
+                          <p className="text-sm font-semibold text-ink">La semana acaba de empezar</p>
+                          <p className="text-xs text-muted mt-1">El cumplimiento se actualizará cuando tus clientes entrenen</p>
+                        </div>
+                      )}
+                      {clients.some(c => (adherenciaMap[c.id] ?? 0) > 0) && clients.slice(0, 6).map(c => {
                         const pct = adherenciaMap[c.id] ?? 0
                         const barColor = pct >= 75 ? '#4caf7d' : pct >= 40 ? '#e0a854' : '#e07b54'
                         return (
@@ -443,7 +454,8 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     )}
                   </div>
                 </div>
-              </div>
+
+              </div>{/* fin columna izquierda */}
 
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
@@ -461,7 +473,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                           <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : 'Sin actividad reciente'}</p>
+                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.highAcwr ? `⚡ Carga alta (ACWR ${c.acwrRatio})` : c.highJumpDrop ? `🦵 Caída de salto (${c.jumpDropPct}%)` : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
                           </div>
                           <ChevronRight className="w-3 h-3 text-muted" />
                         </button>
@@ -470,8 +482,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 )}
 
-
-                {/* Widget recordatorios pendientes */}
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
 
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -496,7 +506,6 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                   </div>
                 </div>
 
-                {/* Acciones rápidas en columna derecha */}
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-accent" />
@@ -522,7 +531,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     {alerts.slice(0, 3).map(c => (
                       <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
                         <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : `Revisar progreso de ${c.name}`}</p>
+                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.highAcwr ? `Revisar carga de ${c.name} (riesgo de lesión)` : c.highJumpDrop ? `Revisar fatiga de ${c.name} (caída de salto)` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
                       </button>
                     ))}
                     {alerts.length === 0 && (
@@ -545,11 +554,13 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       className="w-full text-xs text-muted bg-bg-alt/50 border border-border/50 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
                   </div>
                 </div>
-              </div>
+
+              </div>{/* fin columna derecha */}
+
             </div>
           )}
 
-          {/* CLIENTES */}
+          {/* ── CLIENTES ── */}
           {activeTab === 'clients' && (
             <div className="animate-fade-in space-y-5 max-w-5xl">
               <div className="flex items-center justify-between">
@@ -566,7 +577,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }] as const).map(f => (
+                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }, { id: 'high-acwr', label: '⚡ Carga alta' }, { id: 'jump-drop', label: '🦵 Caída de salto' }] as const).map(f => (
                     <button key={f.id} onClick={() => setClientFilter(f.id)}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
                       {f.label}
@@ -580,57 +591,87 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                 <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => (
-                    <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer group shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }} onClick={() => onSelectClient(client)}>
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
-                          {client.name[0]?.toUpperCase()}
-                          {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
+                  {filteredClients.map(client => {
+                    const adherencia = adherenciaMap[client.id] ?? 0
+                    const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
+                    return (
+                      <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
+                          <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
+                            {client.name[0]?.toUpperCase()}
+                            {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
+                            <p className="text-[10px] text-muted mt-0.5">
+                              {client.doneToday ? <span className="text-ok font-bold">Entrenó hoy</span> : formatLastActive(client.lastActive)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                          <p className="text-[10px] text-muted mt-0.5">{client.doneToday ? <span className="text-ok font-bold">✓ Entrenó hoy</span> : formatLastActive(client.lastActive)}</p>
-                        </div>
+                        {client.hasPlan && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] text-muted">Cumplimiento semanal</span>
+                              <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
+                            </div>
+                            <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
+                            </div>
+                            {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
+                            {client.highAcwr && <p className="text-[10px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
+                            {client.highJumpDrop && <p className="text-[10px] text-warn font-semibold mt-1.5">🦵 Caída de salto ({client.jumpDropPct}% en {client.jumpDropTestName}) — fatiga neuromuscular</p>}
+                            {client.atRisk && <p className="text-[10px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
+                          </div>
+                        )}
+                        {!client.hasPlan && (
+                          <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
+                            <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
+                            <button onClick={() => onSelectClient(client)} className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90">Asignar</button>
+                          </div>
+                        )}
+                        {deletingId === client.id ? (
+                          <div className="flex gap-2">
+                            <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
+                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
+                              <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
+                            </Button>
+                            <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
+                              <Trash2 className="w-3.5 h-3.5 text-warn" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-2 mb-4 flex-wrap">
-                        {!client.hasPlan && <span className="text-[10px] font-bold bg-warn/10 text-warn px-2 py-0.5 rounded-full">Sin plan</span>}
-                        {client.hasPlan && <span className="text-[10px] font-bold bg-ok/10 text-ok px-2 py-0.5 rounded-full">Plan ✓</span>}
-                        {!!client.weeklyDays && <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">{client.weeklyDays}d semana</span>}
-                      </div>
-                      {deletingId === client.id ? (
-                        <div className="flex gap-2">
-                          <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); onSelectClient(client) }}>✏️ Plan</Button>
-                          <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}><MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar</Button>
-                          <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}><Trash2 className="w-3.5 h-3.5 text-warn" /></Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                   <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
                     className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
                     <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Límite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
+                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {activeTab === 'exercises' && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e as any,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'templates' && <TemplatesTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas' && <ProgramasTab trainerId={userProfile.uid} />}
-          {activeTab === 'settings' && <SettingsTab userProfile={userProfile} onLogout={onLogout} />}
-          {activeTab === 'mensajes' && <MensajesTab userProfile={userProfile} clients={clients} />}
-          {activeTab === 'insights' && <InsightsTab clients={clients} logsMap={logsMap} />}
+          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
+          {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
+          {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
+          {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
+          {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
+          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
+          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} />}
+          {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
+          {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'encuestas' && (
+          {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
-              <EncuestasTab trainerId={userProfile.uid} clients={clients} />
+              <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />
             </PlanGate>
           )}
           {activeTab === 'negocio' && (
@@ -638,53 +679,30 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
               <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
             </PlanGate>
           )}
+
         </div>
       </main>
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Nuevo cliente">
+      {/* Modal nuevo cliente */}
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
-              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
-              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">📱 WhatsApp</label>
-            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-            <p className="text-[10px] text-muted mt-1">Para enviar encuestas y mensajes automáticos</p>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {[{ v: 'hipertrofia', label: '💪 Hipertrofia' },{ v: 'fuerza', label: '🏋️ Fuerza' },{ v: 'perdida_grasa', label: '🔥 Pérdida de grasa' },{ v: 'resistencia', label: '🏃 Resistencia' },{ v: 'rehabilitacion', label: '🩺 Rehabilitación' },{ v: 'rendimiento', label: '⚡ Rendimiento' },{ v: 'general', label: '🎯 General' }].map(opt => (
-                <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>{opt.label}</button>
-              ))}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
+              <input autoFocus type="text" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Nombre" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
-            <input value={(['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) ? '' : (newClient.objetivo || '')}
-              onChange={e => { if (e.target.value) setNewClient(p => ({ ...p, objetivo: e.target.value })) }}
-              onFocus={() => { if (['hipertrofia','fuerza','perdida_grasa','resistencia','rehabilitacion','rendimiento','general'].includes(newClient.objetivo)) setNewClient(p => ({ ...p, objetivo: '' })) }}
-              placeholder="✏️ Otro objetivo personalizado..." className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-xs outline-none focus:ring-2 focus:ring-accent/20" />
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Apellido</label>
+              <input type="text" value={newClient.surname} onChange={e => setNewClient(p => ({ ...p, surname: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="Apellido" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
-              <input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso inicial (kg)</label>
-              <input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label>
+            <input type="tel" value={newClient.phone} onChange={e => setNewClient(p => ({ ...p, phone: e.target.value }))} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
-              <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
-                <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
-              </select></div>
-            <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha nacimiento</label>
-              <input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
-          </div>
-          {/* Selector de etiquetas */}
           {labels.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">🏷️ Etiquetas</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Etiquetas</label>
               <div className="flex flex-wrap gap-1.5">
                 {labels.map(label => {
                   const active = newClientLabelIds.includes(label.id)
@@ -693,18 +711,62 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
                       onClick={() => setNewClientLabelIds(active ? newClientLabelIds.filter(id => id !== label.id) : [...newClientLabelIds, label.id])}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all"
                       style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '40', color: label.color, opacity: active ? 1 : 0.5 }}>
-                      <span>{label.emoji}</span>
-                      <span>{label.name}</span>
+                      <span>{label.emoji}</span><span>{label.name}</span>
                     </button>
                   )
                 })}
               </div>
-              <p className="text-[10px] text-muted mt-1.5">Filtra programas sugeridos al asignar plan</p>
             </div>
           )}
-          <div className="flex gap-3 pt-2">
+          <details className="group">
+            <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-ink select-none py-1 transition-colors">
+              <ChevronDown className="w-3.5 h-3.5 group-open:rotate-180 transition-transform" />
+              Más datos (objetivo, medidas, género...)
+            </summary>
+            <div className="mt-3 space-y-3 border-t border-border pt-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Objetivo</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[{ v: 'hipertrofia', label: 'Hipertrofia' },{ v: 'fuerza', label: 'Fuerza' },{ v: 'perdida_grasa', label: 'Pérdida de grasa' },{ v: 'resistencia', label: 'Resistencia' },{ v: 'rehabilitacion', label: 'Rehabilitación' },{ v: 'rendimiento', label: 'Rendimiento' },{ v: 'general', label: 'General' },
+                    ...customObjetivos.map(v => ({ v, label: v }))].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setNewClient(p => ({ ...p, objetivo: opt.v }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newClient.objetivo === opt.v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                  {addingObjetivo ? (
+                    <div className="flex gap-1 items-center">
+                      <input autoFocus value={newObjetivoInput} onChange={e => setNewObjetivoInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') addCustomObjetivo(); if (e.key === 'Escape') { setAddingObjetivo(false); setNewObjetivoInput('') } }}
+                        placeholder="Otro objetivo..." className="px-2 py-1 bg-bg border border-accent/40 rounded-lg text-xs outline-none w-32" />
+                      <button type="button" onClick={addCustomObjetivo} className="px-2 py-1 bg-ink text-white rounded-lg text-xs font-semibold">Añadir</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setAddingObjetivo(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed border-border text-muted hover:border-accent hover:text-accent">
+                      + Otro
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label><input type="number" value={newClient.altura} onChange={e => setNewClient(p => ({ ...p, altura: e.target.value }))} placeholder="175" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso (kg)</label><input type="number" value={newClient.peso} onChange={e => setNewClient(p => ({ ...p, peso: e.target.value }))} placeholder="70" className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género</label>
+                  <select value={newClient.genero} onChange={e => setNewClient(p => ({ ...p, genero: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+                    <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
+                  </select>
+                </div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label><input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+              </div>
+            </div>
+          </details>
+          <div className="flex gap-3 pt-1">
             <Button variant="outline" className="flex-1" onClick={() => setShowAdd(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleAdd} disabled={adding}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
+            <Button className="flex-1" onClick={handleAdd} disabled={adding || !newClient.name.trim()}>{adding ? 'Creando...' : 'Crear cliente'}</Button>
           </div>
         </div>
       </Modal>
@@ -712,7 +774,7 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
       {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
           <div className="space-y-4">
-            <p className="text-sm text-muted">Comparte este enlace. El cliente no necesita contraseña.</p>
+            <p className="text-sm text-muted">Comparte este enlace con tu cliente.</p>
             <div className="flex gap-2">
               <input readOnly value={getClientUrl(linkModal)} className="flex-1 px-3 py-2.5 bg-bg border border-border rounded-xl text-xs text-muted font-mono outline-none" />
               <button onClick={() => { navigator.clipboard.writeText(getClientUrl(linkModal)); toast('Copiado ✓', 'ok') }} className="flex items-center gap-1.5 px-3 py-2.5 bg-ink text-white rounded-xl text-sm font-medium hover:opacity-90 flex-shrink-0"><Copy className="w-3.5 h-3.5" /> Copiar</button>
@@ -721,12 +783,12 @@ export function TrainerDashboard({ userProfile, onLogout, onSelectClient, demoCl
           </div>
         </Modal>
       )}
+
     </div>
   )
 }
 
-// ── Settings ─────────────────────────────────────────────────────────────────
-
+// ── Settings ──────────────────────────────────────────────
 const TEMAS = [
   { id: 'bosque',  nombre: 'Bosque',  color: '#1a6038', bg: '#f0f7f4' },
   { id: 'marino',  nombre: 'Marino',  color: '#1e3a5f', bg: '#f0f4f9' },
@@ -742,19 +804,7 @@ const TEMAS = [
   { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
 ]
 
-const EMOJIS = ['💪','🔥','⚡','🏋️','🎯','✅','🚀','❤️','🧘','🏆','💯','👊','😤','🌟','🙌','💥','🔑','⭐','🎉','💫','😊','🤩','🥇','🏅','🥊','🎽','🤸','🏃','🧗','🌈']
-
-function EmojiBar({ onPick }: { onPick: (e: string) => void }) {
-  return (
-    <div className="flex flex-wrap gap-1 mb-2 p-2 bg-bg-alt rounded-xl border border-border/50">
-      {EMOJIS.map(em => (
-        <button key={em} type="button" onClick={() => onPick(em)} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white text-base transition-colors">{em}</button>
-      ))}
-    </div>
-  )
-}
-
-function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLogout: () => void }) {
+function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProfile; realUid: string; onLogout: () => void }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
   const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
@@ -765,22 +815,45 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
   const [brandBgColor, setBrandBgColor] = useState(saved.brandBgColor || '#f0f7f4')
   const [phone, setPhone] = useState(saved.phone || '')
   const [bio, setBio] = useState(saved.bio || '')
-  const [welcomeMsg, setWelcomeMsg] = useState(saved.welcomeMsg || '')
-  const [motivMsg, setMotivMsg] = useState(saved.motivMsg || '')
-  const [restDayMsg, setRestDayMsg] = useState(saved.restDayMsg || '')
   const [temaId, setTemaId] = useState(saved.temaId || 'bosque')
   const [saving, setSaving] = useState(false)
+  const [autoCheckin, setAutoCheckin] = useState(false)
+  const [checkinLoading, setCheckinLoading] = useState(false)
+  // undefined = aún no se ha tocado nada -> todas las métricas activas (compatibilidad)
+  const [metricasActivas, setMetricasActivas] = useState<Set<Section>>(
+    new Set<Section>(saved.metricasActivas || SECTIONS.map(s => s.id))
+  )
+  const toggleMetrica = (id: Section) => setMetricasActivas(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  useEffect(() => {
+    supabase.from('entrenadores').select('auto_checkin_enabled').eq('uid', userProfile.uid).maybeSingle()
+      .then(({ data }) => { if (data) setAutoCheckin(data.auto_checkin_enabled ?? false) })
+  }, [userProfile.uid])
+
+  const toggleAutoCheckin = async (val: boolean) => {
+    setCheckinLoading(true)
+    const { error } = await supabase.from('entrenadores').update({ auto_checkin_enabled: val }).eq('uid', userProfile.uid)
+    if (error) { toast('Error al guardar', 'warn') } else { setAutoCheckin(val); toast(val ? 'Check-in semanal activado ✓' : 'Check-in semanal desactivado', 'ok') }
+    setCheckinLoading(false)
+  }
 
   const applyTema = (tema: typeof TEMAS[0]) => { setTemaId(tema.id); setBrandColor(tema.color); setBrandBgColor(tema.bg) }
 
   const handleSave = async () => {
     setSaving(true)
-    const profile = { displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, welcomeMsg, motivMsg, restDayMsg, updatedAt: Date.now() }
+    // Fusiona con el perfil más reciente en BD para no pisar campos que gestionan
+    // otras pantallas (tier, periodizationBlocks, seriesTypes...).
+    const { data } = await supabase.from('entrenadores').select('profile').eq('uid', userProfile.uid).maybeSingle()
+    const profile = { ...(data?.profile || {}), displayName, brandName, brandLogo, brandBg, brandColor, brandBgColor, temaId, phone, bio, metricasActivas: Array.from(metricasActivas), updatedAt: Date.now() }
     localStorage.setItem(LS_KEY, JSON.stringify(profile))
     if (phone) localStorage.setItem(`pf_trainer_phone_${userProfile.uid}`, phone)
     const { error } = await supabase.from('entrenadores').update({ displayName, profile }).eq('uid', userProfile.uid)
     if (error) { toast('Error al guardar: ' + error.message, 'warn'); setSaving(false); return }
-    toast('Perfil guardado ✓ Los clientes verán los cambios al recargar.', 'ok')
+    toast('Perfil guardado ✓', 'ok')
     setSaving(false)
   }
 
@@ -809,11 +882,11 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
           <span className="ml-auto text-white/40 text-[10px]">Preview</span>
         </div>
         <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
-          {welcomeMsg ? <p className="font-medium" style={{ color: brandColor }}>{welcomeMsg}</p> : <p className="text-muted/60 italic text-xs">Tu mensaje de bienvenida aquí</p>}
+          <p className="text-muted/60 italic text-xs">Así se verá el panel de tus clientes</p>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🏷️ Identidad</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Identidad</h3>
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label><input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre de marca</label><input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="Ej: AlexFit Training" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
@@ -821,8 +894,53 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
       </div>
+      <div className="bg-white rounded-2xl p-6 space-y-3 shadow-sm">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Notificaciones</h3>
+          <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
+        </div>
+        <PushToggle trainerId={userProfile.uid} />
+        <div className="flex items-start justify-between gap-4 pt-3 border-t border-border/40">
+          <div>
+            <p className="text-sm font-medium">Check-in semanal automático</p>
+            <p className="text-xs text-muted mt-0.5">Recibe cada lunes un email con el estado de tus clientes: quién entrenó, quién lleva más de 7 o 14 días sin actividad.</p>
+          </div>
+          <button
+            onClick={() => toggleAutoCheckin(!autoCheckin)}
+            disabled={checkinLoading}
+            className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${autoCheckin ? 'bg-accent' : 'bg-border'} ${checkinLoading ? 'opacity-50' : ''}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+        </div>
+      </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">📷 Foto de perfil</h3>
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Métricas activas</h3>
+          <p className="text-xs text-muted mt-0.5">Desmarca las que no uses para que no aparezcan en el menú de Progreso de tus clientes. Puedes afinar cuáles ve cada cliente en concreto desde su ficha → Configuración.</p>
+        </div>
+        <div className="space-y-4">
+          {GROUPS.map(g => (
+            <div key={g.id}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
+              <div className="flex flex-wrap gap-2">
+                {g.sections.map(id => {
+                  const s = SECTIONS.find(x => x.id === id)!
+                  const active = metricasActivas.has(id)
+                  return (
+                    <button key={id} onClick={() => toggleMetrica(id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${active ? 'bg-accent/10 border-accent/40 text-accent' : 'bg-bg border-border text-muted/60 hover:border-accent/40'}`}>
+                      {s.icon} {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
             {brandLogo ? <><img src={brandLogo} className="w-20 h-20 rounded-full object-cover border-4 border-border shadow" alt="" /><button onClick={() => setBrandLogo('')} className="absolute -top-1 -right-1 w-6 h-6 bg-warn text-white rounded-full text-xs font-bold flex items-center justify-center shadow">×</button></>
@@ -830,14 +948,14 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
           </div>
           <div className="space-y-2">
             <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
-              📁 {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
+              {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
             </label>
             <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB</p>
           </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🎨 Tema de colores</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tema de colores</h3>
         <div className="grid grid-cols-4 gap-2">
           {TEMAS.map(tema => (
             <button key={tema.id} onClick={() => applyTema(tema)}
@@ -857,20 +975,24 @@ function SettingsTab({ userProfile, onLogout }: { userProfile: UserProfile; onLo
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">🖼️ Imagen de fondo</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Imagen de fondo</h3>
         <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
           {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
             : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">💬 Mensajes al cliente</h3>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de bienvenida</label><EmojiBar onPick={e => setWelcomeMsg((m: string) => m + e)} /><textarea rows={2} value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value)} placeholder="¡Bienvenido! Aquí tienes todo para alcanzar tus objetivos 💪" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Día de descanso</label><EmojiBar onPick={e => setMotivMsg((m: string) => m + e)} /><textarea rows={2} value={motivMsg} onChange={e => setMotivMsg(e.target.value)} placeholder="Hoy toca descansar. El músculo crece en la recuperación 🧘" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
-        <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Mensaje de racha (3+ días)</label><EmojiBar onPick={e => setRestDayMsg((m: string) => m + e)} /><input type="text" value={restDayMsg} onChange={e => setRestDayMsg(e.target.value)} placeholder="¡Increíble constancia! Esto es lo que marca la diferencia 🔥" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
+      <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
+        <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <PublicPageEditor userProfile={userProfile} />
+      </div>
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <EquipoSection ownerId={realUid} />
       </div>
       <div className="bg-white rounded-2xl p-5 shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">👤 Cuenta</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>
         <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
         <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>
       </div>

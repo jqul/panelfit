@@ -1,37 +1,63 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, lazy, Suspense } from 'react'
+import { track } from '@vercel/analytics'
 import { supabase } from './lib/supabase'
-import { UserProfile, ClientData } from './types'
+import { ClientData } from './types'
 import { Auth } from './components/shared/Auth'
-import { DEMO_CLIENTS, DEMO_PLAN_MARIA, DEMO_LOGS_MARIA, DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID, DEMO_PLAN_CARLOS, DEMO_PLAN_LAURA, DEMO_LOGS_CARLOS, DEMO_LOGS_LAURA, DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA, DEMO_SURVEY_RESPONSES, DEMO_SURVEY_TEMPLATE } from './lib/demo-data'
+import { ResetPassword } from './components/shared/ResetPassword'
+import { DEMO_CLIENTS, DEMO_TRAINER_ID, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './lib/demo-data'
 import { useToast, ToastContainer } from './components/shared/Toast'
+import { useAuthBootstrap, hydrateDemoStorage } from './lib/useAuthBootstrap'
 import { Rocket, Mail } from 'lucide-react'
+import { UserProfile } from './types'
 
 const TrainerDashboard = lazy(() => import('./components/trainer/TrainerDashboard').then(m => ({ default: m.TrainerDashboard })))
-const ClientPanel = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
-const ClientView = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
-const SuperAdminPanel = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
+const ClientPanel      = lazy(() => import('./components/trainer/ClientPanel').then(m => ({ default: m.ClientPanel })))
+const ClientView       = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
+const SuperAdminPanel  = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
+const PublicTrainerPage = lazy(() => import('./components/trainer/PublicTrainerPage').then(m => ({ default: m.PublicTrainerPage })))
+const LandingAppEntrenadores    = lazy(() => import('./components/LandingAppEntrenadores').then(m => ({ default: m.LandingAppEntrenadores })))
+const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwareEntrenador').then(m => ({ default: m.LandingSoftwareEntrenador })))
+const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
+const LandingAlternativaHarbiz    = lazy(() => import('./components/LandingAlternativaHarbiz').then(m => ({ default: m.LandingAlternativaHarbiz })))
+const LandingAlternativaTrainerize  = lazy(() => import('./components/LandingAlternativaTrainerize').then(m => ({ default: m.LandingAlternativaTrainerize })))
+const LandingAlternativaMyPTHub     = lazy(() => import('./components/LandingAlternativaMyPTHub').then(m => ({ default: m.LandingAlternativaMyPTHub })))
+const LandingAlternativaTrueCoach   = lazy(() => import('./components/LandingAlternativaTrueCoach').then(m => ({ default: m.LandingAlternativaTrueCoach })))
+const LandingAlternativaPTDistinction = lazy(() => import('./components/LandingAlternativaPTDistinction').then(m => ({ default: m.LandingAlternativaPTDistinction })))
+const CalculadoraRM                 = lazy(() => import('./components/CalculadoraRM').then(m => ({ default: m.CalculadoraRM })))
+const BlogIndex                    = lazy(() => import('./components/BlogIndex').then(m => ({ default: m.BlogIndex })))
+const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
+const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
+const BlogSeguimientoClientes      = lazy(() => import('./components/BlogSeguimientoClientes').then(m => ({ default: m.BlogSeguimientoClientes })))
+const BlogGestionPagos             = lazy(() => import('./components/BlogGestionPagos').then(m => ({ default: m.BlogGestionPagos })))
+const BlogPlantillasEntrenamiento  = lazy(() => import('./components/BlogPlantillasEntrenamiento').then(m => ({ default: m.BlogPlantillasEntrenamiento })))
+const BlogConseguirClientes        = lazy(() => import('./components/BlogConseguirClientes').then(m => ({ default: m.BlogConseguirClientes })))
+const BlogAppEnviarPlanes          = lazy(() => import('./components/BlogAppEnviarPlanes').then(m => ({ default: m.BlogAppEnviarPlanes })))
 
-type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo'
-
-const DEMO_PROFILE_TRAINER: UserProfile = {
+// ── Perfil demo constante ─────────────────────────────────
+// planName: 'studio' — el modo demo debe enseñar TODO lo que la app es capaz de
+// hacer, incluidas las funciones de pago más altas (encuestas, dashboard de
+// negocio, marca blanca...), no quedarse bloqueado tras el paywall del plan Free.
+const DEMO_PROFILE: UserProfile = {
   uid: DEMO_TRAINER_ID, email: 'demo@panelfit.app', displayName: 'Alex Trainer',
-  role: 'trainer', approved: true, createdAt: Date.now(),
+  role: 'trainer', approved: true, createdAt: Date.now(), planName: 'studio',
 }
 
+// ── Componentes pequeños ──────────────────────────────────
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center">
       <div className="text-center space-y-3">
         <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex gap-1 justify-center">
-          {[0,1,2].map(i => <div key={i} className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
         </div>
       </div>
     </div>
   )
 }
 
-/** Banner que aparece encima del modo demo cuando el entrenador está pendiente */
 function PendingBanner({ displayName, email }: { displayName: string; email: string }) {
   const [visible, setVisible] = useState(true)
   if (!visible) return null
@@ -39,214 +65,331 @@ function PendingBanner({ displayName, email }: { displayName: string; email: str
     <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-2.5 flex items-center justify-between shadow-md">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Rocket className="w-4 h-4 flex-shrink-0" />
-        <span>
-          Hola <strong>{displayName}</strong> — Estás explorando el modo demo.
-          Revisaremos tu cuenta y te activaremos en breve.
-        </span>
-        <a
-          href={`mailto:javi_ql@hotmail.com?subject=Activar cuenta PanelFit&body=Hola, soy ${displayName} (${email}) y quiero activar mi cuenta.`}
-          className="ml-2 underline underline-offset-2 flex items-center gap-1 hover:opacity-80 transition-opacity"
-        >
+        <span>Hola <strong>{displayName}</strong> — Estás explorando el modo demo. Te activaremos en breve.</span>
+        <a href={`mailto:javier.quinones.lopez@gmail.com?subject=Activar cuenta PanelFit&body=Hola, soy ${displayName} (${email})`}
+          className="ml-2 underline underline-offset-2 flex items-center gap-1 hover:opacity-80">
           <Mail className="w-3.5 h-3.5" /> Contactar
         </a>
       </div>
-      <button
-        onClick={() => setVisible(false)}
-        className="text-white/70 hover:text-white text-lg leading-none ml-4"
-        aria-label="Cerrar"
-      >×</button>
+      <button onClick={() => setVisible(false)} className="text-white/70 hover:text-white text-lg ml-4">×</button>
     </div>
   )
 }
 
+// ── CTA flotante para demo público ───────────────────────
+function DemoCTA({ onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {
+  const [dismissed, setDismissed] = useState(false)
+  if (dismissed) return null
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-bg border-t border-border shadow-lg px-4 py-3 flex items-center justify-between gap-3">
+      <p className="text-sm text-text-secondary hidden sm:block">
+        Estás viendo la demo — los datos son ficticios.
+      </p>
+      <p className="text-sm font-medium sm:hidden">¿Te convence PanelFit?</p>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          onClick={onLogin}
+          className="text-sm text-text-secondary hover:text-text px-3 py-1.5 rounded-lg hover:bg-surface transition-colors"
+        >
+          Entrar
+        </button>
+        <button
+          onClick={onRegister}
+          className="text-sm font-semibold bg-accent text-white px-4 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+        >
+          Solicitar acceso gratis →
+        </button>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-text-secondary/50 hover:text-text-secondary ml-1 text-lg leading-none"
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Vista demo compartida (pending-demo y demo público) ───
+function DemoView({ showBanner, pendingUser, selectedClient, setSelectedClient, onRegister, onLogin }: {
+  showBanner: boolean
+  pendingUser: { displayName: string; email: string } | null
+  selectedClient: ClientData | null
+  setSelectedClient: (c: ClientData | null) => void
+  onRegister?: () => void
+  onLogin?: () => void
+}) {
+  const demoPlan = (id: string) => DEMO_PLAN_MAP[id] || undefined
+  const demoLogs = (id: string) => DEMO_LOGS_MAP[id] || {}
+
+  return (
+    <>
+      {showBanner && pendingUser && (
+        <PendingBanner displayName={pendingUser.displayName} email={pendingUser.email} />
+      )}
+      {!showBanner && onRegister && onLogin && (
+        <DemoCTA onRegister={onRegister} onLogin={onLogin} />
+      )}
+      <div className={showBanner ? 'pt-11' : 'pb-16'}>
+        {selectedClient ? (
+          <ClientPanel
+            client={selectedClient}
+            userProfile={DEMO_PROFILE}
+            allClients={DEMO_CLIENTS}
+            onClose={() => setSelectedClient(null)}
+            demoPlan={demoPlan(selectedClient.id)}
+            demoLogs={demoLogs(selectedClient.id)}
+          />
+        ) : (
+          <TrainerDashboard
+            userProfile={DEMO_PROFILE}
+            onLogout={() => { window.location.href = '/' }}
+            demoClients={DEMO_CLIENTS}
+            demoLogsMap={DEMO_LOGS_MAP}
+            onSelectClient={(c: ClientData) => setSelectedClient(c)}
+          />
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── App ───────────────────────────────────────────────────
 export default function App() {
-  const [view, setView] = useState<AppView>('loading')
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
-  const [pendingUser, setPendingUser] = useState<{ uid: string; email: string; displayName: string } | null>(null)
+  const { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
-  const [clientToken, setClientToken] = useState<string | null>(null)
-  const { toasts } = useToast()
+  const [teamContext, setTeamContext] = useState<{ uid: string; displayName: string } | null>(null)
+  const { toasts, dismiss } = useToast()
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const token = params.get('c')
-    if (token) { setClientToken(token); setView('client-token'); return }
-    if (params.get('demo') === '1') { setView('demo'); return }
+  // Si estamos viendo la cuenta de un compañero de equipo, usamos su uid en vez del nuestro
+  // para clientes/plantillas/biblioteca, pero conservamos nuestro email/rol reales.
+  const scopedProfile = teamContext && userProfile ? { ...userProfile, uid: teamContext.uid, displayName: teamContext.displayName } : userProfile
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
-      else setView('auth')
-    })
+  const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session?.user) loadProfile(session.user.id, session.user.email || '')
-      else { setView('auth'); setUserProfile(null) }
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const loadProfile = async (uid: string, email: string) => {
-    const { data } = await supabase.from('entrenadores').select('"displayName", approved, rol, profile').eq('uid', uid).maybeSingle()
-    if (!data) { await supabase.auth.signOut(); setView('auth'); return }
-
-    // Entrenador pendiente de aprobación → modo demo con banner
-    if (data.approved === false) {
-      const displayName = data.displayName || email.split('@')[0]
-      setPendingUser({ uid, email, displayName })
-      // Cargar datos demo en localStorage igual que el modo demo normal
-      localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
-      localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
-      localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify(DEMO_WEIGHTS_MARIA))
-      localStorage.setItem(`pf_weight_demo-client-002`, JSON.stringify(DEMO_WEIGHTS_CARLOS))
-      localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
-      localStorage.setItem(`pf_demo_survey_template`, JSON.stringify(DEMO_SURVEY_TEMPLATE))
-      localStorage.setItem(`pf_demo_survey_responses`, JSON.stringify(DEMO_SURVEY_RESPONSES))
-      setView('pending-demo')
-      return
-    }
-
-    const profile = data.profile || {}
-    const up = {
-      uid, email,
-      displayName: data.displayName || email.split('@')[0],
-      role: data.rol === 'super_admin' ? 'super_admin' : 'trainer',
-      approved: true, createdAt: Date.now(),
-      clientLimit: profile.clientLimit,
-      planName: profile.planName,
-    }
-    setUserProfile(up as any)
-    setView('trainer')
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setView('auth'); setUserProfile(null); setSelectedClient(null); setPendingUser(null)
-  }
-
-  // Pre-cargar datos demo en localStorage (modo demo público ?demo=1)
-  if (view === 'demo') {
-    localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
-    localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
-    localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify(DEMO_WEIGHTS_MARIA))
-    localStorage.setItem(`pf_weight_demo-client-002`, JSON.stringify(DEMO_WEIGHTS_CARLOS))
-    localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
-    localStorage.setItem(`pf_demo_survey_template`, JSON.stringify(DEMO_SURVEY_TEMPLATE))
-    localStorage.setItem(`pf_demo_survey_responses`, JSON.stringify(DEMO_SURVEY_RESPONSES))
+  // Entrar en modo demo desde cualquier landing/blog — hydrateDemoStorage()
+  // siembra localStorage (peso, dolor, perfil del entrenador...) igual que ya
+  // hace la entrada por ?demo=1; sin esto, un visitante que solo pulsa "Ver
+  // demo en vivo" desde una de estas páginas veía el peso/dolor vacíos aunque
+  // el resto de la demo (datos importados directamente, no vía localStorage)
+  // sí funcionara.
+  const goDemo = (source: string) => {
+    track('demo_clicked', { source })
+    window.history.pushState({}, '', '/')
+    hydrateDemoStorage()
+    setView('demo')
   }
 
   if (view === 'loading') return <LoadingScreen />
 
-  const encuestaParam = new URLSearchParams(window.location.search).get('encuesta') === '1'
-
-  if (view === 'client-token' && clientToken) return (
+  return (
     <Suspense fallback={<LoadingScreen />}>
-      <ClientView token={clientToken} showEncuesta={encuestaParam} />
-      <ToastContainer toasts={toasts} />
-    </Suspense>
-  )
-
-  if (view === 'auth') return (
-    <>
-      <Auth onAuth={() => supabase.auth.getSession().then(({ data }) => {
-        if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')
-      })} onDemo={() => setView('demo')} />
-      <ToastContainer toasts={toasts} />
-    </>
-  )
-
-  if (view === 'trainer' && userProfile) return (
-    <Suspense fallback={<LoadingScreen />}>
-      {userProfile.role === 'super_admin' ? (
-        <><SuperAdminPanel onLogout={handleLogout} /><ToastContainer toasts={toasts} /></>
-      ) : selectedClient ? (
-        <ClientPanel client={selectedClient} userProfile={userProfile}
-          allClients={allClients} onClose={() => setSelectedClient(null)} />
-      ) : (
-        <TrainerDashboard userProfile={userProfile} onLogout={handleLogout}
-          onSelectClient={(client: ClientData) => {
-            setSelectedClient(client)
-            setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
-          }} />
+      {/* Vista cliente por token */}
+      {view === 'client-token' && clientToken && (
+        <ClientView token={clientToken} showEncuesta={encuestaParam} />
       )}
-      <ToastContainer toasts={toasts} />
-    </Suspense>
-  )
 
-  // Modo demo para entrenadores pendientes de aprobación
-  if (view === 'pending-demo') return (
-    <Suspense fallback={<LoadingScreen />}>
-      {pendingUser && (
-        <PendingBanner displayName={pendingUser.displayName} email={pendingUser.email} />
+      {/* Páginas SEO públicas */}
+      {view === 'landing-app-entrenadores' && (
+        <LandingAppEntrenadores
+          onDemo={() => goDemo('app_entrenadores')}
+          onRegister={() => { track('register_intent', { source: 'app_entrenadores' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
       )}
-      <div className={pendingUser ? 'pt-11' : ''}>
-        {selectedClient ? (
+      {view === 'landing-software-entrenador' && (
+        <LandingSoftwareEntrenador
+          onDemo={() => goDemo('software_entrenador')}
+          onRegister={() => { track('register_intent', { source: 'software_entrenador' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-precios' && (
+        <LandingPrecios
+          onDemo={() => goDemo('precios')}
+          onRegister={() => { track('register_intent', { source: 'precios' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-harbiz' && (
+        <LandingAlternativaHarbiz
+          onDemo={() => goDemo('alternativa_harbiz')}
+          onRegister={() => { track('register_intent', { source: 'alternativa_harbiz' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-trainerize' && (
+        <LandingAlternativaTrainerize
+          onDemo={() => goDemo('alternativa_trainerize')}
+          onRegister={() => { track('register_intent', { source: 'alternativa_trainerize' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Calculadora */}
+      {view === 'calculadora-rm' && (
+        <CalculadoraRM
+          onDemo={() => goDemo('calculadora_rm')}
+          onRegister={() => { track('register_intent', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Alternativas adicionales */}
+      {view === 'landing-alternativa-mypthub' && (
+        <LandingAlternativaMyPTHub
+          onDemo={() => goDemo('alt_mypthub')}
+          onRegister={() => { track('register_intent', { source: 'alt_mypthub' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-truecoach' && (
+        <LandingAlternativaTrueCoach
+          onDemo={() => goDemo('alt_truecoach')}
+          onRegister={() => { track('register_intent', { source: 'alt_truecoach' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'landing-alternativa-ptdistinction' && (
+        <LandingAlternativaPTDistinction
+          onDemo={() => goDemo('alt_ptdistinction')}
+          onRegister={() => { track('register_intent', { source: 'alt_ptdistinction' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Blog */}
+      {view === 'blog-index' && (
+        <BlogIndex
+          onDemo={() => goDemo('blog_index')}
+          onRegister={() => { track('register_intent', { source: 'blog_index' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-organizar-clientes' && (
+        <BlogOrganizarClientes
+          onDemo={() => goDemo('blog_organizar')}
+          onRegister={() => { track('register_intent', { source: 'blog_organizar' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {view === 'blog-pagos' && (
+        <BlogGestionPagos
+          onDemo={() => goDemo('blog_pagos')}
+          onRegister={() => { track('register_intent', { source: 'blog_pagos' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-plantillas' && (
+        <BlogPlantillasEntrenamiento
+          onDemo={() => goDemo('blog_plantillas')}
+          onRegister={() => { track('register_intent', { source: 'blog_plantillas' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-conseguir-clientes' && (
+        <BlogConseguirClientes
+          onDemo={() => goDemo('blog_conseguir')}
+          onRegister={() => { track('register_intent', { source: 'blog_conseguir' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-app-planes' && (
+        <BlogAppEnviarPlanes
+          onDemo={() => goDemo('blog_app_planes')}
+          onRegister={() => { track('register_intent', { source: 'blog_app_planes' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-mejor-software' && (
+        <BlogMejorSoftware
+          onDemo={() => goDemo('blog_software')}
+          onRegister={() => { track('register_intent', { source: 'blog_software' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+      {view === 'blog-seguimiento-clientes' && (
+        <BlogSeguimientoClientes
+          onDemo={() => goDemo('blog_seguimiento')}
+          onRegister={() => { track('register_intent', { source: 'blog_seguimiento' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {/* Página pública del entrenador */}
+      {view === 'public-page' && publicSlug && (
+        <PublicTrainerPage slug={publicSlug} />
+      )}
+
+      {/* Establecer nueva contraseña (enlace de recuperación) */}
+      {view === 'reset-password' && (
+        <ResetPassword onDone={() => setView('auth')} />
+      )}
+
+      {/* Auth */}
+      {view === 'auth' && (
+        <Auth
+          onAuth={() => supabase.auth.getSession().then(({ data }) => {
+            if (data.session?.user) {
+              // onAuthStateChange lo manejará — solo forzamos si no dispara
+            }
+          })}
+          onDemo={() => goDemo('home')}
+        />
+      )}
+
+      {/* Panel entrenador real */}
+      {view === 'trainer' && userProfile && (
+        userProfile.role === 'super_admin' ? (
+          <SuperAdminPanel onLogout={logout} />
+        ) : selectedClient ? (
           <ClientPanel
             client={selectedClient}
-            userProfile={DEMO_PROFILE_TRAINER}
-            allClients={DEMO_CLIENTS as any}
+            userProfile={scopedProfile!}
+            allClients={allClients}
             onClose={() => setSelectedClient(null)}
-            demoPlan={
-              selectedClient.id === 'demo-client-001' ? DEMO_PLAN_MARIA :
-              selectedClient.id === 'demo-client-002' ? DEMO_PLAN_CARLOS :
-              DEMO_PLAN_LAURA
-            }
-            demoLogs={
-              selectedClient.id === 'demo-client-001' ? DEMO_LOGS_MARIA :
-              selectedClient.id === 'demo-client-002' ? DEMO_LOGS_CARLOS :
-              DEMO_LOGS_LAURA
-            }
           />
         ) : (
           <TrainerDashboard
-            userProfile={DEMO_PROFILE_TRAINER}
-            onLogout={handleLogout}
-            demoClients={DEMO_CLIENTS as any}
+            userProfile={scopedProfile!}
+            realUserProfile={userProfile}
+            teamContext={teamContext}
+            onSwitchTeam={setTeamContext}
+            onLogout={logout}
             onSelectClient={(client: ClientData) => {
               setSelectedClient(client)
-              setAllClients(DEMO_CLIENTS as any)
+              setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
             }}
           />
-        )}
-      </div>
-      <ToastContainer toasts={toasts} />
-    </Suspense>
-  )
+        )
+      )}
 
-  // Modo demo público
-  if (view === 'demo') return (
-    <Suspense fallback={<LoadingScreen />}>
-      {selectedClient ? (
-        <ClientPanel
-          client={selectedClient}
-          userProfile={DEMO_PROFILE_TRAINER}
-          allClients={DEMO_CLIENTS as any}
-          onClose={() => setSelectedClient(null)}
-          demoPlan={
-            selectedClient.id === 'demo-client-001' ? DEMO_PLAN_MARIA :
-            selectedClient.id === 'demo-client-002' ? DEMO_PLAN_CARLOS :
-            DEMO_PLAN_LAURA
-          }
-          demoLogs={
-            selectedClient.id === 'demo-client-001' ? DEMO_LOGS_MARIA :
-            selectedClient.id === 'demo-client-002' ? DEMO_LOGS_CARLOS :
-            DEMO_LOGS_LAURA
-          }
-        />
-      ) : (
-        <TrainerDashboard
-          userProfile={DEMO_PROFILE_TRAINER}
-          onLogout={() => { window.location.href = '/' }}
-          demoClients={DEMO_CLIENTS as any}
-          onSelectClient={(client: ClientData) => {
-            setSelectedClient(client)
-            setAllClients(DEMO_CLIENTS as any)
-          }}
+      {/* Demo para entrenadores pendientes */}
+      {view === 'pending-demo' && (
+        <DemoView
+          showBanner={true}
+          pendingUser={pendingUser}
+          selectedClient={selectedClient}
+          setSelectedClient={setSelectedClient}
         />
       )}
-      <ToastContainer toasts={toasts} />
+
+      {/* Demo público */}
+      {view === 'demo' && (
+        <DemoView
+          showBanner={false}
+          pendingUser={null}
+          selectedClient={selectedClient}
+          setSelectedClient={setSelectedClient}
+          onRegister={() => { track('register_intent', { source: 'demo_cta' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
     </Suspense>
   )
-
-  return null
 }
