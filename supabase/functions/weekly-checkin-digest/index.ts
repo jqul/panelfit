@@ -5,8 +5,25 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-serve(async () => {
+// Evita inyección HTML en el email a partir de nombres controlados por el
+// entrenador/cliente (displayName, name, surname).
+function esc(s: string): string {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+}
+
+serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+  // Solo el cron interno puede disparar esto — el secreto vive únicamente en
+  // la base de datos (tabla internal_webhook_secrets), nunca en el código
+  // fuente ni en el propio comando del cron job.
+  const auth = req.headers.get('Authorization') || ''
+  const token = auth.replace(/^Bearer\s+/i, '')
+  const { data: secretRow } = await supabase
+    .from('internal_webhook_secrets').select('secret').eq('name', 'weekly_digest').maybeSingle()
+  if (!secretRow?.secret || token !== secretRow.secret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  }
 
   // Obtener entrenadores con check-in automático activado
   const { data: trainers, error } = await supabase
@@ -74,13 +91,13 @@ serve(async () => {
       <tr>
         <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;">
           <span style="font-size:8px;width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;margin-right:8px;vertical-align:middle;"></span>
-          ${c.name} ${c.surname}
+          ${esc(c.name)} ${esc(c.surname)}
         </td>
         <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;">
-          ${c.last ? `Último: ${c.last}` : 'Sin actividad registrada'}
+          ${c.last ? `Último: ${esc(c.last)}` : 'Sin actividad registrada'}
         </td>
         <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;text-align:right;">
-          <a href="${BASE}/?c=${c.token}" style="color:#6366f1;font-size:13px;text-decoration:none;">Ver panel →</a>
+          <a href="${BASE}/?c=${encodeURIComponent(c.token)}" style="color:#6366f1;font-size:13px;text-decoration:none;">Ver panel →</a>
         </td>
       </tr>`
 
@@ -98,7 +115,7 @@ serve(async () => {
           <span style="color:#94a3b8;font-size:13px;margin-left:12px;">Resumen semanal</span>
         </td></tr>
         <tr><td style="padding:28px 32px 8px;">
-          <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#0f172a;">Buenos días, ${trainer.displayName} 👋</p>
+          <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:#0f172a;">Buenos días, ${esc(trainer.displayName)} 👋</p>
           <p style="margin:0;color:#64748b;font-size:14px;">Aquí tienes el estado de tus clientes esta semana (${hoy}).</p>
         </td></tr>
 

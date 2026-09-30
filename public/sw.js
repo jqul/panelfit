@@ -53,7 +53,10 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close()
-  const url = e.notification.data?.url || '/'
+  // Solo rutas internas relativas — nunca abrir una URL externa aunque la
+  // notificación la lleve (segunda capa; send-push ya la restringe también).
+  const raw = e.notification.data?.url
+  const url = (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) ? raw : '/'
   e.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(clientsArr => {
       const existing = clientsArr.find(c => c.url.includes(url))
