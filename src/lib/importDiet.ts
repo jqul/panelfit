@@ -1,4 +1,5 @@
 import { Meal } from '../components/shared/DietEditor'
+import { assertImportFileIsSafe } from './importFileGuard'
 
 // xlsx (SheetJS) se carga solo al importar de verdad — misma razón que en
 // importWorkout.ts: dependencia pesada, uso ocasional, y contenido no
@@ -43,6 +44,7 @@ export interface ParsedDiet {
  * ponerlo una vez.
  */
 export async function parseDietExcel(file: File): Promise<ParsedDiet> {
+  assertImportFileIsSafe(file)
   const XLSX = await loadXLSX()
   const buffer = await file.arrayBuffer()
   const wb = XLSX.read(buffer, { type: 'array' })
