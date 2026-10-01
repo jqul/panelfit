@@ -8,8 +8,8 @@ import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, Calendar, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox
+  Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
+  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox, MoreHorizontal
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -39,7 +39,14 @@ import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
+
+// Menú reducido a 5 destinos (antes 14 sueltos) — lo menos usado a diario
+// queda agrupado en "Más" y "Planificar", en vez de competir por espacio en
+// el primer nivel. El id de cada pestaña original no cambia: solo cambia
+// cómo se agrupan en la navegación.
+const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
+const MAS_TABS: Tab[] = ['bandeja', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
 
 interface Props {
@@ -122,6 +129,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
+  // Al pulsar "Planificar" desde fuera del grupo, entra por Workouts; si ya
+  // estás en Ejercicios/Programas, se queda donde estabas en vez de resetear.
+  const handleTopNavClick = (tab: Tab) => {
+    if (tab === 'templates' && PLANIFICAR_TABS.includes(activeTab)) { setSidebarOpen(false); return }
+    handleTabChange(tab)
+  }
 
   const QUICK_ACTIONS = [
     { icon: UserPlus,      label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8',  action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
@@ -132,31 +145,21 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { icon: TrendingUp,    label: 'Insights',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('insights') },
   ]
 
-  const NAV_GROUPS = [
-    { label: 'Gestión', items: [
-      { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-      { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
-      { id: 'bandeja'   as Tab, icon: Inbox,           label: 'Bandeja' },
-      { id: 'cohortes' as Tab, icon: Users2,          label: 'Grupos' },
-      { id: 'etiquetas' as Tab, icon: TagIcon,        label: 'Etiquetas' },
-      { id: 'calendario' as Tab, icon: CalendarDays,  label: 'Calendario' },
-      { id: 'mensajes'  as Tab, icon: MessageCircle,   label: 'Mensajes' },
-      { id: 'encuestas' as Tab, icon: ClipboardList,   label: 'Encuestas' },
-      { id: 'negocio'   as Tab, icon: TrendingUp,      label: 'Mi negocio' },
-    ]},
-    { label: 'Contenido', items: [
-      { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
-      { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
-    ]},
-    { label: 'Análisis', items: [
-      { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
-      { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
-    ]},
-    { label: 'Configuración', items: [
-      { id: 'settings' as Tab, icon: SettingsIcon, label: 'Ajustes' },
-    ]},
+  // 5 destinos visibles — "Planificar" y "Más" abren en su primer/único
+  // sub-apartado; cuál está activo se decide por si activeTab pertenece a su
+  // grupo (PLANIFICAR_TABS / MAS_TABS), no por un id propio de nivel superior.
+  const TOP_NAV: { id: Tab; icon: any; label: string; badge?: number }[] = [
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Hoy' },
+    { id: 'clients',   icon: Users,           label: 'Clientes', badge: clients.length },
+    { id: 'templates', icon: Dumbbell,        label: 'Planificar' },
+    { id: 'mensajes',  icon: MessageCircle,   label: 'Mensajes' },
+    { id: 'mas',       icon: MoreHorizontal,  label: 'Más' },
   ]
+  const isTopNavActive = (item: Tab) => {
+    if (item === 'templates') return PLANIFICAR_TABS.includes(activeTab)
+    if (item === 'mas') return activeTab === 'mas' || MAS_TABS.includes(activeTab)
+    return activeTab === item
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -207,23 +210,16 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           ))}
         </div>
       </div>
-      <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            <p className="text-[10px] font-semibold text-muted/50 px-3 mb-1 tracking-wider">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map(({ id, icon: Icon, label, badge }: any) => (
-                <button key={id} onClick={() => handleTabChange(id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{label}</span>
-                  {badge !== undefined && badge > 0 && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        {TOP_NAV.map(({ id, icon: Icon, label, badge }) => (
+          <button key={id} onClick={() => handleTopNavClick(id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isTopNavActive(id) ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1 text-left">{label}</span>
+            {badge !== undefined && badge > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isTopNavActive(id) ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
+            )}
+          </button>
         ))}
       </nav>
       <div className="p-3 border-t border-border space-y-1.5">
@@ -268,6 +264,22 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         </div>
 
         <div className="p-4 lg:p-6">
+
+          {/* ── Sub-navegación de "Planificar" — Ejercicios / Workouts / Programas ── */}
+          {PLANIFICAR_TABS.includes(activeTab) && (
+            <div className="flex gap-2 mb-5 -mt-1">
+              {([
+                { id: 'templates' as Tab, label: 'Workouts' },
+                { id: 'exercises' as Tab, label: 'Ejercicios' },
+                { id: 'programas' as Tab, label: 'Programas' },
+              ]).map(({ id, label }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTab === id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-ink hover:text-ink'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* ── DASHBOARD ── */}
           {activeTab === 'dashboard' && (
@@ -484,6 +496,19 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
 
+                <button onClick={() => handleTabChange('bandeja')}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl hover:shadow-sm transition-all text-left"
+                  style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                    <Inbox className="w-4 h-4 text-accent" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">Revisar bandeja</p>
+                    <p className="text-[11px] text-muted">Sesiones y check-ins recientes de tus clientes</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
+                </button>
+
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Activity className="w-3.5 h-3.5 text-accent" />
@@ -678,6 +703,37 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             <PlanGate feature="business_dashboard" planName={userProfile.planName}>
               <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
             </PlanGate>
+          )}
+          {activeTab === 'mas' && (
+            <div className="animate-fade-in max-w-2xl">
+              <h2 className="text-3xl font-serif font-bold mb-1">Más</h2>
+              <p className="text-muted text-sm mb-6">Lo que usas menos a diario, todo en un mismo sitio</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {([
+                  { id: 'bandeja'    as Tab, icon: Inbox,        label: 'Bandeja',     desc: 'Sesiones y check-ins recientes' },
+                  { id: 'calendario' as Tab, icon: CalendarDays, label: 'Calendario',  desc: 'Citas y sesiones programadas' },
+                  { id: 'mensajes'   as Tab, icon: MessageCircle,label: 'Mensajes',    desc: 'Plantillas y envíos programados' },
+                  { id: 'encuestas'  as Tab, icon: ClipboardList,label: 'Encuestas',   desc: 'Cuestionarios para tus clientes' },
+                  { id: 'cohortes'   as Tab, icon: Users2,       label: 'Grupos',      desc: 'Cohortes de clientes' },
+                  { id: 'etiquetas'  as Tab, icon: TagIcon,      label: 'Etiquetas',   desc: 'Organiza tus clientes' },
+                  { id: 'insights'   as Tab, icon: BarChart2,    label: 'Insights',    desc: 'Actividad y especialidad' },
+                  { id: 'adherencia' as Tab, icon: TrendingUp,   label: 'Adherencia',  desc: 'Cumplimiento semanal' },
+                  { id: 'negocio'    as Tab, icon: TrendingUp,   label: 'Mi negocio',  desc: 'Ingresos y métricas' },
+                  { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
+                ]).map(({ id, icon: Icon, label, desc }) => (
+                  <button key={id} onClick={() => setActiveTab(id)}
+                    className="flex flex-col items-start gap-2 p-4 bg-white border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
+                    <div className="w-9 h-9 rounded-xl bg-bg-alt flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-ink" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{label}</p>
+                      <p className="text-[11px] text-muted mt-0.5 leading-snug">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
         </div>
