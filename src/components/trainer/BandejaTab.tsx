@@ -1,123 +1,36 @@
-import { useState, useEffect, useMemo } from 'react'
-import { Inbox, CheckCircle2, Moon, HeartPulse, ChevronRight } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight } from 'lucide-react'
 import { ClientData } from '../../types'
-import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT } from '../../lib/demo-data'
-import { PainEntry } from '../../lib/clientPain'
+import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
+import { ClientWithStats } from '../../hooks/useTrainerClients'
+import { useState } from 'react'
 
-interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
-
-interface InboxItem {
-  key: string
-  clientId: string
-  clientName: string
-  date: string
-  kind: 'sesion' | 'readiness' | 'dolor'
-  detail: string
-  warn?: boolean
-}
-
-// Umbral para que una molestia articular aparezca en la Bandeja — por debajo
-// de esto es más ruido que señal (ver DolorChart: >=7 alto, >=4 moderado).
-const DOLOR_ALERTA_MIN = 4
-
-const REVIEWED_KEY = (trainerId: string) => `pf_bandeja_revisados_${trainerId}`
 const DAYS_BACK = 14
+
+const KIND_STYLE: Record<InboxKind, { bg: string; fg: string; icon: (props: { className?: string }) => JSX.Element }> = {
+  readiness: { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Moon {...p} /> },
+  dolor:     { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <HeartPulse {...p} /> },
+  video:     { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Video {...p} /> },
+  borrador:  { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <FileEdit {...p} /> },
+  riesgo:    { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <AlertTriangle {...p} /> },
+  sesion:    { bg: 'bg-ok/10',     fg: 'text-ok',     icon: () => <></> }, // usa la inicial del cliente, ver abajo
+}
 
 export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   trainerId: string
-  clients: ClientData[]
+  clients: ClientWithStats[]
   logsMap: Record<string, any>
   onSelectClient: (c: ClientData) => void
 }) {
-  const [readiness, setReadiness] = useState<ReadinessRow[]>([])
-  const [dolor, setDolor] = useState<({ clientId: string } & PainEntry)[]>([])
-  const [loading, setLoading] = useState(true)
   const [onlyPending, setOnlyPending] = useState(true)
-  const [reviewed, setReviewed] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(REVIEWED_KEY(trainerId)) || '[]')) } catch { return new Set() }
-  })
-
-  useEffect(() => {
-    const clientIds = clients.map(c => c.id)
-    if (clientIds.length === 0) { setLoading(false); return }
-    if (trainerId === DEMO_TRAINER_ID) { setReadiness(DEMO_READINESS_FLAT); setDolor(DEMO_DOLOR_FLAT); setLoading(false); return }
-    const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
-    const sinceKey = since.toISOString().split('T')[0]
-    Promise.all([
-      supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
-        .in('clientId', clientIds).gte('date', sinceKey).order('date', { ascending: false }),
-      supabase.from('registros_dolor').select('id, clientId, date, zona, intensidad, nota, tipo')
-        .in('clientId', clientIds).gte('date', sinceKey).order('date', { ascending: false }),
-    ]).then(([readinessRes, dolorRes]) => {
-      setReadiness((readinessRes.data || []) as ReadinessRow[])
-      setDolor((dolorRes.data || []) as ({ clientId: string } & PainEntry)[])
-      setLoading(false)
-    })
-  }, [clients, trainerId])
-
-  const items = useMemo(() => {
-    const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
-    const sinceKey = since.toISOString().split('T')[0]
-    const list: InboxItem[] = []
-
-    clients.forEach(c => {
-      const logs = logsMap[c.id] || {}
-      const dateCounts: Record<string, number> = {}
-      Object.values(logs).forEach((l: any) => {
-        if (l.dateDone && l.dateDone >= sinceKey) dateCounts[l.dateDone] = (dateCounts[l.dateDone] || 0) + 1
-      })
-      Object.entries(dateCounts).forEach(([date, count]) => {
-        list.push({
-          key: `sesion:${c.id}:${date}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date, kind: 'sesion',
-          detail: `Completó una sesión (${count} ejercicio${count !== 1 ? 's' : ''})`,
-        })
-      })
-    })
-
-    readiness.forEach(r => {
-      const c = clients.find(cl => cl.id === r.clientId)
-      if (!c) return
-      const warn = r.sleep <= 2 || r.soreness <= 2 || r.motivation <= 2
-      list.push({
-        key: `readiness:${c.id}:${r.date}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: r.date, kind: 'readiness',
-        detail: `Check-in de forma — sueño ${r.sleep}/5, dolor ${r.soreness}/5, motivación ${r.motivation}/5`,
-        warn,
-      })
-    })
-
-    dolor.forEach(d => {
-      const c = clients.find(cl => cl.id === d.clientId)
-      if (!c || d.intensidad < DOLOR_ALERTA_MIN) return
-      const esArticular = d.tipo === 'articular'
-      list.push({
-        key: `dolor:${d.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: d.date, kind: 'dolor',
-        detail: `${esArticular ? 'Molestia articular' : 'Dolor'} en ${d.zona} (${d.intensidad}/10)${d.nota ? ` — "${d.nota}"` : ''}`,
-        warn: esArticular || d.intensidad >= 7,
-      })
-    })
-
-    return list.sort((a, b) => b.date.localeCompare(a.date))
-  }, [clients, logsMap, readiness, dolor])
-
-  const visibleItems = onlyPending ? items.filter(i => !reviewed.has(i.key)) : items
-  const pendingCount = items.filter(i => !reviewed.has(i.key)).length
-
-  const toggleReviewed = (key: string) => {
-    setReviewed(prev => {
-      const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      try { localStorage.setItem(REVIEWED_KEY(trainerId), JSON.stringify([...next])) } catch {}
-      return next
-    })
-  }
+  const { visibleItems, pendingCount, reviewed, toggleReviewed, loading } = useInboxItems(trainerId, clients, logsMap)
+  const items = visibleItems(onlyPending)
 
   return (
     <div className="animate-fade-in space-y-5 max-w-3xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Bandeja</h2>
-          <p className="text-muted text-sm mt-1">Sesiones y check-ins de todos tus clientes, en un solo sitio</p>
+          <p className="text-muted text-sm mt-1">Todo lo que puede necesitar tu atención, en un solo sitio</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setOnlyPending(true)}
@@ -132,8 +45,8 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
-      ) : visibleItems.length === 0 ? (
+        <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
+      ) : items.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
           <Inbox className="w-10 h-10 text-muted/30 mx-auto mb-3" />
           <p className="font-serif font-bold text-lg">{onlyPending ? 'Todo revisado ✓' : 'Sin actividad reciente'}</p>
@@ -141,9 +54,10 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
         </div>
       ) : (
         <div className="bg-white rounded-2xl overflow-hidden divide-y divide-border/50" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-          {visibleItems.map(item => {
+          {items.map(item => {
             const client = clients.find(c => c.id === item.clientId)
             const isReviewed = reviewed.has(item.key)
+            const style = KIND_STYLE[item.kind]
             return (
               <div key={item.key} className="flex items-center gap-3 px-4 py-3">
                 <button onClick={() => toggleReviewed(item.key)} title={isReviewed ? 'Marcar como pendiente' : 'Marcar como revisado'}
@@ -151,14 +65,12 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
                   {isReviewed && <CheckCircle2 className="w-4 h-4 text-white" />}
                 </button>
                 <button onClick={() => client && onSelectClient(client)} className="flex-1 min-w-0 flex items-center gap-3 text-left">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    item.kind === 'readiness' ? 'bg-accent/10 text-accent' : item.kind === 'dolor' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'
-                  }`}>
-                    {item.kind === 'readiness' ? <Moon className="w-3.5 h-3.5" /> : item.kind === 'dolor' ? <HeartPulse className="w-3.5 h-3.5" /> : item.clientName[0]?.toUpperCase()}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${style.bg} ${style.fg}`}>
+                    {item.kind === 'sesion' ? item.clientName[0]?.toUpperCase() : style.icon({ className: 'w-3.5 h-3.5' })}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{item.clientName}</p>
-                    <p className={`text-xs truncate ${item.warn ? 'text-warn font-medium' : 'text-muted'}`}>{item.warn && '⚠️ '}{item.detail}</p>
+                    <p className={`text-xs truncate ${item.warn ? 'text-warn font-medium' : 'text-muted'}`}>{item.warn && !/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(item.detail) && '⚠️ '}{item.detail}</p>
                   </div>
                   <span className="text-[10px] text-muted flex-shrink-0 hidden sm:block">{new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
                   <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" />

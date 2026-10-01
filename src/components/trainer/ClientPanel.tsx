@@ -186,7 +186,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     setBorradorBusy(true)
     if (demoPlan === undefined) {
       const { error } = await supabase.from('planes')
-        .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+        .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
       if (error) { setBorradorBusy(false); logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
     }
     setBorradorBusy(false)
@@ -199,7 +199,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     setBorradorBusy(true)
     if (demoPlan === undefined) {
       const { error } = await supabase.from('planes')
-        .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() })
+        .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, borrador_started_at: null, updatedAt: Date.now() })
         .eq('clientId', client.id)
       if (error) { setBorradorBusy(false); logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
       // Deja constancia en el historial — si esto falla no se deshace la
@@ -219,7 +219,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     setShowHistory(false)
     setBorradorBusy(true)
     const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan_borrador: { P: restoredPlan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+      .upsert({ clientId: client.id, plan_borrador: { P: restoredPlan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
     setBorradorBusy(false)
     if (error) { logError('restoreFromHistory', error); toast('No se pudo restaurar', 'warn'); return }
     setPlan(restoredPlan)
@@ -232,7 +232,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     setBorradorBusy(true)
     if (demoPlan === undefined) {
       const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
-      await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null }).eq('clientId', client.id)
+      await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null, borrador_started_at: null }).eq('clientId', client.id)
       const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
       setPlan(livePlan || null)
     } else {

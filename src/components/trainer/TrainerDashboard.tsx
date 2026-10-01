@@ -2,6 +2,7 @@ import { track } from '@vercel/analytics'
 import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
+import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLabels } from '../../hooks/useLabels'
 import { useState, useEffect } from 'react'
 import {
@@ -109,6 +110,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
+  // Bandeja unificada: sesiones, check-ins, dolor, vídeos sin responder,
+  // borradores sin publicar y clientes en riesgo — una sola lista en vez de
+  // "Requieren atención" + "Tareas de hoy" + Bandeja calculando cada una lo
+  // suyo por separado.
+  const { visibleItems: inboxVisibleItems, pendingCount: inboxPendingCount, loading: inboxLoading } = useInboxItems(userProfile.uid, clients, logsMap)
+  const inboxTop = inboxVisibleItems(true).slice(0, 5)
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
@@ -472,42 +479,48 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
 
-                {alerts.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                      <Bell className="w-3.5 h-3.5 text-warn" />
-                      <h3 className="text-sm font-semibold">Requieren atención</h3>
-                      <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{alerts.length}</span>
+                {/* Bandeja unificada — sesiones, check-ins, dolor, vídeos sin
+                    responder, borradores sin publicar y clientes en riesgo,
+                    ordenados por urgencia. Sustituye a los antiguos
+                    "Requieren atención" y "Tareas de hoy", que mostraban lo
+                    mismo (clientes en riesgo) en dos sitios distintos. */}
+                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <button onClick={() => handleTabChange('bandeja')}
+                    className="w-full px-4 py-3 border-b border-border/50 flex items-center gap-2 hover:bg-bg-alt/30 transition-colors">
+                    <Inbox className="w-3.5 h-3.5 text-accent" />
+                    <h3 className="text-sm font-semibold">Bandeja</h3>
+                    {inboxPendingCount > 0 && (
+                      <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{inboxPendingCount}</span>
+                    )}
+                  </button>
+                  {inboxLoading ? (
+                    <div className="p-3 space-y-1.5">{[1, 2].map(i => <div key={i} className="h-10 bg-bg-alt rounded-xl animate-pulse" />)}</div>
+                  ) : inboxTop.length === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
+                      <p className="text-xs text-muted">Todo al día ✓</p>
                     </div>
-                    <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
-                      {alerts.slice(0, 5).map(c => (
-                        <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
-                          <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.highAcwr ? `⚡ Carga alta (ACWR ${c.acwrRatio})` : c.highJumpDrop ? `🦵 Caída de salto (${c.jumpDropPct}%)` : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
-                          </div>
-                          <ChevronRight className="w-3 h-3 text-muted" />
-                        </button>
-                      ))}
+                  ) : (
+                    <div className="divide-y divide-border/50">
+                      {inboxTop.map(item => {
+                        const c = clients.find(cl => cl.id === item.clientId)
+                        return (
+                          <button key={item.key} onClick={() => c && onSelectClient(c)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
+                            <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{item.clientName[0]?.toUpperCase()}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate">{item.clientName}</p>
+                              <p className="text-[10px] text-muted truncate">{item.detail}</p>
+                            </div>
+                            <ChevronRight className="w-3 h-3 text-muted flex-shrink-0" />
+                          </button>
+                        )
+                      })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
-
-                <button onClick={() => handleTabChange('bandeja')}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl hover:shadow-sm transition-all text-left"
-                  style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                    <Inbox className="w-4 h-4 text-accent" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">Revisar bandeja</p>
-                    <p className="text-[11px] text-muted">Sesiones y check-ins recientes de tus clientes</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
-                </button>
 
                 <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
@@ -544,27 +557,6 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                         <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Tareas de hoy</h3>
-                  </div>
-                  <div className="p-3 space-y-1.5">
-                    {alerts.slice(0, 3).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
-                        <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.highAcwr ? `Revisar carga de ${c.name} (riesgo de lesión)` : c.highJumpDrop ? `Revisar fatiga de ${c.name} (caída de salto)` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
-                      </button>
-                    ))}
-                    {alerts.length === 0 && (
-                      <div className="px-3 py-4 text-center">
-                        <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
-                        <p className="text-xs text-muted">Todo al día ✓</p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
