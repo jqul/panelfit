@@ -7,6 +7,7 @@ import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
 import { ReadinessSummary } from './ReadinessSummary'
 import { MessageTemplatesSection } from './MessageTemplatesSection'
+import { GoalsSection } from './GoalsSection'
 
 export interface ClientAlert {
   id: string
@@ -118,6 +119,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         ))}
       </div>
+
+      <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (

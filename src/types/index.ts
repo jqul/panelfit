@@ -22,6 +22,7 @@ export interface ClientData {
   lesiones?: string        // limitaciones/lesiones relevantes para programar — solo lo ve el entrenador
   equipo_disponible?: string  // equipo con el que cuenta el cliente para entrenar — solo lo ve el entrenador
   metricas_cliente?: string[]  // ids de Section (lib/progresoSections) que el cliente puede ver en su propio panel
+  main_goal?: string  // objetivo principal del cliente en sus palabras — distinto de objetivo (especialidad/categoría)
 }
 
 // ── PLAN ──────────────────────────────────────────────

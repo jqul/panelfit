@@ -7,8 +7,9 @@ import { ClientWithStats } from './useTrainerClients'
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
 interface BorradorRow { clientId: string; borrador_activo: boolean; borrador_started_at: string | null }
+interface ReviewRow { clientId: string; week_start: string }
 
-export type InboxKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo'
+export type InboxKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo' | 'revision'
 
 export interface InboxItem {
   key: string
@@ -56,6 +57,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
   const [dolor, setDolor] = useState<({ clientId: string } & PainEntry)[]>([])
   const [videos, setVideos] = useState<VideoRow[]>([])
   const [borradores, setBorradores] = useState<BorradorRow[]>([])
+  const [lastReviews, setLastReviews] = useState<Record<string, string>>({}) // clientId -> week_start más reciente
   const [loading, setLoading] = useState(true)
   const [reviewed, setReviewed] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(`pf_bandeja_revisados_${trainerId}`) || '[]')) } catch { return new Set() }
@@ -69,11 +71,13 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       setDolor(DEMO_DOLOR_FLAT)
       setVideos(Object.values(DEMO_VIDEO_FEEDBACK_MAP).flat() as VideoRow[])
       setBorradores([])
+      setLastReviews({})
       setLoading(false)
       return
     }
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
     const sinceKey = since.toISOString().split('T')[0]
+    const goalClientIds = clients.filter(c => c.main_goal).map(c => c.id)
     Promise.all([
       supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
         .in('clientId', clientIds).gte('date', sinceKey).order('date', { ascending: false }),
@@ -83,11 +87,17 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
         .eq('trainer_id', trainerId).eq('status', 'pendiente'),
       supabase.from('planes').select('clientId, borrador_activo, borrador_started_at')
         .in('clientId', clientIds).eq('borrador_activo', true),
-    ]).then(([readinessRes, dolorRes, videoRes, borradorRes]) => {
+      goalClientIds.length
+        ? supabase.from('weekly_reviews').select('clientId, week_start').in('clientId', goalClientIds).order('week_start', { ascending: false })
+        : Promise.resolve({ data: [] as ReviewRow[] }),
+    ]).then(([readinessRes, dolorRes, videoRes, borradorRes, reviewRes]) => {
       setReadiness((readinessRes.data || []) as ReadinessRow[])
       setDolor((dolorRes.data || []) as ({ clientId: string } & PainEntry)[])
       setVideos((videoRes.data || []) as VideoRow[])
       setBorradores((borradorRes.data || []) as BorradorRow[])
+      const latest: Record<string, string> = {}
+      ;((reviewRes.data || []) as ReviewRow[]).forEach(r => { if (!latest[r.clientId]) latest[r.clientId] = r.week_start })
+      setLastReviews(latest)
       setLoading(false)
     })
   }, [clients, trainerId])
@@ -145,9 +155,28 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       list.push({ key: `riesgo:${c.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'riesgo', detail, warn: true })
     })
 
+    // Solo para clientes con objetivo principal puesto (el entrenador optó
+    // por usar esto) y sin ninguna revisión en los últimos 7 días. Clave por
+    // semana (no por día): si se marca como revisado, no reaparece hasta la
+    // semana que viene — lo que de verdad lo quita de la lista es añadir una
+    // revisión real, que actualiza lastReviews en el siguiente fetch.
+    const hace7 = new Date(); hace7.setDate(hace7.getDate() - 7)
+    const hace7Key = hace7.toISOString().split('T')[0]
+    const now = new Date()
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1))
+    const weekKey = monday.toISOString().split('T')[0]
+    clients.forEach(c => {
+      if (!c.main_goal) return
+      const last = lastReviews[c.id]
+      if (last && last >= hace7Key) return
+      list.push({ key: `revision:${c.id}:${weekKey}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'revision',
+        detail: '🎯 Toca revisión semanal del objetivo', warn: true })
+    })
+
     // Lo urgente (warn) siempre arriba; dentro de cada bloque, lo más reciente primero.
     return list.sort((a, b) => (Number(!!b.warn) - Number(!!a.warn)) || b.date.localeCompare(a.date))
-  }, [clients, logsMap, readiness, dolor, videos, borradores])
+  }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews])
 
   const visibleItems = (onlyPending: boolean) => onlyPending ? items.filter(i => !reviewed.has(i.key)) : items
   const pendingCount = items.filter(i => !reviewed.has(i.key)).length

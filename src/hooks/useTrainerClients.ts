@@ -173,6 +173,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       genero: (data || [])[i]?.genero || null,
       fechanacimiento: (data || [])[i]?.fechanacimiento || null,
       label_ids: (data || [])[i]?.label_ids || [],
+      main_goal: (data || [])[i]?.main_goal || undefined,
     }))
 
     const hoy = localDateKey()

@@ -1,4 +1,4 @@
-import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target } from 'lucide-react'
 import { ClientData } from '../../types'
 import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
@@ -12,6 +12,7 @@ const KIND_STYLE: Record<InboxKind, { bg: string; fg: string; icon: (props: { cl
   video:     { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Video {...p} /> },
   borrador:  { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <FileEdit {...p} /> },
   riesgo:    { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <AlertTriangle {...p} /> },
+  revision:  { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Target {...p} /> },
   sesion:    { bg: 'bg-ok/10',     fg: 'text-ok',     icon: () => <></> }, // usa la inicial del cliente, ver abajo
 }
 
