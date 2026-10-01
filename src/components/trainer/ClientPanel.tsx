@@ -23,6 +23,7 @@ import { NotasTab } from './client-panel/NotasTab'
 import { ConfigTab } from './client-panel/ConfigTab'
 import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
+import { PlanHistoryModal } from './client-panel/PlanHistoryModal'
 import { ValoracionTab } from './client-panel/ValoracionTab'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
@@ -116,6 +117,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [liveSession, setLiveSession] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [borradorActivo, setBorradorActivo] = useState(false)
   const [borradorBusy, setBorradorBusy] = useState(false)
+  const [changeNote, setChangeNote] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
   // Los cambios de PerfilTab (ej. etiquetas) se aplicaban mutando el objeto
   // `client` directamente (Object.assign), que es un prop — React nunca se
   // enteraba y la pantalla no se refrescaba hasta que algo más forzaba un
@@ -174,13 +177,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   }
 
   // ── Borrador: el cliente no ve los cambios hasta que el entrenador publica ──
+  // (En demo no hay fila real en Supabase para el cliente — demoPlan!==undefined
+  // salta la llamada y simula el mismo cambio de estado en local, igual que
+  // savePlan ya hacía. Antes de esto, "Empezar borrador" fallaba en silencio
+  // en la demo con un error de UUID inválido.)
   const startBorrador = async () => {
     if (!plan) return
     setBorradorBusy(true)
-    const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    if (demoPlan === undefined) {
+      const { error } = await supabase.from('planes')
+        .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+      if (error) { setBorradorBusy(false); logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
+    }
     setBorradorBusy(false)
-    if (error) { logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
     setBorradorActivo(true)
     toast('Borrador iniciado — el cliente sigue viendo la versión anterior', 'ok')
   }
@@ -188,24 +197,50 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const publishBorrador = async () => {
     if (!plan) return
     setBorradorBusy(true)
-    const { error } = await supabase.from('planes')
-      .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() })
-      .eq('clientId', client.id)
+    if (demoPlan === undefined) {
+      const { error } = await supabase.from('planes')
+        .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() })
+        .eq('clientId', client.id)
+      if (error) { setBorradorBusy(false); logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
+      // Deja constancia en el historial — si esto falla no se deshace la
+      // publicación (ya está en vivo), solo se pierde la entrada del historial.
+      await supabase.from('plan_history').insert({
+        clientId: client.id, plan: { P: plan }, note: changeNote.trim() || null, published_by: userProfile.displayName || userProfile.email,
+      })
+      sendPush({ clientId: client.id }, 'Tu plan se ha actualizado 💪', `${client.name}, tu entrenador ha publicado cambios en tu rutina`)
+    }
     setBorradorBusy(false)
-    if (error) { logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
     setBorradorActivo(false)
+    setChangeNote('')
     toast('Cambios publicados ✓', 'ok')
-    sendPush({ clientId: client.id }, 'Tu plan se ha actualizado 💪', `${client.name}, tu entrenador ha publicado cambios en tu rutina`)
+  }
+
+  const restoreFromHistory = async (restoredPlan: TrainingPlan) => {
+    setShowHistory(false)
+    setBorradorBusy(true)
+    const { error } = await supabase.from('planes')
+      .upsert({ clientId: client.id, plan_borrador: { P: restoredPlan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    setBorradorBusy(false)
+    if (error) { logError('restoreFromHistory', error); toast('No se pudo restaurar', 'warn'); return }
+    setPlan(restoredPlan)
+    setBorradorActivo(true)
+    setChangeNote('Restaurado desde el historial')
+    toast('Versión restaurada como borrador — revísala y publícala', 'ok')
   }
 
   const discardBorrador = async () => {
     setBorradorBusy(true)
-    const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
-    await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null }).eq('clientId', client.id)
+    if (demoPlan === undefined) {
+      const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+      await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null }).eq('clientId', client.id)
+      const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
+      setPlan(livePlan || null)
+    } else {
+      setPlan(demoPlan)
+    }
     setBorradorBusy(false)
-    const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
-    setPlan(livePlan || null)
     setBorradorActivo(false)
+    setChangeNote('')
     toast('Borrador descartado', 'ok')
   }
 
@@ -395,7 +430,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         {!loading && plan && (
           borradorActivo ? (
             <div className="flex-shrink-0 bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-accent font-semibold">📝 Editando un borrador — {client.name} sigue viendo la versión anterior</p>
+              <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                <p className="text-xs text-accent font-semibold flex-shrink-0">📝 Borrador —</p>
+                <input value={changeNote} onChange={e => setChangeNote(e.target.value)}
+                  placeholder="Nota de cambios para el historial (opcional)"
+                  className="flex-1 min-w-0 text-xs bg-white border border-accent/20 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
+              </div>
               <div className="flex gap-2">
                 <button onClick={discardBorrador} disabled={borradorBusy}
                   className="px-3 py-1.5 border border-accent/30 rounded-lg text-xs font-semibold text-accent hover:bg-accent/10 disabled:opacity-50">
@@ -410,12 +450,21 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           ) : (activeTab === 'plan' || activeTab === 'dieta') && (
             <div className="flex-shrink-0 bg-bg-alt border-b border-border px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-muted">¿Vas a hacer cambios grandes? Puedes trabajar en un borrador que {client.name} no verá hasta que lo publiques.</p>
-              <button onClick={startBorrador} disabled={borradorBusy}
-                className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent disabled:opacity-50 flex-shrink-0">
-                Empezar borrador
-              </button>
+              <div className="flex gap-2 flex-shrink-0">
+                <button onClick={() => setShowHistory(true)}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-ink hover:text-ink">
+                  Historial
+                </button>
+                <button onClick={startBorrador} disabled={borradorBusy}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent disabled:opacity-50">
+                  Empezar borrador
+                </button>
+              </div>
             </div>
           )
+        )}
+        {showHistory && (
+          <PlanHistoryModal clientId={client.id} onClose={() => setShowHistory(false)} onRestore={restoreFromHistory} />
         )}
 
         <main className="flex-1 overflow-hidden flex flex-col">

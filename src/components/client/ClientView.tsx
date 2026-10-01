@@ -160,6 +160,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       }
       setPlan(p)
       try { localStorage.setItem(PLAN_CACHE_KEY(clientData.id), JSON.stringify(p)) } catch {}
+      // Deja constancia de que el cliente ha abierto el plan — así el
+      // entrenador ve en el historial si ya vio la última versión publicada.
+      // Fire-and-forget: no debe bloquear ni romper la carga si falla.
+      supabase.rpc('mark_plan_opened', { p_token: token }).then(() => {}, () => {})
     } else {
       try {
         const cachedPlan = localStorage.getItem(PLAN_CACHE_KEY(clientData.id))
