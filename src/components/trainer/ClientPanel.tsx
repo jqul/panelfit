@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
   ClipboardList, Eye, TrendingUp, StickyNote,
@@ -9,7 +9,9 @@ import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate }
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { ProgresoTab } from './ProgresoTab'
+// Carga perezosa: recharts es pesado (~500kb) y solo hace falta cuando el
+// entrenador entra de verdad en la pestaña de progreso, no con solo abrir el panel.
+const ProgresoTab = lazy(() => import('./ProgresoTab').then(m => ({ default: m.ProgresoTab })))
 import { InformePDF } from './InformePDF'
 import { PlanGate } from '../shared/PlanGate'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
@@ -514,7 +516,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               )}
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
               {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} clientId={client.id} /></div>}
-              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} /></div>}
+              {activeTab === 'progreso' && (
+                <div className="flex-1 overflow-y-auto">
+                  <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
+                    <ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} />
+                  </Suspense>
+                </div>
+              )}
               {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
               {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
               {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} trainerId={userProfile.uid} /></div>}

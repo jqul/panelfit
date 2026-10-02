@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
-import { ProgresoClienteTab } from './ProgresoClienteTab'
+// Carga perezosa: recharts es pesado (~500kb) y solo hace falta al entrar de
+// verdad en la pestaña de progreso, no con solo abrir la app.
+const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => ({ default: m.ProgresoClienteTab })))
 import { PWAInstallBanner } from './PWAInstallBanner'
 import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
@@ -409,7 +411,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                 ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} />
                 : <NoPlanView />
             )}
-            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} />}
+            {activeTab === 'progreso' && (
+              <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
+                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} />
+              </Suspense>
+            )}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {

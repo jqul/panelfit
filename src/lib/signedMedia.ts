@@ -22,6 +22,10 @@ const cache = new Map<string, { url: string; expires: number }>()
 export async function getSignedUrl(bucket: string, pathOrUrl: string | null | undefined, expiresIn = 3600): Promise<string | null> {
   if (!pathOrUrl) return null
   const path = extractStoragePath(bucket, pathOrUrl)
+  // Si no se encontró el marcador del bucket y ya es una URL absoluta, es un
+  // vídeo externo (p.ej. los de ejemplo del modo demo) — no vive en nuestro
+  // Storage y no se puede firmar, así que se muestra tal cual.
+  if (path === pathOrUrl && /^https?:\/\//.test(path)) return path
   const key = `${bucket}/${path}`
   const cached = cache.get(key)
   if (cached && cached.expires > Date.now() + 10_000) return cached.url
