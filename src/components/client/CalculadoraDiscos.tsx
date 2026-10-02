@@ -73,6 +73,7 @@ export function CalculadoraDiscos({ pesoObjetivo, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Cerrar"
             className="p-2.5 rounded-xl bg-bg-alt hover:bg-border text-muted hover:text-ink transition-colors"
           >
             <X className="w-5 h-5" />

@@ -240,7 +240,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             <div className="flex gap-2">
               <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && saveWeight()}
-                placeholder="Tu peso hoy (kg)" autoFocus
+                placeholder="Tu peso hoy (kg)" aria-label="Tu peso hoy en kg" autoFocus
                 className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
               <button onClick={saveWeight} style={{ minHeight: '44px' }}

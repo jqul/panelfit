@@ -178,7 +178,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)
           }} />
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
+          <button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
         </div>
       </div>
       {myTeams.length > 0 && onSwitchTeam && (

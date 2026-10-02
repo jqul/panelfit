@@ -16,7 +16,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }:
         {title && (
           <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0">
             <h3 className="text-lg font-serif font-bold">{title}</h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors"><X className="w-4 h-4" /></button>
+            <button onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
         <div className="p-6 overflow-y-auto flex-1 min-h-0">{children}</div>

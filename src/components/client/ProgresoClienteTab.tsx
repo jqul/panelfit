@@ -438,7 +438,7 @@ function DolorTab({ clientId, trainerId }: { clientId: string; trainerId?: strin
                   {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
                   <p className="text-[10px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
                 </div>
-                <button onClick={() => deleteEntry(e.id)} className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+                <button onClick={() => deleteEntry(e.id)} aria-label="Eliminar registro" className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
                   <Trash2 className="w-3.5 h-3.5 mx-auto" />
                 </button>
               </div>
@@ -785,7 +785,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
           <div className="flex gap-2">
             <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addWeight()}
-              placeholder="Registrar peso de hoy (kg)"
+              placeholder="Registrar peso de hoy (kg)" aria-label="Registrar peso de hoy en kg"
               className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20"
               style={{ fontSize: '16px' }} />
             <button onClick={addWeight} className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 flex-shrink-0" style={{ minHeight: '44px' }}>
@@ -826,7 +826,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                       {w.weight > weights[i-1].weight ? '+' : ''}{(w.weight - weights[i-1].weight).toFixed(1)}
                     </p>
                   )}
-                  <button onClick={() => deleteWeight(w.date)} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <button onClick={() => deleteWeight(w.date)} aria-label="Eliminar peso" className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
                     <Trash2 className="w-3.5 h-3.5 mx-auto" />
                   </button>
                 </div>
@@ -852,7 +852,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                   <p className="text-sm font-semibold">{new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <p className="text-xs text-muted">{[session.front, session.side, session.back].filter(Boolean).length}/3 fotos</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }} aria-label="Eliminar sesión de fotos" className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
                 {expandedSession === session.id ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
               </div>
               {expandedSession === session.id && (
@@ -865,7 +865,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                         <div key={type} className="space-y-1">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
                           <label className={`block cursor-pointer rounded-xl overflow-hidden border-2 aspect-[3/4] ${url ? 'border-border' : 'border-dashed border-border hover:border-accent'}`}>
-                            {url ? <SignedImage bucket="media" src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
+                            {url ? <SignedImage bucket="media" src={url} alt={`Foto de progreso - ${labels[type]}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(session.id, type, f) }} />
                           </label>
                         </div>

@@ -33,7 +33,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
               <p className="text-xs text-muted">{type.desc}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted flex-shrink-0">
+          <button onClick={onClose} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-bg-alt text-muted flex-shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -39,6 +39,7 @@ export function DayTestsCard({ tests, resultadosHoy, onSubmit }: Props) {
                 <input type="number" inputMode="decimal" value={draft}
                   onChange={e => setDrafts(p => ({ ...p, [t.id]: e.target.value }))}
                   placeholder={t.unidad}
+                  aria-label={`${t.nombre} (${t.unidad})`}
                   className="w-16 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm text-center outline-none focus:ring-2 focus:ring-accent/20" />
                 <button
                   onClick={() => { if (!isNaN(parsed)) { onSubmit(t.id, parsed); setDrafts(p => ({ ...p, [t.id]: '' })) } }}

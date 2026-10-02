@@ -127,6 +127,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                 onChange={e => setWeight(e.target.value)}
                 onBlur={() => onCommit(weight, reps)}
                 placeholder={prevWeight || '0'}
+                aria-label={`Peso serie ${setNum}`}
                 className={`w-full text-center text-base font-semibold py-2 pr-6 rounded-xl border outline-none ${
                   done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
                 }`}
@@ -164,6 +165,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               onChange={e => setReps(e.target.value)}
               onBlur={() => onCommit(weight, reps)}
               placeholder={prevReps || '10'}
+              aria-label={`Repeticiones serie ${setNum}`}
               className={`w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${
                 done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
               }`}
@@ -177,6 +179,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           {/* Check */}
           <button
             onClick={() => onToggle(weight, reps)}
+            aria-label={done ? `Marcar serie ${setNum} como no hecha` : `Marcar serie ${setNum} como hecha`}
             className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
               done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
             }`}>
@@ -196,6 +199,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                   onBlur={commitVelocity}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="m/s"
+                  aria-label="Velocidad en m/s"
                   className="w-16 text-center text-[10px] font-semibold py-1 rounded-full border border-accent outline-none"
                 />
               ) : (

@@ -156,7 +156,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
                   <h3 className="font-serif font-bold text-xl">Asignar programa</h3>
                   <p className="text-sm text-muted mt-0.5">{client.name} {client.surname}</p>
                 </div>
-                <button onClick={() => setShowProgramSelector(false)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+                <button onClick={() => setShowProgramSelector(false)} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-bg-alt text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>

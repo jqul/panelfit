@@ -51,13 +51,13 @@ export function HabitosSection({ clientId }: { clientId: string }) {
         {habitos.map(h => (
           <div key={h.id} className="flex items-center gap-2 bg-bg border border-border rounded-xl px-3 py-2">
             <span className="flex-1 text-sm">{h.text}</span>
-            <button onClick={() => deleteHabito(h.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
+            <button onClick={() => deleteHabito(h.id)} aria-label="Eliminar hábito" className="p-1 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
           </div>
         ))}
         <div className="flex gap-2">
           <input value={newText} onChange={e => setNewText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addHabito()}
-            placeholder="Ej: Beber 2L de agua, dormir 8h..."
+            placeholder="Ej: Beber 2L de agua, dormir 8h..." aria-label="Nuevo hábito"
             className="flex-1 px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           <button onClick={addHabito} disabled={adding || !newText.trim()}
             className="px-3 py-2 bg-ink text-white rounded-xl text-sm disabled:opacity-40">

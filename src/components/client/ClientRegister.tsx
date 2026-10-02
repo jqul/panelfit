@@ -234,7 +234,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
               <span className="text-sm">He leído y acepto el descargo de responsabilidad</span>
             </label>
             {waiverAccepted && (
-              <input value={signedName} onChange={e => setSignedName(e.target.value)} placeholder="Escribe tu nombre completo como firma"
+              <input value={signedName} onChange={e => setSignedName(e.target.value)} placeholder="Escribe tu nombre completo como firma" aria-label="Firma: nombre completo"
                 className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
             )}
           </div>

@@ -126,6 +126,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                     {(exHistory[exName]?.length ?? 0) >= 2 && (
                       <button
                         onClick={() => setExpandedEx(expandedEx === key ? null : key)}
+                        aria-label={expandedEx === key ? 'Ocultar evolución del ejercicio' : 'Ver evolución del ejercicio'}
                         className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${expandedEx === key ? 'bg-accent/10 text-accent' : 'text-muted hover:text-accent'}`}>
                         {expandedEx === key ? <X className="w-3.5 h-3.5" /> : <TrendingUp className="w-3.5 h-3.5" />}
                       </button>

@@ -545,7 +545,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       {/* Header */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => onBack ? onBack() : setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+          <button onClick={() => onBack ? onBack() : setShowFinish(true)} aria-label="Volver" className="p-2 rounded-xl hover:bg-bg-alt text-muted">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
@@ -758,7 +758,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     <div className="flex items-center gap-2">
                       <input autoFocus value={substituteDraft}
                         onChange={e => setSubstituteDraft(e.target.value)}
-                        placeholder="Busca el ejercicio que has hecho..."
+                        placeholder="Busca el ejercicio que has hecho..." aria-label="Buscar ejercicio sustituto"
                         onKeyDown={e => {
                           if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
                           if (e.key === 'Escape') setEditingSubstitute(null)
@@ -767,7 +767,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                       <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
                         title="Usar tal cual lo has escrito, si no está en la lista"
                         className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
-                      <button onClick={() => setEditingSubstitute(null)}
+                      <button onClick={() => setEditingSubstitute(null)} aria-label="Cancelar"
                         className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
                     </div>
                     {substituteSuggestions.length > 0 && (
@@ -818,7 +818,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     <div className="mt-2 border border-warn/30 bg-warn/5 rounded-2xl p-3 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold">🤕 ¿Dónde te molesta?</p>
-                        <button onClick={closeMolestiaPicker} className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
+                        <button onClick={closeMolestiaPicker} aria-label="Cerrar" className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (

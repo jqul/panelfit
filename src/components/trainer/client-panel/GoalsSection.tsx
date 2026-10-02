@@ -119,7 +119,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
             {showForm && (
               <div className="bg-bg-alt/50 border border-border rounded-xl p-3 space-y-2 mb-3">
                 <input value={form.objetivo_semanal} onChange={e => setForm(f => ({ ...f, objetivo_semanal: e.target.value }))}
-                  placeholder="Objetivo de esta semana (ej. 3 sesiones, subir 2,5kg en sentadilla)"
+                  placeholder="Objetivo de esta semana (ej. 3 sesiones, subir 2,5kg en sentadilla)" aria-label="Objetivo de esta semana"
                   className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none" />
                 <div className="flex gap-1.5">
                   {(Object.keys(ESTADO_META) as WeeklyReview['estado'][]).map(k => (

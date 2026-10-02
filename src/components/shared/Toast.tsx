@@ -29,7 +29,7 @@ export function ToastContainer({ toasts, dismiss }: { toasts: ReturnType<typeof 
             {t.type === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : t.type === 'warn' ? <AlertTriangle className="w-4 h-4" /> : <Info className="w-4 h-4" />}
           </span>
           <span className="flex-1">{t.message}</span>
-          <button onClick={() => dismiss(t.id)} className="flex-shrink-0 opacity-70 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
+          <button onClick={() => dismiss(t.id)} aria-label="Cerrar notificación" className="flex-shrink-0 opacity-70 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>
         </div>
       ))}
     </div>

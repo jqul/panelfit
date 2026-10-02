@@ -85,11 +85,13 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
               <div className="flex items-center gap-1">
                 {isTest ? (
                   <input type="number" inputMode="numeric" defaultValue={s.distanceM || ''} placeholder="m"
+                    aria-label={`Distancia serie ${si + 1}`}
                     onBlur={e => { const n = parseInt(e.target.value); onSetData(si, { distanceM: isNaN(n) || n <= 0 ? undefined : n, timeSec: run.durationSec, isTest: true }) }}
                     className={`w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${s.done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'}`} />
                 ) : (
                   <>
                     <input key={isRunning ? `${si}-live-${liveSec}` : `${si}-${s.timeSec ?? ''}`} inputMode="numeric" placeholder="m:ss"
+                      aria-label={`Tiempo serie ${si + 1}`}
                       defaultValue={isRunning ? formatDuration(liveSec!) : s.timeSec ? formatDuration(s.timeSec) : ''}
                       readOnly={isRunning}
                       onBlur={e => { const t = parseDuration(e.target.value); if (t !== s.timeSec) onSetData(si, { timeSec: t }) }}

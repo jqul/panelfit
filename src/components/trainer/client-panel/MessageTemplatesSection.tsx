@@ -60,7 +60,7 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">{MESSAGE_TYPE_LABEL[t.tipo]} · {t.nombre}</p>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => { setEditingDefault(t.id); setDraft(t.texto) }} title="Editar plantilla general" className="p-1 text-muted hover:text-accent"><Pencil className="w-3 h-3" /></button>
-                  {t.tipo === 'custom' && <button onClick={() => deleteTemplate(t.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>}
+                  {t.tipo === 'custom' && <button onClick={() => deleteTemplate(t.id)} aria-label="Eliminar plantilla" className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>}
                 </div>
               </div>
 
@@ -121,9 +121,9 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
 
       {addingCustom ? (
         <div className="space-y-1.5 border border-dashed border-border rounded-xl p-3">
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre de la plantilla"
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre de la plantilla" aria-label="Nombre de la plantilla"
             className="w-full px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
-          <textarea value={newText} onChange={e => setNewText(e.target.value)} rows={2} placeholder="Texto del mensaje... usa {{cliente}} para el nombre"
+          <textarea value={newText} onChange={e => setNewText(e.target.value)} rows={2} placeholder="Texto del mensaje... usa {{cliente}} para el nombre" aria-label="Texto del mensaje"
             className="w-full px-2.5 py-2 bg-bg border border-border rounded-lg text-xs outline-none resize-none" />
           <div className="flex gap-2">
             <button onClick={() => { setAddingCustom(false); setNewName(''); setNewText('') }} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>

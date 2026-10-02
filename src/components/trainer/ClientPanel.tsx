@@ -382,10 +382,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-1 lg:px-6">
           <div className="flex items-center gap-0.5">
             {/* Mobile: back arrow + hamburger */}
-            <button onClick={onClose} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+            <button onClick={onClose} aria-label="Volver" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted transition-colors flex-shrink-0" style={{ minWidth: '40px', minHeight: '44px' }}>
+            <button onClick={() => setMobileShowSidebar(true)} aria-label="Abrir menú" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted transition-colors flex-shrink-0" style={{ minWidth: '40px', minHeight: '44px' }}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <div className="lg:hidden min-w-0">
@@ -423,7 +423,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
               </Button>
             )}
-            <button onClick={onClose} className="hidden lg:flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <button onClick={onClose} aria-label="Cerrar" className="hidden lg:flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>

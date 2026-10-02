@@ -84,16 +84,16 @@ function MealCard({ meal, index, onChange, onDelete }: { meal: Meal; index: numb
         <div className="flex-1 grid grid-cols-3 gap-3 min-w-0">
           <input type="time" value={meal.time} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, time: e.target.value })}
             className="bg-transparent text-sm font-semibold outline-none border-b border-transparent focus:border-accent" />
-          <input type="text" placeholder="Nombre" value={meal.name} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, name: e.target.value })}
+          <input type="text" placeholder="Nombre" aria-label="Nombre de la comida" value={meal.name} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, name: e.target.value })}
             className="bg-transparent text-sm font-semibold outline-none border-b border-transparent focus:border-accent" />
           <div className="flex items-center gap-1">
-            <input type="number" min={0} value={meal.kcal || ''} placeholder="0" onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, kcal: parseInt(e.target.value) || 0 })}
+            <input type="number" min={0} value={meal.kcal || ''} placeholder="0" aria-label="Calorías de la comida" onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, kcal: parseInt(e.target.value) || 0 })}
               className="w-20 bg-transparent text-sm text-right outline-none border-b border-transparent focus:border-accent" />
             <span className="text-xs text-muted">kcal</span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-1.5 rounded-lg text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={e => { e.stopPropagation(); onDelete() }} aria-label="Eliminar comida" className="p-1.5 rounded-lg text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
           {open ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
         </div>
       </div>
@@ -103,10 +103,10 @@ function MealCard({ meal, index, onChange, onDelete }: { meal: Meal; index: numb
           {meal.items.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="text-muted text-xs w-4 flex-shrink-0">{i + 1}.</span>
-              <input type="text" placeholder="Ej: Avena 60g..." value={item} onChange={e => updateItem(i, e.target.value)}
+              <input type="text" placeholder="Ej: Avena 60g..." aria-label={`Alimento ${i + 1}`} value={item} onChange={e => updateItem(i, e.target.value)}
                 className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
               {meal.items.length > 1 && (
-                <button onClick={() => onChange({ ...meal, items: meal.items.filter((_, idx) => idx !== i) })} className="p-1.5 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onChange({ ...meal, items: meal.items.filter((_, idx) => idx !== i) })} aria-label="Eliminar alimento" className="p-1.5 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
               )}
             </div>
           ))}
@@ -339,10 +339,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           {showSaveTemplate && (
             <div className="flex gap-2 items-center bg-bg border border-border rounded-xl p-3">
               <input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()} placeholder="Nombre de la plantilla..."
+                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()} placeholder="Nombre de la plantilla..." aria-label="Nombre de la plantilla"
                 className="flex-1 bg-transparent text-sm outline-none" />
               <button onClick={saveAsTemplate} disabled={!templateName.trim()} className="px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">Guardar</button>
-              <button onClick={() => setShowSaveTemplate(false)} className="text-muted hover:text-ink"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowSaveTemplate(false)} aria-label="Cancelar" className="text-muted hover:text-ink"><X className="w-4 h-4" /></button>
             </div>
           )}
           {savedTemplates.length > 0 && (
@@ -355,7 +355,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                       <p className="text-sm font-semibold">{tpl.name}</p>
                       <p className="text-xs text-muted">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal || 0} kcal</p>
                     </button>
-                    <button onClick={() => deleteTemplate(tpl.id)} className="text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteTemplate(tpl.id)} aria-label="Eliminar plantilla" className="text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
               </div>
@@ -405,7 +405,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                 <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d=[...dist]; d[i]={...d[i],pct:Number(e.target.value)}; updateDiet({mealDistribution:d}) }} className="w-16 text-center px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
                 <span className="text-xs text-muted">%</span>
                 <span className="text-xs text-muted w-16 text-right">{diet.kcal > 0 ? Math.round(diet.kcal * m.pct / 100) : 0} kcal</span>
-                <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} aria-label="Eliminar franja horaria" className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
             <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}%</p>
@@ -432,13 +432,14 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             {sups.map((s, i) => (
               <div key={i} className="flex items-center gap-2">
                 <button onClick={() => { const ss=[...sups]; ss[i]={...ss[i],visible:!ss[i].visible}; updateDiet({supplements:ss}) }}
+                  aria-label={s.visible ? 'Ocultar al cliente' : 'Mostrar al cliente'}
                   className={`p-1.5 rounded-lg flex-shrink-0 ${s.visible ? 'text-ok bg-ok/10' : 'text-muted bg-bg-alt'}`}>
                   {s.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
-                <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" />
-                <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" />
-                <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" />
-                <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" aria-label="Nombre del suplemento" />
+                <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" aria-label="Dosis del suplemento" />
+                <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" aria-label="Momento de toma del suplemento" />
+                <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} aria-label="Eliminar suplemento" className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
           </div>

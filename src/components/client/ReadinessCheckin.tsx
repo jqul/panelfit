@@ -119,7 +119,7 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
           <div className="bg-ok/5 border border-ok/20 rounded-2xl px-4 py-3 flex items-center gap-2.5">
             <span className="text-lg flex-shrink-0">✓</span>
             <p className="text-sm flex-1">Registrado — tu entrenador lo verá.</p>
-            <button onClick={() => setPainStep('none')} className="p-0.5 text-muted hover:text-ink flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={() => setPainStep('none')} aria-label="Cerrar" className="p-0.5 text-muted hover:text-ink flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       )
@@ -133,7 +133,7 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
             <p className="text-sm font-semibold">Hoy tu energía es baja</p>
             <p className="text-xs text-muted mt-0.5 leading-relaxed">Te sugerimos bajar 1 serie o usar RIR +1 en los ejercicios principales de hoy.</p>
           </div>
-          <button onClick={() => setShowSuggestion(false)} className="p-0.5 text-muted hover:text-ink flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setShowSuggestion(false)} aria-label="Cerrar" className="p-0.5 text-muted hover:text-ink flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
         </div>
       </div>
     )

@@ -118,7 +118,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   if (editing) return (
     <div className="max-w-xl space-y-5 animate-fade-in">
       <div className="flex items-center gap-3">
-        <button onClick={() => setEditing(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
+        <button onClick={() => setEditing(null)} aria-label="Volver" className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
         <div className="flex-1">
           <h3 className="font-serif font-bold text-lg">Ficha de valoración</h3>
           <p className="text-xs text-muted">{client.name} {client.surname}</p>
@@ -241,9 +241,9 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => setEditing(val)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteValoracion(val.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => setExpanded(isExpanded ? null : val.id)} className="p-1.5 text-muted rounded-lg">
+                    <button onClick={() => setEditing(val)} aria-label="Editar valoración" className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteValoracion(val.id)} aria-label="Eliminar valoración" className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setExpanded(isExpanded ? null : val.id)} aria-label={isExpanded ? 'Contraer' : 'Expandir'} className="p-1.5 text-muted rounded-lg">
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                   </div>

@@ -187,7 +187,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             </div>
             {/* Nota */}
             <input value={newAlert.note} onChange={e => setNewAlert(a => ({ ...a, note: e.target.value }))}
-              placeholder="Descripción del recordatorio..."
+              placeholder="Descripción del recordatorio..." aria-label="Descripción del recordatorio"
               className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
               onKeyDown={e => e.key === 'Enter' && addAlert()}
             />
@@ -218,7 +218,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             const isToday = alert.date === today
             return (
               <div key={alert.id} className={`flex items-start gap-3 px-5 py-3.5 ${isOverdue ? 'bg-warn/5' : ''}`}>
-                <button onClick={() => toggleAlert(alert.id)}
+                <button onClick={() => toggleAlert(alert.id)} aria-label="Marcar como completado"
                   className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${meta.border} hover:bg-ok hover:border-ok`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -231,7 +231,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                   </div>
                   <p className="text-sm mt-0.5">{alert.note}</p>
                 </div>
-                <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
+                <button onClick={() => deleteAlert(alert.id)} aria-label="Eliminar recordatorio" className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -249,14 +249,14 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                 const meta = ALERT_TYPES.find(t => t.id === alert.type)!
                 return (
                   <div key={alert.id} className="flex items-center gap-3 px-5 py-2.5 opacity-50">
-                    <button onClick={() => toggleAlert(alert.id)}
+                    <button onClick={() => toggleAlert(alert.id)} aria-label="Marcar como pendiente"
                       className="w-5 h-5 rounded border-2 border-ok bg-ok flex-shrink-0 flex items-center justify-center">
                       <CheckCircle2 className="w-3 h-3 text-white" />
                     </button>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs line-through text-muted">{meta.emoji} {alert.note}</p>
                     </div>
-                    <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn flex-shrink-0">
+                    <button onClick={() => deleteAlert(alert.id)} aria-label="Eliminar recordatorio" className="p-1 text-muted hover:text-warn flex-shrink-0">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
