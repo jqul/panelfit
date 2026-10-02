@@ -4,6 +4,7 @@ import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
+import { SignedVideo } from '../../shared/SignedMedia'
 
 interface VideoFeedbackRow {
   id: string
@@ -124,7 +125,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
               <button onClick={() => setActiveVideo(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 pt-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-              <video src={activeVideo.video_url} controls className="w-full rounded-2xl bg-black max-h-80" />
+              <SignedVideo bucket="client-videos" src={activeVideo.video_url} className="w-full rounded-2xl bg-black max-h-80" />
 
               {activeVideo.client_note && (
                 <div className="bg-bg rounded-xl p-3">
@@ -148,7 +149,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">O responde con vídeo</p>
                 {activeVideo.trainer_comment_video_url && (
-                  <video src={activeVideo.trainer_comment_video_url} controls className="w-full rounded-2xl bg-black max-h-60" />
+                  <SignedVideo bucket="client-videos" src={activeVideo.trainer_comment_video_url} className="w-full rounded-2xl bg-black max-h-60" />
                 )}
                 <input ref={replyFileRef} type="file" accept="video/*" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadReplyVideo(activeVideo.id, f) }} />

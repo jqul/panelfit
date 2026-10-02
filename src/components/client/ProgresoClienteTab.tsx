@@ -15,6 +15,7 @@ import { AdherenciaChart } from '../trainer/progreso-tab/AdherenciaChart'
 import { RachaStats } from '../trainer/progreso-tab/RachaStats'
 import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
 import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
+import { SignedVideo, SignedImage } from '../shared/SignedMedia'
 
 
 interface Props {
@@ -610,7 +611,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
             </span>
           </div>
           <div className="p-4 space-y-3">
-            <video src={v.video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+            <SignedVideo bucket="client-videos" src={v.video_url} className="w-full rounded-xl bg-black max-h-60" />
             <p className="text-[10px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
             {v.trainer_comment && (
               <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
@@ -621,7 +622,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
             {v.trainer_comment_video_url && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
-                <video src={v.trainer_comment_video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+                <SignedVideo bucket="client-videos" src={v.trainer_comment_video_url} className="w-full rounded-xl bg-black max-h-60" />
               </div>
             )}
           </div>
@@ -864,7 +865,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                         <div key={type} className="space-y-1">
                           <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
                           <label className={`block cursor-pointer rounded-xl overflow-hidden border-2 aspect-[3/4] ${url ? 'border-border' : 'border-dashed border-border hover:border-accent'}`}>
-                            {url ? <img src={url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
+                            {url ? <SignedImage bucket="media" src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(session.id, type, f) }} />
                           </label>
                         </div>

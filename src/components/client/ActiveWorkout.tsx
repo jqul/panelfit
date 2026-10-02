@@ -24,6 +24,7 @@ import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
+import { SignedVideo } from '../shared/SignedMedia'
 
 interface Props {
   day: DayPlan
@@ -160,7 +161,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     setUploadingVideoRi(ri)
     const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
     const ext = file.name.split('.').pop()
-    const path = `${dayKey}/r${ri}_${Date.now()}.${ext}`
+    // El id del cliente va primero en la ruta para que la política de Storage
+    // pueda comprobar quién es el dueño (antes la ruta no llevaba ningún id y
+    // cualquier usuario autenticado podía leer/subir aquí sin restricción).
+    const path = `${plan.clientId}/${dayKey}/r${ri}_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
     if (error) { alert('Error al subir vídeo'); setUploadingVideoRi(null); return }
     const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
@@ -904,7 +908,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     {videoUploaded ? (
                       <div className="flex items-center gap-2">
                         <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
-                        <video src={videoUploaded} className="h-16 rounded-lg" controls />
+                        <SignedVideo bucket="exercise-videos" src={videoUploaded} className="h-16 rounded-lg" />
                       </div>
                     ) : (
                       <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">

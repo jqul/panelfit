@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Camera, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
+import { SignedImage } from '../../shared/SignedMedia'
 
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
 
@@ -44,7 +45,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
                   <option value="">Seleccionar...</option>
                   {sessionsWithPhotos.map(s => <option key={s.id} value={s.id}>{new Date(s.date+'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</option>)}
                 </select>
-                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[9px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><img src={session[t]} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" alt="" /></div> : null)}</div>}
+                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[9px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><SignedImage bucket="media" src={session[t]} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" /></div> : null)}</div>}
               </div>
             )
           })}
@@ -59,7 +60,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
           </div>
           <div className="p-3 grid grid-cols-3 gap-2">
             {TYPES.map(type => session[type] ? (
-              <div key={type} className="space-y-1"><p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><button onClick={() => setLightbox({ session, type })} className="w-full aspect-[3/4] rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"><img src={session[type]} className="w-full h-full object-cover" alt="" /></button></div>
+              <div key={type} className="space-y-1"><p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><button onClick={() => setLightbox({ session, type })} className="w-full aspect-[3/4] rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"><SignedImage bucket="media" src={session[type]} className="w-full h-full object-cover" /></button></div>
             ) : (
               <div key={type} className="space-y-1"><p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-border flex items-center justify-center"><Camera className="w-4 h-4 text-muted/30" /></div></div>
             ))}
@@ -74,7 +75,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
               <p className="text-white text-sm font-semibold">{new Date(lightbox.session.date+'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} · {TYPE_LABELS[lightbox.type]}</p>
               <button onClick={() => setLightbox(null)} className="p-1 text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
             </div>
-            <img src={lightbox.session[lightbox.type]} className="w-full rounded-2xl" alt="" />
+            <SignedImage bucket="media" src={lightbox.session[lightbox.type]} className="w-full rounded-2xl" />
           </div>
           {lightboxIdx < allImages.length - 1 && <button onClick={e => { e.stopPropagation(); setLightbox(allImages[lightboxIdx+1]) }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white"><ChevronRight className="w-6 h-6" /></button>}
         </div>
