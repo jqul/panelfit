@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  ChevronDown, Clock, Trophy, ChevronLeft,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
+  ChevronDown, Trophy,
+  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Repeat
 } from 'lucide-react'
 import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
-import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
+import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
@@ -17,14 +17,18 @@ import { SetRow } from './active-workout/SetRow'
 import { RunSets } from './active-workout/RunSets'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
+import { WorkoutHeader } from './active-workout/WorkoutHeader'
+import { FinishWorkoutModal } from './active-workout/FinishWorkoutModal'
+import { ExerciseEvaTracker } from './active-workout/ExerciseEvaTracker'
+import { RequiredVideoUpload } from './active-workout/RequiredVideoUpload'
+import { ExerciseSubstitution } from './active-workout/ExerciseSubstitution'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
-import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { useClientPain } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
-import { SignedVideo } from '../shared/SignedMedia'
 
 interface Props {
   day: DayPlan
@@ -42,9 +46,6 @@ interface Props {
   clientName?: string   // solo para mostrar de quién es la sesión en modo entrenador
   trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
 }
-
-const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '🤕', '👍']
-const MOLESTIA_EMOJI = '🤕'
 
 export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
@@ -536,76 +537,95 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
   const allComplete = pct === 100
 
+  const incompleteExercises = day.exercises.map((ex, ri) => {
+    const { numSets } = parseSet(ex.sets)
+    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
+    return { name: ex.name, done, total: numSets }
+  }).filter(e => e.done < e.total)
+
+  const onPickReaction = (emoji: string) => {
+    setReactionEmoji(emoji)
+    setShowReactionComment(true)
+    // Con 🤕 vamos directos a la zona — el emoji ya nos dice que es molestia,
+    // no agujetas normales, así que no hace falta el clasificador que sí usa
+    // el check-in diario (ahí "agujetas" es ambiguo)
+    if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null)
+  }
+
+  const shareAchievement = () => {
+    const lines = [
+      `💪 ¡Entreno completado! — ${day.title}`,
+      '',
+      `⏱️ ${formatElapsed()}`,
+      `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
+      newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
+      sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
+      '',
+      'Hecho con PanelFit',
+    ].filter(Boolean).join('\n')
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
+  }
+
+  const confirmFinish = async () => {
+    if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+    if (reactionEmoji) {
+      const today = localDateKey()
+      await supabase.from('session_reactions').insert({
+        clientId: plan.clientId, dayTitle: day.title, date: today,
+        emoji: reactionEmoji, comment: reactionComment.trim() || null,
+      })
+    }
+    // 🤕 con zona elegida -> queda como registro real de dolor, no solo como
+    // reacción de la sesión — para que salga en Progreso > Dolor y en la
+    // Bandeja igual que el del check-in diario.
+    if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
+      await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
+    }
+    // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente puso
+    // un RPE global. Alimenta el ACWR de carga interna, complementario al de
+    // tonelaje (esencial para quien combina gimnasio con pista/campo).
+    if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
+      const today = localDateKey()
+      const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
+      await supabase.from('session_load').insert({
+        client_id: plan.clientId, trainer_id: trainerId, date: today,
+        duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
+      })
+    }
+    if (!allComplete) {
+      // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
+      // material estaba ocupado, etc.) — sin esto, el panel seguía
+      // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque el
+      // cliente ya la había dado por terminada. done:false a propósito — ver
+      // comentario en el tipo ExerciseLog.
+      onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
+    }
+    onFinish()
+  }
+
   return (
     <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
       {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
-      {/* Header */}
-      <div className="bg-card border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => onBack ? onBack() : setShowFinish(true)} aria-label="Volver" className="p-2 rounded-xl hover:bg-bg-alt text-muted">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{day.title}</div>
-            {clientName && <p className="text-[10px] text-muted truncate">Sesión de {clientName}</p>}
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted mr-2">
-            <Clock className="w-3.5 h-3.5" />
-            <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
-          </div>
-          <button
-            onClick={() => setShowFinish(true)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              allComplete
-                ? 'bg-ok text-white shadow-md shadow-ok/30'
-                : 'bg-accent text-white hover:opacity-90'
-            }`}>
-            {allComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
-            {allComplete ? '¡Terminar!' : 'Terminar'}
-          </button>
-        </div>
-
-        {/* Stats bar */}
-        <div className="flex items-center px-4 pb-3 gap-4 text-xs">
-          <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
-          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
-          <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
-          {avgRir !== null && (
-            <div><p className="text-muted">RIR medio</p><p className="font-bold" style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</p></div>
-          )}
-          <div className="flex-1 text-right">
-            <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
-            <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
-              <div className="h-full bg-ok rounded-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
-        {totalVolume > 0 && (
-          <div className="px-4 pb-3">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
-                <Flame className="w-3 h-3" /> Densidad
-              </p>
-              <p className="text-[10px] text-muted font-bold tabular-nums">
-                {densityRate > 0 && `${densityRate} kg/min · `}
-                {densityPct !== null
-                  ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`
-                  : `${(totalVolume / 1000).toFixed(1)}t movidas`}
-              </p>
-            </div>
-            {densityPct !== null && (
-              <div className="w-full h-2 bg-bg-alt rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${densityPct}%`, background: 'linear-gradient(90deg, #e07b54, #f0a868)' }} />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <WorkoutHeader
+        title={day.title}
+        clientName={clientName}
+        onBack={() => onBack ? onBack() : setShowFinish(true)}
+        onFinishClick={() => setShowFinish(true)}
+        elapsedLabel={formatElapsed()}
+        allComplete={allComplete}
+        totalVolume={totalVolume}
+        totalSetsDone={totalSetsDone}
+        avgRir={avgRir}
+        doneExs={doneExs}
+        totalExs={totalExs}
+        pct={pct}
+        densityRate={densityRate}
+        densityPct={densityPct}
+        prevSessionVolume={prevSessionVolume}
+      />
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (
@@ -752,177 +772,54 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
 
               {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
-              <div className="px-4 mb-3">
-                {editingSubstitute === ri ? (
-                  <div className="relative">
-                    <div className="flex items-center gap-2">
-                      <input autoFocus value={substituteDraft}
-                        onChange={e => setSubstituteDraft(e.target.value)}
-                        placeholder="Busca el ejercicio que has hecho..." aria-label="Buscar ejercicio sustituto"
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
-                          if (e.key === 'Escape') setEditingSubstitute(null)
-                        }}
-                        className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
-                      <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
-                        title="Usar tal cual lo has escrito, si no está en la lista"
-                        className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
-                      <button onClick={() => setEditingSubstitute(null)} aria-label="Cancelar"
-                        className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
-                    </div>
-                    {substituteSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-12 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-10 overflow-hidden">
-                        {substituteSuggestions.map(s => (
-                          <button key={s.id} onClick={() => { setSubstitute(ri, s.name); setEditingSubstitute(null) }}
-                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-bg-alt transition-colors">
-                            <span className="flex-1 truncate">{s.name}</span>
-                            {s.category && <span className="text-[10px] text-muted flex-shrink-0">{s.category}</span>}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : substitutions[ri] ? (
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
-                      <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
-                    </button>
-                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
-                      🤕 Me molesta
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => { closeMolestiaPicker(); setSubstituteDraft(''); setEditingSubstitute(ri) }}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
-                      <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
-                    </button>
-                    <button onClick={() => openMolestiaPicker(ri, ex.name)}
-                      className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-warn">
-                      🤕 Me molesta
-                    </button>
-                  </div>
-                )}
-
-                {/* Sustitución inteligente por molestia — el cliente dice qué
-                    zona le duele ahora mismo y se le proponen ejercicios del
-                    mismo grupo muscular que no cargan esa zona, sin tener que
-                    parar la sesión ni forzar la molestia. */}
-                {molestiaPickerRi === ri && (() => {
-                  const alternatives = molestiaPickerZona
-                    ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
-                    : []
-                  return (
-                    <div className="mt-2 border border-warn/30 bg-warn/5 rounded-2xl p-3 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold">🤕 ¿Dónde te molesta?</p>
-                        <button onClick={closeMolestiaPicker} aria-label="Cerrar" className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
-                          <button key={z} onClick={() => setMolestiaPickerZona(z)}
-                            className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                              molestiaPickerZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
-                            }`}>{z}</button>
-                        ))}
-                      </div>
-                      {molestiaPickerZona && (
-                        <div className="space-y-1.5 pt-1 border-t border-warn/20">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                            {alternatives.length > 0 ? 'Alternativas seguras para hoy' : 'Sin alternativa clara en tu lista'}
-                          </p>
-                          {alternatives.length > 0 ? alternatives.map(alt => (
-                            <button key={alt.id} onClick={() => {
-                              setSubstitute(ri, alt.name)
-                              addPainEntry(molestiaPickerZona, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
-                              closeMolestiaPicker()
-                            }} className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-border rounded-xl text-left text-sm font-semibold hover:border-ok hover:bg-ok/5 transition-colors">
-                              <Repeat className="w-3.5 h-3.5 text-ok flex-shrink-0" /> {alt.name}
-                            </button>
-                          )) : (
-                            <p className="text-xs text-muted">No hay nada en tu lista que trabaje lo mismo sin cargar esa zona — avisamos a tu entrenador.</p>
-                          )}
-                          <button onClick={() => {
-                            addPainEntry(molestiaPickerZona, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
-                            closeMolestiaPicker()
-                          }} className="w-full text-center py-1.5 text-xs font-semibold text-warn hover:underline">
-                            Solo avisar a mi entrenador
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
+              <ExerciseSubstitution
+                substitutionName={substitutions[ri]}
+                isEditing={editingSubstitute === ri}
+                draft={substituteDraft}
+                onDraftChange={setSubstituteDraft}
+                suggestions={substituteSuggestions}
+                onStartEdit={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri] || ''); setEditingSubstitute(ri) }}
+                onConfirmEdit={(name) => { setSubstitute(ri, name); setEditingSubstitute(null) }}
+                onCancelEdit={() => setEditingSubstitute(null)}
+                isMolestiaOpen={molestiaPickerRi === ri}
+                onOpenMolestia={() => openMolestiaPicker(ri, ex.name)}
+                onCloseMolestia={closeMolestiaPicker}
+                molestiaZona={molestiaPickerZona}
+                onSetMolestiaZona={setMolestiaPickerZona}
+                alternatives={molestiaPickerRi === ri && molestiaPickerZona
+                  ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
+                  : []}
+                onPickAlternative={(altName) => {
+                  setSubstitute(ri, altName)
+                  addPainEntry(molestiaPickerZona!, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+                  closeMolestiaPicker()
+                }}
+                onJustNotify={() => {
+                  addPainEntry(molestiaPickerZona!, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
+                  closeMolestiaPicker()
+                }}
+              />
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
                   fisioterapia deportiva moderna no se busca "cero dolor" sino
                   dolor tolerable (≤3-4/10) que no empeore a las 24h, así que
                   el color no penaliza cualquier dolor, solo el que se sale de
                   esa ventana. */}
-              {ex.enReadaptacion && (() => {
-                const exLog = logs[`ex_${dayKey}_r${ri}`]
-                const eva = exLog?.dolorEva
-                const colorFor = (v: number) => v <= 3 ? '#4caf7d' : v <= 6 ? '#e0a854' : '#dc2626'
-                return (
-                  <div className="mx-4 mb-3 border border-warn/20 bg-warn/5 rounded-2xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🩹</span>
-                      <div>
-                        <p className="text-sm font-semibold">Dolor durante el ejercicio (EVA)</p>
-                        <p className="text-[10px] text-muted">Tolerable hasta ~3-4/10 sin empeorar mañana — no hace falta llegar a 0</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-11 gap-1">
-                      {Array.from({ length: 11 }, (_, v) => v).map(v => (
-                        <button key={v} onClick={() => setExerciseEva(ri, v)}
-                          className="aspect-square rounded-md text-[10px] font-bold flex items-center justify-center border-2 transition-all"
-                          style={eva === v
-                            ? { backgroundColor: colorFor(v), borderColor: colorFor(v), color: '#fff' }
-                            : { borderColor: '#e2ddd4', color: '#8a8278' }}>
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
+              {ex.enReadaptacion && (
+                <ExerciseEvaTracker eva={logs[`ex_${dayKey}_r${ri}`]?.dolorEva} onSetEva={(v) => setExerciseEva(ri, v)} />
+              )}
 
               {/* Vídeo de ejecución requerido por el entrenador para este ejercicio —
                   se sube y queda adjunto de inmediato al registro, sin pasar por
                   el ciclo de petición/respuesta del feedback asíncrono de abajo */}
-              {ex.requiresVideo && (() => {
-                const exLog = logs[`ex_${dayKey}_r${ri}`]
-                const videoUploaded = exLog?.videoEjecucion
-                return (
-                  <div className={`mx-4 mb-3 border-2 rounded-2xl p-4 space-y-2 ${videoUploaded ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📹</span>
-                      <div>
-                        <p className="text-sm font-semibold">{trainerMode ? 'Vídeo de ejecución pedido a este cliente' : 'Tu entrenador pide vídeo de este ejercicio'}</p>
-                        <p className="text-xs text-muted">Graba la ejecución y súbela aquí</p>
-                      </div>
-                    </div>
-                    {videoUploaded ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
-                        <SignedVideo bucket="exercise-videos" src={videoUploaded} className="h-16 rounded-lg" />
-                      </div>
-                    ) : (
-                      <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
-                        {uploadingVideoRi === ri ? 'Procesando...' : '📹 Grabar / subir vídeo'}
-                        {/* Sin capture: con él el móvil abre la cámara directo y no deja
-                            elegir un vídeo ya grabado, aunque el texto diga "grabar/subir". */}
-                        <input type="file" accept="video/*" className="hidden"
-                          disabled={uploadingVideoRi !== null}
-                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadExerciseVideo(ri, f) }} />
-                      </label>
-                    )}
-                  </div>
-                )
-              })()}
+              {ex.requiresVideo && (
+                <RequiredVideoUpload
+                  trainerMode={trainerMode}
+                  videoUploaded={logs[`ex_${dayKey}_r${ri}`]?.videoEjecucion}
+                  uploading={uploadingVideoRi === ri}
+                  onUpload={(f) => uploadExerciseVideo(ri, f)}
+                />
+              )}
 
               {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
                   ejecución; no aplica cuando es el propio entrenador quien graba */}
@@ -1025,186 +922,30 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
       {/* Modal confirmación terminar */}
       {showFinish && (
-        <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
-          <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
-            <div className="w-10 h-1 bg-border rounded-full mx-auto" />
-            <h3 className="font-serif font-bold text-xl text-center">
-              {allComplete ? '¡Sesión completada! 🏆' : '¿Terminar entrenamiento?'}
-            </h3>
-            {!allComplete && (
-              <>
-                <p className="text-sm text-muted text-center">
-                  Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
-                </p>
-                <div className="bg-warn/5 border border-warn/20 rounded-2xl p-3 space-y-1.5">
-                  {day.exercises.map((ex, ri) => {
-                    const { numSets } = parseSet(ex.sets)
-                    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
-                    if (done >= numSets) return null
-                    return (
-                      <div key={ri} className="flex items-center gap-2 text-sm">
-                        <span className="text-warn text-xs">⚠</span>
-                        <span className="flex-1 truncate font-medium">{ex.name}</span>
-                        <span className="text-xs text-warn flex-shrink-0">{numSets - done} serie{numSets - done !== 1 ? 's' : ''}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { icon: <Clock className="w-4 h-4 text-accent" />, value: formatElapsed(), label: 'Duración' },
-                { icon: <Dumbbell className="w-4 h-4 text-ok" />, value: `${doneExs}/${totalExs}`, label: 'Ejercicios' },
-                { icon: <Flame className="w-4 h-4 text-warn" />, value: `${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg`, label: 'Volumen' },
-              ].map((s, i) => (
-                <div key={i} className="bg-bg rounded-2xl p-3 text-center">
-                  <div className="flex justify-center mb-1">{s.icon}</div>
-                  <p className="font-serif font-bold text-base">{s.value}</p>
-                  <p className="text-[10px] text-muted">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            {newRecords.length > 0 && (
-              <div className="bg-gradient-to-br from-warn/10 to-warn/5 border border-warn/20 rounded-2xl px-4 py-3 space-y-2">
-                <p className="text-xs font-bold text-warn uppercase tracking-wider flex items-center gap-1.5">
-                  🏆 {newRecords.length} récord{newRecords.length > 1 ? 's' : ''} batido{newRecords.length > 1 ? 's' : ''}
-                </p>
-                {newRecords.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />
-                    <p className="text-sm flex-1 truncate"><span className="font-semibold">{r.name}</span></p>
-                    <p className="text-sm font-bold text-warn">{r.best}kg</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {avgRir !== null && (
-              <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
-                <Zap className="w-4 h-4 text-accent flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted">RIR medio de la sesión</p>
-                  <p className="text-sm font-bold">{avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted text-center">¿Cómo de duro se sintió en general? (RPE)</p>
-              <div className="grid grid-cols-5 gap-1.5">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => setSessionRpe(n + (sessionRpeHalf && n < 10 ? 0.5 : 0))}
-                    className={`py-2 rounded-xl text-sm font-bold transition-all ${
-                      sessionRpe !== null && Math.floor(sessionRpe) === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
-                    }`}>
-                    {sessionRpe !== null && Math.floor(sessionRpe) === n && sessionRpeHalf && n < 10 ? `${n}.5` : n}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setSessionRpeHalf(h => !h)}
-                className={`w-full py-1.5 rounded-xl text-xs font-semibold border transition-all ${sessionRpeHalf ? 'bg-accent/15 border-accent text-accent' : 'border-border text-muted'}`}>
-                {sessionRpeHalf ? '✓ ' : ''}+0.5 (precisión powerlifting/halterofilia)
-              </button>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
-              <div className="flex justify-center gap-2">
-                {REACTION_EMOJIS.map(emoji => (
-                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true); if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null) }}
-                    className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${reactionEmoji === emoji ? 'bg-accent/15 ring-2 ring-accent' : 'bg-bg hover:bg-bg-alt'}`}>
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              {/* Con 🤕 vamos directos a la zona — el emoji ya nos dice que es
-                  molestia, no agujetas normales, así que no hace falta el
-                  clasificador que sí usa el check-in diario (ahí "agujetas" es ambiguo) */}
-              {reactionEmoji === MOLESTIA_EMOJI && (
-                <div className="bg-warn/5 border border-warn/20 rounded-xl p-3 space-y-2">
-                  <p className="text-xs font-semibold text-center">¿En qué zona?</p>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
-                      <button key={z} onClick={() => setMolestiaZona(z)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                          molestiaZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
-                        }`}>
-                        {z}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {showReactionComment && (
-                <textarea value={reactionComment} onChange={e => setReactionComment(e.target.value)} rows={2}
-                  placeholder="¿Algo que comentar? (opcional)"
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
-              )}
-            </div>
-            {allComplete && (
-              <button onClick={() => {
-                  const lines = [
-                    `💪 ¡Entreno completado! — ${day.title}`,
-                    '',
-                    `⏱️ ${formatElapsed()}`,
-                    `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
-                    newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
-                    sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
-                    '',
-                    'Hecho con PanelFit',
-                  ].filter(Boolean).join('\n')
-                  window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 active:scale-[0.98] transition-all"
-                style={{ backgroundColor: '#25D366' }}>
-                📤 Compartir logro
-              </button>
-            )}
-            <button onClick={async () => {
-                if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
-                if (reactionEmoji) {
-                  const today = localDateKey()
-                  await supabase.from('session_reactions').insert({
-                    clientId: plan.clientId, dayTitle: day.title, date: today,
-                    emoji: reactionEmoji, comment: reactionComment.trim() || null,
-                  })
-                }
-                // 🤕 con zona elegida -> queda como registro real de dolor, no
-                // solo como reacción de la sesión — para que salga en Progreso
-                // > Dolor y en la Bandeja igual que el del check-in diario.
-                if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
-                  await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
-                }
-                // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente
-                // puso un RPE global. Alimenta el ACWR de carga interna, complementario
-                // al de tonelaje (esencial para quien combina gimnasio con pista/campo).
-                if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
-                  const today = localDateKey()
-                  const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
-                  await supabase.from('session_load').insert({
-                    client_id: plan.clientId, trainer_id: trainerId, date: today,
-                    duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
-                  })
-                }
-                if (!allComplete) {
-                  // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
-                  // material estaba ocupado, etc.) — sin esto, el panel seguía
-                  // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque
-                  // el cliente ya la había dado por terminada. done:false a propósito
-                  // — ver comentario en el tipo ExerciseLog.
-                  onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
-                }
-                onFinish()
-              }}
-              className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
-                allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
-              }`}>
-              {allComplete ? '✓ Guardar y terminar' : 'Terminar igual'}
-            </button>
-            <button onClick={() => setShowFinish(false)}
-              className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
-              Seguir entrenando
-            </button>
-          </div>
-        </div>
+        <FinishWorkoutModal
+          allComplete={allComplete}
+          totalExs={totalExs}
+          doneExs={doneExs}
+          incompleteExercises={incompleteExercises}
+          elapsedLabel={formatElapsed()}
+          totalVolume={totalVolume}
+          newRecords={newRecords}
+          avgRir={avgRir}
+          sessionRpe={sessionRpe}
+          sessionRpeHalf={sessionRpeHalf}
+          onSetSessionRpe={setSessionRpe}
+          onToggleSessionRpeHalf={() => setSessionRpeHalf(h => !h)}
+          reactionEmoji={reactionEmoji}
+          onPickReaction={onPickReaction}
+          showReactionComment={showReactionComment}
+          reactionComment={reactionComment}
+          onSetReactionComment={setReactionComment}
+          molestiaZona={molestiaZona}
+          onSetMolestiaZona={setMolestiaZona}
+          onShare={shareAchievement}
+          onConfirm={confirmFinish}
+          onClose={() => setShowFinish(false)}
+        />
       )}
     </div>
   )
