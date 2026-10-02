@@ -8,6 +8,7 @@ import { IntakeSummary } from './IntakeSummary'
 import { ReadinessSummary } from './ReadinessSummary'
 import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
+import { OnboardingChecklist } from './OnboardingChecklist'
 
 export interface ClientAlert {
   id: string
@@ -119,6 +120,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         ))}
       </div>
+
+      <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
 
       <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
 
