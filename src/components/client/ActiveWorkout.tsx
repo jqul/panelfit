@@ -29,6 +29,7 @@ import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
+import { rankByQuery } from '../../lib/exerciseSearch'
 
 interface Props {
   day: DayPlan
@@ -133,7 +134,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // último recurso si de verdad no está en la lista.
   const { names: libraryNames } = useTrainerExerciseNames(trainerId)
   const substituteSuggestions = substituteDraft.trim().length >= 2
-    ? libraryNames.filter(e => e.name.toLowerCase().includes(substituteDraft.trim().toLowerCase())).slice(0, 6)
+    ? rankByQuery(libraryNames, substituteDraft).slice(0, 8)
     : []
   const libraryMuscleMap = useLibraryMuscleMap(libraryNames)
 

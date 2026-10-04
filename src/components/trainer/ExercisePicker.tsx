@@ -5,6 +5,7 @@ import { EXERCISE_CATEGORIES } from '../../lib/constants'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 import { useLibraryMuscleMap } from './progreso-tab/helpers'
 import { usePainWarning } from '../../lib/painWarning'
+import { rankByQuery } from '../../lib/exerciseSearch'
 
 function getYTId(url: string) {
   const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
@@ -101,9 +102,9 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
     } else if (espFilter) {
       list = list.filter(e => e.especialidades?.includes(espFilter))
     }
-    if (q) list = list.filter(e => e.name.toLowerCase().includes(q.toLowerCase()))
-    return list.slice(0, 25)
+    return rankByQuery(list, q)
   }, [library, q, catFilter, espFilter, onlyClientEsp, clientEspecialidad])
+  const visible = filtered.slice(0, 60)
 
   const handleSelect = (ex: LibraryExercise) => {
     if (selected?.id === ex.id) { setSelected(null); setSelectedVideoIdx([]); return }
@@ -219,7 +220,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           )}
 
           <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
-            {filtered.map(ex => {
+            {visible.map(ex => {
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
               const color = mainEsp ? ESP_COLORS[mainEsp] : null
@@ -260,6 +261,11 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                 </button>
               )
             })}
+            {filtered.length > visible.length && (
+              <p className="py-2 text-center text-[11px] text-muted">
+                Mostrando {visible.length} de {filtered.length} — escribe para afinar la búsqueda
+              </p>
+            )}
             {filtered.length === 0 && (
               <div className="py-6 text-center text-muted text-sm">
                 Sin resultados.

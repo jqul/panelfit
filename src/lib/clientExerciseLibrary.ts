@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { DEFAULT_EXERCISE_LIBRARY } from './defaultExerciseLibrary'
 import { DEMO_TRAINER_ID } from './demo-data'
+import { fetchAllPages } from './fetchAllPages'
 
 // Lectura ligera (solo nombre + categoría) de la biblioteca del entrenador,
 // para el lado del cliente — a diferencia de useExerciseLibrary.ts (que trae
@@ -22,12 +23,19 @@ export function useTrainerExerciseNames(trainerId?: string) {
       return
     }
     setLoading(true)
-    supabase.from('exercise_library').select('id, name, category')
-      .eq('trainer_id', trainerId).is('deleted_at', null).order('name')
-      .then(({ data, error }) => {
-        setNames(error || !data ? [] : (data as LibraryExerciseName[]))
-        setLoading(false)
-      })
+    let active = true
+    // Sin paginar, PostgREST corta en silencio a las primeras 1000 filas por
+    // nombre — con ~1500 ejercicios por cuenta faltaban todos los del final
+    // del alfabeto en el buscador de sustitución y en las alternativas.
+    fetchAllPages<LibraryExerciseName>((from, to) =>
+      supabase.from('exercise_library').select('id, name, category')
+        .eq('trainer_id', trainerId).is('deleted_at', null).order('name').range(from, to)
+    ).then(({ rows, error }) => {
+      if (!active) return
+      setNames(error ? [] : rows)
+      setLoading(false)
+    })
+    return () => { active = false }
   }, [trainerId])
 
   return { names, loading }

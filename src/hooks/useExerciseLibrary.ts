@@ -5,6 +5,7 @@ import { Especialidad } from '../lib/especialidades'
 import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
 import { DEMO_TRAINER_ID } from '../lib/demo-data'
 import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
+import { fetchAllPages } from '../lib/fetchAllPages'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
@@ -12,7 +13,7 @@ const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
 // Versión de la biblioteca de serie. Subir este número cuando se añadan
 // ejercicios nuevos a DEFAULT_EXERCISE_LIBRARY para que las cuentas que ya
 // fueron sembradas reciban solo los que les faltan (sin duplicar).
-const DEFAULT_LIBRARY_VERSION = 5
+const DEFAULT_LIBRARY_VERSION = 6
 const LS_DEFAULT_TOPUP = (uid: string) => `pf_library_default_topup_${uid}`
 
 export type { Especialidad }
@@ -66,28 +67,6 @@ function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'us
     created_at: ex.createdAt || Date.now(),
     updated_at: Date.now(),
   }
-}
-
-// PostgREST trunca cualquier select en silencio (sin error) al tope de filas
-// configurado a nivel de proyecto en Supabase — 1000 por defecto — sin
-// importar el .limit() que se pida. Esta paginación con .range() evita
-// depender de ese tope, tanto para leer la biblioteca completa como para
-// comprobar qué ejercicios de serie ya existen antes de un top-up.
-async function fetchAllPages<T>(
-  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
-): Promise<{ rows: T[]; error: unknown }> {
-  const PAGE = 1000
-  let rows: T[] = []
-  let page = 0
-  while (true) {
-    const { data, error } = await buildQuery(page * PAGE, page * PAGE + PAGE - 1)
-    if (error) return { rows, error }
-    if (!data || data.length === 0) break
-    rows = rows.concat(data)
-    if (data.length < PAGE) break // última página
-    page++
-  }
-  return { rows, error: null }
 }
 
 export function useExerciseLibrary(trainerId: string) {
