@@ -2,6 +2,23 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Si un archivo con hash de /assets falla al cargar (despliegue nuevo con la
+      // pestaña abierta, o index.html en caché apuntando a archivos ya borrados) la
+      // app ni arranca: se recarga una vez para traer la versión nueva. Mismo freno
+      // y misma clave que src/lib/staleChunk.ts, para no entrar en bucle.
+      window.addEventListener('error', function (e) {
+        var t = e.target
+        if (!t || (t.tagName !== 'SCRIPT' && t.tagName !== 'LINK')) return
+        if ((t.src || t.href || '').indexOf('/assets/') === -1) return
+        try {
+          var last = Number(sessionStorage.getItem('pf_stale_reload_at') || 0)
+          if (last && Date.now() - last < 30000) return
+          sessionStorage.setItem('pf_stale_reload_at', String(Date.now()))
+        } catch (_) { return }
+        location.reload()
+      }, true)
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="google-site-verification" content="CLbDaJEI5u5Ws8E6PHR5lFqd5pWGGitT3BJQyBXXI4Y" />
 

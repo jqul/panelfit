@@ -1,10 +1,11 @@
 import { Component, ReactNode } from 'react'
+import { isStaleChunkError, reloadOnceForNewVersion } from '../../lib/staleChunk'
 
 interface Props { children: ReactNode }
-interface State { error: Error | null }
+interface State { error: Error | null; updating: boolean }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null }
+  state: State = { error: null, updating: false }
 
   static getDerivedStateFromError(error: Error) {
     return { error }
@@ -12,9 +13,18 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
     console.error('[PanelFit] Error no controlado:', error, info.componentStack)
+    // Un chunk que ya no existe significa que hay una versión nueva desplegada.
+    if (isStaleChunkError(error) && reloadOnceForNewVersion()) this.setState({ updating: true })
   }
 
   render() {
+    if (this.state.updating) {
+      return (
+        <div className="min-h-[100dvh] bg-bg flex items-center justify-center p-6">
+          <p className="text-sm text-muted">Hay una versión nueva de PanelFit — actualizando…</p>
+        </div>
+      )
+    }
     if (this.state.error) {
       return (
         <div className="min-h-[100dvh] bg-bg flex items-center justify-center p-6">
