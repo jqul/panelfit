@@ -82,6 +82,8 @@ export function getMuscleGroup(name: string, libraryMap?: Map<string, string>) {
   const fromLibrary = libraryMap?.get(name.toLowerCase().trim())
   if (fromLibrary) return fromLibrary
   const lower = name.toLowerCase()
+  // "curl" a secas es Bíceps, pero "curl abdominal" es Core y Bíceps se recorre antes.
+  if (lower.includes('abdominal')) return 'Core'
   for (const [group, kws] of Object.entries(MUSCLE_GROUPS)) if (kws.some(k => lower.includes(k))) return group
   return 'Otros'
 }

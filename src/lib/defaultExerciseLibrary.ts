@@ -1355,7 +1355,7 @@ export const DEFAULT_EXERCISE_LIBRARY: DefaultExercise[] = [
   { name: 'Completo maltés', category: 'Core' },
   { name: 'Completo planche', category: 'Core' },
   { name: 'Cuerpo saw con rueda', category: 'Core' },
-  { name: 'Curl', category: 'Core' },
+  { name: 'Curl abdominal', category: 'Core' },
   { name: 'Curl de espalda inferior', category: 'Core' },
   { name: 'De pie abdominal rueda con barra', category: 'Core' },
   { name: 'De pie elevación con polea', category: 'Core' },
