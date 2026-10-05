@@ -201,7 +201,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
         <div className="bg-warn/5 border border-warn/20 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-warn" />
-            <p className="text-sm font-bold">{enRiesgo.length} clientes llevan +3 días sin entrenar</p>
+            <p className="text-sm font-bold">{enRiesgo.length} {enRiesgo.length === 1 ? 'cliente lleva' : 'clientes llevan'} +3 días sin entrenar</p>
           </div>
           <p className="text-xs text-muted">Envía un recordatorio personalizado a cada uno con un toque.</p>
           <div className="flex gap-2">

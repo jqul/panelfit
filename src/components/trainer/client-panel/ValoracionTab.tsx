@@ -202,7 +202,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-serif font-bold text-lg">Fichas de valoración</h3>
-          <p className="text-xs text-muted mt-0.5">{valoraciones.length} valoración{valoraciones.length !== 1 ? 'es' : ''}</p>
+          <p className="text-xs text-muted mt-0.5">{valoraciones.length} {valoraciones.length === 1 ? 'valoración' : 'valoraciones'}</p>
         </div>
         <button onClick={() => setEditing(emptyValoracion(client.id, trainerId))}
           className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
