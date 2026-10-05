@@ -1,5 +1,6 @@
-import { ChevronLeft, Clock, CheckCircle2, Flame, Focus } from 'lucide-react'
+import { ChevronLeft, Clock, Flame, Focus } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
+import { FinishButton } from './FinishButton'
 
 interface Props {
   title: string
@@ -45,16 +46,7 @@ export function WorkoutHeader({
           <button onClick={onToggleView} aria-label="Modo foco: una serie a la vez" title="Modo foco"
             className="p-2 rounded-xl hover:bg-bg-alt text-muted"><Focus className="w-5 h-5" /></button>
         )}
-        <button
-          onClick={onFinishClick}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            allComplete
-              ? 'bg-ok text-white shadow-md shadow-ok/30'
-              : 'bg-accent text-white hover:opacity-90'
-          }`}>
-          {allComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
-          {allComplete ? '¡Terminar!' : 'Terminar'}
-        </button>
+        <FinishButton allComplete={allComplete} onClick={onFinishClick} />
       </div>
 
       {/* Stats bar */}

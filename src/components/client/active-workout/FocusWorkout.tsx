@@ -2,6 +2,7 @@ import { useState, useEffect, ReactNode } from 'react'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
+import { FinishButton } from './FinishButton'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
@@ -165,10 +166,7 @@ export function FocusWorkout(p: Props) {
           </div>
           <button onClick={p.onToggleView} aria-label="Ver todos los ejercicios en lista" title="Ver lista completa"
             className="p-2 rounded-xl hover:bg-bg-alt text-muted"><List className="w-5 h-5" /></button>
-          <button onClick={p.onFinishClick}
-            className={`px-4 py-2 rounded-xl text-xs font-bold ${p.allComplete ? 'bg-ok text-white' : 'bg-accent text-white'}`}>
-            {p.allComplete ? '¡Terminar!' : 'Terminar'}
-          </button>
+          <FinishButton allComplete={p.allComplete} onClick={p.onFinishClick} />
         </div>
         <div className="h-1 bg-bg-alt"><div className="h-full bg-ok transition-all" style={{ width: `${p.pct}%` }} /></div>
         {/* Un punto por ejercicio: hecho / actual / pendiente */}
@@ -308,6 +306,17 @@ export function FocusWorkout(p: Props) {
                 {cur.done ? 'Serie hecha · desmarcar' : <><Check className="w-6 h-6" /> HECHO</>}
               </button>
             </div>
+
+            {/* Con todo hecho, cerrar la sesión es lo siguiente: botón grande, verde */}
+            {p.allComplete && (
+              <div className="px-4 mt-3">
+                <button onClick={p.onFinishClick}
+                  className="w-full flex items-center justify-center gap-2 py-4 rounded-3xl font-bold text-base bg-ok text-white shadow-lg shadow-ok/30 active:scale-[0.98] transition-all"
+                  style={{ minHeight: '56px' }}>
+                  <Check className="w-5 h-5" /> ¡Terminar entrenamiento!
+                </button>
+              </div>
+            )}
 
             {/* Series del ejercicio */}
             <div className="mx-4 mt-6 bg-card border border-border rounded-2xl divide-y divide-border/60 overflow-hidden">
