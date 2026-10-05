@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
@@ -126,7 +127,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
   const sessionOverlay = session && (
     <>
-      {!sessionMinimized && (
+      {/* En un portal: <main> de ClientView tiene z-10 y crea su propio contexto de
+          capas, así que dentro de él el entreno quedaba por debajo de la cabecera
+          de la app (z-20) y la tapaba (volver, cronómetro y Terminar). */}
+      {!sessionMinimized && createPortal(
         <ActiveWorkout
           day={session.day}
           dayKey={session.dayKey}
@@ -136,7 +140,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           onFinish={() => { setSession(null); setSessionMinimized(false) }}
           onBack={() => setSessionMinimized(true)}
           trainerId={trainerId}
-        />
+        />,
+        document.body
       )}
       {sessionMinimized && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1">

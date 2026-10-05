@@ -1,4 +1,4 @@
-import { ChevronLeft, Clock, CheckCircle2, Flame } from 'lucide-react'
+import { ChevronLeft, Clock, CheckCircle2, Flame, Focus } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
   densityRate: number
   densityPct: number | null
   prevSessionVolume: number
+  onToggleView?: () => void  // pasar a la vista de foco (una serie a la vez)
 }
 
 // Cabecera de la sesión activa: título + cronómetro + botón terminar, barra de
@@ -24,7 +25,7 @@ interface Props {
 // la sesión equivalente de la semana pasada).
 export function WorkoutHeader({
   title, clientName, onBack, onFinishClick, elapsedLabel, allComplete,
-  totalVolume, totalSetsDone, avgRir, doneExs, totalExs, pct, densityRate, densityPct, prevSessionVolume,
+  totalVolume, totalSetsDone, avgRir, doneExs, totalExs, pct, densityRate, densityPct, prevSessionVolume, onToggleView,
 }: Props) {
   return (
     <div className="bg-card border-b border-border flex-shrink-0">
@@ -40,6 +41,10 @@ export function WorkoutHeader({
           <Clock className="w-3.5 h-3.5" />
           <span className="font-mono font-semibold tabular-nums">{elapsedLabel}</span>
         </div>
+        {onToggleView && (
+          <button onClick={onToggleView} aria-label="Modo foco: una serie a la vez" title="Modo foco"
+            className="p-2 rounded-xl hover:bg-bg-alt text-muted"><Focus className="w-5 h-5" /></button>
+        )}
         <button
           onClick={onFinishClick}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${

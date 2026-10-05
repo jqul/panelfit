@@ -32,6 +32,7 @@ import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 import { rankByQuery } from '../../lib/exerciseSearch'
 import { streakDays } from '../../lib/progressSummary'
 import { FinishedScreen } from './active-workout/FinishedScreen'
+import { FocusWorkout } from './active-workout/FocusWorkout'
 
 interface Props {
   day: DayPlan
@@ -198,6 +199,16 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [showFinish, setShowFinish] = useState(false)
   const [saving, setSaving] = useState(false)    // guardando al terminar: evita el doble toque
   const [finished, setFinished] = useState(false) // sesión ya guardada: se enseña la pantalla de cierre
+  // Vista Foco (una serie a la vez) o Lista (todos los ejercicios) — se recuerda la elección.
+  const [view, setView] = useState<'foco' | 'lista'>(() => {
+    try { return localStorage.getItem('pf_workout_view') === 'lista' ? 'lista' : 'foco' } catch { return 'foco' }
+  })
+  const [focusOverride, setFocusOverride] = useState<{ ri: number; si: number } | null>(null)
+  const toggleView = () => {
+    const next = view === 'foco' ? 'lista' : 'foco'
+    setView(next); setFocusOverride(null)
+    try { localStorage.setItem('pf_workout_view', next) } catch { /* sin almacenamiento: no se recuerda */ }
+  }
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
@@ -396,7 +407,13 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
     const { numSets: curNumSets } = parseSet(day.exercises[afterRi].sets)
     const totalCur = Math.max(curNumSets, Object.keys(updatedExSets).length)
-    if (afterSi + 1 < totalCur) return buildInfo(afterRi, afterSi + 1, totalCur, updatedExSets[afterSi + 1])
+    if (afterSi + 1 < totalCur) {
+      // La serie siguiente sin peso parte del de la que se acaba de hacer (es lo
+      // normal y lo que precarga la vista de foco), no del de la última sesión.
+      const next = updatedExSets[afterSi + 1]
+      const carried = next?.weight || updatedExSets[afterSi]?.weight
+      return buildInfo(afterRi, afterSi + 1, totalCur, { ...next, weight: carried })
+    }
 
     for (let nextRi = afterRi + 1; nextRi < day.exercises.length; nextRi++) {
       const { numSets: ns } = parseSet(day.exercises[nextRi].sets)
@@ -625,12 +642,144 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     )
   }
 
+  // Sustituir / molestia: lo comparten la vista de lista y la de foco.
+  const renderSubstitution = (ri: number, ex: DayPlan['exercises'][number]) => (
+    <ExerciseSubstitution
+        substitutionName={substitutions[ri]}
+        isEditing={editingSubstitute === ri}
+        draft={substituteDraft}
+        onDraftChange={setSubstituteDraft}
+        suggestions={substituteSuggestions}
+        onStartEdit={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri] || ''); setEditingSubstitute(ri) }}
+        onConfirmEdit={(name) => { setSubstitute(ri, name); setEditingSubstitute(null) }}
+        onCancelEdit={() => setEditingSubstitute(null)}
+        isMolestiaOpen={molestiaPickerRi === ri}
+        onOpenMolestia={() => openMolestiaPicker(ri, ex.name)}
+        onCloseMolestia={closeMolestiaPicker}
+        molestiaZona={molestiaPickerZona}
+        onSetMolestiaZona={setMolestiaPickerZona}
+        alternatives={molestiaPickerRi === ri && molestiaPickerZona
+          ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
+          : []}
+        onPickAlternative={(altName) => {
+          setSubstitute(ri, altName)
+          addPainEntry(molestiaPickerZona!, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+          closeMolestiaPicker()
+        }}
+        onJustNotify={() => {
+          addPainEntry(molestiaPickerZona!, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
+          closeMolestiaPicker()
+        }}
+    />
+  )
+
+  // Serie que toca ahora: la primera sin hacer; si está todo hecho, la última.
+  const autoPos = (() => {
+    for (let ri = 0; ri < day.exercises.length; ri++) {
+      const exSets = sets[ri] || {}
+      const total = Math.max(parseSet(day.exercises[ri].sets).numSets, Object.keys(exSets).length)
+      for (let si = 0; si < total; si++) if (!exSets[si]?.done) return { ri, si }
+    }
+    const last = day.exercises.length - 1
+    const total = Math.max(parseSet(day.exercises[last].sets).numSets, Object.keys(sets[last] || {}).length)
+    return { ri: last, si: Math.max(0, total - 1) }
+  })()
+  const pos = focusOverride && day.exercises[focusOverride.ri] ? focusOverride : autoPos
+
+  const renderRun = (ri: number) => {
+    const ex = day.exercises[ri]
+    const exSets = sets[ri] || {}
+    return ex.run ? (
+      <RunSets run={ex.run} totalSets={Math.max(parseSet(ex.sets).numSets, Object.keys(exSets).length)} sets={exSets}
+        prevSets={getPrevSets(ri)} onSetData={(si, patch) => setRunData(ri, si, patch)} onToggle={si => toggleSet(ri, si, '', '1')} />
+    ) : null
+  }
+
+  // Lo avanzado de un ejercicio, para el "Más" de la vista de foco.
+  const renderMore = (ri: number) => {
+    const ex = day.exercises[ri]
+    const history = getExerciseHistory(ex.name)
+    const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+    const pctTarget = parsePercentWeight(ex.weight) !== null ? resolveWeightFromPercent(ex.weight, getBest1RM(ex.name)) : null
+    const vProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+    return (
+      <div className="space-y-3">
+        <div className="mx-4 bg-bg-alt/50 border border-border rounded-xl p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+          {history.length === 0 ? <p className="text-xs text-muted">Sin historial previo para este ejercicio</p> : (
+            <div className="space-y-1.5">
+              {history.map((h, i) => {
+                const older = history[i + 1]
+                const delta = older ? Math.round((h.weight - older.weight) * 10) / 10 : null
+                return (
+                  <div key={h.date} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted w-14 flex-shrink-0">{new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                    <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                    {delta !== null && delta !== 0 && <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        {(pctTarget || vProfile?.oneRM || !(ex.hideRest || ex.kind === 'run')) && (
+          <div className="mx-4 text-xs text-muted space-y-1">
+            {pctTarget && <p className="text-accent font-semibold">{ex.weight} ≈ {pctTarget}kg (según tu 1RM estimado)</p>}
+            {vProfile?.oneRM && <p style={{ color: '#6366f1' }} className="font-semibold">⚡ 1RM real de hoy (por velocidad): ~{vProfile.oneRM}kg</p>}
+            {!(ex.hideRest || ex.kind === 'run') && <p>Descanso: {Math.floor(restSecs / 60) > 0 ? `${Math.floor(restSecs / 60)}min ` : ''}{restSecs % 60 > 0 ? `${restSecs % 60}s` : ''}</p>}
+          </div>
+        )}
+        {renderSubstitution(ri, ex)}
+        {ex.enReadaptacion && <ExerciseEvaTracker eva={logs[`ex_${dayKey}_r${ri}`]?.dolorEva} onSetEva={(v) => setExerciseEva(ri, v)} />}
+        {ex.requiresVideo && (
+          <RequiredVideoUpload trainerMode={trainerMode} videoUploaded={logs[`ex_${dayKey}_r${ri}`]?.videoEjecucion}
+            uploading={uploadingVideoRi === ri} onUpload={(f) => uploadExerciseVideo(ri, f)} />
+        )}
+        {trainerId && !trainerMode && <div className="px-4"><VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} /></div>}
+        {ex.tempo && <TempoWidget tempo={ex.tempo} />}
+      </div>
+    )
+  }
+
+  const warmupBlock = (day.warmupExercises?.length || 0) > 0 ? (
+    <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
+      <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">Calentamiento</p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(day.warmupExercises || []).map((w, i) => (
+          <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
+            <p className="font-semibold text-gray-700">{w.name}</p>
+            {w.sets && <p className="text-orange-400">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null
+  const topExtras = warmupBlock || dayTests.length > 0 ? (
+    <div>{warmupBlock}<DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} /></div>
+  ) : undefined
+
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
       {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
+      {view === 'foco' ? (
+        <FocusWorkout
+          title={day.title} clientName={clientName} elapsedLabel={formatElapsed()} pct={pct}
+          exercises={day.exercises} sets={sets} prevSets={getPrevSets} weekRpe={plan.weeks?.[weekIdx]?.rpe} showTarget={showPesosSugeridos}
+          ri={pos.ri} si={pos.si} allComplete={allComplete}
+          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord}
+          onSelect={(ri, si) => setFocusOverride({ ri, si })}
+          onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
+          onCommit={commitSet}
+          onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
+          onSetRir={setRir} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+          renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
+        />
+      ) : (
+      <>
       <WorkoutHeader
         title={day.title}
         clientName={clientName}
@@ -647,6 +796,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         densityRate={densityRate}
         densityPct={densityPct}
         prevSessionVolume={prevSessionVolume}
+        onToggleView={toggleView}
       />
 
       {/* Calentamiento si existe */}
@@ -794,33 +944,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
 
               {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
-              <ExerciseSubstitution
-                substitutionName={substitutions[ri]}
-                isEditing={editingSubstitute === ri}
-                draft={substituteDraft}
-                onDraftChange={setSubstituteDraft}
-                suggestions={substituteSuggestions}
-                onStartEdit={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri] || ''); setEditingSubstitute(ri) }}
-                onConfirmEdit={(name) => { setSubstitute(ri, name); setEditingSubstitute(null) }}
-                onCancelEdit={() => setEditingSubstitute(null)}
-                isMolestiaOpen={molestiaPickerRi === ri}
-                onOpenMolestia={() => openMolestiaPicker(ri, ex.name)}
-                onCloseMolestia={closeMolestiaPicker}
-                molestiaZona={molestiaPickerZona}
-                onSetMolestiaZona={setMolestiaPickerZona}
-                alternatives={molestiaPickerRi === ri && molestiaPickerZona
-                  ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
-                  : []}
-                onPickAlternative={(altName) => {
-                  setSubstitute(ri, altName)
-                  addPainEntry(molestiaPickerZona!, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
-                  closeMolestiaPicker()
-                }}
-                onJustNotify={() => {
-                  addPainEntry(molestiaPickerZona!, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
-                  closeMolestiaPicker()
-                }}
-              />
+              {renderSubstitution(ri, ex)}
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
                   fisioterapia deportiva moderna no se busca "cero dolor" sino
@@ -941,6 +1065,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
         <div className="h-8" />
       </div>
+
+      </>
+      )}
 
       {/* Modal confirmación terminar */}
       {showFinish && (
