@@ -55,6 +55,13 @@ export function recordHistory(bests: SessionBest[]): RecordEvent[] {
   return events.sort((a, b) => b.date.localeCompare(a.date) || b.delta - a.delta)
 }
 
+/** El récord más reciente de los últimos `days` días (por defecto 30), o null. Para el "último logro" del inicio. */
+export function latestAchievement(bests: SessionBest[], now: Date = new Date(), days = 30): RecordEvent | null {
+  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - days)
+  const from = localDateKey(cutoff)
+  return recordHistory(bests).find(e => e.date >= from) ?? null
+}
+
 /**
  * Variación media de fuerza en los últimos `days` días: por cada ejercicio con al
  * menos dos sesiones en la ventana, compara el peso de la primera con el mejor

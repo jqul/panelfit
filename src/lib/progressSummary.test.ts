@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from './progressSummary'
+import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays, latestAchievement } from './progressSummary'
 import { TrainingLogs, TrainingPlan } from '../types'
 
 const ex = (name: string) => ({ name, sets: '3×5', weight: '', isMain: true, comment: '' })
@@ -91,5 +91,23 @@ describe('streakDays', () => {
     const l = { b: log('2026-09-29', [['1', '1']]) } as unknown as TrainingLogs
     expect(streakDays(l, now)).toBe(0)
     expect(streakDays(l, now, true)).toBe(2)
+  })
+})
+
+describe('latestAchievement', () => {
+  const bests = [
+    { name: 'Press', date: '2026-09-01', weight: 80, reps: 5 },
+    { name: 'Press', date: '2026-09-22', weight: 85, reps: 3 },
+    { name: 'Sentadilla', date: '2026-08-01', weight: 100, reps: 5 },
+    { name: 'Sentadilla', date: '2026-08-08', weight: 105, reps: 5 },
+  ]
+  it('devuelve el récord más reciente dentro de la ventana', () => {
+    expect(latestAchievement(bests, new Date(2026, 8, 25))).toMatchObject({ name: 'Press', delta: 5, date: '2026-09-22' })
+  })
+  it('ignora récords más antiguos que la ventana', () => {
+    expect(latestAchievement(bests, new Date(2026, 9, 30))).toBeNull()
+  })
+  it('null si no hay ningún récord', () => {
+    expect(latestAchievement([], new Date(2026, 8, 25))).toBeNull()
   })
 })

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
+import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
-import { useClientWeights } from '../../lib/clientWeight'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
-import { adherence28, streakDays } from '../../lib/progressSummary'
+import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 
 interface Props {
   plan: TrainingPlan
@@ -77,12 +76,9 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
-  const { weights, addWeight } = useClientWeights(clientId)
-  const [showWeightInput, setShowWeightInput] = useState(false)
-  const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
 
   useEffect(() => {
@@ -93,18 +89,15 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
   }, [])
 
-  const saveWeight = () => {
-    const w = parseFloat(newWeight)
-    if (!w || w < 20 || w > 300) return
-    addWeight(w)
-    setNewWeight(''); setShowWeightInput(false)
-  }
-
   const streak = streakDays(logs, new Date(), false, true)
   const todaySession = getTodaySession(plan, logs)
   // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
   const adherencia = adherence28(plan, logs)
-  const pesoActual = weights[0]?.weight || null
+  // El peso corporal vive en Progreso → Cuerpo: el inicio responde a "qué toca
+  // hoy" y a "cómo voy", no a "cuántos kilos pesas".
+  const bests = collectSessionBests(logs, plan)
+  const fuerza = strengthChange(bests)
+  const logro = latestAchievement(bests)
 
   const todayLogs = todaySession
     ? todaySession.day.exercises.map((_: Exercise, ri: number) => logs[`ex_${todaySession.dayKey}_r${ri}`])
@@ -199,42 +192,19 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha', onClick: undefined },
-            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia', onClick: undefined },
-            {
-              icon: <Scale className="w-4 h-4 text-accent" />,
-              value: pesoActual ?? '—',
-              label: 'kg',
-              onClick: () => setShowWeightInput(v => !v)
-            },
+            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha' },
+            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia' },
+            { icon: <TrendingUp className="w-4 h-4 text-accent" />, value: fuerza ? `${fuerza.pct > 0 ? '+' : ''}${fuerza.pct}%` : '—', label: 'Fuerza' },
           ].map((s, i) => (
-            <button key={i} onClick={s.onClick}
-              className={`bg-card border border-border rounded-2xl p-3 text-center ${s.onClick ? 'hover:border-accent transition-colors' : ''}`}>
+            <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-0.5">
                 {s.icon}
                 <span className="text-xl font-serif font-bold">{s.value}</span>
               </div>
               <p className="text-[10px] text-muted uppercase tracking-wider">{s.label}</p>
-            </button>
+            </div>
           ))}
         </div>
-
-        {/* Registro de peso corporal */}
-        {showWeightInput && (
-          <div className="space-y-2 animate-fade-in">
-            <div className="flex gap-2">
-              <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveWeight()}
-                placeholder="Tu peso hoy (kg)" aria-label="Tu peso hoy en kg" autoFocus
-                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              />
-              <button onClick={saveWeight} style={{ minHeight: '44px' }}
-                className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-                OK
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Card sesión de hoy */}
         {todaySession ? (
@@ -362,19 +332,20 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           )
         })()}
 
-        {/* Racha */}
-        {streak >= 3 && (
-          <div className="bg-warn/5 border border-warn/20 rounded-2xl p-4 flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
-            <div>
-              <p className="text-sm font-bold">{streak} días seguidos entrenando</p>
-              <p className="text-xs text-muted mt-0.5">
-                {restDayMsg || (
-                  streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
-                  streak >= 5 ? '¡Casi una semana! Sigue así.' :
-                  '¡Buen ritmo! Mantén la racha.'
-                )}
-              </p>
+        {/* Último logro — la racha ya está arriba; aquí va lo que se ha conseguido */}
+        {(logro || restDayMsg) && (
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+            <span className="w-10 h-10 rounded-full bg-warn/10 flex items-center justify-center flex-shrink-0"><Trophy className="w-5 h-5 text-warn" /></span>
+            <div className="min-w-0">
+              {logro ? (
+                <>
+                  <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Último logro</p>
+                  <p className="text-sm font-bold truncate">{logro.name} · +{String(logro.delta).replace('.', ',')} kg</p>
+                  <p className="text-xs text-muted mt-0.5">{new Date(logro.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}{restDayMsg ? ` · ${restDayMsg}` : ''}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted">{restDayMsg}</p>
+              )}
             </div>
           </div>
         )}
