@@ -31,6 +31,7 @@ import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlt
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 import { rankByQuery } from '../../lib/exerciseSearch'
 import { streakDays } from '../../lib/progressSummary'
+import { latestPreviousLog } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
 import { FocusWorkout } from './active-workout/FocusWorkout'
 
@@ -388,8 +389,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const prevSetsFor = (rowIdx: number): Record<number, { weight?: string; reps?: string; rir?: number }> => {
       const key = `ex_${dayKey}_r${rowIdx}`
       const pattern = new RegExp(`^ex_w\\d+_d${dayIdx}_r${rowIdx}$`)
-      const found = Object.entries(logsRef.current).find(([k, l]) => pattern.test(k) && k !== key && (l as any).dateDone)
-      return (found?.[1] as any)?.sets || {}
+      return latestPreviousLog(logsRef.current, pattern, key)?.sets || {}
     }
     const buildInfo = (rowIdx: number, setIdx: number, totalForRow: number, existing?: { weight?: string; reps?: string }): NextSetInfo => {
       const rowEx = day.exercises[rowIdx]
@@ -534,8 +534,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const getPrevSets = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
     const pattern = samePlaceInPlan(ri)
-    const prev = Object.entries(logs).find(([k, l]) => pattern.test(k) && k !== key && l.dateDone)
-    return prev?.[1]?.sets || {}
+    return latestPreviousLog(logs, pattern, key)?.sets || {}
   }
 
   // Densidad de la sesión: kg/min en vivo, más el tonelaje frente a la sesión

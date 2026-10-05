@@ -39,6 +39,14 @@ interface Props {
 const round1 = (n: number) => Math.round(n * 10) / 10
 const fmt = (s: string) => s.replace('.', ',')
 
+// Peso fijo que el entrenador ha puesto en el plan ("97.5kg", "100"). Si es un
+// porcentaje, un rango o texto libre ("RPE 8", "70%") no es un peso que se pueda
+// precargar y devuelve null.
+export function prescribedWeight(w?: string): string | null {
+  const m = (w || '').trim().match(/^(\d+(?:[.,]\d+)?)\s*(?:kg)?$/i)
+  return m ? m[1].replace(',', '.') : null
+}
+
 function totalSets(ex: Exercise, exSets: Record<number, FocusSet>) {
   return Math.max(parseSet(ex.sets).numSets, Object.keys(exSets).length)
 }
@@ -62,7 +70,7 @@ export function FocusWorkout(p: Props) {
   // teclear y lo que se ve en grande es justo lo que se registra al pulsar HECHO.
   const lastWeight = (() => {
     for (let i = p.si - 1; i >= 0; i--) if (exSets[i]?.weight) return exSets[i].weight
-    return prev?.weight || ''
+    return prescribedWeight(ex.weight) || prev?.weight || ''
   })()
   const [weight, setWeight] = useState(cur.weight || lastWeight)
   const [reps, setReps] = useState(cur.reps)
