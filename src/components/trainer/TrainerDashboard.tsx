@@ -4,10 +4,10 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLabels } from '../../hooks/useLabels'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, ChevronRight,
+  LogOut, UserPlus, Search, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
   StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal
@@ -29,6 +29,8 @@ import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
 import { BandejaTab } from './BandejaTab'
+import { ClientList } from './ClientList'
+import { sortClients, ClientSort } from '../../lib/clientStatus'
 import { EtiquetasTab } from './EtiquetasTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
@@ -74,6 +76,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   })
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
+  const [clientSort, setClientSort] = useState<ClientSort>('attention')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
@@ -91,7 +94,6 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setNewObjetivoInput(''); setAddingObjetivo(false)
   }
   const [adding, setAdding] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
@@ -110,6 +112,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
+  const sortedClients = useMemo(() => sortClients(filteredClients, clientSort), [filteredClients, clientSort])
   // Bandeja unificada: sesiones, check-ins, dolor, vídeos sin responder,
   // borradores sin publicar y clientes en riesgo — una sola lista en vez de
   // "Requieren atención" + "Tareas de hoy" + Bandeja calculando cada una lo
@@ -130,7 +133,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setAdding(false)
   }
 
-  const handleDelete = async (id: string) => { await deleteClient(id); setDeletingId(null) }
+  const handleDelete = async (id: string) => { await deleteClient(id) }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
@@ -577,98 +580,63 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
           {/* ── CLIENTES ── */}
           {activeTab === 'clients' && (
-            <div className="animate-fade-in space-y-5 max-w-5xl">
+            <div className="animate-fade-in space-y-5 max-w-6xl">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-serif font-bold">Clientes</h2>
                   <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} alumnos{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
                 </div>
-                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo</Button>
+                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo cliente</Button>
               </div>
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-3 flex-wrap items-center">
                 <div className="relative flex-1 min-w-40">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
+                  <input type="text" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }, { id: 'high-acwr', label: '⚡ Carga alta' }, { id: 'jump-drop', label: '🦵 Caída de salto' }] as const).map(f => (
-                    <button key={f.id} onClick={() => setClientFilter(f.id)}
+                <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                  Ordenar
+                  <select value={clientSort} onChange={e => setClientSort(e.target.value as ClientSort)}
+                    className="bg-white border border-border/50 rounded-xl px-3 py-2.5 text-sm font-medium text-ink outline-none focus:ring-2 focus:ring-accent/20 shadow-sm">
+                    <option value="attention">Atención primero</option>
+                    <option value="name">Nombre</option>
+                    <option value="last">Más tiempo sin entrenar</option>
+                    <option value="adherence">Menor adherencia</option>
+                  </select>
+                </label>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { id: 'all', label: 'Todos', n: clients.length, always: true },
+                  { id: 'active', label: 'Entrenaron hoy', n: activeToday, always: true },
+                  { id: 'no-plan', label: 'Sin plan', n: noPlan, always: true },
+                  { id: 'no-activity', label: 'Inactivos', n: noActivity7d, always: true },
+                  { id: 'at-risk', label: 'En riesgo', n: atRiskCount },
+                  { id: 'high-acwr', label: 'Carga alta', n: highAcwrCount },
+                  { id: 'jump-drop', label: 'Caída de salto', n: jumpDropCount },
+                ] as { id: ClientFilter; label: string; n: number; always?: boolean }[])
+                  .filter(f => f.always || f.n > 0 || clientFilter === f.id)
+                  .map(f => (
+                    <button key={f.id} onClick={() => setClientFilter(f.id)} aria-pressed={clientFilter === f.id}
                       className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
-                      {f.label}
+                      {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted/60'}>{f.n}</span>
                     </button>
                   ))}
-                </div>
               </div>
               {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
-              ) : filteredClients.length === 0 ? (
+                <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
+              ) : sortedClients.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => {
-                    const adherencia = adherenciaMap[client.id] ?? 0
-                    const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
-                    return (
-                      <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                        <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
-                          <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
-                            {client.name[0]?.toUpperCase()}
-                            {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                            <p className="text-[11px] text-muted mt-0.5">
-                              {client.doneToday ? <span className="text-ok font-bold">Entrenó hoy</span> : formatLastActive(client.lastActive)}
-                            </p>
-                          </div>
-                        </div>
-                        {client.hasPlan && (
-                          <div className="mb-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[11px] text-muted">Cumplimiento semanal</span>
-                              <span className="text-[11px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
-                            </div>
-                            <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
-                            </div>
-                            {!!client.weeklyDays && <p className="text-[11px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
-                            {client.highAcwr && <p className="text-[11px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
-                            {client.highJumpDrop && <p className="text-[11px] text-warn font-semibold mt-1.5">🦵 Caída de salto ({client.jumpDropPct}% en {client.jumpDropTestName}) — fatiga neuromuscular</p>}
-                            {client.atRisk && <p className="text-[11px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
-                          </div>
-                        )}
-                        {!client.hasPlan && (
-                          <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
-                            <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
-                            <button onClick={() => onSelectClient(client)} className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90">Asignar</button>
-                          </div>
-                        )}
-                        {deletingId === client.id ? (
-                          <div className="flex gap-2">
-                            <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
-                              <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
-                            </Button>
-                            <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
-                              <Trash2 className="w-3.5 h-3.5 text-warn" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
-                    className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
-                    <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
-                  </button>
-                </div>
+                <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
+                  onOpen={onSelectClient} onSend={setLinkModal} onDelete={handleDelete} />
+              )}
+              {!loading && (
+                <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
+                  className="w-full border-2 border-dashed border-border rounded-2xl py-4 flex items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  <UserPlus className="w-4 h-4" />
+                  <span className="text-sm font-medium">{limitReached ? `Límite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
+                </button>
               )}
             </div>
           )}
