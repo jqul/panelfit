@@ -78,6 +78,15 @@ describe('streakDays', () => {
     const l = { a: log('2026-09-30', [['1', '1']]), b: log('2026-09-29', [['1', '1']]), c: log('2026-09-27', [['1', '1']]) } as unknown as TrainingLogs
     expect(streakDays(l, now)).toBe(2)
   })
+  it('con grace no se rompe por no haber entrenado todavía hoy', () => {
+    const l = { a: log('2026-09-29', [['1', '1']]), b: log('2026-09-28', [['1', '1']]) } as unknown as TrainingLogs
+    expect(streakDays(l, now)).toBe(0)
+    expect(streakDays(l, now, false, true)).toBe(2)
+  })
+  it('con grace, si ayer tampoco entrenó la racha sí es 0', () => {
+    const l = { a: log('2026-09-27', [['1', '1']]) } as unknown as TrainingLogs
+    expect(streakDays(l, now, false, true)).toBe(0)
+  })
   it('con countToday suma hoy aunque aún no esté guardado', () => {
     const l = { b: log('2026-09-29', [['1', '1']]) } as unknown as TrainingLogs
     expect(streakDays(l, now)).toBe(0)

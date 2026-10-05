@@ -3,11 +3,10 @@ import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, Scale, Cloc
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
-import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { useClientWeights } from '../../lib/clientWeight'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
-import { adherence28 } from '../../lib/progressSummary'
+import { adherence28, streakDays } from '../../lib/progressSummary'
 
 interface Props {
   plan: TrainingPlan
@@ -23,18 +22,6 @@ interface Props {
   brandBg?: string
   brandColor?: string
   seriesTypes?: SeriesTypeDef[]
-}
-
-function calcStreak(logs: TrainingLogs): number {
-  const dates = new Set(Object.values(logs).filter(l => l.dateDone).map(l => l.dateDone!))
-  let streak = 0
-  const d = new Date()
-  while (true) {
-    const key = d.toISOString().split('T')[0]
-    if (dates.has(key)) { streak++; d.setDate(d.getDate() - 1) }
-    else break
-  }
-  return streak
 }
 
 // Lunes=0 ... domingo=6, igual que Date.getDay() ajustado (domingo=0 -> 6).
@@ -96,7 +83,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
   const [showWeightInput, setShowWeightInput] = useState(false)
   const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [showCalc, setShowCalc] = useState(false)
 
   useEffect(() => {
     const online = () => setIsOnline(true)
@@ -113,7 +99,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     setNewWeight(''); setShowWeightInput(false)
   }
 
-  const streak = calcStreak(logs)
+  const streak = streakDays(logs, new Date(), false, true)
   const todaySession = getTodaySession(plan, logs)
   // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
   const adherencia = adherence28(plan, logs)
@@ -186,14 +172,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     <div className="max-w-xl mx-auto" style={{ paddingTop: brandBg ? 8 : 0 }}>
       {sessionOverlay}
 
-      {/* Calculadora de discos */}
-      {showCalc && (
-        <CalculadoraDiscos
-          pesoObjetivo={pesoActual || undefined}
-          onClose={() => setShowCalc(false)}
-        />
-      )}
-
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
           <p className="text-xs font-semibold text-warn">Sin conexión — los datos se guardarán cuando vuelvas a conectarte</p>
@@ -236,7 +214,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           ))}
         </div>
 
-        {/* Input peso + botón calculadora */}
+        {/* Registro de peso corporal */}
         {showWeightInput && (
           <div className="space-y-2 animate-fade-in">
             <div className="flex gap-2">
@@ -250,12 +228,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
                 OK
               </button>
             </div>
-            {/* Botón calculadora de discos */}
-            <button
-              onClick={() => setShowCalc(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
-              🏋️ Calculadora de discos
-            </button>
           </div>
         )}
 

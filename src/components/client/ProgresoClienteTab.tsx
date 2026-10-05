@@ -353,7 +353,7 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, showRecords, sho
       records: recordHistory(bests).filter(r => r.date >= desde),
       fuerza: strengthChange(bests),
       adh: adherence28(plan, logs),
-      racha: streakDays(logs),
+      racha: streakDays(logs, new Date(), false, true),
       hayDatos: Object.values(logs).some(l => l.done),
     }
   }, [logs, plan])

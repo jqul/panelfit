@@ -88,12 +88,18 @@ export function adherence28(plan: TrainingPlan | null | undefined, logs: Trainin
   return Math.min(100, Math.round((days.size / (perWeek * 4)) * 100))
 }
 
-/** Días consecutivos entrenados hasta hoy. Con `countToday` hoy cuenta aunque aún no esté guardado (al terminar la sesión). */
-export function streakDays(logs: TrainingLogs, now: Date = new Date(), countToday = false): number {
+/**
+ * Días consecutivos entrenados hasta hoy. Con `countToday` hoy cuenta aunque aún
+ * no esté guardado (al terminar la sesión). Con `grace` la racha no se da por
+ * rota solo porque hoy todavía no hayas entrenado: sigue viva con lo de ayer
+ * hasta que acabe el día (si no, marcaría 0 cada mañana).
+ */
+export function streakDays(logs: TrainingLogs, now: Date = new Date(), countToday = false, grace = false): number {
   const dates = new Set(Object.values(logs).filter(l => l.done && l.dateDone).map(l => l.dateDone!))
   if (countToday) dates.add(localDateKey(now))
   let streak = 0
   const d = new Date(now)
+  if (grace && !dates.has(localDateKey(d))) d.setDate(d.getDate() - 1)
   while (dates.has(localDateKey(d))) { streak++; d.setDate(d.getDate() - 1) }
   return streak
 }
