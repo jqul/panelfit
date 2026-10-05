@@ -213,7 +213,7 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-lg">{t.emoji}</span>
                 <p className="font-semibold text-sm">{t.label}</p>
-                {t.custom && <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">Personalizado</span>}
+                {t.custom && <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">Personalizado</span>}
               </div>
               <p className="text-xs text-muted leading-relaxed">{t.detail}</p>
             </div>

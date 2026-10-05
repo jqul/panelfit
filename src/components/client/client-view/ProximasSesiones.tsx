@@ -99,7 +99,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
                 <div>
                   <p className="text-sm font-semibold flex items-center gap-1.5">
                     {c.title}
-                    {c.status === 'pendiente' && <span className="text-[9px] font-bold text-warn bg-warn/10 px-1.5 py-0.5 rounded-full">Pendiente de confirmar</span>}
+                    {c.status === 'pendiente' && <span className="text-[10px] font-bold text-warn bg-warn/10 px-1.5 py-0.5 rounded-full">Pendiente de confirmar</span>}
                   </p>
                   <p className="text-xs text-muted">{new Date(c.start_at).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                 </div>

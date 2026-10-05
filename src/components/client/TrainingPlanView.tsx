@@ -222,7 +222,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-medium">{ex.name}</p>
-                                {ex.isMain && <span className="text-[9px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
+                                {ex.isMain && <span className="text-[10px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
                                 {/* Badge tipo serie con botón ℹ️ */}
                                 {showSeriesType && (
                                   <button
@@ -257,7 +257,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                               {log?.sets && Object.keys(log.sets).length > 0 && (
                                 <div className="flex gap-1.5 mt-1.5 flex-wrap">
                                   {Object.values(log.sets).map((s, si) => (
-                                    <span key={si} className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
+                                    <span key={si} className="text-[10px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
                                   ))}
                                 </div>
                               )}

@@ -35,7 +35,7 @@ function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify
 function TagBadge({ tag }: { tag: CustomTag }) {
   const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
       {tag.emoji} {tag.label}
     </span>
   )
@@ -346,7 +346,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 </div>
                 {/* Edición rápida de especialidades del vídeo */}
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-[9px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
+                  <span className="text-[10px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
                   {allEsps.map(e => {
                     const active = (v.especialidades||[]).includes(e.id)
                     return (
@@ -357,7 +357,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                           vs[i]={...vs[i],especialidades:active?esps.filter(x=>x!==e.id):[...esps,e.id]}
                           setForm(f=>({...f,videos:vs}))
                         }}
-                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
+                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
                         {e.emoji} {e.label}
                       </button>
                     )
@@ -405,7 +405,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
             <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
               placeholder="Etiqueta del vídeo (opcional)" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
             <div>
-              <p className="text-[9px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
+              <p className="text-[10px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
               <div className="flex flex-wrap gap-1.5">
                 {allEsps.map(e => {
                   const esps = videoMode === 'file' ? uploadVideoEsps : newVideoEsps
@@ -419,7 +419,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                   )
                 })}
               </div>
-              <p className="text-[9px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
+              <p className="text-[10px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
             </div>
           </>
         )}
@@ -662,12 +662,12 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                             return (
                               <>
                                 {especializados.length > 0 && (
-                                  <span className="text-[9px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                  <span className="text-[10px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded-full flex items-center gap-1">
                                     <Video className="w-2.5 h-2.5"/>{especializados.length} esp.
                                   </span>
                                 )}
                                 {genericos.length > 0 && (
-                                  <span className="text-[9px] text-muted bg-bg-alt border border-border px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                                  <span className="text-[10px] text-muted bg-bg-alt border border-border px-1.5 py-0.5 rounded-full flex items-center gap-1">
                                     <Video className="w-2.5 h-2.5"/>{genericos.length} gen.
                                   </span>
                                 )}

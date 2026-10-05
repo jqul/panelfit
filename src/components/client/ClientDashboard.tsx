@@ -345,7 +345,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
                       style={count > 0 ? { backgroundColor: '#e0a854' } : undefined}>
                       {count > 0 && <span className="text-white text-xs font-bold">✓</span>}
                     </div>
-                    <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
+                    <p className={`text-[10px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
                   </div>
                 )
               })

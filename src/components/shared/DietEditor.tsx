@@ -315,7 +315,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         <div className="flex gap-2">
           <button onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
+            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
           </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={importing}
             className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-semibold text-muted hover:border-accent disabled:opacity-50">

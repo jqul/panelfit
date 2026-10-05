@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { ClientData, TrainingLogs } from '../../types'
 import { getNudge, Objetivo } from '../../lib/nudges'
 import { TrendingUp, TrendingDown, Minus, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
+import { buildConclusions, rankAdherence, ConclusionRow } from '../../lib/conclusions'
+import { ConclusionList } from './ConclusionList'
 
 interface ClientStats {
   client: ClientData
@@ -14,6 +16,7 @@ interface ClientStats {
   ultimoEntreno: string | null
   diasSinEntrenar: number
   tendencia: 'up' | 'down' | 'stable'
+  mejora: number  // días entrenados en los últimos 7 menos los 7 anteriores
 }
 
 // Cuántos días de entreno se esperan en una ventana de N días — misma referencia de
@@ -76,7 +79,7 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
   return {
     client, diasEntrenados: diasUltimos7, adherencia: Math.round(diasUltimos7 / 7 * 100),
     compliance30: complianceForWindow(diasUltimos30, 30), compliance90: complianceForWindow(diasUltimos90, 90),
-    needsAttention, racha, ultimoEntreno, diasSinEntrenar, tendencia,
+    needsAttention, racha, ultimoEntreno, diasSinEntrenar, tendencia, mejora: diasUltimos7 - diasAntes7,
   }
 }
 
@@ -100,10 +103,14 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
   )
 
   const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 3 && s.client.createdAt < Date.now() - 3 * 86400000)
-  const conRacha = stats.filter(s => s.racha >= 3)
   const necesitanAtencion = stats.filter(s => s.needsAttention)
-  const mediaAdherencia = stats.length
-    ? Math.round(stats.reduce((a, s) => a + s.adherencia, 0) / stats.length) : 0
+  const rows: ConclusionRow[] = useMemo(() => stats.map(s => ({
+    id: s.client.id, name: s.client.name, adherencia7: s.adherencia, diasSinEntrenar: s.diasSinEntrenar,
+    racha: s.racha, mejora: s.mejora, esNuevo: s.client.createdAt >= Date.now() - 3 * 86400000,
+  })), [stats])
+  const conclusiones = useMemo(() => buildConclusions(rows), [rows])
+  const { mejores, atencion, media: mediaAdherencia } = useMemo(() => rankAdherence(rows), [rows])
+  const byId = useMemo(() => new Map(stats.map(s => [s.client.id, s])), [stats])
 
   const filtered = filtro === 'riesgo' ? enRiesgo : filtro === 'atencion' ? necesitanAtencion : filtro === 'ok' ? stats.filter(s => s.adherencia >= 70) : stats
 
@@ -147,27 +154,47 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
         <p className="text-muted text-sm mt-1">Seguimiento y recordatorios automáticos</p>
       </div>
 
-      {/* Stats globales */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-5 text-center">
-          <p className={`text-3xl font-serif font-bold ${mediaAdherencia >= 70 ? 'text-ok' : mediaAdherencia >= 40 ? 'text-accent' : 'text-warn'}`}>
+      {/* Resumen: un número y qué hacer con él */}
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="flex items-end gap-4 flex-wrap mb-5">
+          <p className={`text-5xl font-serif font-bold leading-none ${mediaAdherencia >= 70 ? 'text-ok' : mediaAdherencia >= 40 ? 'text-accent' : 'text-warn'}`}>
             {mediaAdherencia}%
           </p>
-          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">Media global</p>
+          <p className="text-sm text-muted pb-1">adherencia media de tus clientes los últimos 7 días</p>
         </div>
-        <div className="bg-card border border-border rounded-2xl p-5 text-center">
-          <p className="text-3xl font-serif font-bold text-warn">{enRiesgo.length}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">En riesgo</p>
-        </div>
-        <div className="bg-card border border-border rounded-2xl p-5 text-center">
-          <p className="text-3xl font-serif font-bold text-warn">{necesitanAtencion.length}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">⚠️ En caída</p>
-        </div>
-        <div className="bg-card border border-border rounded-2xl p-5 text-center">
-          <p className="text-3xl font-serif font-bold text-ok">{conRacha.length}</p>
-          <p className="text-[10px] text-muted uppercase tracking-wider mt-1">Con racha 🔥</p>
-        </div>
+        <ConclusionList items={conclusiones} />
       </div>
+
+      {(atencion.length > 0 || mejores.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            { titulo: 'Necesitan atención', lista: atencion, vacio: 'Nadie por ahora', tono: 'text-warn' },
+            { titulo: 'Mejores esta semana', lista: mejores, vacio: 'Aún sin datos', tono: 'text-ok' },
+          ].map(col => (
+            <div key={col.titulo} className="bg-card border border-border rounded-2xl p-5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">{col.titulo}</p>
+              {col.lista.length === 0 ? (
+                <p className="text-sm text-muted">{col.vacio}</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {col.lista.map(r => {
+                    const s = byId.get(r.id)
+                    return (
+                      <li key={r.id} className="flex items-center gap-3">
+                        <span className="flex-1 min-w-0 text-sm font-semibold truncate">{s?.client.name} {s?.client.surname}</span>
+                        {col.titulo === 'Necesitan atención' && r.diasSinEntrenar >= 3 && (
+                          <span className="text-xs text-muted flex-shrink-0">{r.diasSinEntrenar === 999 ? 'sin entrenar' : `${r.diasSinEntrenar} días sin entrenar`}</span>
+                        )}
+                        <span className={`text-sm font-bold tabular-nums flex-shrink-0 ${col.tono}`}>{r.adherencia7}%</span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Recordatorio masivo */}
       {enRiesgo.length > 0 && (
@@ -234,9 +261,9 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                 <p className="text-sm font-semibold truncate">{s.client.name} {s.client.surname}</p>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   {s.racha > 0 && (
-                    <span className="text-[10px] text-accent font-semibold">🔥 {s.racha} racha</span>
+                    <span className="text-[11px] text-accent font-semibold">🔥 {s.racha} racha</span>
                   )}
-                  <span className={`text-[10px] font-semibold flex items-center gap-1 ${
+                  <span className={`text-[11px] font-semibold flex items-center gap-1 ${
                     esCritico ? 'text-warn' : esRiesgo ? 'text-accent' : 'text-ok'
                   }`}>
                     <Clock className="w-3 h-3" />
@@ -246,7 +273,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                      `${s.diasSinEntrenar} días sin entrenar`}
                   </span>
                   {s.needsAttention && (
-                    <span className="text-[10px] text-warn font-bold">⚠️ Cumplimiento en caída</span>
+                    <span className="text-[11px] text-warn font-bold">⚠️ Cumplimiento en caída</span>
                   )}
                 </div>
               </div>
@@ -266,7 +293,7 @@ export function AdherenciaTab({ clients, logsMap }: Props) {
                     s.adherencia >= 70 ? 'bg-ok' : s.adherencia >= 40 ? 'bg-accent' : 'bg-warn'
                   }`} style={{ width: `${s.adherencia}%` }} />
                 </div>
-                <p className="text-[9px] text-muted mt-1">30d: {s.compliance30}% · 90d: {s.compliance90}%</p>
+                <p className="text-[11px] text-muted mt-1">30d: {s.compliance30}% · 90d: {s.compliance90}%</p>
               </div>
 
               {/* Acciones */}

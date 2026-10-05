@@ -57,12 +57,12 @@ function programToWeeks(weeks: ProgramWeek[]): WeekPlan[] {
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
-  { id: 'workout',    label: 'Workout',             color: '#f59e0b', bg: 'bg-amber-50',  border: 'border-amber-200',  text: 'text-amber-700',  icon: Dumbbell },
-  { id: 'cardio',     label: 'Cardio',              color: '#ef4444', bg: 'bg-red-50',    border: 'border-red-200',    text: 'text-red-700',    icon: Timer },
-  { id: 'evolucion',  label: 'Registrar evolución', color: '#06b6d4', bg: 'bg-cyan-50',   border: 'border-cyan-200',   text: 'text-cyan-700',   icon: Camera },
-  { id: 'formulario', label: 'Formulario',          color: '#22c55e', bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  icon: ClipboardList },
-  { id: 'mensaje',    label: 'Mensaje',             color: '#8b5cf6', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', icon: MessageSquare },
-  { id: 'video',      label: 'Vídeo',               color: '#f97316', bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', icon: Video },
+  { id: 'workout', label: 'Workout', color: '#6e5438', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Dumbbell },
+  { id: 'cardio', label: 'Cardio', color: '#8a7358', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Timer },
+  { id: 'evolucion', label: 'Registrar evolución', color: '#a38b6f', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Camera },
+  { id: 'formulario', label: 'Formulario', color: '#7d7468', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: ClipboardList },
+  { id: 'mensaje', label: 'Mensaje', color: '#5a4a38', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: MessageSquare },
+  { id: 'video', label: 'Vídeo', color: '#b39d82', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Video },
 ] as const
 
 const TIPOS_DEFAULT = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
@@ -183,9 +183,9 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                                 .filter(t => t.name.toLowerCase().includes(workoutSearch.toLowerCase()))
                                 .map(tmpl => (
                                   <label key={tmpl.id}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedWorkoutId === tmpl.id ? 'bg-amber-50 border-amber-300' : 'border-transparent hover:bg-gray-50'}`}>
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedWorkoutId === tmpl.id ? 'bg-accent/10 border-accent' : 'border-transparent hover:bg-gray-50'}`}>
                                     <div onClick={() => setSelectedWorkoutId(tmpl.id)}
-                                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedWorkoutId === tmpl.id ? 'border-amber-500 bg-amber-500' : 'border-gray-300'}`}>
+                                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedWorkoutId === tmpl.id ? 'border-accent bg-accent' : 'border-gray-300'}`}>
                                       {selectedWorkoutId === tmpl.id && <div className="w-2 h-2 bg-white rounded-full" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -206,7 +206,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                                 onClose()
                               }}
                               disabled={!selectedWorkoutId}
-                              className="w-full py-2.5 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 disabled:opacity-40">
+                              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40">
                               Añadir workout
                             </button>
                           </>
@@ -219,7 +219,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                         <div className="grid grid-cols-2 gap-1.5">
                           {CARDIO_TYPES.map(ct => (
                             <button key={ct} onClick={() => setCardioType(ct)}
-                              className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all text-left ${cardioType === ct ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all text-left ${cardioType === ct ? 'bg-accent/10 border-accent text-accent' : 'bg-white border-gray-200 text-gray-600'}`}>
                               {ct}
                             </button>
                           ))}
@@ -228,7 +228,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           placeholder="Ej: 30 min al 70% FCM..." rows={2}
                           className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none resize-none" />
                         <button onClick={() => saveTask('cardio')}
-                          className="w-full py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold">Guardar cardio</button>
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Guardar cardio</button>
                       </div>
                     )}
                     {/* EVOLUCIÓN */}
@@ -236,16 +236,16 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                       <div className="space-y-2">
                         {Object.entries(evolucionItems).map(([key, val]) => (
                           <label key={key}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${val ? 'bg-cyan-50 border-cyan-300' : 'bg-white border-gray-200'}`}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${val ? 'bg-accent/10 border-accent' : 'bg-white border-gray-200'}`}
                             onClick={() => setEvolucionItems(p => ({ ...p, [key]: !p[key as keyof typeof p] }))}>
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${val ? 'bg-cyan-500 border-cyan-500' : 'border-gray-300'}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${val ? 'bg-accent border-accent' : 'border-gray-300'}`}>
                               {val && <Check className="w-3 h-3 text-white" />}
                             </div>
                             <span className="text-sm font-medium">{EVOLUCION_LABELS[key]}</span>
                           </label>
                         ))}
                         <button onClick={() => saveTask('evolucion')}
-                          className="w-full py-2.5 bg-cyan-500 text-white rounded-xl text-sm font-semibold mt-2">Añadir registro</button>
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold mt-2">Añadir registro</button>
                       </div>
                     )}
                     {/* FORMULARIO */}
@@ -257,16 +257,16 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           <>
                             {surveyTemplates.map(t => (
                               <label key={t.id}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${formularioId === t.id ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200'}`}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${formularioId === t.id ? 'bg-accent/10 border-accent' : 'bg-white border-gray-200'}`}
                                 onClick={() => setFormularioId(t.id)}>
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${formularioId === t.id ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${formularioId === t.id ? 'border-accent bg-accent' : 'border-gray-300'}`}>
                                   {formularioId === t.id && <div className="w-2 h-2 bg-white rounded-full" />}
                                 </div>
                                 <span className="text-sm">{t.name}</span>
                               </label>
                             ))}
                             <button onClick={() => saveTask('formulario')}
-                              className="w-full py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold mt-1">Añadir formulario</button>
+                              className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold mt-1">Añadir formulario</button>
                           </>
                         )}
                       </div>
@@ -278,7 +278,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           placeholder="Mensaje que verá el cliente este día..." rows={3}
                           className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none resize-none" />
                         <button onClick={() => saveTask('mensaje')} disabled={!mensaje.trim()}
-                          className="w-full py-2.5 bg-violet-500 text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir mensaje</button>
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir mensaje</button>
                       </div>
                     )}
                     {/* VÍDEO */}
@@ -291,7 +291,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           placeholder="URL (YouTube, Vimeo...)"
                           className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
                         <button onClick={() => saveTask('video')} disabled={!videoUrl.trim()}
-                          className="w-full py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir vídeo</button>
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir vídeo</button>
                       </div>
                     )}
                   </div>

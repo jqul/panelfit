@@ -34,15 +34,15 @@ export function CargaTrendChart({ logs }: { logs: TrainingLogs }) {
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold" style={{ color: '#6e5438' }}>{last.fitness}</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Fitness (28d)</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Fitness (28d)</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold" style={{ color: '#e07b54' }}>{last.fatigue}</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Fatiga (7d)</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Fatiga (7d)</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold" style={{ color: last.form >= 0 ? '#22c55e' : '#ef4444' }}>{last.form >= 0 ? '+' : ''}{last.form}</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Forma</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Forma</p>
         </div>
       </div>
 

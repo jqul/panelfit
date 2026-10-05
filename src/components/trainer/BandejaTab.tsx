@@ -73,7 +73,7 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
                     <p className="text-sm font-semibold truncate">{item.clientName}</p>
                     <p className={`text-xs truncate ${item.warn ? 'text-warn font-medium' : 'text-muted'}`}>{item.warn && !/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(item.detail) && '⚠️ '}{item.detail}</p>
                   </div>
-                  <span className="text-[10px] text-muted flex-shrink-0 hidden sm:block">{new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                  <span className="text-[11px] text-muted flex-shrink-0 hidden sm:block">{new Date(item.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
                   <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                 </button>
               </div>

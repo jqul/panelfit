@@ -51,7 +51,7 @@ export function RachaStats({ logs }: { logs: TrainingLogs }) {
           <div key={label} className="bg-bg rounded-xl p-4 text-center">
             <p className="text-2xl mb-1">{icon}</p>
             <p className={`text-2xl font-serif font-bold ${color}`}>{value}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
           </div>
         ))}
       </div>

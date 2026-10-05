@@ -40,7 +40,7 @@ export function OnboardingChecklist({ client, plan, totalSessions }: Props) {
               : <Circle className="w-4 h-4 text-muted/40 flex-shrink-0" />}
             <div className="flex-1 min-w-0">
               <p className={`text-sm ${s.done ? 'text-muted line-through' : 'font-medium'}`}>{s.label}</p>
-              {!s.done && s.hint && <p className="text-[10px] text-muted mt-0.5">{s.hint}</p>}
+              {!s.done && s.hint && <p className="text-[11px] text-muted mt-0.5">{s.hint}</p>}
             </div>
           </div>
         ))}

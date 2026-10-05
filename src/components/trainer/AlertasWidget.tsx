@@ -72,7 +72,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
       <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
         {overdue.length > 0 && (
           <div className="px-3 py-1.5 bg-warn/5">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-warn">Vencidos</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-warn">Vencidos</p>
           </div>
         )}
         {allPending.slice(0, 8).map(({ alert, client }) => {

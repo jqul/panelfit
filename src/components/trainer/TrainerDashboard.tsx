@@ -10,7 +10,7 @@ import {
   LogOut, UserPlus, Search, Trash2, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox, MoreHorizontal
+  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -143,13 +143,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     handleTabChange(tab)
   }
 
+  // Solo dos acciones con peso visual: crear cliente (principal) y workouts.
+  // Encuestas, Adherencia, Mensajes e Insights ya están en la navegación.
   const QUICK_ACTIONS = [
-    { icon: UserPlus,      label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8',  action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,      label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('templates') },
-    { icon: Send,          label: 'Encuesta',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('encuestas') },
-    { icon: BarChart2,     label: 'Adherencia',    color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp,    label: 'Insights',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('insights') },
+    { icon: UserPlus, label: 'Nuevo cliente', color: 'text-white', bg: 'bg-ink',    action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
+    { icon: Dumbbell, label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5', action: () => handleTabChange('templates'), disabled: false },
   ]
 
   // 5 destinos visibles — "Planificar" y "Más" abren en su primer/único
@@ -183,7 +181,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       </div>
       {myTeams.length > 0 && onSwitchTeam && (
         <div className="px-4 py-2.5 border-b border-border bg-bg-alt/30">
-          <label className="block text-[9px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
           <select value={teamContext?.uid || ''} onChange={e => {
               const sel = myTeams.find(t => t.uid === e.target.value)
               onSwitchTeam(sel || null)
@@ -201,18 +199,18 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-            <p className="text-[10px] text-muted truncate">{userProfile.email}</p>
+            <p className="text-[11px] text-muted truncate">{userProfile.email}</p>
           </div>
         </div>
       </div>
       <div className="px-3 py-3 border-b border-border">
-        <p className="text-[10px] font-semibold text-muted/50 px-2 mb-2 tracking-wider">Accesos rápidos</p>
+        <p className="text-[11px] font-semibold text-muted/60 px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
           {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
             <button key={label} onClick={action} disabled={disabled}
               className={`flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
               <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${color}`} />
-              <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
+              <span className={`text-xs font-semibold leading-tight ${color}`}>{label}</span>
             </button>
           ))}
         </div>
@@ -224,7 +222,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             <Icon className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1 text-left">{label}</span>
             {badge !== undefined && badge > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isTopNavActive(id) ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${isTopNavActive(id) ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
             )}
           </button>
         ))}
@@ -328,7 +326,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <Icon className={`w-4 h-4 ${color}`} />
                         </div>
                         {prev !== undefined && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
                             {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)}
                           </span>
                         )}
@@ -429,10 +427,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                                 <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
                                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                                 </div>
-                                <span className="text-[10px] font-bold w-8 text-right flex-shrink-0" style={{ color: barColor }}>{pct}%</span>
+                                <span className="text-[11px] font-bold w-8 text-right flex-shrink-0" style={{ color: barColor }}>{pct}%</span>
                               </div>
                             </div>
-                            <span className="text-[10px] text-muted flex-shrink-0 hidden sm:block">{formatLastActive(c.lastActive)}</span>
+                            <span className="text-[11px] text-muted flex-shrink-0 hidden sm:block">{formatLastActive(c.lastActive)}</span>
                           </button>
                         )
                       })}
@@ -456,9 +454,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {!c.hasPlan && <span className="text-[10px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
-                            {c.hasPlan && <span className="text-[10px] text-muted">{formatLastActive(c.lastActive)}</span>}
-                            {!!c.weeklyDays && <span className="text-[10px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
+                            {!c.hasPlan && <span className="text-[11px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
+                            {c.hasPlan && <span className="text-[11px] text-muted">{formatLastActive(c.lastActive)}</span>}
+                            {!!c.weeklyDays && <span className="text-[11px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -490,7 +488,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     <Inbox className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Bandeja</h3>
                     {inboxPendingCount > 0 && (
-                      <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{inboxPendingCount}</span>
+                      <span className="ml-auto text-[11px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{inboxPendingCount}</span>
                     )}
                   </button>
                   {inboxLoading ? (
@@ -510,7 +508,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                             <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{item.clientName[0]?.toUpperCase()}</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-semibold truncate">{item.clientName}</p>
-                              <p className="text-[10px] text-muted truncate">{item.detail}</p>
+                              <p className="text-[11px] text-muted truncate">{item.detail}</p>
                             </div>
                             <ChevronRight className="w-3 h-3 text-muted flex-shrink-0" />
                           </button>
@@ -535,7 +533,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-ok/10 flex items-center justify-center text-xs font-bold text-ok flex-shrink-0 mt-0.5">{ev.clientName[0]}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs leading-tight"><span className="font-semibold">{ev.clientName}</span><span className="text-muted"> {ev.text}</span></p>
-                            <p className="text-[10px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
+                            <p className="text-[11px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
                           </div>
                           <CheckCircle2 className="w-3.5 h-3.5 text-ok flex-shrink-0 mt-0.5" />
                         </div>
@@ -554,7 +552,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       <button key={label} onClick={action} disabled={disabled}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
                         <Icon className={`w-4 h-4 ${color}`} />
-                        <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
+                        <span className={`text-xs font-semibold leading-tight ${color}`}>{label}</span>
                       </button>
                     ))}
                   </div>
@@ -620,7 +618,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                            <p className="text-[10px] text-muted mt-0.5">
+                            <p className="text-[11px] text-muted mt-0.5">
                               {client.doneToday ? <span className="text-ok font-bold">Entrenó hoy</span> : formatLastActive(client.lastActive)}
                             </p>
                           </div>
@@ -628,16 +626,16 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                         {client.hasPlan && (
                           <div className="mb-3">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-muted">Cumplimiento semanal</span>
-                              <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
+                              <span className="text-[11px] text-muted">Cumplimiento semanal</span>
+                              <span className="text-[11px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
                             </div>
                             <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
                               <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
                             </div>
-                            {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
-                            {client.highAcwr && <p className="text-[10px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
-                            {client.highJumpDrop && <p className="text-[10px] text-warn font-semibold mt-1.5">🦵 Caída de salto ({client.jumpDropPct}% en {client.jumpDropTestName}) — fatiga neuromuscular</p>}
-                            {client.atRisk && <p className="text-[10px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
+                            {!!client.weeklyDays && <p className="text-[11px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
+                            {client.highAcwr && <p className="text-[11px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
+                            {client.highJumpDrop && <p className="text-[11px] text-warn font-semibold mt-1.5">🦵 Caída de salto ({client.jumpDropPct}% en {client.jumpDropTestName}) — fatiga neuromuscular</p>}
+                            {client.atRisk && <p className="text-[11px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
                           </div>
                         )}
                         {!client.hasPlan && (
@@ -926,8 +924,8 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div className="px-4 py-3 flex items-center gap-3" style={{ backgroundColor: brandColor }}>
           {brandLogo ? <img src={brandLogo} className="w-9 h-9 rounded-full object-cover border-2 border-white/40 flex-shrink-0" alt="" />
             : <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>}
-          <div><p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>{bio && <p className="text-white/60 text-[10px] truncate max-w-xs">{bio}</p>}</div>
-          <span className="ml-auto text-white/40 text-[10px]">Preview</span>
+          <div><p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>{bio && <p className="text-white/60 text-[11px] truncate max-w-xs">{bio}</p>}</div>
+          <span className="ml-auto text-white/40 text-[11px]">Preview</span>
         </div>
         <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
           <p className="text-muted/60 italic text-xs">Así se verá el panel de tus clientes</p>
@@ -970,7 +968,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div className="space-y-4">
           {GROUPS.map(g => (
             <div key={g.id}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
               <div className="flex flex-wrap gap-2">
                 {g.sections.map(id => {
                   const s = SECTIONS.find(x => x.id === id)!
@@ -998,7 +996,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
             <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
               {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
             </label>
-            <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB</p>
+            <p className="text-[11px] text-muted">JPG, PNG · Máx 2MB</p>
           </div>
         </div>
       </div>
@@ -1010,23 +1008,23 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
               className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${temaId === tema.id ? 'border-ink shadow-md scale-95' : 'border-transparent hover:border-border'}`}
               style={{ backgroundColor: tema.bg }}>
               <div className="w-8 h-8 rounded-full shadow-sm" style={{ backgroundColor: tema.color }} />
-              <span className="text-[10px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
-              {temaId === tema.id && <span className="text-[9px] font-bold text-ink">✓</span>}
+              <span className="text-[11px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
+              {temaId === tema.id && <span className="text-[11px] font-bold text-ink">✓</span>}
             </button>
           ))}
         </div>
         <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold text-muted mb-2">Color principal</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandColor}</p><p className="text-[10px] text-muted">Header y botones</p></div></div></div>
+            <div className="flex items-center gap-3"><input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandColor}</p><p className="text-[11px] text-muted">Header y botones</p></div></div></div>
           <div><label className="block text-xs font-semibold text-muted mb-2">Color de fondo</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[10px] text-muted">Fondo del panel</p></div></div></div>
+            <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[11px] text-muted">Fondo del panel</p></div></div></div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Imagen de fondo</h3>
         <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
           {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
-            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
+            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[11px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
       <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">

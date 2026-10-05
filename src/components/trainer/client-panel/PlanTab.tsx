@@ -222,13 +222,13 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-sm truncate">{prog.name}</p>
-                          {isSuggested && <span className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">✓ Sugerido</span>}
+                          {isSuggested && <span className="text-[10px] bg-ok/10 text-ok px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">✓ Sugerido</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
                           <span className="text-[10px] text-muted">{(prog.weeks || []).length} sem · {totalTasks} tareas</span>
                           {progLabels.map(l => (
-                            <span key={l.id} className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border"
+                            <span key={l.id} className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold border"
                               style={{ backgroundColor: l.color + '15', borderColor: l.color + '40', color: l.color }}>
                               {l.emoji} {l.name}
                             </span>

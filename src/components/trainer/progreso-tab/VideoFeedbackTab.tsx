@@ -185,9 +185,9 @@ function VideoFeedbackCard({ video, onOpen }: { video: VideoFeedbackRow; onOpen:
         </div>
       </div>
       {isPending ? (
-        <span className="text-[9px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full flex-shrink-0">Pendiente</span>
+        <span className="text-[10px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full flex-shrink-0">Pendiente</span>
       ) : (
-        <span className="text-[9px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full flex-shrink-0">✓ Comentado</span>
+        <span className="text-[10px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full flex-shrink-0">✓ Comentado</span>
       )}
     </button>
   )

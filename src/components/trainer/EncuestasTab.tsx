@@ -121,7 +121,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
                   <button onClick={() => moveQ(q.id, -1)} disabled={i === 0} className="p-1 text-muted disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
                   <button onClick={() => moveQ(q.id, 1)} disabled={i === questions.length - 1} className="p-1 text-muted disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
                   <button onClick={() => updateQ(q.id, { required: !q.required })}
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold border transition-all ${q.required ? 'bg-accent text-white border-accent' : 'border-border text-muted'}`}>
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all ${q.required ? 'bg-accent text-white border-accent' : 'border-border text-muted'}`}>
                     {q.required ? 'REQ' : 'OPC'}
                   </button>
                   <button onClick={() => deleteQ(q.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>

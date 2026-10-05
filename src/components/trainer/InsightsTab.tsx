@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { ClientData, TrainingLogs } from '../../types'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
-import { TrendingUp, TrendingDown, Award, Zap, BarChart2 } from 'lucide-react'
+import { Zap, BarChart2 } from 'lucide-react'
+import { buildConclusions } from '../../lib/conclusions'
+import { ConclusionList } from './ConclusionList'
 
 interface Props {
   clients: ClientData[]
@@ -80,7 +82,7 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
           { n: '3', t: 'Envíale el enlace', d: 'El cliente empieza a entrenar y los datos fluyen aquí automáticamente.' },
         ].map(({ n, t, d }) => (
           <div key={n} className="flex items-start gap-3">
-            <span className="w-5 h-5 rounded-full bg-accent/10 text-accent text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span>
+            <span className="w-5 h-5 rounded-full bg-accent/10 text-accent text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span>
             <div>
               <p className="text-sm font-semibold">{t}</p>
               <p className="text-xs text-muted">{d}</p>
@@ -93,10 +95,7 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
 
   const mediaAdherencia7 = stats.length ? Math.round(stats.reduce((a, s) => a + s.adherencia7, 0) / stats.length) : 0
   const mediaAdherencia30 = stats.length ? Math.round(stats.reduce((a, s) => a + s.adherencia30, 0) / stats.length) : 0
-  const totalEjercicios = stats.reduce((a, s) => a + s.totalEjerciciosHechos, 0)
-  const enRiesgo = stats.filter(s => s.diasSinEntrenar >= 7)
   const mejorCliente = [...stats].sort((a, b) => b.adherencia30 - a.adherencia30)[0]
-  const masConstante = [...stats].sort((a, b) => b.racha - a.racha)[0]
 
   // Día de la semana con más actividad
   const actividadPorDia: Record<string, number> = {}
@@ -116,8 +115,10 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
     const semana2 = s.fechas.filter(f => new Date(f) >= hace7).length
     return { ...s, mejora: semana2 - semana1 }
   })
-  const masImproved = conTendencia.filter(s => s.mejora > 0).sort((a, b) => b.mejora - a.mejora)[0]
-  const masDropped = conTendencia.filter(s => s.mejora < 0).sort((a, b) => a.mejora - b.mejora)[0]
+  const conclusiones = buildConclusions(conTendencia.map(s => ({
+    id: s.client.id, name: s.client.name, adherencia7: s.adherencia7, diasSinEntrenar: s.diasSinEntrenar,
+    racha: s.racha, mejora: s.mejora, esNuevo: s.client.createdAt >= Date.now() - 3 * 86400000,
+  })))
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -126,79 +127,14 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
         <p className="text-muted text-sm mt-1">Análisis de rendimiento de tu negocio</p>
       </div>
 
-      {/* KPIs principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Adherencia 7 días', value: `${mediaAdherencia7}%`, color: mediaAdherencia7 >= 60 ? 'text-ok' : 'text-warn', sub: 'media de todos' },
-          { label: 'Adherencia 30 días', value: `${mediaAdherencia30}%`, color: mediaAdherencia30 >= 60 ? 'text-ok' : 'text-warn', sub: 'tendencia mensual' },
-          { label: 'Ejercicios totales', value: totalEjercicios, color: 'text-accent', sub: 'completados en total' },
-          { label: 'En riesgo abandono', value: enRiesgo.length, color: enRiesgo.length > 0 ? 'text-warn' : 'text-ok', sub: '+7 días sin entrenar' },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-2xl p-5">
-            <p className={`text-3xl font-serif font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-widest font-semibold mt-1">{s.label}</p>
-            <p className="text-[10px] text-muted mt-0.5">{s.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Highlights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Cliente estrella */}
-        {mejorCliente && (
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 bg-ok/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <Award className="w-6 h-6 text-ok" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Cliente más constante</p>
-              <p className="font-serif font-bold text-lg mt-0.5">{mejorCliente.client.name} {mejorCliente.client.surname}</p>
-              <p className="text-xs text-ok font-semibold">{mejorCliente.adherencia30}% adherencia este mes</p>
-            </div>
-          </div>
-        )}
-
-        {/* Mayor racha */}
-        {masConstante && masConstante.racha > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 bg-warn/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl">🔥</span>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Mayor racha activa</p>
-              <p className="font-serif font-bold text-lg mt-0.5">{masConstante.client.name} {masConstante.client.surname}</p>
-              <p className="text-xs text-warn font-semibold">{masConstante.racha} días consecutivos</p>
-            </div>
-          </div>
-        )}
-
-        {/* Mejora semanal */}
-        {masImproved && (
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 bg-accent/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <TrendingUp className="w-6 h-6 text-accent" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Mejor mejora esta semana</p>
-              <p className="font-serif font-bold text-lg mt-0.5">{masImproved.client.name} {masImproved.client.surname}</p>
-              <p className="text-xs text-accent font-semibold">+{masImproved.mejora} días más que la semana anterior</p>
-            </div>
-          </div>
-        )}
-
-        {/* Bajada */}
-        {masDropped && (
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-center gap-4">
-            <div className="w-12 h-12 bg-warn/10 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <TrendingDown className="w-6 h-6 text-warn" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Mayor caída esta semana</p>
-              <p className="font-serif font-bold text-lg mt-0.5">{masDropped.client.name} {masDropped.client.surname}</p>
-              <p className="text-xs text-warn font-semibold">{masDropped.mejora} días menos que la semana anterior</p>
-            </div>
-          </div>
-        )}
+      {/* Conclusiones: lo que está pasando, en frases */}
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">Lo que importa esta semana</p>
+        <ConclusionList items={conclusiones} />
+        <p className="text-xs text-muted mt-5 pt-4 border-t border-border/50">
+          Adherencia media: <span className="font-semibold text-ink">{mediaAdherencia7}%</span> en 7 días · <span className="font-semibold text-ink">{mediaAdherencia30}%</span> en 30 días
+          {mejorCliente && mejorCliente.adherencia30 > 0 && <> · Más constante: <span className="font-semibold text-ink">{mejorCliente.client.name} {mejorCliente.client.surname}</span> ({mejorCliente.adherencia30}% este mes)</>}
+        </p>
       </div>
 
       {/* Día más activo */}
@@ -218,7 +154,7 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
                 <div key={dia} className="flex-1 flex flex-col items-center gap-1">
                   <div className={`w-full rounded-lg transition-all ${isMax ? 'bg-accent' : 'bg-bg-alt border border-border'}`}
                     style={{ height: `${h}px` }} />
-                  <p className="text-[9px] text-muted capitalize">{dia.slice(0, 3)}</p>
+                  <p className="text-[11px] text-muted capitalize">{dia.slice(0, 3)}</p>
                 </div>
               )
             })}
@@ -274,7 +210,7 @@ export function InsightsTab({ clients, logsMap, especialidades = [] }: Props) {
                 <p className={`text-sm font-bold ${s.adherencia30 >= 60 ? 'text-ok' : s.adherencia30 >= 30 ? 'text-accent' : 'text-warn'}`}>
                   {s.adherencia30}%
                 </p>
-                <p className="text-[10px] text-muted">30 días</p>
+                <p className="text-[11px] text-muted">30 días</p>
               </div>
             </div>
           ))}

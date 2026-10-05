@@ -158,7 +158,7 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
               <input type="range" min={1} max={5} step={1} value={values[m.key]}
                 onChange={e => setValues(s => ({ ...s, [m.key]: parseInt(e.target.value) }))}
                 className="w-full accent-accent h-2 cursor-pointer" />
-              <div className="flex justify-between text-[9px] text-muted mt-0.5">
+              <div className="flex justify-between text-[10px] text-muted mt-0.5">
                 <span>{m.lowLabel}</span><span>{m.highLabel}</span>
               </div>
             </div>

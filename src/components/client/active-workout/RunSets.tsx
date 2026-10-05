@@ -44,9 +44,9 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
   return (
     <div>
       <div className="grid grid-cols-[28px_1fr_108px_36px] gap-1 px-3 pb-1">
-        <p className="text-[9px] uppercase text-muted font-bold text-center">{isTest ? 'Test' : 'Tirada'}</p>
-        <p className="text-[9px] uppercase text-muted font-bold text-center">Objetivo</p>
-        <p className="text-[9px] uppercase text-muted font-bold text-center">{isTest ? 'Metros' : 'Tiempo'}</p>
+        <p className="text-[10px] uppercase text-muted font-bold text-center">{isTest ? 'Test' : 'Tirada'}</p>
+        <p className="text-[10px] uppercase text-muted font-bold text-center">Objetivo</p>
+        <p className="text-[10px] uppercase text-muted font-bold text-center">{isTest ? 'Metros' : 'Tiempo'}</p>
         <div />
       </div>
 
@@ -118,11 +118,11 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
         <div className="mx-3 mb-3 mt-1 grid grid-cols-2 gap-2">
           <div className="bg-bg rounded-xl p-2.5 text-center">
             <p className="text-base font-bold text-accent">{formatDistance(isTest ? (sets[0]?.distanceM || 0) : totalDist)}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider">{isTest ? 'Distancia' : 'Distancia total'}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider">{isTest ? 'Distancia' : 'Distancia total'}</p>
           </div>
           <div className="bg-bg rounded-xl p-2.5 text-center">
             <p className="text-base font-bold text-ink">{formatPace(paceSecPerKm(timedSec, timedDist))}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider">Ritmo medio</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider">Ritmo medio</p>
           </div>
         </div>
       )}

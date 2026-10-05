@@ -81,9 +81,9 @@ export function CicloRendimientoChart({ clientId, logs }: { clientId: string; lo
       <div className="grid grid-cols-4 gap-2">
         {data.map(d => (
           <div key={d.fase} className="text-center">
-            <p className="text-[9px] text-muted uppercase tracking-wider">{d.fase}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider">{d.fase}</p>
             <p className="text-xs font-bold">{d.sesiones} ses.</p>
-            <p className="text-[9px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
+            <p className="text-[10px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
           </div>
         ))}
       </div>

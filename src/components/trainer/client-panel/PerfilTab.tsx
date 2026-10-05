@@ -9,6 +9,7 @@ import { ReadinessSummary } from './ReadinessSummary'
 import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
 import { OnboardingChecklist } from './OnboardingChecklist'
+import { FichaSections } from './FichaSections'
 
 export interface ClientAlert {
   id: string
@@ -26,7 +27,8 @@ export const ALERT_TYPES = [
   { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
 ] as const
 
-export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId }: {
+export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia }: {
+  adherencia?: number  // % de ejercicios del plan completados
   client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
   onUpdate: (updates: Record<string, any>) => Promise<void>
   labels?: TrainerLabel[]
@@ -107,19 +109,25 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
+          { label: 'Adherencia', value: adherencia !== undefined ? `${adherencia}%` : '—', icon: '🎯', color: adherencia !== undefined && adherencia < 40 ? 'text-warn' : 'text-ok' },
+          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ink' },
           { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
-          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ok' },
           { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
         ].map(s => (
           <div key={s.label} className="bg-white border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <p className="text-xl mb-1">{s.icon}</p>
             <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
+      {alerts.filter(a => !a.done).length > 0 && (
+        <p className="flex items-center gap-2 px-4 py-2.5 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn">
+          ⚠️ {alerts.filter(a => !a.done).length} recordatorio{alerts.filter(a => !a.done).length > 1 ? 's' : ''} pendiente{alerts.filter(a => !a.done).length > 1 ? 's' : ''}
+        </p>
+      )}
 
       <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
 
@@ -152,7 +160,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                 )
               })}
             </div>
-            <p className="text-[10px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
+            <p className="text-[11px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
           </div>
         </div>
       ) : (
@@ -167,7 +175,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             <Bell className="w-4 h-4 text-warn" />
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Recordatorios</p>
             {pendingAlerts.length > 0 && (
-              <span className="text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full">{pendingAlerts.length}</span>
+              <span className="text-[11px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full">{pendingAlerts.length}</span>
             )}
           </div>
           <button onClick={() => setShowNewAlert(!showNewAlert)}
@@ -225,10 +233,10 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                   className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${meta.border} hover:bg-ok hover:border-ok`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color} ${meta.border} border`}>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color} ${meta.border} border`}>
                       {meta.emoji} {meta.label}
                     </span>
-                    <span className={`text-[10px] font-semibold ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
+                    <span className={`text-[11px] font-semibold ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
                       {isOverdue ? '⚠ ' : isToday ? '📅 Hoy · ' : ''}{new Date(alert.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
@@ -244,7 +252,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           {/* Completados colapsados */}
           {doneAlerts.length > 0 && (
             <details className="group">
-              <summary className="px-5 py-2.5 text-[10px] text-muted uppercase tracking-wider font-semibold cursor-pointer hover:bg-bg-alt/30 flex items-center gap-2">
+              <summary className="px-5 py-2.5 text-[11px] text-muted uppercase tracking-wider font-semibold cursor-pointer hover:bg-bg-alt/30 flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
                 {doneAlerts.length} completado{doneAlerts.length > 1 ? 's' : ''}
               </summary>
@@ -349,7 +357,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
               rows={2}
               className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
           </div>
-          <p className="text-[10px] text-muted">Solo lo ves tú — se guarda automáticamente al perder el foco</p>
+          <p className="text-[11px] text-muted">Solo lo ves tú — se guarda automáticamente al perder el foco</p>
         </div>
       </div>
 
@@ -364,7 +372,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             placeholder="Observaciones, preferencias, historial médico..."
             rows={4}
             className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
-          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
+          <p className="text-[11px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
         </div>
       </div>
 
@@ -383,6 +391,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       {plan && onPlanChange && trainerId && (
         <MessageTemplatesSection client={client} plan={plan} onChange={onPlanChange} trainerId={trainerId} />
       )}
+
+      <FichaSections client={client} plan={plan} onPlanChange={onPlanChange} trainerId={trainerId} />
     </div>
   )
 }

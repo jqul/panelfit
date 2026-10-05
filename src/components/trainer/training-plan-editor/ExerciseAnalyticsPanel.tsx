@@ -90,7 +90,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
     <div className="w-72 space-y-2.5 overflow-y-auto max-h-full pb-4">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-muted">Analytics</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Analytics</p>
           <p className="font-serif font-bold text-base leading-tight mt-0.5">{exName || 'Ejercicio'}</p>
           {clientName && <p className="text-[10px] text-muted">{clientName}</p>}
         </div>
@@ -101,7 +101,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
         <span className="text-base">{seriesMeta?.emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold text-accent">{seriesMeta?.label}</p>
-          <p className="text-[9px] text-muted leading-tight truncate">{seriesMeta?.desc}</p>
+          <p className="text-[10px] text-muted leading-tight truncate">{seriesMeta?.desc}</p>
         </div>
       </div>
 
@@ -129,19 +129,19 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
           </div>
           {chartData.length >= 2 && (
             <div className="bg-card border border-border rounded-xl p-3">
-              <p className="text-[9px] uppercase tracking-wider text-muted font-bold mb-2">Progresión de peso</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">Progresión de peso</p>
               <MiniLineChart data={chartData} />
             </div>
           )}
           {lastLog && (
             <div className="bg-card border border-border rounded-xl p-3">
-              <p className="text-[9px] uppercase tracking-wider text-muted font-bold mb-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">
                 Última sesión · {new Date(lastLog.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
               </p>
               <div className="space-y-1">
                 {lastLog.sets.map((s, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded bg-bg-alt text-[9px] font-bold flex items-center justify-center text-muted flex-shrink-0">{i+1}</span>
+                    <span className="w-4 h-4 rounded bg-bg-alt text-[10px] font-bold flex items-center justify-center text-muted flex-shrink-0">{i+1}</span>
                     <div className="flex-1 bg-bg rounded px-2 py-1 flex justify-between">
                       <span className="text-xs font-bold">{s.weight}kg</span>
                       <span className="text-xs text-muted">×{s.reps}</span>
@@ -158,7 +158,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
             </div>
           )}
           <div className="bg-card border border-border rounded-xl p-3">
-            <p className="text-[9px] uppercase tracking-wider text-muted font-bold mb-2">Historial</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">Historial</p>
             <div className="flex items-end gap-0.5 h-10">
               {chartData.slice(-10).map((d, i) => {
                 const maxY = Math.max(...chartData.map(c => c.y), 1)
@@ -171,7 +171,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
                 )
               })}
             </div>
-            <p className="text-[9px] text-muted mt-1">{exLogs.length} sesión{exLogs.length !== 1 ? 'es' : ''}</p>
+            <p className="text-[10px] text-muted mt-1">{exLogs.length} sesión{exLogs.length !== 1 ? 'es' : ''}</p>
           </div>
         </>
       ) : (
@@ -193,14 +193,14 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
 
       {libEx?.description && (
         <div className="bg-accent/5 border border-accent/15 rounded-xl p-3">
-          <p className="text-[9px] uppercase tracking-wider text-accent font-bold mb-1">Notas técnicas</p>
+          <p className="text-[10px] uppercase tracking-wider text-accent font-bold mb-1">Notas técnicas</p>
           <p className="text-xs leading-relaxed">{libEx.description}</p>
         </div>
       )}
 
       {ex.comment && (
         <div className="bg-card border border-border rounded-xl p-3">
-          <p className="text-[9px] uppercase tracking-wider text-muted font-bold mb-1">Indicaciones al cliente</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-1">Indicaciones al cliente</p>
           <p className="text-xs text-muted leading-relaxed">{ex.comment}</p>
         </div>
       )}

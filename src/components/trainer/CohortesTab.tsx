@@ -216,15 +216,15 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.totalClientes}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Clientes</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Clientes</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.sesionesUltimaSemana}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Sesiones · 7d</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Sesiones · 7d</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.promedioSesiones}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Media/cliente</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Media/cliente</p>
           </div>
         </div>
 
@@ -378,9 +378,9 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold truncate">{coh.nombre}</p>
-                      {!coh.activa && <span className="text-[9px] font-bold text-muted bg-bg-alt px-1.5 py-0.5 rounded-full">Inactivo</span>}
+                      {!coh.activa && <span className="text-[10px] font-bold text-muted bg-bg-alt px-1.5 py-0.5 rounded-full">Inactivo</span>}
                       {isChallenge && (
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${left !== null && left < 0 ? 'bg-muted/10 text-muted' : left !== null && left <= 2 ? 'bg-warn/10 text-warn' : 'bg-accent/10 text-accent'}`}>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${left !== null && left < 0 ? 'bg-muted/10 text-muted' : left !== null && left <= 2 ? 'bg-warn/10 text-warn' : 'bg-accent/10 text-accent'}`}>
                           🏆 {left === null ? 'Reto' : left < 0 ? 'Terminado' : left === 0 ? 'Último día' : `${left}d`}
                         </span>
                       )}

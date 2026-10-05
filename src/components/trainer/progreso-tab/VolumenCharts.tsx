@@ -35,7 +35,7 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
           { label: 'Pico semanal', value: `${maxVol.toLocaleString()} kg`, color: 'text-accent' },
           { label: 'Media/semana', value: `${avg.toLocaleString()} kg`, color: 'text-ink' },
           { label: 'Tendencia', value: `${trend >= 0 ? '+' : ''}${trend.toLocaleString()} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
-        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
+        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
       </div>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
@@ -105,7 +105,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
                   <span className="font-semibold">{g}</span>
                   <span className="flex items-center gap-1.5">
                     <span className="font-bold">{sets} series</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
                   </span>
                 </div>
                 <div className="relative h-1.5 rounded-full bg-bg-alt overflow-hidden">
@@ -116,7 +116,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
               </div>
             )
           })}
-          <p className="text-[9px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
+          <p className="text-[10px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">

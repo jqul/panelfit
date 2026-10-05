@@ -709,7 +709,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                       <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
-                  {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                  {ex.isMain && <span className="text-[10px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
                     const target = resolveWeightFromPercent(ex.weight, best1RM)
@@ -855,12 +855,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
-                <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
+                <p className="text-[10px] uppercase text-muted font-bold text-center">N</p>
+                <p className="text-[10px] uppercase text-muted font-bold text-center">Anterior</p>
+                <p className="text-[10px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
                   KG <Calculator className="w-2.5 h-2.5 opacity-50" />
                 </p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center">Reps</p>
+                <p className="text-[10px] uppercase text-muted font-bold text-center">Reps</p>
                 <div />
               </div>
 

@@ -56,7 +56,7 @@ export function PesosSugeridosChart({ logs, plan }: { logs: TrainingLogs; plan?:
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-sm font-bold" style={{ color: suggestion.color }}>{suggestedWeight} kg</p>
-              <p className="text-[9px] font-semibold" style={{ color: suggestion.color }}>{suggestion.label}</p>
+              <p className="text-[10px] font-semibold" style={{ color: suggestion.color }}>{suggestion.label}</p>
             </div>
           </div>
         ))}

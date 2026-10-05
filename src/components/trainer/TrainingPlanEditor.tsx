@@ -443,7 +443,7 @@ export function TrainingPlanEditor({
                         <div className="grid gap-0 px-4 py-1.5 bg-bg-alt/30 border-b border-border/30"
                           style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}>
                           {['', 'EJERCICIO', 'SERIES', 'PESO / INT.', 'TIPO SERIE', 'REST', 'LOG', 'ACCIONES'].map((h, i) => (
-                            <p key={i} className="text-[9px] font-bold uppercase tracking-wider text-muted text-center first:text-left">{h}</p>
+                            <p key={i} className="text-[10px] font-bold uppercase tracking-wider text-muted text-center first:text-left">{h}</p>
                           ))}
                         </div>
                       )}
@@ -469,7 +469,7 @@ export function TrainingPlanEditor({
                               onDragEnd={() => setDragEx(null)}
                               className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''} ${ex.supersetId ? 'border-l-2 border-warn' : ''}`}>
                               {ex.supersetId && (
-                                <p className="px-4 pt-1.5 text-[9px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
+                                <p className="px-4 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
                               )}
                               <div className="grid items-center gap-0 px-4 py-2 cursor-pointer"
                                 style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}
@@ -563,7 +563,7 @@ export function TrainingPlanEditor({
                                   })()}
                                   {logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName && (
                                     <span title={`Sustituido por: ${logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName}`}
-                                      className="text-[9px] font-semibold text-warn">🔄</span>
+                                      className="text-[10px] font-semibold text-warn">🔄</span>
                                   )}
                                 </div>
 
@@ -635,13 +635,13 @@ export function TrainingPlanEditor({
                                         <div className="flex flex-wrap gap-1 pl-5">
                                           {TEMPO_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { tempo: p })}
-                                              className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {p}
                                             </button>
                                           ))}
                                           {ex.tempo && (
                                             <button onClick={() => updateExercise(activeWeek, di, ri, { tempo: '' })}
-                                              className="px-2 py-0.5 rounded-md text-[9px] font-bold text-muted hover:text-warn">
+                                              className="px-2 py-0.5 rounded-md text-[10px] font-bold text-muted hover:text-warn">
                                               Quitar
                                             </button>
                                           )}
@@ -707,7 +707,7 @@ export function TrainingPlanEditor({
                                         }`}>
                                         <div>
                                           <p className="text-[10px] font-bold text-ink">Mostrar timer al cliente</p>
-                                          <p className="text-[9px] text-muted">
+                                          <p className="text-[10px] text-muted">
                                             {ex.hideRest ? 'Oculto — el cliente no verá la cuenta atrás' : 'Visible — el cliente verá el descanso'}
                                           </p>
                                         </div>

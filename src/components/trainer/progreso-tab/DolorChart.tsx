@@ -79,15 +79,15 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold" style={{ color: INTENSIDAD_COLOR(ultimo.intensidad) }}>{ultimo.intensidad}/10</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Último registro</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Último registro</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-ink">{media}/10</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Media</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Media</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-ink">{zonas.length}</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Zona{zonas.length !== 1 ? 's' : ''}</p>
+          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Zona{zonas.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
             </ResponsiveContainer>
           </div>
           {hasVolumen && (
-            <p className="text-[9px] text-muted mt-1 text-center">Línea: dolor medio semanal (EVA 0-10) · Barras: volumen total de la semana</p>
+            <p className="text-[10px] text-muted mt-1 text-center">Línea: dolor medio semanal (EVA 0-10) · Barras: volumen total de la semana</p>
           )}
         </div>
       )}

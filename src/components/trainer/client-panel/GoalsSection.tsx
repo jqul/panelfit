@@ -153,7 +153,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
                       <p className="text-[11px] font-bold text-muted">
                         Semana del {new Date(r.week_start + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                       </p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ESTADO_META[r.estado].bg} ${ESTADO_META[r.estado].color}`}>
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${ESTADO_META[r.estado].bg} ${ESTADO_META[r.estado].color}`}>
                         {ESTADO_META[r.estado].label}
                       </span>
                     </div>

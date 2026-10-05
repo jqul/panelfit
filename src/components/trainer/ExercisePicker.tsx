@@ -26,7 +26,7 @@ function EspBadge({ esp, small }: { esp: string; small?: boolean }) {
   const color = ESP_COLORS[esp] || { bg: 'bg-bg-alt', text: 'text-muted', border: 'border-border' }
   if (!info) return null
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${color.bg} ${color.text} ${color.border} ${small ? 'text-[9px]' : 'text-[10px]'}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${color.bg} ${color.text} ${color.border} ${small ? 'text-[10px]' : 'text-[10px]'}`}>
       {info.emoji} {small ? '' : info.label}
     </span>
   )
@@ -53,7 +53,7 @@ function ExerciseAlternatives({ selected, library, onPick }: { selected: Library
           </button>
         ))}
       </div>
-      <p className="text-[9px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
+      <p className="text-[10px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
     </div>
   )
 }
@@ -201,14 +201,14 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           {!onlyClientEsp && (
             <div className="flex gap-1 flex-wrap mb-2 flex-shrink-0">
               <button onClick={() => setEspFilter('')}
-                className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border transition-all ${
+                className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
                   espFilter === '' ? 'bg-ink text-white border-ink' : 'border-border text-muted'
                 }`}>
                 Todas {library.length > 0 && `(${library.length})`}
               </button>
               {ESPECIALIDADES.filter(e => espCounts[e.value]).map(e => (
                 <button key={e.value} onClick={() => setEspFilter(espFilter === e.value ? '' : e.value)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border transition-all ${
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
                     espFilter === e.value
                       ? `${ESP_COLORS[e.value]?.bg} ${ESP_COLORS[e.value]?.text} ${ESP_COLORS[e.value]?.border} border-2`
                       : 'border-border text-muted'
@@ -244,9 +244,9 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                      {ex.category && <span className="text-[9px] text-muted">{ex.category}</span>}
+                      {ex.category && <span className="text-[10px] text-muted">{ex.category}</span>}
                       {(!ex.especialidades || ex.especialidades.length === 0) && (
-                        <span className="text-[9px] text-muted/60 italic">genérico</span>
+                        <span className="text-[10px] text-muted/60 italic">genérico</span>
                       )}
                       {ex.especialidades?.slice(0, 2).map(esp => <EspBadge key={esp} esp={esp} small />)}
                     </div>
@@ -284,7 +284,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                   Vídeos — selecciona cuáles añadir
                 </p>
                 {clientEspecialidad && (
-                  <span className="text-[9px] text-accent">
+                  <span className="text-[10px] text-accent">
                     Auto para {ESPECIALIDADES.find(e => e.value === clientEspecialidad)?.label}
                   </span>
                 )}

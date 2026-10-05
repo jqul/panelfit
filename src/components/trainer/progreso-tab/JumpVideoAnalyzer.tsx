@@ -138,7 +138,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
             <select value={fps} onChange={e => setFps(parseInt(e.target.value))} className="px-2 py-1 bg-bg border border-border rounded-lg text-xs outline-none">
               {FPS_OPTIONS.map(f => <option key={f} value={f}>{f} fps</option>)}
             </select>
-            <span className="text-[9px] text-muted">A más fps, más precisión — usa cámara lenta si tu móvil la tiene</span>
+            <span className="text-[10px] text-muted">A más fps, más precisión — usa cámara lenta si tu móvil la tiene</span>
           </div>
 
           <div className={`grid gap-2 ${isDropJump ? 'grid-cols-3' : 'grid-cols-2'}`}>
@@ -157,7 +157,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
               {landing !== null ? `✓ Aterrizaje ${landing.toFixed(3)}s` : 'Marcar aterrizaje'}
             </button>
           </div>
-          {isDropJump && <p className="text-[9px] text-muted -mt-1">Contacto = el pie toca el suelo tras bajar del cajón (antes de saltar)</p>}
+          {isDropJump && <p className="text-[10px] text-muted -mt-1">Contacto = el pie toca el suelo tras bajar del cajón (antes de saltar)</p>}
 
           {isDropJump ? (
             contactTime !== null && flightTime !== null && (

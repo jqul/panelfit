@@ -96,7 +96,7 @@ function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan
           <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
             <div className="flex justify-center mb-1">{k.icon}</div>
             <p className="text-xl font-serif font-bold">{k.value}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
           </div>
         ))}
       </div>
@@ -180,7 +180,7 @@ function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
+                        <span key={si} className="text-[10px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
                       ))}
@@ -226,8 +226,8 @@ function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan
           })}
         </div>
         <div className="flex justify-between mt-2">
-          <span className="text-[9px] text-muted">hace 12 semanas</span>
-          <span className="text-[9px] text-muted">hoy</span>
+          <span className="text-[10px] text-muted">hace 12 semanas</span>
+          <span className="text-[10px] text-muted">hoy</span>
         </div>
       </div>
     </div>
@@ -306,7 +306,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
+                        <span key={si} className="text-[10px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
                       ))}
@@ -315,7 +315,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                   {ex.best > 0 && (
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs font-bold text-accent">{ex.best}kg</p>
-                      <p className="text-[9px] text-muted">mejor</p>
+                      <p className="text-[10px] text-muted">mejor</p>
                     </div>
                   )}
                 </div>
@@ -606,7 +606,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
         <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
             <p className="text-sm font-semibold">{v.exercise_name}</p>
-            <span className={`text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
               {v.status === 'pendiente' ? 'Pendiente' : '✓ Comentado'}
             </span>
           </div>

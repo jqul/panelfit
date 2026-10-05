@@ -32,7 +32,7 @@ export function RMChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPla
               <p className="text-sm font-semibold truncate">{name}</p>
               <p className="text-[10px] text-muted">{peso}kg × {reps} reps{date ? ` · ${new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}` : ''}</p>
             </div>
-            <div className="text-right flex-shrink-0"><p className="text-sm font-bold text-accent">~{rm} kg</p><p className="text-[9px] text-muted uppercase">1RM est.</p></div>
+            <div className="text-right flex-shrink-0"><p className="text-sm font-bold text-accent">~{rm} kg</p><p className="text-[10px] text-muted uppercase">1RM est.</p></div>
           </div>
         ))}
       </div>

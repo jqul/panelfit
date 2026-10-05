@@ -45,7 +45,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
                   <option value="">Seleccionar...</option>
                   {sessionsWithPhotos.map(s => <option key={s.id} value={s.id}>{new Date(s.date+'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</option>)}
                 </select>
-                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[9px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><SignedImage bucket="media" src={session[t]} alt={`Foto de progreso - ${TYPE_LABELS[t]}`} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" /></div> : null)}</div>}
+                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[10px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><SignedImage bucket="media" src={session[t]} alt={`Foto de progreso - ${TYPE_LABELS[t]}`} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" /></div> : null)}</div>}
               </div>
             )
           })}

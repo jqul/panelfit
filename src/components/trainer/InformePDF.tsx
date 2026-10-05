@@ -240,7 +240,7 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
                                   <div className="h-full rounded-full" style={{ width: `${(val/10)*100}%`, backgroundColor: brandColor }} />
                                 </div>
                                 <span className="text-xs font-bold w-4 text-right" style={{ color: brandColor }}>{val}</span>
-                                <span className="text-[9px] text-gray-400 flex-1 truncate">{q.label.split('?')[0].slice(-20)}</span>
+                                <span className="text-[10px] text-gray-400 flex-1 truncate">{q.label.split('?')[0].slice(-20)}</span>
                               </div>
                             )
                           })}

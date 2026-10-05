@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import {
-  X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
-  ClipboardList, Eye, TrendingUp, StickyNote,
+  X, Save, ChevronLeft, FileText, Dumbbell,
+  ClipboardList, Eye, TrendingUp,
   ClipboardCheck, Link, MessageCircle, User
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -21,17 +21,14 @@ import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
 import { EntrenosTab } from './client-panel/EntrenosTab'
-import { NotasTab } from './client-panel/NotasTab'
-import { ConfigTab } from './client-panel/ConfigTab'
 import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
 import { PlanHistoryModal } from './client-panel/PlanHistoryModal'
-import { ValoracionTab } from './client-panel/ValoracionTab'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
 import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
 
-type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
 
 interface Props {
   client: ClientData
@@ -43,15 +40,12 @@ interface Props {
 }
 
 const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] = [
-  { id: 'perfil',   icon: User,          label: 'Perfil',    desc: 'Datos y estadísticas' },
+  { id: 'perfil',   icon: User,          label: 'Resumen',   desc: 'Estado, datos y ficha' },
   { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
   { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
   { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
   { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
   { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
-  { id: 'valoracion',icon: Star,          label: 'Valoración',desc: 'Ficha de valoración' },
-  { id: 'notas',    icon: StickyNote,    label: 'Notas',     desc: 'Notas privadas' },
-  { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
 ]
 
 function useTemplates(trainerId: string) {
@@ -318,8 +312,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || client.objetivo || 'Sin tipo'}</p>
-              {client.phone && <p className="text-[10px] text-[#25D366] truncate">📱 {client.phone}</p>}
+              <p className="text-[11px] text-muted capitalize truncate">{plan?.type || client.objetivo || 'Sin tipo'}</p>
+              {client.phone && <p className="text-[11px] text-[#25D366] truncate">📱 {client.phone}</p>}
             </div>
           </button>
         </div>
@@ -334,7 +328,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           ].map(s => (
             <div key={s.label} className="bg-bg rounded-xl p-2 text-center">
               <p className="font-serif font-bold text-base text-ink">{s.value}</p>
-              <p className="text-[9px] text-muted uppercase tracking-wider">{s.label}</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
         </div>
@@ -347,11 +341,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               <Icon className="w-4 h-4 flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight">{label}</p>
-                <p className={`text-[10px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
+                <p className={`text-[11px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
               </div>
               {/* Badge alertas en pestaña perfil */}
               {id === 'perfil' && pendingAlerts.length > 0 && (
-                <span className="ml-auto text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full flex-shrink-0">
+                <span className="ml-auto text-[11px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full flex-shrink-0">
                   {pendingAlerts.length}
                 </span>
               )}
@@ -390,11 +384,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </button>
             <div className="lg:hidden min-w-0">
               <p className="text-sm font-bold truncate">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted truncate">{TABS.find(t => t.id === activeTab)?.label}</p>
+              <p className="text-[11px] text-muted truncate">{TABS.find(t => t.id === activeTab)?.label}</p>
             </div>
             <div className="hidden lg:block">
               <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
-              <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+              <p className="text-[11px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 lg:gap-3">
@@ -490,6 +484,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     labels={labels}
                     onSaveAlerts={saveAlerts}
                     plan={plan} onPlanChange={handlePlanChange} trainerId={userProfile.uid}
+                    adherencia={adherencia}
                   />
                 </div>
               )}
@@ -523,9 +518,6 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                   </Suspense>
                 </div>
               )}
-              {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
-              {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
-              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} trainerId={userProfile.uid} /></div>}
             </div>
           )}
         </main>
@@ -538,7 +530,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             const isActualWeek = wi === getEffectiveWeekIdx(plan, logs)
             return (
             <div key={wi} className={isActualWeek ? '' : 'opacity-60'}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{isActualWeek ? ' · actual' : ''}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{isActualWeek ? ' · actual' : ''}</p>
               <div className="space-y-1.5 mb-3">
                 {week.days.map((day, di) => (
                   <button key={di} onClick={() => { setLiveSession({ weekIdx: wi, dayIdx: di }); setShowDayPicker(false) }}
