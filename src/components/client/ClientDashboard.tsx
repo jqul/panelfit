@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
+import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
@@ -7,6 +7,7 @@ import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { useClientWeights } from '../../lib/clientWeight'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { adherence28 } from '../../lib/progressSummary'
 
 interface Props {
   plan: TrainingPlan
@@ -114,7 +115,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
   const streak = calcStreak(logs)
   const todaySession = getTodaySession(plan, logs)
-  const totalExDone = Object.values(logs).filter(l => l.done).length
+  // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
+  const adherencia = adherence28(plan, logs)
   const pesoActual = weights[0]?.weight || null
 
   const todayLogs = todaySession
@@ -215,7 +217,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
         <div className="grid grid-cols-3 gap-2">
           {[
             { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha', onClick: undefined },
-            { icon: <CheckCircle2 className="w-4 h-4 text-ok" />, value: totalExDone, label: 'Hechos', onClick: undefined },
+            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia', onClick: undefined },
             {
               icon: <Scale className="w-4 h-4 text-accent" />,
               value: pesoActual ?? '—',

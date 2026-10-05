@@ -16,6 +16,8 @@ import { RachaStats } from '../trainer/progreso-tab/RachaStats'
 import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
 import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
 import { SignedVideo, SignedImage } from '../shared/SignedMedia'
+import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from '../../lib/progressSummary'
+import { localDateKey } from '../../lib/dates'
 
 
 interface Props {
@@ -333,8 +335,98 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
   )
 }
 
+const fmtKg = (n: number) => String(n).replace('.', ',')
+const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
+
+// ── Resumen: la conclusión primero, los datos después ──────
+function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, showRecords, showPeso }: {
+  logs: TrainingLogs; plan?: TrainingPlan | null
+  pesoActual?: number; pesoCambio: number | null
+  onGo: (t: 'records' | 'peso' | 'calendario') => void
+  showRecords: boolean; showPeso: boolean
+}) {
+  const s = useMemo(() => {
+    const bests = collectSessionBests(logs, plan)
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
+    const desde = localDateKey(hace30)
+    return {
+      records: recordHistory(bests).filter(r => r.date >= desde),
+      fuerza: strengthChange(bests),
+      adh: adherence28(plan, logs),
+      racha: streakDays(logs),
+      hayDatos: Object.values(logs).some(l => l.done),
+    }
+  }, [logs, plan])
+
+  if (!s.hayDatos) return (
+    <div className="text-center py-12 text-muted">
+      <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" />
+      <p className="text-sm">Cuando completes tu primer entrenamiento verás aquí cómo progresas.</p>
+    </div>
+  )
+
+  const fuerzaTexto = s.fuerza === null
+    ? 'Repite un ejercicio en dos sesiones y verás aquí cuánto ha subido tu fuerza.'
+    : s.fuerza.pct > 0 ? `Tu fuerza ha subido un ${s.fuerza.pct}% en las últimas 8 semanas.`
+    : s.fuerza.pct === 0 ? 'Tu fuerza se mantiene estable en las últimas 8 semanas.'
+    : `Tus pesos máximos están un ${Math.abs(s.fuerza.pct)}% por debajo de hace 8 semanas.`
+
+  return (
+    <div className="space-y-4">
+      {showRecords && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Nuevos récords</p>
+          {s.records.length === 0 ? (
+            <p className="text-sm text-muted">Sin récords nuevos este mes. Cada sesión te acerca al siguiente.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {s.records.slice(0, 3).map((r, i) => (
+                <li key={i} className="flex items-baseline gap-3">
+                  <span className="flex-1 min-w-0 text-sm font-semibold truncate">{r.name}</span>
+                  <span className="text-sm font-bold text-ok flex-shrink-0">+{fmtKg(r.delta)} kg</span>
+                  <span className="text-xs text-muted flex-shrink-0">{fmtDate(r.date)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button onClick={() => onGo('records')} className="mt-4 text-sm font-semibold text-accent hover:underline">Ver todos los récords →</button>
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">💪 Fuerza</p>
+        <p className="text-base font-serif font-bold leading-snug">{fuerzaTexto}</p>
+        {s.fuerza && <p className="text-xs text-muted mt-1.5">Calculado con {s.fuerza.exercises} {s.fuerza.exercises === 1 ? 'ejercicio' : 'ejercicios'} que has repetido.</p>}
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">🎯 Constancia</p>
+        {s.adh !== null ? (
+          <p className="text-base font-serif font-bold leading-snug">Has hecho el {s.adh}% de tus sesiones de las últimas 4 semanas.</p>
+        ) : (
+          <p className="text-sm text-muted">Cuando tengas un plan asignado verás tu constancia aquí.</p>
+        )}
+        {s.racha >= 2 && <p className="text-sm text-accent font-semibold mt-1.5">🔥 {s.racha} días seguidos entrenando</p>}
+        <button onClick={() => onGo('calendario')} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver calendario →</button>
+      </div>
+
+      {showPeso && pesoActual !== undefined && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">⚖️ Peso</p>
+          <p className="text-3xl font-serif font-bold">{fmtKg(pesoActual)} kg</p>
+          {pesoCambio !== null && Math.abs(pesoCambio) >= 0.1 && (
+            <p className="text-sm text-muted mt-1">{pesoCambio < 0 ? '↓' : '↑'} {fmtKg(Math.round(Math.abs(pesoCambio) * 10) / 10)} kg desde que empezaste a registrarte</p>
+          )}
+          <button onClick={() => onGo('peso')} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver evolución →</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Récords ───────────────────────────────────────────────
 function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const ultimos = useMemo(() => recordHistory(collectSessionBests(logs, plan)).slice(0, 5), [logs, plan])
   const records = useMemo(() => {
     const r: Record<string, { best: number; date: string; reps: string }> = {}
     Object.entries(logs).forEach(([key, log]) => {
@@ -359,7 +451,21 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted px-1">{records.length} ejercicios con marca personal</p>
+      {ultimos.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Últimos récords</p>
+          <ul className="space-y-2.5">
+            {ultimos.map((r, i) => (
+              <li key={i} className="flex items-baseline gap-3">
+                <span className="flex-1 min-w-0 text-sm font-semibold truncate">{r.name}</span>
+                <span className="text-sm font-bold text-ok flex-shrink-0">+{fmtKg(r.delta)} kg</span>
+                <span className="text-xs text-muted flex-shrink-0">{fmtDate(r.date)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1">Tus mejores marcas · {records.length} ejercicios</p>
       <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
         {records.map(([name, rec], i) => (
           <div key={name} className="flex items-center gap-3 px-4 py-3">
@@ -634,7 +740,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 
 // ── Main ──────────────────────────────────────────────────
 export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
-  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('calendario')
+  const [subtab, setSubtab] = useState<'resumen' | 'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('resumen')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
@@ -728,6 +834,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
 
   type SubtabId = typeof subtab
   const TABS: { id: SubtabId; icon: string; label: string }[] = [
+    { id: 'resumen',    icon: '✨', label: 'Resumen' },
     { id: 'calendario', icon: '📅', label: 'Calendario' },
     { id: 'historial',  icon: '📋', label: 'Historial' },
     ...(metricaActiva('records') ? [{ id: 'records' as SubtabId, icon: '🏆', label: 'Récords' }] : []),
@@ -755,6 +862,10 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
         ))}
       </div>
 
+      {subtab === 'resumen'    && (
+        <ResumenTab logs={logs} plan={plan} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab}
+          showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')} />
+      )}
       {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
       {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}

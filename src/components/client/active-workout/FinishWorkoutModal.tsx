@@ -1,4 +1,4 @@
-import { Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
+import { Check, Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
 import { ZONAS_DOLOR } from '../../../lib/clientPain'
 import { REACTION_EMOJIS, MOLESTIA_EMOJI } from './utils'
 
@@ -6,6 +6,10 @@ interface IncompleteExercise { name: string; done: number; total: number }
 interface NewRecord { name: string; best: number }
 
 interface Props {
+  dayTitle: string
+  totalSetsDone: number
+  streak: number  // días seguidos entrenando, contando hoy
+  saving: boolean
   allComplete: boolean
   totalExs: number
   doneExs: number
@@ -34,7 +38,7 @@ interface Props {
 // récords), RPE de la sesión, cómo le ha sentado (con zona si hay molestia),
 // y compartir el logro por WhatsApp si se completó todo.
 export function FinishWorkoutModal({
-  allComplete, totalExs, doneExs, incompleteExercises, elapsedLabel, totalVolume, newRecords, avgRir,
+  dayTitle, totalSetsDone, streak, saving, allComplete, totalExs, doneExs, incompleteExercises, elapsedLabel, totalVolume, newRecords, avgRir,
   sessionRpe, sessionRpeHalf, onSetSessionRpe, onToggleSessionRpeHalf,
   reactionEmoji, onPickReaction, showReactionComment, reactionComment, onSetReactionComment,
   molestiaZona, onSetMolestiaZona, onShare, onConfirm, onClose,
@@ -43,9 +47,19 @@ export function FinishWorkoutModal({
     <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
       <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
         <div className="w-10 h-1 bg-border rounded-full mx-auto" />
-        <h3 className="font-serif font-bold text-xl text-center">
-          {allComplete ? '¡Sesión completada! 🏆' : '¿Terminar entrenamiento?'}
-        </h3>
+        {allComplete ? (
+          <div className="text-center space-y-1">
+            <div className="w-14 h-14 rounded-full bg-ok text-white flex items-center justify-center mx-auto mb-2">
+              <Check className="w-7 h-7" />
+            </div>
+            <p className="text-[11px] font-bold tracking-[0.2em] text-ok">ENTRENAMIENTO COMPLETADO</p>
+            <h3 className="font-serif font-bold text-2xl">{dayTitle}</h3>
+            <p className="text-sm text-muted">{doneExs}/{totalExs} ejercicios · {totalSetsDone} {totalSetsDone === 1 ? 'serie' : 'series'}</p>
+            {streak >= 2 && <p className="text-sm font-semibold text-accent pt-1">🔥 Racha de {streak} días</p>}
+          </div>
+        ) : (
+          <h3 className="font-serif font-bold text-xl text-center">¿Terminar entrenamiento?</h3>
+        )}
         {!allComplete && (
           <>
             <p className="text-sm text-muted text-center">
@@ -156,11 +170,11 @@ export function FinishWorkoutModal({
             📤 Compartir logro
           </button>
         )}
-        <button onClick={onConfirm}
-          className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
+        <button onClick={onConfirm} disabled={saving}
+          className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 ${
             allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
           }`}>
-          {allComplete ? '✓ Guardar y terminar' : 'Terminar igual'}
+          {saving ? 'Guardando…' : allComplete ? '✓ Guardar y terminar' : 'Terminar igual'}
         </button>
         <button onClick={onClose}
           className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">

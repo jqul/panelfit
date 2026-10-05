@@ -30,6 +30,8 @@ import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 import { rankByQuery } from '../../lib/exerciseSearch'
+import { streakDays } from '../../lib/progressSummary'
+import { FinishedScreen } from './active-workout/FinishedScreen'
 
 interface Props {
   day: DayPlan
@@ -194,6 +196,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [restTimer, setRestTimer] = useState<{ secs: number; next: NextSetInfo | null } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
+  const [saving, setSaving] = useState(false)    // guardando al terminar: evita el doble toque
+  const [finished, setFinished] = useState(false) // sesión ya guardada: se enseña la pantalla de cierre
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
@@ -203,9 +207,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   useEffect(() => { setsRef.current = sets }, [sets])
 
   useEffect(() => {
+    if (finished) return // la duración se congela al guardar la sesión
     const t = setInterval(() => setElapsedSecs(Math.floor((Date.now() - startTime.current) / 1000)), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [finished])
 
   const formatElapsed = () => {
     const m = Math.floor(elapsedSecs / 60)
@@ -538,6 +543,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
   const allComplete = pct === 100
 
+  const streak = streakDays(logs, new Date(), true)
+
   const incompleteExercises = day.exercises.map((ex, ri) => {
     const { numSets } = parseSet(ex.sets)
     const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
@@ -568,6 +575,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   }
 
   const confirmFinish = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
     if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
     if (reactionEmoji) {
       const today = localDateKey()
@@ -601,7 +611,18 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       // comentario en el tipo ExerciseLog.
       onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
     }
-    onFinish()
+    setShowFinish(false)
+    setFinished(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (finished) {
+    return (
+      <FinishedScreen title={day.title} trainerMode={trainerMode} clientName={clientName} elapsedLabel={formatElapsed()}
+        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish} />
+    )
   }
 
   return (
@@ -924,6 +945,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       {/* Modal confirmación terminar */}
       {showFinish && (
         <FinishWorkoutModal
+          dayTitle={day.title}
+          totalSetsDone={totalSetsDone}
+          streak={streak}
+          saving={saving}
           allComplete={allComplete}
           totalExs={totalExs}
           doneExs={doneExs}
