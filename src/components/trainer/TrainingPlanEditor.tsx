@@ -20,6 +20,7 @@ import { WarmupSection } from './training-plan-editor/WarmupSection'
 import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
 import { useTestCatalog } from '../../lib/testCatalog'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
 
 export { getYTId } from './training-plan-editor/utils'
 export type { SeriesTypeDef } from './training-plan-editor/seriesTypes'
@@ -50,7 +51,12 @@ export function TrainingPlanEditor({
   plan, onChange, allClients = [], onImportFromClient,
   library = [], logs = {}, clientName = '', trainerId
 }: Props) {
-  const [activeWeek, setActiveWeek] = useState(0)
+  // Semana en la que está de verdad el cliente (por calendario, igual que en su
+  // app) — el editor abre ahí en vez de siempre en la 1. En una plantilla no
+  // hay cliente ni "semana actual", así que ahí se abre en la primera.
+  const isTemplate = plan.clientId === 'template'
+  const realWeekIdx = isTemplate ? -1 : getEffectiveWeekIdx(plan, logs)
+  const [activeWeek, setActiveWeek] = useState(() => Math.max(0, realWeekIdx))
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({ 0: true })
   const [pickerFor, setPickerFor] = useState<{ dayIdx: number } | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -295,7 +301,10 @@ export function TrainingPlanEditor({
               }`}>
               {w.label}
               {w.isDeload && <BatteryLow className="inline w-3 h-3 ml-1 -mt-0.5 text-warn" />}
-              {w.isCurrent && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ok rounded-full border-2 border-bg" />}
+              {(isTemplate ? w.isCurrent : wi === realWeekIdx) && (
+                <span title={isTemplate ? 'Semana actual' : 'Semana en la que está el cliente ahora'}
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ok rounded-full border-2 border-bg" />
+              )}
             </button>
           ))}
           <button onClick={addWeek} className="px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all">
@@ -331,10 +340,20 @@ export function TrainingPlanEditor({
                 className={`p-1.5 rounded-lg transition-colors ${currentWeek.isDeload ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn hover:bg-warn/5'}`}>
                 <BatteryLow className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => setCurrentWeek(activeWeek)}
-                className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/5'}`}>
-                <Star className="w-3.5 h-3.5" />
-              </button>
+              {!isTemplate && plan.fechaInicio ? (
+                // Con fecha de inicio la semana actual sale del calendario y no se
+                // puede fijar a mano: antes este botón guardaba un flag que la app
+                // ignoraba, y parecía que cambiaba la semana del cliente.
+                <span title={`La semana actual sale de la fecha de inicio del plan (semanas de lunes a domingo)${activeWeek === realWeekIdx ? ' — es esta' : ''}`}
+                  className={`p-1.5 rounded-lg ${activeWeek === realWeekIdx ? 'text-ok bg-ok/10' : 'text-muted/40'}`}>
+                  <Star className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                <button onClick={() => setCurrentWeek(activeWeek)} title="Marcar como semana actual"
+                  className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/5'}`}>
+                  <Star className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button onClick={() => copyWeek(activeWeek)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
               {confirmDeleteWeek === activeWeek ? (
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
