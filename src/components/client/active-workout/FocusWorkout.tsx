@@ -2,7 +2,7 @@ import { useState, useEffect, ReactNode } from 'react'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
-import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
+import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
 interface PrevSet { weight?: string; reps?: string; rir?: number }
@@ -76,12 +76,14 @@ export function FocusWorkout(p: Props) {
   const [weight, setWeight] = useState(cur.weight || lastWeight)
   const [reps, setReps] = useState(cur.reps)
   const [velInput, setVelInput] = useState(cur.velocity !== undefined ? String(cur.velocity) : '')
+  const [velOpen, setVelOpen] = useState(false)
   const [showMore, setShowMore] = useState(false)
   const [showExtras, setShowExtras] = useState(false)
   useEffect(() => {
     setWeight(cur.weight || lastWeight)
     setReps(cur.reps)
     setVelInput(cur.velocity !== undefined ? String(cur.velocity) : '')
+    setVelOpen(false)
     setShowMore(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.ri, p.si])
@@ -107,7 +109,8 @@ export function FocusWorkout(p: Props) {
     setReps(v); p.onCommit(p.ri, p.si, weight, v)
   }
 
-  // Velocidad media (VBT), solo en el ejercicio principal como en la lista. La
+  // Velocidad media (VBT). Visible en el ejercicio principal; en los demás,
+  // plegada tras "+ Velocidad" para no estorbar. La
   // pérdida se compara con la primera serie de hoy a la MISMA carga: al subir
   // peso la velocidad cae sin que eso sea fatiga.
   const firstVelocity = (() => {
@@ -124,6 +127,9 @@ export function FocusWorkout(p: Props) {
     setVelInput(v !== undefined ? String(v) : '')
     if (v !== cur.velocity) p.onSetVelocity(p.ri, p.si, v)
   }
+  // iOS Safari no quita el foco del campo al tocar un botón, y sin blur no hay
+  // guardado: HECHO y el cambio de serie/ejercicio guardan lo pendiente antes.
+  const select = (ri: number, si: number) => { commitVelocity(); p.onSelect(ri, si) }
 
   const firstUndone = (ri: number) => {
     const s = p.sets[ri] || {}
@@ -138,7 +144,7 @@ export function FocusWorkout(p: Props) {
   }
   const goEx = (delta: number) => {
     const next = p.ri + delta
-    if (next >= 0 && next < p.exercises.length) p.onSelect(next, firstUndone(next))
+    if (next >= 0 && next < p.exercises.length) select(next, firstUndone(next))
   }
 
   const sub = p.substitutionName(p.ri)
@@ -168,7 +174,7 @@ export function FocusWorkout(p: Props) {
         {/* Un punto por ejercicio: hecho / actual / pendiente */}
         <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto">
           {p.exercises.map((_, i) => (
-            <button key={i} onClick={() => p.onSelect(i, firstUndone(i))} aria-label={`Ir al ejercicio ${i + 1}`}
+            <button key={i} onClick={() => select(i, firstUndone(i))} aria-label={`Ir al ejercicio ${i + 1}`}
               className={`h-2 rounded-full flex-shrink-0 transition-all ${i === p.ri ? 'w-8 bg-ink' : exDone(i) ? 'w-4 bg-ok' : 'w-4 bg-border'}`} />
           ))}
         </div>
@@ -275,7 +281,7 @@ export function FocusWorkout(p: Props) {
               {cur.rir !== undefined && <p className="text-center text-xs text-muted mt-1.5">{RIR_OPTIONS.find(o => o.value === Math.floor(cur.rir!))?.desc}</p>}
             </div>
 
-            {ex.isMain && (
+            {tracksVelocity(ex) && (ex.isMain || velOpen || cur.velocity !== undefined ? (
               <div className="mx-4 mt-4 flex items-center justify-center gap-2">
                 <Gauge className="w-4 h-4 text-muted" />
                 <label htmlFor="focus-velocity" className="text-[11px] font-bold uppercase tracking-wider text-muted">Velocidad (m/s)</label>
@@ -285,11 +291,17 @@ export function FocusWorkout(p: Props) {
                   className="w-20 text-center text-sm font-semibold py-1.5 rounded-xl border border-border bg-card outline-none focus:border-accent tabular-nums" />
                 {lossPct !== null && lossPct > 0.5 && <span className="text-xs font-bold text-warn">−{lossPct}%</span>}
               </div>
-            )}
+            ) : (
+              <div className="mx-4 mt-3 flex justify-center">
+                <button onClick={() => setVelOpen(true)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted py-1.5 px-3 rounded-full bg-bg-alt">
+                  <Gauge className="w-3.5 h-3.5" /> + Velocidad
+                </button>
+              </div>
+            ))}
 
             {/* Marcar hecha */}
             <div className="px-4 mt-5">
-              <button onClick={() => p.onToggle(p.ri, p.si, weight, reps)}
+              <button onClick={() => { commitVelocity(); p.onToggle(p.ri, p.si, weight, reps) }}
                 className={`w-full flex items-center justify-center gap-2 py-5 rounded-3xl font-bold text-lg active:scale-[0.98] transition-all ${
                   cur.done ? 'bg-bg-alt text-muted border border-border' : 'bg-ink text-white shadow-lg'
                 }`} style={{ minHeight: '64px' }}>
@@ -304,7 +316,7 @@ export function FocusWorkout(p: Props) {
                 const pv = p.prevSets(p.ri)[i]
                 const active = i === p.si
                 return (
-                  <button key={i} onClick={() => p.onSelect(p.ri, i)} aria-label={`Ir a la serie ${i + 1}`}
+                  <button key={i} onClick={() => select(p.ri, i)} aria-label={`Ir a la serie ${i + 1}`}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${active ? 'bg-accent/8' : ''}`}>
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${s?.done ? 'bg-ok text-white' : active ? 'bg-ink text-white' : 'bg-bg-alt text-muted'}`}>
                       {s?.done ? <Check className="w-4 h-4" /> : i + 1}

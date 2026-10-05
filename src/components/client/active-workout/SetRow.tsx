@@ -16,6 +16,7 @@ interface SetRowProps {
   prevRir?: number
   weekRpe?: string
   isMain: boolean
+  showVelocity?: boolean  // anotar velocidad de barra (VBT); por defecto solo en ejercicios principales
   showTarget?: boolean  // "pesos sugeridos" — el entrenador puede desactivarlo en Ajustes
   onCommit: (weight: string, reps: string) => void
   onToggle: (weight: string, reps: string) => void
@@ -24,7 +25,7 @@ interface SetRowProps {
   onSetVelocity: (velocity: number | undefined) => void
 }
 
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -190,7 +191,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
         {/* Badges RIR / Velocidad (VBT) — aparecen debajo de la fila cuando la serie está marcada como hecha */}
         {done && (
           <div className="flex items-center justify-end gap-1.5 mt-1 pr-1 flex-wrap">
-            {isMain && (
+            {showVelocity && (
               editingVelocity ? (
                 <input
                   type="number" inputMode="decimal" step="0.01" autoFocus

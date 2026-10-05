@@ -6,7 +6,7 @@ import {
 import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
@@ -700,7 +700,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const history = getExerciseHistory(ex.name)
     const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
     const pctTarget = parsePercentWeight(ex.weight) !== null ? resolveWeightFromPercent(ex.weight, getBest1RM(ex.name)) : null
-    const vProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+    const vProfile = tracksVelocity(ex) ? getVelocityProfile(ex.name) : null
     return (
       <div className="space-y-3">
         <div className="mx-4 bg-bg-alt/50 border border-border rounded-xl p-3">
@@ -843,13 +843,13 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               .find(si => exSets[si]?.done && exSets[si]?.velocity !== undefined && exSets[si]?.weight === weight)
             return si0 !== undefined ? exSets[si0].velocity : undefined
           }
-          const velocityProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+          const velocityProfile = tracksVelocity(ex) ? getVelocityProfile(ex.name) : null
           // Autorregulación VBT: 1RM por velocidad de HOY (con lo que ya lleva
           // hecho en esta sesión) frente al mejor 1RM por velocidad de sesiones
           // anteriores — si el SNC no responde igual hoy, sugiere ajustar el
           // peso de las series que quedan en vez de forzar la carga prescrita.
-          const todayVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
-          const historicalVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
+          const todayVelocityProfile = tracksVelocity(ex) ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
+          const historicalVelocityProfile = tracksVelocity(ex) ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
           const vbtSuggestion = showPesosSugeridos ? getVbtSuggestedWeightChange(
             todayVelocityProfile?.oneRM ?? null,
             historicalVelocityProfile?.oneRM ?? null,
@@ -1026,6 +1026,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     prevRir={prev?.rir}
                     weekRpe={plan.weeks?.[weekIdx]?.rpe}
                     isMain={ex.isMain}
+                    showVelocity={tracksVelocity(ex)}
                     showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}

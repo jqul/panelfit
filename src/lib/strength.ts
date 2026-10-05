@@ -218,3 +218,13 @@ export function getVbtSuggestedWeightChange(
   const color = direction === 'down' ? '#ef4444' : '#22c55e'
   return { pct: diffPct, label, color, direction, deltaKg }
 }
+
+/**
+ * ¿Se puede anotar la velocidad de barra en este ejercicio? En cualquiera de
+ * fuerza, esté o no marcado como principal: quien entrena con velocímetro la
+ * quiere en la sentadilla y el banca aunque el plan no los marque. Las carreras
+ * registran tiempo y distancia, no velocidad de barra.
+ */
+export function tracksVelocity(ex: { kind?: string }): boolean {
+  return ex.kind !== 'run'
+}
