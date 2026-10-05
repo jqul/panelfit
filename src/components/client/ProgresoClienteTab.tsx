@@ -18,6 +18,7 @@ import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
 import { SignedVideo, SignedImage } from '../shared/SignedMedia'
 import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
+import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 
 
 interface Props {
@@ -740,6 +741,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 
 // ── Main ──────────────────────────────────────────────────
 export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
+  const lastLeafRef = useRef<Record<string, string>>({})
   const [subtab, setSubtab] = useState<'resumen' | 'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('resumen')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
@@ -833,47 +835,65 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const metricaActiva = (id: Section) => !metricasActivasEntrenador || metricasActivasEntrenador.has(id)
 
   type SubtabId = typeof subtab
-  const TABS: { id: SubtabId; icon: string; label: string }[] = [
-    { id: 'resumen',    icon: '✨', label: 'Resumen' },
-    { id: 'calendario', icon: '📅', label: 'Calendario' },
-    { id: 'historial',  icon: '📋', label: 'Historial' },
-    ...(metricaActiva('records') ? [{ id: 'records' as SubtabId, icon: '🏆', label: 'Récords' }] : []),
-    ...(metricaActiva('peso')    ? [{ id: 'peso' as SubtabId, icon: '⚖️', label: 'Peso' }] : []),
-    ...(dolorVisible ? [{ id: 'dolor' as SubtabId, icon: '🩹', label: 'Dolor' }] : []),
-    ...(metricaActiva('fotos')   ? [{ id: 'fotos' as SubtabId, icon: '📸', label: 'Fotos' }] : []),
-    ...(metricaActiva('videos')  ? [{ id: 'feedback' as SubtabId, icon: '🎥', label: 'Feedback' }] : []),
-    ...(otrasMetricasVisibles.length > 0 ? [{ id: 'metricas' as SubtabId, icon: '📈', label: 'Métricas' }] : []),
+  // Cinco grupos arriba (Resumen, Entrenos, Fuerza, Cuerpo, Más) y, dentro del
+  // que tenga varias vistas, un segundo nivel. Las vistas son las de siempre.
+  const available: SubtabId[] = [
+    'resumen', 'calendario', 'historial',
+    ...(metricaActiva('records') ? ['records' as const] : []),
+    ...(metricaActiva('peso') ? ['peso' as const] : []),
+    ...(dolorVisible ? ['dolor' as const] : []),
+    ...(metricaActiva('fotos') ? ['fotos' as const] : []),
+    ...(metricaActiva('videos') ? ['feedback' as const] : []),
+    ...(otrasMetricasVisibles.length > 0 ? ['metricas' as const] : []),
   ]
+  const groups = buildGroups(available)
+  const activeGroup = groupOf(groups, subtab) ?? groups[0]
+  // Si la vista actual deja de estar disponible (p. ej. el entrenador la
+  // desactiva), se muestra el resumen en vez de una pantalla vacía.
+  const currentLeaf = (activeGroup.leaves.some(l => l.id === subtab) ? subtab : 'resumen') as SubtabId
+  lastLeafRef.current[activeGroup.id] = currentLeaf
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
       <h3 className="font-serif font-bold text-xl">Tu progreso</h3>
 
-      {/* Tabs — scroll horizontal en móvil */}
-      <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setSubtab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
-              subtab === t.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
+      {/* Nivel 1: cinco grupos */}
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }} role="tablist" aria-label="Secciones de tu progreso">
+        {groups.map(g => (
+          <button key={g.id} role="tab" aria-selected={activeGroup.id === g.id}
+            onClick={() => setSubtab(leafForGroup(g, lastLeafRef.current[g.id]) as SubtabId)}
+            className={`px-0.5 py-2 rounded-xl text-xs font-semibold truncate transition-all ${
+              activeGroup.id === g.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
             }`}
             style={{ minHeight: '40px' }}>
-            {t.icon} {t.label}
+            {g.label}
           </button>
         ))}
       </div>
+      {/* Nivel 2: solo si el grupo tiene varias vistas */}
+      {activeGroup.leaves.length > 1 && (
+        <div className="flex gap-4 border-b border-border/70 -mt-1" role="tablist" aria-label={activeGroup.label}>
+          {activeGroup.leaves.map(l => (
+            <button key={l.id} role="tab" aria-selected={currentLeaf === l.id} onClick={() => setSubtab(l.id as SubtabId)}
+              className={`pb-2 -mb-px text-sm font-medium border-b-2 transition-colors ${currentLeaf === l.id ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {subtab === 'resumen'    && (
+      {currentLeaf === 'resumen'    && (
         <ResumenTab logs={logs} plan={plan} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab}
           showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')} />
       )}
-      {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
-      {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
-      {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
-      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
-      {subtab === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
-      {subtab === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
+      {currentLeaf === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
+      {currentLeaf === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
+      {currentLeaf === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
+      {currentLeaf === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
+      {currentLeaf === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
+      {currentLeaf === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
 
-      {subtab === 'peso' && (
+      {currentLeaf === 'peso' && (
         <div className="space-y-4">
           {weights.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
@@ -948,7 +968,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
         </div>
       )}
 
-      {subtab === 'fotos' && (
+      {currentLeaf === 'fotos' && (
         <div className="space-y-4">
           <button onClick={createSession} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
             <Plus className="w-4 h-4" /> Nueva sesión de fotos
