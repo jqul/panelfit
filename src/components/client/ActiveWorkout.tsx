@@ -271,7 +271,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...(velocity !== undefined ? { velocity } : {}) } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: velocity !== undefined ? { ...existingSet, velocity } : (({ velocity: _v, ...rest }) => rest)(existingSet) },
       }
     })
   }, [dayKey, onLogsChange])
@@ -774,7 +774,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
           onCommit={commitSet}
           onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
-          onSetRir={setRir} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+          onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
           renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
         />
       ) : (

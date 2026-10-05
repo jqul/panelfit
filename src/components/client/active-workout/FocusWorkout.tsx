@@ -1,8 +1,8 @@
 import { useState, useEffect, ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
+import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
-import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel } from '../../../lib/strength'
+import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
 interface PrevSet { weight?: string; reps?: string; rir?: number }
@@ -28,6 +28,7 @@ interface Props {
   onCommit: (ri: number, si: number, weight: string, reps: string) => void
   onToggle: (ri: number, si: number, weight: string, reps: string) => void
   onSetRir: (ri: number, si: number, rir: number) => void
+  onSetVelocity: (ri: number, si: number, velocity: number | undefined) => void
   onAddSet: (ri: number) => void
   onOpenCalc: (weight: string) => void
   renderMore: (ri: number) => ReactNode
@@ -74,11 +75,13 @@ export function FocusWorkout(p: Props) {
   })()
   const [weight, setWeight] = useState(cur.weight || lastWeight)
   const [reps, setReps] = useState(cur.reps)
+  const [velInput, setVelInput] = useState(cur.velocity !== undefined ? String(cur.velocity) : '')
   const [showMore, setShowMore] = useState(false)
   const [showExtras, setShowExtras] = useState(false)
   useEffect(() => {
     setWeight(cur.weight || lastWeight)
     setReps(cur.reps)
+    setVelInput(cur.velocity !== undefined ? String(cur.velocity) : '')
     setShowMore(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.ri, p.si])
@@ -102,6 +105,24 @@ export function FocusWorkout(p: Props) {
   const adjustReps = (d: number) => {
     const v = String(Math.max(0, (parseInt(reps) || 0) + d))
     setReps(v); p.onCommit(p.ri, p.si, weight, v)
+  }
+
+  // Velocidad media (VBT), solo en el ejercicio principal como en la lista. La
+  // pérdida se compara con la primera serie de hoy a la MISMA carga: al subir
+  // peso la velocidad cae sin que eso sea fatiga.
+  const firstVelocity = (() => {
+    for (let i = 0; i < p.si; i++) {
+      const s = exSets[i]
+      if (s?.done && s.velocity !== undefined && s.weight === weight) return s.velocity
+    }
+    return undefined
+  })()
+  const lossPct = cur.velocity !== undefined && firstVelocity !== undefined ? velocityLossPct(cur.velocity, firstVelocity) : null
+  const commitVelocity = () => {
+    const num = parseFloat(velInput.replace(',', '.'))
+    const v = isNaN(num) || num <= 0 ? undefined : Math.round(num * 100) / 100
+    setVelInput(v !== undefined ? String(v) : '')
+    if (v !== cur.velocity) p.onSetVelocity(p.ri, p.si, v)
   }
 
   const firstUndone = (ri: number) => {
@@ -253,6 +274,18 @@ export function FocusWorkout(p: Props) {
               </div>
               {cur.rir !== undefined && <p className="text-center text-xs text-muted mt-1.5">{RIR_OPTIONS.find(o => o.value === Math.floor(cur.rir!))?.desc}</p>}
             </div>
+
+            {ex.isMain && (
+              <div className="mx-4 mt-4 flex items-center justify-center gap-2">
+                <Gauge className="w-4 h-4 text-muted" />
+                <label htmlFor="focus-velocity" className="text-[11px] font-bold uppercase tracking-wider text-muted">Velocidad (m/s)</label>
+                <input id="focus-velocity" type="number" inputMode="decimal" step="0.01" value={velInput} placeholder="0,45"
+                  onChange={e => setVelInput(e.target.value)} onBlur={commitVelocity}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                  className="w-20 text-center text-sm font-semibold py-1.5 rounded-xl border border-border bg-card outline-none focus:border-accent tabular-nums" />
+                {lossPct !== null && lossPct > 0.5 && <span className="text-xs font-bold text-warn">−{lossPct}%</span>}
+              </div>
+            )}
 
             {/* Marcar hecha */}
             <div className="px-4 mt-5">
