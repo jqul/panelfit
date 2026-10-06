@@ -584,7 +584,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-serif font-bold">Clientes</h2>
-                  <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} alumnos{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
+                  <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} {clientLimit >= 999 && clients.length === 1 ? 'alumno' : 'alumnos'}{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
                 </div>
                 <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo cliente</Button>
               </div>
