@@ -9,7 +9,7 @@ export interface ProgressGroup { id: ProgressGroupId; label: string; leaves: Pro
 
 const LAYOUT: { id: ProgressGroupId; label: string; leaves: ProgressLeaf[] }[] = [
   { id: 'resumen',  label: 'Resumen',  leaves: [{ id: 'resumen', label: 'Resumen' }] },
-  { id: 'entrenos', label: 'Entrenos', leaves: [{ id: 'calendario', label: 'Calendario' }, { id: 'historial', label: 'Historial' }] },
+  { id: 'entrenos', label: 'Entrenos', leaves: [{ id: 'historial', label: 'Historial' }] },
   { id: 'fuerza',   label: 'Fuerza',   leaves: [{ id: 'records', label: 'Récords' }] },
   { id: 'cuerpo',   label: 'Cuerpo',   leaves: [{ id: 'peso', label: 'Peso' }, { id: 'fotos', label: 'Fotos' }] },
   { id: 'mas',      label: 'Más',      leaves: [{ id: 'dolor', label: 'Dolor' }, { id: 'feedback', label: 'Feedback' }, { id: 'metricas', label: 'Métricas' }] },

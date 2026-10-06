@@ -41,6 +41,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
+  const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
@@ -408,12 +409,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} />
+                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId}
+                    view={entrenoView} onViewChange={setEntrenoView} />
                 : <NoPlanView />
             )}
             {activeTab === 'progreso' && (
               <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
-                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} />
+                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan}
+                  onOpenCalendar={() => { setEntrenoView('calendario'); setActiveTab('entreno') }} />
               </Suspense>
             )}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}

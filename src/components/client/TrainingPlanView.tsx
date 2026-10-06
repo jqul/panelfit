@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
@@ -6,6 +7,7 @@ import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { CalendarioTab } from './CalendarioTab'
 
 interface Props {
   plan: TrainingPlan
@@ -13,6 +15,8 @@ interface Props {
   onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
   trainerId?: string
+  view?: 'semana' | 'calendario'
+  onViewChange?: (v: 'semana' | 'calendario') => void
 }
 
 function getYTId(url: string) {
@@ -49,7 +53,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId }: Props) {
+export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, view = 'semana', onViewChange }: Props) {
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -61,7 +65,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
   const weekIdx = getEffectiveWeekIdx(plan, logs)
   const currentWeek = plan.weeks?.[weekIdx]
 
-  if (activeWorkout) return (
+  // En el body, no dentro de <main> (z-10): ahí la cabecera de la app (z-20) tapaba la del entreno.
+  if (activeWorkout) return createPortal(
     <ActiveWorkout
       plan={plan}
       day={plan.weeks[activeWorkout.weekIdx].days[activeWorkout.dayIdx]}
@@ -70,7 +75,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
       onLogsChange={onLogsChange}
       onFinish={() => setActiveWorkout(null)}
       trainerId={trainerId}
-    />
+    />,
+    document.body
   )
 
   if (!currentWeek) return (
@@ -89,6 +95,24 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
         <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />
       )}
 
+      {/* Esta semana / Calendario: dónde toca entrenar y dónde se ha entrenado */}
+      {onViewChange && (
+        <div className="px-4 pt-4">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-bg-alt rounded-xl" role="tablist" aria-label="Vista de entreno">
+            {([{ id: 'semana', label: 'Esta semana' }, { id: 'calendario', label: 'Calendario' }] as const).map(v => (
+              <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => onViewChange(v.id)}
+                className={`py-2 rounded-lg text-sm font-semibold transition-all ${view === v.id ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'calendario' ? (
+        <div className="px-4 pt-4"><CalendarioTab logs={logs} plan={plan} /></div>
+      ) : (
+      <>
       <div className="px-4 pt-5 pb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
@@ -281,6 +305,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
           )
         })}
       </div>
+      </>
+      )}
     </div>
   )
 }
