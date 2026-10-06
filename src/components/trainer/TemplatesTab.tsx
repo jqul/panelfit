@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
@@ -11,6 +11,7 @@ import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 import { parseWorkoutExcel } from '../../lib/importWorkout'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural } from '../../lib/workoutList'
 
 interface Props {
   trainerId: string
@@ -83,6 +84,8 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
     try { return JSON.parse(localStorage.getItem(LS_TYPES(trainerId)) || '[]') } catch { return [] }
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
+  const [filterType, setFilterType]   = useState<string | null>(null)
+  const [query, setQuery]             = useState('')
   const [exportingId, setExportingId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -221,7 +224,10 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   }
 
   const allTypes = [...TIPOS_DEFAULT, ...customTypes]
-  const filtered = filterLabel ? templates.filter(t => (t.label_ids || []).includes(filterLabel)) : templates
+  const filtered = filterTemplates(templates, { query, type: filterType, labelId: filterLabel })
+  const types = templateTypes(templates)
+  const hasFilters = !!(query.trim() || filterType || filterLabel)
+  const clearFilters = () => { setQuery(''); setFilterType(null); setFilterLabel(null) }
 
   // ── Editor ──
   if (editing && editingPlan) return (
@@ -276,20 +282,20 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
           <h2 className="text-3xl font-serif font-bold">Workouts</h2>
           <p className="text-muted text-sm mt-1">Rutinas reutilizables con ejercicios completos</p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportFile} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50">
-            <Upload className="w-4 h-4" /> {importing ? 'Importando...' : 'Importar Excel'}
-          </button>
-          <button onClick={() => setShowGallery(true)}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
-            <Store className="w-4 h-4" /> Galería
-          </button>
-          <button onClick={onManageLabels}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
-            <Tag className="w-4 h-4" /> Etiquetas
-          </button>
+          <ActionMenu title="Más herramientas" buttonClassName="p-2.5 rounded-xl border border-border text-muted hover:border-ink hover:text-ink transition-colors"
+            trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <button onClick={() => setShowGallery(true)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Store className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Galería de workouts
+            </button>
+            <button onClick={() => fileInputRef.current?.click()} disabled={importing} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt disabled:opacity-40">
+              <Upload className="w-3.5 h-3.5 text-muted flex-shrink-0" /> {importing ? 'Importando...' : 'Importar desde Excel'}
+            </button>
+            <button onClick={onManageLabels} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Tag className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Gestionar etiquetas
+            </button>
+          </ActionMenu>
           <button onClick={startNew}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
             <Plus className="w-4 h-4" /> Nuevo workout
@@ -297,19 +303,42 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
         </div>
       </div>
 
-      {/* Filtro etiquetas */}
+      {/* Buscar y filtrar por tipo */}
+      {templates.length > 0 && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar workout..."
+              aria-label="Buscar workout"
+              className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+          {types.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <button onClick={() => setFilterType(null)} aria-pressed={!filterType}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${!filterType ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                Todos
+              </button>
+              {types.map(tipo => (
+                <button key={tipo} onClick={() => setFilterType(filterType === tipo ? null : tipo)} aria-pressed={filterType === tipo}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${filterType === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                  {tipo}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Filtro por etiqueta: pulsar de nuevo la quita */}
       {labels.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setFilterLabel(null)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${!filterLabel ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            Todos ({templates.length})
-          </button>
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" aria-label="Filtrar por etiqueta">
           {labels.map(label => {
             const count = templates.filter(t => (t.label_ids || []).includes(label.id)).length
+            const active = filterLabel === label.id
             return (
-              <button key={label.id} onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${filterLabel === label.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
-                style={{ backgroundColor: filterLabel === label.id ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
+              <button key={label.id} onClick={() => setFilterLabel(active ? null : label.id)} aria-pressed={active}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${active ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+                style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
                 {label.emoji} {label.name} ({count})
               </button>
             )
@@ -320,12 +349,12 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        filterLabel ? (
+        hasFilters ? (
           <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
             <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="font-serif text-lg font-bold">Sin workouts con esta etiqueta</p>
-            <p className="text-sm mt-1">Prueba otra etiqueta o crea un nuevo workout</p>
-            <button onClick={() => setFilterLabel(null)} className="mt-3 text-accent text-sm hover:underline">Ver todos</button>
+            <p className="font-serif text-lg font-bold">Ningún workout coincide</p>
+            <p className="text-sm mt-1">Prueba con otra búsqueda o crea un nuevo workout</p>
+            <button onClick={clearFilters} className="mt-3 text-accent text-sm hover:underline">Quitar filtros</button>
           </div>
         ) : (
           <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
@@ -363,6 +392,8 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
         <div className="space-y-3">
           {filtered.map(tmpl => {
             const tmplLabels = labels.filter(l => (tmpl.label_ids || []).includes(l.id))
+            const stats = workoutStats(tmpl)
+            const upd = updatedLabel(tmpl.updatedAt)
             return (
               <div key={tmpl.id} className="bg-card border border-border rounded-2xl overflow-hidden hover:border-accent/30 transition-colors">
                 <div className="flex items-center gap-3 px-5 py-4">
@@ -370,13 +401,13 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                     <p className="font-semibold truncate">{tmpl.name}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {tmpl.type && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
-                      <p className="text-xs text-muted">{tmpl.weeks?.length || 0} sem · {tmpl.weeks?.[0]?.days?.length || 0} días</p>
+                      <p className="text-xs text-muted">{plural(stats.exercises, 'ejercicio', 'ejercicios')} · {plural(stats.days, 'día', 'días')}{stats.weeks > 1 ? ` · ${stats.weeks} sem` : ''}{upd ? ` · ${upd}` : ''}</p>
                       {tmpl.isPublic && <span className="text-[10px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => startEdit(tmpl)} title="Editar" className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => startEdit(tmpl)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                     <ActionMenu>
                       <button onClick={() => togglePublic(tmpl)}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
