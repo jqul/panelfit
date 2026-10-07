@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarizeSurvey, describeSchedule, SurveyQuestion } from './surveyResults'
+import { summarizeSurvey, describeSchedule, groupSchedules, SurveyQuestion } from './surveyResults'
 
 const questions: SurveyQuestion[] = [
   { id: 'q1', type: 'scale', label: 'Energía' },
@@ -54,5 +54,20 @@ describe('describeSchedule', () => {
     expect(describeSchedule({ frequency: 'biweekly', day_of_week: 5 })).toBe('Quincenal · viernes')
     expect(describeSchedule({ frequency: 'monthly', day_of_week: 1 })).toBe('Mensual')
     expect(describeSchedule({ frequency: 'once', day_of_week: 3 })).toBe('Una vez')
+  })
+})
+
+describe('groupSchedules', () => {
+  it('junta los envíos idénticos y respeta el estado', () => {
+    const g = groupSchedules([
+      { id: '1', frequency: 'once', day_of_week: 1, active: false },
+      { id: '2', frequency: 'once', day_of_week: 5, active: false },
+      { id: '3', frequency: 'biweekly', day_of_week: 3, active: false },
+      { id: '4', frequency: 'once', day_of_week: 1, active: true },
+    ])
+    expect(g.map(x => [x.text, x.active, x.n])).toEqual([['Una vez', false, 2], ['Quincenal · miércoles', false, 1], ['Una vez', true, 1]])
+  })
+  it('lista vacía', () => {
+    expect(groupSchedules([])).toEqual([])
   })
 })

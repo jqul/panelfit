@@ -66,3 +66,17 @@ export function describeSchedule(s: { frequency: string; day_of_week: number }):
   const withDay = (s.frequency === 'weekly' || s.frequency === 'biweekly') && DAYS[s.day_of_week]
   return withDay ? `${f} · ${DAYS[s.day_of_week]}` : f
 }
+
+// Junta los envíos idénticos (misma frecuencia, día y estado) para no repetir
+// la misma línea: "Una vez (en pausa) ×2" en vez de dos líneas iguales.
+export function groupSchedules(list: { id: string; frequency: string; day_of_week: number; active: boolean }[]): { key: string; text: string; active: boolean; n: number }[] {
+  const groups = new Map<string, { key: string; text: string; active: boolean; n: number }>()
+  for (const s of list) {
+    const text = describeSchedule(s)
+    const key = `${text}|${s.active}`
+    const g = groups.get(key)
+    if (g) g.n++
+    else groups.set(key, { key, text, active: s.active, n: 1 })
+  }
+  return [...groups.values()]
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
-import { summarizeSurvey, describeSchedule } from '../../lib/surveyResults'
+import { summarizeSurvey, describeSchedule, groupSchedules } from '../../lib/surveyResults'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
@@ -436,9 +436,9 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
                     </p>
                     {tmplSchedules.length > 0 ? (
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-                        {tmplSchedules.map(sc => (
-                          <span key={sc.id} className={`text-xs flex items-center gap-1 ${sc.active ? 'text-ok font-medium' : 'text-muted'}`}>
-                            <CalendarClock className="w-3 h-3" /> {describeSchedule(sc)}{sc.active ? '' : ' (en pausa)'}
+                        {groupSchedules(tmplSchedules).map(g => (
+                          <span key={g.key} className={`text-xs flex items-center gap-1 ${g.active ? 'text-ok font-medium' : 'text-muted'}`}>
+                            <CalendarClock className="w-3 h-3" /> {g.text}{g.active ? '' : ' (en pausa)'}{g.n > 1 ? ` ×${g.n}` : ''}
                           </span>
                         ))}
                       </div>
