@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag } from 'lucide-react'
+import { ActionMenu } from '../shared/ActionMenu'
+import { summarizeSurvey, describeSchedule } from '../../lib/surveyResults'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
@@ -163,11 +165,11 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
 }
 
 // ── Schedule editor ───────────────────────────────────────
-function ScheduleEditor({ trainerId, templates, clients, initial, onSave, onCancel }: {
+function ScheduleEditor({ trainerId, templates, clients, initial, presetTemplateId, onSave, onCancel }: {
   trainerId: string; templates: SurveyTemplate[]; clients: ClientData[]
-  initial?: SurveySchedule; onSave: (s: SurveySchedule) => void; onCancel: () => void
+  initial?: SurveySchedule; presetTemplateId?: string; onSave: (s: SurveySchedule) => void; onCancel: () => void
 }) {
-  const [templateId, setTemplateId] = useState(initial?.template_id || templates[0]?.id || '')
+  const [templateId, setTemplateId] = useState(initial?.template_id || presetTemplateId || templates[0]?.id || '')
   const [clientId, setClientId] = useState<string | null>(initial?.client_id || null)
   const [frequency, setFrequency] = useState<SurveySchedule['frequency']>(initial?.frequency || 'weekly')
   const [dayOfWeek, setDayOfWeek] = useState(initial?.day_of_week || 5)
@@ -232,7 +234,7 @@ function ScheduleEditor({ trainerId, templates, clients, initial, onSave, onCanc
           <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !templateId}
             className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">
-            {saving ? 'Programando...' : '📅 Programar'}
+            {saving ? 'Programando...' : 'Programar'}
           </button>
         </div>
       </div>
@@ -296,6 +298,8 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<SurveyTemplate | undefined>()
   const [showScheduleEditor, setShowScheduleEditor] = useState(false)
+  const [scheduleTemplateId, setScheduleTemplateId] = useState<string | undefined>()
+  const [resultsTemplateId, setResultsTemplateId] = useState<string | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
 
@@ -330,6 +334,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
   }
 
   const deleteSchedule = async (id: string) => {
+    if (!confirm('¿Eliminar este envío programado?')) return
     if (trainerId !== DEMO_TRAINER_ID) await supabase.from('survey_schedules').delete().eq('id', id)
     setSchedules(ss => ss.filter(s => s.id !== id))
   }
@@ -351,9 +356,9 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
   }
 
   const SECTIONS = [
-    { id: 'plantillas',   label: '📝 Plantillas',   count: templates.length },
-    { id: 'programacion', label: '📅 Programación', count: schedules.length },
-    { id: 'respuestas',   label: '📊 Respuestas',   count: responses.length },
+    { id: 'plantillas',   label: 'Mis encuestas',      count: templates.length },
+    { id: 'programacion', label: 'Envíos programados', count: schedules.length },
+    { id: 'respuestas',   label: 'Respuestas',         count: responses.length },
   ] as const
 
   if (loading) return (
@@ -367,30 +372,22 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
 
   return (
     <div className="animate-fade-in space-y-5 max-w-2xl">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Encuestas</h2>
-          <p className="text-muted text-sm mt-1">Plantillas, programación y respuestas</p>
+          <p className="text-muted text-sm mt-1">Pregunta a tus clientes cómo van y mira los resultados</p>
         </div>
-        <div className="flex gap-2">
-          {section === 'plantillas' && (
-            <>
-              <button onClick={onManageLabels}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
-                🏷️ Vincular a etiquetas
-              </button>
-              <button onClick={() => { setEditingTemplate(undefined); setShowTemplateEditor(true) }}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
-                <Plus className="w-4 h-4" /> Nueva
-              </button>
-            </>
-          )}
-          {section === 'programacion' && templates.length > 0 && (
-            <button onClick={() => setShowScheduleEditor(true)}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
-              <Clock className="w-4 h-4" /> Programar
+        <div className="flex items-center gap-2">
+          <ActionMenu title="Más herramientas" buttonClassName="p-2.5 rounded-xl border border-border text-muted hover:border-ink hover:text-ink transition-colors"
+            trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <button onClick={onManageLabels} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Tag className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Vincular a etiquetas
             </button>
-          )}
+          </ActionMenu>
+          <button onClick={() => { setSection('plantillas'); setEditingTemplate(undefined); setShowTemplateEditor(true) }}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">
+            <Plus className="w-4 h-4" /> Nueva encuesta
+          </button>
         </div>
       </div>
 
@@ -409,7 +406,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
         ))}
       </div>
 
-      {/* ── PLANTILLAS ── */}
+      {/* ── MIS ENCUESTAS ── */}
       {section === 'plantillas' && (
         <div className="space-y-3">
           {showTemplateEditor && (
@@ -419,50 +416,91 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
           )}
           {templates.length === 0 && !showTemplateEditor && (
             <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
-              <p className="text-4xl mb-3">📝</p>
-              <p className="font-serif text-lg font-bold">Sin plantillas</p>
+              <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="font-serif text-lg font-bold">Aún no tienes encuestas</p>
               <p className="text-sm mt-1">Crea tu primera encuesta de seguimiento</p>
-              <button onClick={() => setShowTemplateEditor(true)} className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Crear plantilla</button>
+              <button onClick={() => setShowTemplateEditor(true)} className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Crear encuesta</button>
             </div>
           )}
-          {templates.map(tmpl => (
-            <div key={tmpl.id} className="bg-card border border-border rounded-2xl p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold">{tmpl.name}</p>
-                  <p className="text-xs text-muted mt-0.5">{tmpl.questions.length} preguntas</p>
-                  {/* Etiquetas vinculadas */}
-                  {labels.filter(l => l.survey_template_id === tmpl.id).length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {labels.filter(l => l.survey_template_id === tmpl.id).map(l => (
-                        <LabelPill key={l.id} label={l} small />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => { setEditingTemplate(tmpl); setShowTemplateEditor(true) }} className="p-1.5 text-muted hover:text-accent"><Edit2 className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => deleteTemplate(tmpl.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
+          {templates.map(tmpl => {
+            const tmplResponses = responses.filter(r => r.template_id === tmpl.id)
+            const tmplSchedules = schedules.filter(sc => sc.template_id === tmpl.id)
+            const tmplLabels = labels.filter(l => l.survey_template_id === tmpl.id)
+            return (
+              <div key={tmpl.id} className="bg-card border border-border rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{tmpl.name}</p>
+                    <p className="text-xs text-muted mt-0.5">
+                      {tmpl.questions.length} {tmpl.questions.length === 1 ? 'pregunta' : 'preguntas'} · {tmplResponses.length} {tmplResponses.length === 1 ? 'respuesta' : 'respuestas'}
+                    </p>
+                    {tmplSchedules.length > 0 ? (
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+                        {tmplSchedules.map(sc => (
+                          <span key={sc.id} className={`text-xs flex items-center gap-1 ${sc.active ? 'text-ok font-medium' : 'text-muted'}`}>
+                            <CalendarClock className="w-3 h-3" /> {describeSchedule(sc)}{sc.active ? '' : ' (en pausa)'}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted mt-1.5 flex items-center gap-1"><CalendarClock className="w-3 h-3" /> Sin envío programado</p>
+                    )}
+                    {tmplLabels.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => { setResultsTemplateId(tmpl.id); setSection('respuestas') }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors">
+                      <BarChart3 className="w-3.5 h-3.5" /> Resultados
+                    </button>
+                    <ActionMenu title="Acciones de la encuesta">
+                      <button onClick={() => { setScheduleTemplateId(tmpl.id); setSection('programacion'); setShowScheduleEditor(true) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <CalendarClock className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Programar envío
+                      </button>
+                      <button onClick={() => { setEditingTemplate(tmpl); setShowTemplateEditor(true) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Edit2 className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Editar preguntas
+                      </button>
+                      <div className="h-px bg-border my-1" />
+                      <button onClick={() => deleteTemplate(tmpl.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                        <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Eliminar
+                      </button>
+                    </ActionMenu>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
-      {/* ── PROGRAMACIÓN ── */}
+      {/* ── ENVÍOS PROGRAMADOS ── */}
       {section === 'programacion' && (
         <div className="space-y-3">
-          {showScheduleEditor && (
-            <ScheduleEditor trainerId={trainerId} templates={templates} clients={clients}
-              onSave={s => { setSchedules(ss => [s, ...ss]); setShowScheduleEditor(false); toast('Programado ✓', 'ok') }}
-              onCancel={() => setShowScheduleEditor(false)} />
+          {templates.length > 0 && !showScheduleEditor && (
+            <div className="flex justify-end">
+              <button onClick={() => { setScheduleTemplateId(undefined); setShowScheduleEditor(true) }}
+                className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-semibold hover:border-ink">
+                <Clock className="w-4 h-4" /> Programar envío
+              </button>
+            </div>
           )}
-          {templates.length === 0 && <div className="text-center py-8 text-muted text-sm border-2 border-dashed border-border rounded-2xl"><p>Primero crea una plantilla</p></div>}
+          {showScheduleEditor && (
+            <ScheduleEditor trainerId={trainerId} templates={templates} clients={clients} presetTemplateId={scheduleTemplateId}
+              onSave={sc => { setSchedules(ss => [sc, ...ss]); setShowScheduleEditor(false); setScheduleTemplateId(undefined); toast('Programado ✓', 'ok') }}
+              onCancel={() => { setShowScheduleEditor(false); setScheduleTemplateId(undefined) }} />
+          )}
+          {templates.length === 0 && <div className="text-center py-8 text-muted text-sm border-2 border-dashed border-border rounded-2xl"><p>Primero crea una encuesta</p></div>}
           {schedules.length === 0 && templates.length > 0 && !showScheduleEditor && (
             <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
-              <p className="text-4xl mb-3">📅</p>
-              <p className="font-serif text-lg font-bold">Sin programaciones</p>
+              <CalendarClock className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="font-serif text-lg font-bold">Sin envíos programados</p>
+              <p className="text-sm mt-1">Programa una encuesta y tendrás a mano el botón para enviarla</p>
               <button onClick={() => setShowScheduleEditor(true)} className="mt-4 px-5 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Programar envío</button>
             </div>
           )}
@@ -474,21 +512,21 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
                 <div className="flex items-start gap-3">
                   <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${sched.active ? 'bg-ok' : 'bg-border'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{tmpl?.name || 'Plantilla eliminada'}</p>
+                    <p className="font-semibold text-sm">{tmpl?.name || 'Encuesta eliminada'}</p>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
                       <span className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{client ? `${client.name} ${client.surname}` : 'Todos'}</span>
-                      <span className="text-xs text-muted flex items-center gap-1"><Clock className="w-3 h-3" />{FREQ_LABELS[sched.frequency]}{(sched.frequency === 'weekly' || sched.frequency === 'biweekly') && ` · ${DAY_LABELS[sched.day_of_week]}`}</span>
+                      <span className="text-xs text-muted flex items-center gap-1"><Clock className="w-3 h-3" />{describeSchedule(sched)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => sendNow(sched)} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#25D366] text-white rounded-lg text-xs font-semibold hover:opacity-90">
                       <Send className="w-3 h-3" /> Enviar
                     </button>
-                    <button onClick={() => toggleSchedule(sched.id, !sched.active)}
+                    <button onClick={() => toggleSchedule(sched.id, !sched.active)} role="switch" aria-checked={sched.active} aria-label={sched.active ? 'Pausar envío' : 'Activar envío'}
                       className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-colors ${sched.active ? 'bg-ok' : 'bg-border'}`}>
                       <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${sched.active ? 'translate-x-4' : ''}`} />
                     </button>
-                    <button onClick={() => deleteSchedule(sched.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteSchedule(sched.id)} aria-label="Eliminar envío" className="p-1 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               </div>
@@ -497,23 +535,84 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
         </div>
       )}
 
-      {/* ── RESPUESTAS ── */}
-      {section === 'respuestas' && (
-        <div className="space-y-3">
-          {responses.length === 0 && (
-            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
-              <p className="text-4xl mb-3">📊</p>
-              <p className="font-serif text-lg font-bold">Sin respuestas aún</p>
-            </div>
-          )}
-          {responses.map(resp => {
-            const tmpl = templates.find(t => t.id === resp.template_id)
-            const client = clients.find(c => c.id === resp.client_id)
-            if (!tmpl || !client) return null
-            return <ResponseViewer key={resp.id} response={resp} template={tmpl} clientName={`${client.name} ${client.surname}`} />
-          })}
-        </div>
-      )}
+      {/* ── RESPUESTAS: primero el resultado, luego cada respuesta ── */}
+      {section === 'respuestas' && (() => {
+        const selectedId = resultsTemplateId ?? (templates.length === 1 ? templates[0].id : null)
+        const selected = templates.find(t => t.id === selectedId) || null
+        const visible = responses.filter(r => (!selected || r.template_id === selected.id) && templates.some(t => t.id === r.template_id) && clients.some(c => c.id === r.client_id))
+        const summary = selected ? summarizeSurvey(selected.questions, responses.filter(r => r.template_id === selected.id)) : null
+        return (
+          <div className="space-y-3">
+            {templates.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                <button onClick={() => setResultsTemplateId(null)} aria-pressed={!selected}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 ${!selected ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                  Todas ({responses.length})
+                </button>
+                {templates.map(t => (
+                  <button key={t.id} onClick={() => setResultsTemplateId(t.id)} aria-pressed={selected?.id === t.id}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 ${selected?.id === t.id ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                    {t.name} ({responses.filter(r => r.template_id === t.id).length})
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {summary && selected && summary.responses > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Resultados</p>
+                <h3 className="font-serif font-bold text-xl mt-0.5">{selected.name}</h3>
+                <p className="text-xs text-muted mt-0.5">
+                  {summary.responses} {summary.responses === 1 ? 'respuesta' : 'respuestas'}
+                  {summary.lastAt ? ` · última el ${new Date(summary.lastAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}` : ''}
+                </p>
+                <div className="mt-4 space-y-3.5">
+                  {summary.questions.filter(q => q.type !== 'text' && q.answered > 0).map(q => (
+                    <div key={q.id}>
+                      <p className="text-xs text-muted mb-1">{q.label}</p>
+                      {q.type === 'scale' && q.avg !== undefined && (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-bg-alt rounded-full h-2 overflow-hidden"><div className="h-full rounded-full bg-accent" style={{ width: `${(q.avg / 10) * 100}%` }} /></div>
+                          <span className="text-sm font-bold text-accent w-14 text-right tabular-nums">{String(q.avg).replace('.', ',')} / 10</span>
+                        </div>
+                      )}
+                      {q.type === 'yesno' && q.yesPct !== undefined && (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-bg-alt rounded-full h-2 overflow-hidden"><div className="h-full rounded-full bg-ok" style={{ width: `${q.yesPct}%` }} /></div>
+                          <span className="text-sm font-bold text-ok w-14 text-right tabular-nums">{q.yesPct}% sí</span>
+                        </div>
+                      )}
+                      {q.type === 'choice' && q.counts && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {q.counts.map(c => <span key={c.option} className="px-2.5 py-1 rounded-full bg-bg-alt text-xs font-semibold">{c.option} <span className="text-muted">· {c.n}</span></span>)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!selected && templates.length > 1 && responses.length > 0 && (
+              <p className="text-xs text-muted">Elige una encuesta para ver sus resultados.</p>
+            )}
+
+            {visible.length === 0 && (
+              <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
+                <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-serif text-lg font-bold">Sin respuestas aún</p>
+                <p className="text-sm mt-1">Cuando tus clientes respondan, verás aquí los resultados</p>
+              </div>
+            )}
+            {visible.map(resp => {
+              const tmpl = templates.find(t => t.id === resp.template_id)
+              const client = clients.find(c => c.id === resp.client_id)
+              if (!tmpl || !client) return null
+              return <ResponseViewer key={resp.id} response={resp} template={tmpl} clientName={`${client.name} ${client.surname}`} />
+            })}
+          </div>
+        )
+      })()}
     </div>
   )
 }
