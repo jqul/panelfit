@@ -95,7 +95,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
             </p>
             {targetRange && (
-              <p className="text-[10px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
+              <p className="text-[11px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
                 🎯 {targetRange}
               </p>
             )}
@@ -201,15 +201,15 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="m/s"
                   aria-label="Velocidad en m/s"
-                  className="w-16 text-center text-[10px] font-semibold py-1 rounded-full border border-accent outline-none"
+                  className="w-16 text-center text-[11px] font-semibold py-1 rounded-full border border-accent outline-none"
                 />
               ) : (
                 <button
                   onClick={() => { setVelocityInput(velocity !== undefined ? String(velocity) : ''); setEditingVelocity(true) }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
                   style={{
-                    backgroundColor: velocity !== undefined ? (lossColor ? lossColor + '15' : '#eef2ff') : '#f3f4f6',
-                    color: velocity !== undefined ? (lossColor || '#6366f1') : '#9ca3af',
+                    backgroundColor: velocity !== undefined ? (lossColor ? lossColor + '15' : 'color-mix(in srgb, var(--color-accent) 12%, transparent)') : 'var(--color-bg-alt)',
+                    color: velocity !== undefined ? (lossColor || 'var(--color-accent)') : 'var(--color-muted)',
                   }}>
                   <Gauge className="w-2.5 h-2.5" />
                   {velocity !== undefined ? `${velocity} m/s${lossPct !== null && lossPct > 0.5 ? ` (-${lossPct}%)` : ''}` : '+ Velocidad'}
@@ -217,10 +217,10 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               )
             )}
             <button onClick={() => setShowRir(true)}
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
               style={{
-                backgroundColor: rirMeta ? rirMeta.color + '15' : '#f3f4f6',
-                color: rirMeta ? rirMeta.color : '#9ca3af',
+                backgroundColor: rirMeta ? rirMeta.color + '15' : 'var(--color-bg-alt)',
+                color: rirMeta ? rirMeta.color : 'var(--color-muted)',
               }}>
               <Zap className="w-2.5 h-2.5" />
               {rirMeta ? `RIR ${rir} · ${rirMeta.desc}` : 'Añadir RIR'}

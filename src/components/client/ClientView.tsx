@@ -370,7 +370,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {!isOnline && <WifiOff className="w-4 h-4 text-warn" />}
             <div className="text-right">
               <p className="text-xs font-semibold">{clientName}</p>
-              {plan?.type && <p className="text-[10px] text-muted capitalize">{plan.type}</p>}
+              {plan?.type && <p className="text-[11px] text-muted capitalize">{plan.type}</p>}
             </div>
           </div>
         </div>
@@ -440,7 +440,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
               style={{ minHeight: '56px' }}
               aria-label={label}>
               <Icon className={`w-5 h-5 transition-colors ${activeTab === id ? 'text-ink' : 'text-muted'}`} />
-              <span className={`text-[10px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>{label}</span>
+              <span className={`text-[11px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>{label}</span>
             </button>
           ))}
         </div>

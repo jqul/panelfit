@@ -58,7 +58,7 @@ export function CicloWidget({ clientId, trainerId }: { clientId: string; trainer
             </div>
           )}
 
-          <p className="text-[10px] text-muted">Solo vosotros dos veis esto. Es una guía orientativa, no un consejo médico — puedes desactivarlo cuando quieras.</p>
+          <p className="text-[11px] text-muted">Solo vosotros dos veis esto. Es una guía orientativa, no un consejo médico — puedes desactivarlo cuando quieras.</p>
         </div>
       )}
     </div>

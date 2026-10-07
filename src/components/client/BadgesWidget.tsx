@@ -26,7 +26,7 @@ export function BadgesWidget({ logs }: { logs: TrainingLogs }) {
             <div className="space-y-2">
               {nextStreak && (
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-muted mb-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted mb-1">
                     <span>Próximo: {nextStreak.badge.emoji} {nextStreak.badge.label}</span>
                     <span>{nextStreak.current}/{nextStreak.badge.threshold}</span>
                   </div>
@@ -37,7 +37,7 @@ export function BadgesWidget({ logs }: { logs: TrainingLogs }) {
               )}
               {nextSessions && (
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-muted mb-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted mb-1">
                     <span>Próximo: {nextSessions.badge.emoji} {nextSessions.badge.label}</span>
                     <span>{nextSessions.current}/{nextSessions.badge.threshold}</span>
                   </div>

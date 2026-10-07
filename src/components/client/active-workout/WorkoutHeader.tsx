@@ -36,7 +36,7 @@ export function WorkoutHeader({
         </button>
         <div className="flex-1 min-w-0">
           <div className="font-semibold text-sm truncate">{title}</div>
-          {clientName && <p className="text-[10px] text-muted truncate">Sesión de {clientName}</p>}
+          {clientName && <p className="text-[11px] text-muted truncate">Sesión de {clientName}</p>}
         </div>
         <div className="flex items-center gap-1 text-xs text-muted mr-2">
           <Clock className="w-3.5 h-3.5" />
@@ -69,10 +69,10 @@ export function WorkoutHeader({
       {totalVolume > 0 && (
         <div className="px-4 pb-3">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
+            <p className="text-[11px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
               <Flame className="w-3 h-3" /> Densidad
             </p>
-            <p className="text-[10px] text-muted font-bold tabular-nums">
+            <p className="text-[11px] text-muted font-bold tabular-nums">
               {densityRate > 0 && `${densityRate} kg/min · `}
               {densityPct !== null
                 ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`

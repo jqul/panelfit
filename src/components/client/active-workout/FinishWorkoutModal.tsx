@@ -85,7 +85,7 @@ export function FinishWorkoutModal({
             <div key={i} className="bg-bg rounded-2xl p-3 text-center">
               <div className="flex justify-center mb-1">{s.icon}</div>
               <p className="font-serif font-bold text-base">{s.value}</p>
-              <p className="text-[10px] text-muted">{s.label}</p>
+              <p className="text-[11px] text-muted">{s.label}</p>
             </div>
           ))}
         </div>

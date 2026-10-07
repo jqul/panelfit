@@ -138,7 +138,7 @@ export function CalculadoraDiscos({ pesoObjetivo, onClose }: Props) {
             <div className="space-y-3">
               {/* Visualización barra */}
               <div className="bg-card border border-border rounded-2xl p-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-3 text-center">
+                <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-3 text-center">
                   Cada lado de la barra
                 </p>
                 <div className="flex items-center justify-center gap-1 min-h-[56px] overflow-x-auto py-2">
@@ -193,7 +193,7 @@ export function CalculadoraDiscos({ pesoObjetivo, onClose }: Props) {
                 </div>
                 {discos.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-border/50">
-                    <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1">Cada lado:</p>
+                    <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">Cada lado:</p>
                     <p className="text-sm font-semibold">
                       {discos.map(d => `${d}kg`).join(' + ')}
                     </p>

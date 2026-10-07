@@ -70,7 +70,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
           <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
             <div className="flex justify-center mb-1">{k.icon}</div>
             <p className="text-xl font-serif font-bold">{k.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
           </div>
         ))}
       </div>
@@ -88,7 +88,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
         {/* Cabecera días semana */}
         <div className="grid grid-cols-7 mb-1">
           {['L','M','X','J','V','S','D'].map(d => (
-            <div key={d} className="text-center text-[10px] font-bold text-muted py-1">{d}</div>
+            <div key={d} className="text-center text-[11px] font-bold text-muted py-1">{d}</div>
           ))}
         </div>
 
@@ -126,9 +126,9 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
 
         {/* Leyenda */}
         <div className="flex items-center gap-4 mt-3 justify-center">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-ok" /><span className="text-[10px] text-muted">Entrenó</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-accent/20 border border-accent/40" /><span className="text-[10px] text-muted">Hoy</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-bg-alt border border-border" /><span className="text-[10px] text-muted">Sin entreno</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-ok" /><span className="text-[11px] text-muted">Entrenó</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-accent/20 border border-accent/40" /><span className="text-[11px] text-muted">Hoy</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-bg-alt border border-border" /><span className="text-[11px] text-muted">Sin entreno</span></div>
         </div>
       </div>
 
@@ -154,7 +154,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[10px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
+                        <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
                       ))}
@@ -200,8 +200,8 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
           })}
         </div>
         <div className="flex justify-between mt-2">
-          <span className="text-[10px] text-muted">hace 12 semanas</span>
-          <span className="text-[10px] text-muted">hoy</span>
+          <span className="text-[11px] text-muted">hace 12 semanas</span>
+          <span className="text-[11px] text-muted">hoy</span>
         </div>
       </div>
     </div>

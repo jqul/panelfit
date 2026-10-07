@@ -74,7 +74,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
             onClick={() => setExpanded(expanded === session.date ? null : session.date)}>
             {/* Fecha */}
             <div className="bg-accent/10 rounded-xl px-2.5 py-1.5 text-center flex-shrink-0">
-              <p className="text-[10px] font-bold text-accent uppercase">
+              <p className="text-[11px] font-bold text-accent uppercase">
                 {new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { month: 'short' })}
               </p>
               <p className="text-lg font-serif font-bold text-accent leading-tight">
@@ -110,7 +110,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[10px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
+                        <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
                       ))}
@@ -119,7 +119,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                   {ex.best > 0 && (
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs font-bold text-accent">{ex.best}kg</p>
-                      <p className="text-[10px] text-muted">mejor</p>
+                      <p className="text-[11px] text-muted">mejor</p>
                     </div>
                   )}
                 </div>
@@ -283,14 +283,14 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{name}</p>
               {rec.date && (
-                <p className="text-[10px] text-muted">
+                <p className="text-[11px] text-muted">
                   {new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               )}
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-sm font-bold text-accent">{rec.best} kg</p>
-              <p className="text-[10px] text-muted">×{rec.reps} reps</p>
+              <p className="text-[11px] text-muted">×{rec.reps} reps</p>
             </div>
           </div>
         ))}
@@ -345,7 +345,7 @@ function DolorTab({ clientId, trainerId }: { clientId: string; trainerId?: strin
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{e.zona}</p>
                   {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
-                  <p className="text-[10px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                  <p className="text-[11px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
                 </div>
                 <button onClick={() => deleteEntry(e.id)} aria-label="Eliminar registro" className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
                   <Trash2 className="w-3.5 h-3.5 mx-auto" />
@@ -515,22 +515,22 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
         <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
             <p className="text-sm font-semibold">{v.exercise_name}</p>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+            <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
               {v.status === 'pendiente' ? 'Pendiente' : '✓ Comentado'}
             </span>
           </div>
           <div className="p-4 space-y-3">
             <SignedVideo bucket="client-videos" src={v.video_url} className="w-full rounded-xl bg-black max-h-60" />
-            <p className="text-[10px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+            <p className="text-[11px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
             {v.trainer_comment && (
               <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
                 <p className="text-sm">{v.trainer_comment}</p>
               </div>
             )}
             {v.trainer_comment_video_url && (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
                 <SignedVideo bucket="client-videos" src={v.trainer_comment_video_url} className="w-full rounded-xl bg-black max-h-60" />
               </div>
             )}
@@ -700,17 +700,17 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className="text-2xl font-serif font-bold">{pesoActual}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">kg actual</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">kg actual</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className={`text-2xl font-serif font-bold ${pesoCambio === null ? 'text-muted' : pesoCambio < 0 ? 'text-ok' : pesoCambio > 0 ? 'text-warn' : 'text-muted'}`}>
                   {pesoCambio === null ? '—' : `${pesoCambio > 0 ? '+' : ''}${pesoCambio.toFixed(1)}`}
                 </p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">cambio total</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">cambio total</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className="text-2xl font-serif font-bold">{weights.length}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">registros</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">registros</p>
               </div>
             </div>
           )}
@@ -795,9 +795,9 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
                       const url = session[type]
                       return (
                         <div key={type} className="space-y-1">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
                           <label className={`block cursor-pointer rounded-xl overflow-hidden border-2 aspect-[3/4] ${url ? 'border-border' : 'border-dashed border-border hover:border-accent'}`}>
-                            {url ? <SignedImage bucket="media" src={url} alt={`Foto de progreso - ${labels[type]}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
+                            {url ? <SignedImage bucket="media" src={url} alt={`Foto de progreso - ${labels[type]}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[11px] text-center">Toca para subir</span></div>}
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(session.id, type, f) }} />
                           </label>
                         </div>

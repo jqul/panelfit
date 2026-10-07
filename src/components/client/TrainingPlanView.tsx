@@ -114,7 +114,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
       ) : (
       <>
       <div className="px-4 pt-5 pb-3">
-        <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
+        <p className="text-[11px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
         {currentWeek.rpe && <p className="text-xs text-muted mt-0.5">Intensidad objetivo: {currentWeek.rpe}</p>}
         {currentWeek.isDeload && (
@@ -150,7 +150,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                 <div className="flex-1 min-w-0" onClick={() => setOpenDays(p => ({ ...p, [dayKey]: !p[dayKey] }))}>
                   <p className="font-semibold text-sm">{day.title}</p>
                   {day.focus && <p className="text-xs text-muted truncate">{day.focus}</p>}
-                  <p className="text-[10px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>
+                  <p className="text-[11px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
@@ -194,7 +194,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                             const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
                             return (
                               <div key={ei} className="flex items-center gap-2.5 bg-white/70 rounded-xl px-3 py-2.5 border border-accent/20">
-                                <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[10px] font-bold text-accent flex-shrink-0">
+                                <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[11px] font-bold text-accent flex-shrink-0">
                                   {ei + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -238,7 +238,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                       return (
                         <div key={ri} className={`px-4 py-3 ${log?.done ? 'opacity-60' : ''}`}>
                           <div className="flex items-start gap-3">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5 ${
                               log?.done ? 'bg-ok text-white' : 'bg-bg border border-border text-muted'
                             }`}>
                               {log?.done ? '✓' : ri + 1}
@@ -246,12 +246,12 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-medium">{ex.name}</p>
-                                {ex.isMain && <span className="text-[10px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
+                                {ex.isMain && <span className="text-[11px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
                                 {/* Badge tipo serie con botón ℹ️ */}
                                 {showSeriesType && (
                                   <button
                                     onClick={() => setSeriesInfoModal(seriesMeta!)}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-bg border border-border rounded-full text-[10px] font-semibold text-muted hover:border-accent hover:text-accent transition-colors active:scale-95">
+                                    className="flex items-center gap-1 px-2 py-0.5 bg-bg border border-border rounded-full text-[11px] font-semibold text-muted hover:border-accent hover:text-accent transition-colors active:scale-95">
                                     <span>{seriesMeta!.emoji}</span>
                                     <span>{seriesMeta!.label}</span>
                                     <Info className="w-2.5 h-2.5" />
@@ -281,7 +281,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                               {log?.sets && Object.keys(log.sets).length > 0 && (
                                 <div className="flex gap-1.5 mt-1.5 flex-wrap">
                                   {Object.values(log.sets).map((s, si) => (
-                                    <span key={si} className="text-[10px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
+                                    <span key={si} className="text-[11px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
                                   ))}
                                 </div>
                               )}

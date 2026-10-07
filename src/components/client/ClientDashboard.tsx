@@ -201,7 +201,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                 {s.icon}
                 <span className="text-xl font-serif font-bold">{s.value}</span>
               </div>
-              <p className="text-[10px] text-muted uppercase tracking-wider">{s.label}</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
         </div>
@@ -210,7 +210,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
         {todaySession ? (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 pt-5 pb-4">
-              <p className="text-[10px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
               <h3 className="font-serif font-bold text-xl leading-tight">{todaySession.day.title}</h3>
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
 
@@ -294,7 +294,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                       style={count > 0 ? { backgroundColor: '#e0a854' } : undefined}>
                       {count > 0 && <span className="text-white text-xs font-bold">✓</span>}
                     </div>
-                    <p className={`text-[10px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
+                    <p className={`text-[11px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
                   </div>
                 )
               })
@@ -310,7 +310,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
             <div className="bg-card border border-border rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-serif font-bold text-sm">Macros de hoy</h4>
-                <span className="text-[10px] text-muted uppercase tracking-wider">objetivos diarios</span>
+                <span className="text-[11px] text-muted uppercase tracking-wider">objetivos diarios</span>
               </div>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[
@@ -321,7 +321,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                 ].map(m => (
                   <div key={m.label} className="bg-bg border border-border rounded-xl p-2.5 text-center">
                     <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
-                    <p className="text-[10px] text-muted">{m.label}</p>
+                    <p className="text-[11px] text-muted">{m.label}</p>
                   </div>
                 ))}
               </div>
@@ -339,7 +339,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
             <div className="min-w-0">
               {logro ? (
                 <>
-                  <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Último logro</p>
+                  <p className="text-[11px] uppercase tracking-widest text-muted font-bold">Último logro</p>
                   <p className="text-sm font-bold truncate">{logro.name} · +{String(logro.delta).replace('.', ',')} kg</p>
                   <p className="text-xs text-muted mt-0.5">{new Date(logro.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}{restDayMsg ? ` · ${restDayMsg}` : ''}</p>
                 </>

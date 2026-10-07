@@ -32,7 +32,7 @@ export function RirSelector({ value, onSelect, onClose }: { value: number | unde
                   backgroundColor: selected ? opt.color + '15' : 'transparent',
                 }}>
                 <span className="text-xl font-bold" style={{ color: opt.color }}>{selected && half ? `${opt.value}.5` : opt.label}</span>
-                <span className="text-[10px] text-muted text-center leading-tight">{opt.desc}</span>
+                <span className="text-[11px] text-muted text-center leading-tight">{opt.desc}</span>
               </button>
             )
           })}

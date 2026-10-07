@@ -44,9 +44,9 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
   return (
     <div>
       <div className="grid grid-cols-[28px_1fr_108px_36px] gap-1 px-3 pb-1">
-        <p className="text-[10px] uppercase text-muted font-bold text-center">{isTest ? 'Test' : 'Tirada'}</p>
-        <p className="text-[10px] uppercase text-muted font-bold text-center">Objetivo</p>
-        <p className="text-[10px] uppercase text-muted font-bold text-center">{isTest ? 'Metros' : 'Tiempo'}</p>
+        <p className="text-[11px] uppercase text-muted font-bold text-center">{isTest ? 'Test' : 'Tirada'}</p>
+        <p className="text-[11px] uppercase text-muted font-bold text-center">Objetivo</p>
+        <p className="text-[11px] uppercase text-muted font-bold text-center">{isTest ? 'Metros' : 'Tiempo'}</p>
         <div />
       </div>
 
@@ -71,12 +71,12 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
                 {!isTest && !!run.recoveryM && si < totalSets - 1 && (
                   <p className="text-[11px] text-muted">luego {formatDistance(run.recoveryM)} andando</p>
                 )}
-                {run.intensity && si === 0 && <p className="text-[10px] text-accent font-semibold">{run.intensity}</p>}
+                {run.intensity && si === 0 && <p className="text-[11px] text-accent font-semibold">{run.intensity}</p>}
                 {(s.done || s.timeSec || s.distanceM) && pace !== null && (
                   <p className="text-xs font-bold text-ok">{formatPace(pace)}</p>
                 )}
                 {prev && (prev.timeSec || prev.distanceM) && (
-                  <p className="text-[10px] text-muted">
+                  <p className="text-[11px] text-muted">
                     Anterior: {isTest ? formatDistance(prev.distanceM || 0) : formatDuration(prev.timeSec || 0)}{prevPace !== null && !isTest ? ` · ${formatPace(prevPace)}` : ''}
                   </p>
                 )}
@@ -118,11 +118,11 @@ export function RunSets({ run, totalSets, sets, prevSets, onSetData, onToggle }:
         <div className="mx-3 mb-3 mt-1 grid grid-cols-2 gap-2">
           <div className="bg-bg rounded-xl p-2.5 text-center">
             <p className="text-base font-bold text-accent">{formatDistance(isTest ? (sets[0]?.distanceM || 0) : totalDist)}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider">{isTest ? 'Distancia' : 'Distancia total'}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider">{isTest ? 'Distancia' : 'Distancia total'}</p>
           </div>
           <div className="bg-bg rounded-xl p-2.5 text-center">
             <p className="text-base font-bold text-ink">{formatPace(paceSecPerKm(timedSec, timedDist))}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider">Ritmo medio</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider">Ritmo medio</p>
           </div>
         </div>
       )}

@@ -724,7 +724,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         {(pctTarget || vProfile?.oneRM || !(ex.hideRest || ex.kind === 'run')) && (
           <div className="mx-4 text-xs text-muted space-y-1">
             {pctTarget && <p className="text-accent font-semibold">{ex.weight} ≈ {pctTarget}kg (según tu 1RM estimado)</p>}
-            {vProfile?.oneRM && <p style={{ color: '#6366f1' }} className="font-semibold">⚡ 1RM real de hoy (por velocidad): ~{vProfile.oneRM}kg</p>}
+            {vProfile?.oneRM && <p style={{ color: 'var(--color-accent)' }} className="font-semibold">⚡ 1RM real de hoy (por velocidad): ~{vProfile.oneRM}kg</p>}
             {!(ex.hideRest || ex.kind === 'run') && <p>Descanso: {Math.floor(restSecs / 60) > 0 ? `${Math.floor(restSecs / 60)}min ` : ''}{restSecs % 60 > 0 ? `${restSecs % 60}s` : ''}</p>}
           </div>
         )}
@@ -879,23 +879,23 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                       <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
-                  {ex.isMain && <span className="text-[10px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                  {ex.isMain && <span className="text-[11px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
                     const target = resolveWeightFromPercent(ex.weight, best1RM)
                     return target ? (
-                      <p className="text-[10px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
+                      <p className="text-[11px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
                     ) : (
-                      <p className="text-[10px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
+                      <p className="text-[11px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
                     )
                   })()}
                   {velocityProfile?.oneRM && (
-                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#6366f1' }}>
+                    <p className="text-[11px] font-semibold mt-0.5" style={{ color: 'var(--color-accent)' }}>
                       ⚡ 1RM real de hoy (por velocidad): ~{velocityProfile.oneRM}kg
                     </p>
                   )}
                   {vbtSuggestion && (
-                    <p className="text-[10px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
+                    <p className="text-[11px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
                       🎯 {vbtSuggestion.label}
                     </p>
                   )}
@@ -912,7 +912,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 const history = getExerciseHistory(ex.name)
                 return (
                   <div className="mx-4 mb-3 bg-bg-alt/50 border border-border rounded-xl p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
                     {history.length === 0 ? (
                       <p className="text-xs text-muted">Sin historial previo para este ejercicio</p>
                     ) : (
@@ -999,12 +999,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
-                <p className="text-[10px] uppercase text-muted font-bold text-center">N</p>
-                <p className="text-[10px] uppercase text-muted font-bold text-center">Anterior</p>
-                <p className="text-[10px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
+                <p className="text-[11px] uppercase text-muted font-bold text-center">N</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Anterior</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
                   KG <Calculator className="w-2.5 h-2.5 opacity-50" />
                 </p>
-                <p className="text-[10px] uppercase text-muted font-bold text-center">Reps</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Reps</p>
                 <div />
               </div>
 

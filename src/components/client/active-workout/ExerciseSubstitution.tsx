@@ -56,7 +56,7 @@ export function ExerciseSubstitution({
                 <button key={s.id} onClick={() => onConfirmEdit(s.name)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-bg-alt transition-colors">
                   <span className="flex-1 truncate">{s.name}</span>
-                  {s.category && <span className="text-[10px] text-muted flex-shrink-0">{s.category}</span>}
+                  {s.category && <span className="text-[11px] text-muted flex-shrink-0">{s.category}</span>}
                 </button>
               ))}
             </div>
@@ -102,7 +102,7 @@ export function ExerciseSubstitution({
           </div>
           {molestiaZona && (
             <div className="space-y-1.5 pt-1 border-t border-warn/20">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
                 {alternatives.length > 0 ? 'Alternativas seguras para hoy' : 'Sin alternativa clara en tu lista'}
               </p>
               {alternatives.length > 0 ? alternatives.map(alt => (

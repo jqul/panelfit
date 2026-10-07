@@ -96,7 +96,7 @@ export function TempoWidget({ tempo }: { tempo?: string }) {
           {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: phase.color }}>Tempo {tempo}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: phase.color }}>Tempo {tempo}</p>
           <p className="text-sm font-bold truncate">
             {running ? (phase.explosive ? '¡Explosivo!' : phase.label) : 'Toca para marcar el ritmo'}
           </p>
