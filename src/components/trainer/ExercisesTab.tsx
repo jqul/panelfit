@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
-import { Plus, Trash2, Edit2, X, Video, Search, Settings2, Star, Dumbbell } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Search, Settings2, Star, Dumbbell, MoreHorizontal, SlidersHorizontal } from 'lucide-react'
+import { ActionMenu } from '../shared/ActionMenu'
+import { matchesQuery } from '../../lib/workoutList'
+import { exerciseSubtitle, categoryCounts } from '../../lib/exerciseRow'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
 import { MuscleDiagram } from './MuscleDiagram'
@@ -465,22 +468,21 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   const [editId, setEditId]         = useState<string|null>(null)
   const [showNew, setShowNew]       = useState(false)
   const [showConfig, setShowConfig] = useState(false)
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [editInitial, setEditInitial] = useState<FormState>(emptyForm())
   const [, forceUpdate] = useState(0)
   const refresh = () => forceUpdate(n=>n+1)
 
-  const storedCats = load(CATS_KEY(trainerId), DEFAULT_CATS)
-  // Unimos las categorías guardadas con las que de verdad tienen ejercicios
-  // (p.ej. las de la biblioteca de serie, que usan nombres más detallados
-  // como "Hombro" o "Pierna — Cuádriceps") para que el filtro no las oculte.
-  const usedCats = Array.from(new Set(exercises.map(e => e.category).filter(Boolean)))
-  const cats     = Array.from(new Set([...storedCats, ...usedCats]))
   const esps     = load<{id:string;label:string;emoji:string}[]>(ESPS_KEY(trainerId), [])
   const tags     = load<CustomTag[]>(TAGS_KEY(trainerId), [])
   const allEsps  = [...ESPECIALIDADES.map(e=>({id:e.value,label:e.label,emoji:e.emoji})), ...esps]
 
+  // Solo los grupos que tienen ejercicios, del más al menos poblado.
+  const catChips = useMemo(() => categoryCounts(exercises), [exercises])
+  const extraFilters = [filterEsp, filterTag, filterVideos].filter(Boolean).length
+
   const filtered = useMemo(() => exercises.filter(ex => {
-    if (search && !ex.name.toLowerCase().includes(search.toLowerCase())) return false
+    if (!matchesQuery(ex.name, search)) return false
     if (filterCat && ex.category !== filterCat) return false
     if (filterEsp && !(ex.especialidades||[]).includes(filterEsp)) return false
     if (filterTag && !(ex.tags||[]).includes(filterTag)) return false
@@ -516,16 +518,18 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Ejercicios</h2>
           <p className="text-muted text-sm mt-1">{exercises.length} ejercicios en tu biblioteca</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={()=>setShowConfig(!showConfig)}
-            className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-sm font-semibold transition-all ${showConfig?'bg-ink text-white border-ink':'border-border text-muted hover:border-accent'}`}>
-            <Settings2 className="w-3.5 h-3.5"/> Configurar
-          </button>
+        <div className="flex items-center gap-2">
+          <ActionMenu title="Más herramientas" buttonClassName={`p-2.5 rounded-xl border transition-colors ${showConfig ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`}
+            trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <button onClick={() => setShowConfig(v => !v)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Settings2 className="w-3.5 h-3.5 text-muted flex-shrink-0" /> {showConfig ? 'Cerrar configuración' : 'Grupos, especialidades y etiquetas'}
+            </button>
+          </ActionMenu>
           <button onClick={()=>{setShowNew(true);setEditId(null)}}
             className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
             <Plus className="w-4 h-4"/> Nuevo ejercicio
@@ -542,48 +546,57 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
           onCancel={()=>setShowNew(false)}/>
       )}
 
-      {/* Filtros */}
-      <div className="flex gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"/>
-          <input type="text" placeholder="Buscar ejercicio..." value={search} onChange={e=>setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-card border border-border rounded-lg text-sm outline-none"/>
+      {/* Buscar, y los grupos musculares a un toque */}
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"/>
+            <input type="text" placeholder="Buscar ejercicio..." aria-label="Buscar ejercicio" value={search} onChange={e=>setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"/>
+          </div>
+          <button onClick={()=>setShowMoreFilters(v=>!v)} aria-expanded={showMoreFilters}
+            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${showMoreFilters || extraFilters > 0 ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`}>
+            <SlidersHorizontal className="w-4 h-4"/> Filtros{extraFilters > 0 ? ` (${extraFilters})` : ''}
+          </button>
         </div>
-        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)}
-          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-          <option value="">Todos los grupos</option>
-          {cats.map(c=><option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={filterEsp} onChange={e=>setFilterEsp(e.target.value)}
-          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-          <option value="">Todas especialidades</option>
-          {allEsps.map(e=><option key={e.id} value={e.id}>{e.emoji} {e.label}</option>)}
-        </select>
-        {tags.length>0 && (
-          <select value={filterTag} onChange={e=>setFilterTag(e.target.value)}
-            className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-            <option value="">Todas etiquetas</option>
-            {tags.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
-          </select>
-        )}
-        {/* Filtro rápido vídeos */}
-        <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as ''|'con_esp'|'sin_esp'|'sin_video')}
-          className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-          <option value="">Todos los vídeos</option>
-          <option value="con_esp">🎯 Con vídeos esp.</option>
-          <option value="sin_esp">🌐 Solo genéricos</option>
-          <option value="sin_video">❌ Sin vídeo</option>
-        </select>
-      </div>
 
-      {/* Chips filtros activos */}
-      {(filterEsp||filterTag||filterCat) && (
-        <div className="flex gap-2 flex-wrap">
-          {filterCat&&<button onClick={()=>setFilterCat('')} className="flex items-center gap-1 px-2.5 py-1 bg-ink text-white rounded-full text-xs font-semibold">{filterCat} <X className="w-3 h-3"/></button>}
-          {filterEsp&&<button onClick={()=>setFilterEsp('')} className="flex items-center gap-1 px-2.5 py-1 bg-ink text-white rounded-full text-xs font-semibold">{allEsps.find(e=>e.id===filterEsp)?.emoji} {allEsps.find(e=>e.id===filterEsp)?.label} <X className="w-3 h-3"/></button>}
-          {filterTag&&<button onClick={()=>setFilterTag('')} className="flex items-center gap-1 px-2.5 py-1 bg-ink text-white rounded-full text-xs font-semibold">{tags.find(t=>t.id===filterTag)?.emoji} {tags.find(t=>t.id===filterTag)?.label} <X className="w-3 h-3"/></button>}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <button onClick={()=>setFilterCat('')} aria-pressed={!filterCat}
+            className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${!filterCat ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+            Todos
+          </button>
+          {catChips.map(c => (
+            <button key={c.category} onClick={()=>setFilterCat(filterCat === c.category ? '' : c.category)} aria-pressed={filterCat === c.category}
+              className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${filterCat === c.category ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+              {c.category}
+            </button>
+          ))}
         </div>
-      )}
+
+        {showMoreFilters && (
+          <div className="flex gap-2 flex-wrap p-3 bg-bg-alt/40 border border-border rounded-xl">
+            <select value={filterEsp} onChange={e=>setFilterEsp(e.target.value)} aria-label="Filtrar por especialidad"
+              className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+              <option value="">Todas las especialidades</option>
+              {allEsps.map(e=><option key={e.id} value={e.id}>{e.emoji} {e.label}</option>)}
+            </select>
+            {tags.length>0 && (
+              <select value={filterTag} onChange={e=>setFilterTag(e.target.value)} aria-label="Filtrar por etiqueta"
+                className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+                <option value="">Todas las etiquetas</option>
+                {tags.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+              </select>
+            )}
+            <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as ''|'con_esp'|'sin_esp'|'sin_video')} aria-label="Filtrar por vídeo"
+              className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
+              <option value="">Con o sin vídeo</option>
+              <option value="con_esp">Con vídeos de especialidad</option>
+              <option value="sin_esp">Solo vídeos genéricos</option>
+              <option value="sin_video">Sin vídeo</option>
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* Lista */}
       {filtered.length===0 ? (
@@ -622,7 +635,7 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
           <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
             <p className="font-serif text-lg">Sin resultados</p>
             <p className="text-sm mt-1">Prueba con otro término o categoría.</p>
-            <button onClick={() => { setSearch(''); setFilterCat(''); setFilterTag('') }} className="mt-3 text-accent text-sm hover:underline">Limpiar filtros</button>
+            <button onClick={() => { setSearch(''); setFilterCat(''); setFilterEsp(''); setFilterTag(''); setFilterVideos('') }} className="mt-3 text-accent text-sm hover:underline">Limpiar filtros</button>
           </div>
         )
       ) : (
@@ -641,48 +654,27 @@ export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold">{ex.name}</p>
-                        {ex.category&&<span className="text-[10px] bg-bg-alt border border-border px-1.5 py-0.5 rounded-full text-muted">{ex.category}</span>}
-                        {(ex.especialidades||[]).map(esp=>{
-                          const info=allEsps.find(e=>e.id===esp)
-                          return info?<span key={esp} className="text-[10px] bg-bg-alt border border-border px-1.5 py-0.5 rounded-full text-muted">{info.emoji} {info.label}</span>:null
-                        })}
                         {exTags.map(tagId=>{
                           const tag=tags.find(t=>t.id===tagId)
                           return tag?<TagBadge key={tagId} tag={tag}/>:null
                         })}
                       </div>
-                      {ex.description&&<p className="text-xs text-muted mt-0.5 truncate">{ex.description}</p>}
-                      {(ex.videos?.length||0)>0&&(
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {/* Vídeos especializados vs genéricos */}
-                          {(() => {
-                            const vids = ex.videos || []
-                            const especializados = vids.filter(v => v.especialidades?.length)
-                            const genericos = vids.filter(v => !v.especialidades?.length)
-                            return (
-                              <>
-                                {especializados.length > 0 && (
-                                  <span className="text-[10px] font-bold bg-accent/10 text-accent px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                                    <Video className="w-2.5 h-2.5"/>{especializados.length} esp.
-                                  </span>
-                                )}
-                                {genericos.length > 0 && (
-                                  <span className="text-[10px] text-muted bg-bg-alt border border-border px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                                    <Video className="w-2.5 h-2.5"/>{genericos.length} gen.
-                                  </span>
-                                )}
-                              </>
-                            )
-                          })()}
-                        </div>
-                      )}
+                      <p className="text-xs text-muted mt-0.5 truncate">{exerciseSubtitle(ex, id => allEsps.find(e => e.id === id)?.label)}</p>
                     </div>
-                    <div className="flex gap-1 flex-shrink-0">
-                      <button onClick={()=>toggleFav(ex.id)} className="p-1.5">
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={()=>toggleFav(ex.id)} aria-pressed={favs.has(ex.id)} aria-label={favs.has(ex.id) ? 'Quitar de favoritos' : 'Marcar como favorito'} className="p-1.5">
                         <Star className={`w-3.5 h-3.5 transition-colors ${favs.has(ex.id) ? 'fill-amber-400 text-amber-400' : 'text-border hover:text-amber-300'}`}/>
                       </button>
-                      <button onClick={()=>startEdit(ex)} className="p-1.5 text-muted hover:text-accent"><Edit2 className="w-3.5 h-3.5"/></button>
-                      <button onClick={()=>onDelete(ex.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5"/></button>
+                      <button onClick={()=>startEdit(ex)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors">
+                        <Edit2 className="w-3.5 h-3.5"/> Editar
+                      </button>
+                      <ActionMenu title="Acciones del ejercicio">
+                        <button onClick={()=>{ if (window.confirm(`¿Eliminar "${ex.name}" de tu biblioteca?`)) onDelete(ex.id) }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0"/> Eliminar
+                        </button>
+                      </ActionMenu>
                     </div>
                   </div>
                 )}
