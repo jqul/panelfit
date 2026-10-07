@@ -5,8 +5,10 @@ import { toast } from '../shared/Toast'
 import {
   Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
   Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
-  MessageSquare, Video, Calendar, Tag, Users, Search
+  MessageSquare, Video, Calendar, Tag, Users, Search, MoreHorizontal
 } from 'lucide-react'
+import { ActionMenu } from '../shared/ActionMenu'
+import { matchesQuery, plural } from '../../lib/workoutList'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
 import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
@@ -615,6 +617,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   const [editing, setEditing]     = useState<Program | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterTipo, setFilterTipo]   = useState<string | null>(null)
+  const [query, setQuery]             = useState('')
   const [bulkAssignFor, setBulkAssignFor] = useState<Program | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
@@ -653,6 +656,8 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   }
 
   const deleteProgram = async (id: string) => {
+    // Antes se borraba al instante con un icono que solo aparecía al pasar el ratón.
+    if (!window.confirm('¿Eliminar este programa? Los clientes que ya lo tienen asignado no se verán afectados.')) return
     if (trainerId !== DEMO_TRAINER_ID) await supabase.from('programs').delete().eq('id', id)
     setPrograms(ps => ps.filter(p => p.id !== id))
     toast('Eliminado', 'ok')
@@ -669,8 +674,11 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   const filtered = programs.filter(p => {
     if (filterLabel && !p.label_ids?.includes(filterLabel)) return false
     if (filterTipo && p.tipo !== filterTipo) return false
+    if (!matchesQuery(p.name, query)) return false
     return true
   })
+  const hasFilters = !!(query.trim() || filterLabel || filterTipo)
+  const clearFilters = () => { setQuery(''); setFilterLabel(null); setFilterTipo(null) }
 
   if (editing) return (
     <ProgramEditor
@@ -685,13 +693,15 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Programas</h2>
-          <p className="text-muted text-sm mt-1">{programs.length} programa{programs.length !== 1 ? 's' : ''}</p>
+          <p className="text-muted text-sm mt-1">Recorridos de varias semanas: workouts, cardio y tareas asignados a cada día · {plural(programs.length, 'programa', 'programas')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onManageLabels}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold border border-border text-muted hover:border-accent hover:text-accent transition-all">
-            <Tag className="w-4 h-4" /> Etiquetas
-          </button>
+          <ActionMenu title="Más herramientas" buttonClassName="p-2.5 rounded-xl border border-border text-muted hover:border-ink hover:text-ink transition-colors"
+            trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <button onClick={onManageLabels} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Tag className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Gestionar etiquetas
+            </button>
+          </ActionMenu>
           <button onClick={() => setEditing(emptyProgram(trainerId))}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
             <Plus className="w-4 h-4" /> Nuevo programa
@@ -699,30 +709,43 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
         </div>
       </div>
 
-      {/* Filtros */}
-      {(labels.length > 0 || usedTipos.length > 1) && (
-        <div className="flex flex-wrap gap-2">
-          {labels.length > 0 && (
-            <>
-              <button onClick={() => setFilterLabel(null)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${!filterLabel ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+      {/* Buscar y filtrar */}
+      {programs.length > 0 && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar programa..."
+              aria-label="Buscar programa"
+              className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+          {usedTipos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+              <button onClick={() => setFilterTipo(null)} aria-pressed={!filterTipo}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${!filterTipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                 Todos
               </button>
-              {labels.map(label => (
-                <button key={label.id} onClick={() => setFilterLabel(filterLabel === label.id ? null : label.id)}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${filterLabel === label.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
-                  style={{ backgroundColor: filterLabel === label.id ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
-                  {label.emoji} {label.name}
+              {usedTipos.map(tipo => (
+                <button key={tipo} onClick={() => setFilterTipo(filterTipo === tipo ? null : tipo)} aria-pressed={filterTipo === tipo}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${filterTipo === tipo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                  {tipo}
                 </button>
               ))}
-            </>
+            </div>
           )}
-          {usedTipos.length > 1 && usedTipos.map(tipo => (
-            <button key={tipo} onClick={() => setFilterTipo(filterTipo === tipo ? null : tipo)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${filterTipo === tipo ? 'bg-accent text-white border-accent' : 'border-border text-muted hover:border-accent'}`}>
-              {tipo}
-            </button>
-          ))}
+          {labels.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" aria-label="Filtrar por etiqueta">
+              {labels.map(label => {
+                const active = filterLabel === label.id
+                return (
+                  <button key={label.id} onClick={() => setFilterLabel(active ? null : label.id)} aria-pressed={active}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${active ? 'opacity-100' : 'opacity-60 hover:opacity-100'}`}
+                    style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
+                    {label.emoji} {label.name}
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -731,13 +754,13 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
           {[1,2,3,4].map(i => <div key={i} className="h-32 bg-card border border-border rounded-2xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        programs.length > 0 ? (
+        programs.length > 0 && hasFilters ? (
           // Tiene programas pero el filtro no devuelve nada
           <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl text-muted">
             <Calendar className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="font-serif text-lg font-bold">Sin resultados</p>
-            <p className="text-sm mt-1">Prueba otro filtro</p>
-            <button onClick={() => { setFilterLabel(null); setFilterTipo(null) }} className="mt-3 text-accent text-sm hover:underline">Quitar filtros</button>
+            <p className="font-serif text-lg font-bold">Ningún programa coincide</p>
+            <p className="text-sm mt-1">Prueba con otra búsqueda o crea un programa nuevo</p>
+            <button onClick={clearFilters} className="mt-3 text-accent text-sm hover:underline">Quitar filtros</button>
           </div>
         ) : (
           // No tiene ningún programa
@@ -784,14 +807,24 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
                       <p className="font-bold text-base truncate">{prog.name}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
-                        <span className="text-[10px] text-muted">{(prog.weeks || []).length} sem · {totalTasks} tareas</span>
+                        <span className="text-[11px] text-muted">{plural((prog.weeks || []).length, 'semana', 'semanas')} · {plural(totalTasks, 'tarea', 'tareas')}</span>
                         {progLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                       </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setBulkAssignFor(prog)} title="Asignar a varios" className="p-1.5 text-muted hover:text-accent rounded-lg"><Users className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => duplicate(prog)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
-                      <button onClick={() => deleteProgram(prog.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setBulkAssignFor(prog)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors">
+                        <Users className="w-3.5 h-3.5" /> Asignar
+                      </button>
+                      <ActionMenu title="Acciones del programa">
+                        <button onClick={() => duplicate(prog)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                          <Copy className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Duplicar
+                        </button>
+                        <div className="h-px bg-border my-1" />
+                        <button onClick={() => deleteProgram(prog.id)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Eliminar
+                        </button>
+                      </ActionMenu>
                     </div>
                   </div>
                   {/* Mini calendario preview */}

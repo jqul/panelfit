@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural } from './workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery } from './workoutList'
 import { WeekPlan } from '../types'
 
 const ex = (n: string) => ({ name: n, sets: '3×10', weight: '', isMain: false, comment: '' })
@@ -61,5 +61,16 @@ describe('plural', () => {
   it('singular y plural', () => {
     expect(plural(1, 'ejercicio', 'ejercicios')).toBe('1 ejercicio')
     expect(plural(6, 'ejercicio', 'ejercicios')).toBe('6 ejercicios')
+  })
+})
+
+describe('matchesQuery', () => {
+  it('ignora tildes, mayúsculas y espacios de los bordes', () => {
+    expect(matchesQuery('Definición 12 semanas', ' definicion ')).toBe(true)
+    expect(matchesQuery('Definición 12 semanas', 'fuerza')).toBe(false)
+  })
+  it('una búsqueda vacía acepta todo', () => {
+    expect(matchesQuery('Lo que sea', '')).toBe(true)
+    expect(matchesQuery('Lo que sea', '   ')).toBe(true)
   })
 })

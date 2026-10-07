@@ -32,10 +32,15 @@ export function templateTypes(list: Pick<TemplateLike, 'type'>[]): string[] {
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
+// Búsqueda por nombre sin tildes ni mayúsculas; una búsqueda vacía lo acepta todo.
+export function matchesQuery(name: string, query: string): boolean {
+  const q = norm(query.trim())
+  return !q || norm(name).includes(q)
+}
+
 export function filterTemplates<T extends TemplateLike>(list: T[], f: { query?: string; type?: string | null; labelId?: string | null }): T[] {
-  const q = norm((f.query || '').trim())
   return list.filter(t =>
-    (!q || norm(t.name).includes(q)) &&
+    matchesQuery(t.name, f.query || '') &&
     (!f.type || t.type === f.type) &&
     (!f.labelId || (t.label_ids || []).includes(f.labelId))
   )
