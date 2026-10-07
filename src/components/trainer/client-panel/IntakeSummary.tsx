@@ -19,7 +19,7 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   const alertas = respuestas.filter(r => r.respuesta === 'Sí')
 
   return (
-    <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
       <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center gap-2">
         <ClipboardList className="w-3.5 h-3.5 text-muted" />
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Ficha de admisión</p>

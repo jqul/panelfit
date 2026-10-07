@@ -430,7 +430,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <p className="text-xs text-accent font-semibold flex-shrink-0">📝 Borrador —</p>
                 <input value={changeNote} onChange={e => setChangeNote(e.target.value)}
                   placeholder="Nota de cambios para el historial (opcional)"
-                  className="flex-1 min-w-0 text-xs bg-white border border-accent/20 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
+                  className="flex-1 min-w-0 text-xs bg-card border border-accent/20 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
               </div>
               <div className="flex gap-2">
                 <button onClick={discardBorrador} disabled={borradorBusy}
@@ -614,7 +614,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <span className="text-xl">{a.emoji}</span>
                 <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
                 <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${a.val ? 'bg-ok' : 'bg-border'}`}>
-                  <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-5 h-5 bg-card rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </div>
             ))}

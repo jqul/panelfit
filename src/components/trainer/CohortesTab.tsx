@@ -412,27 +412,27 @@ function CohorteCreateForm({ form, onChange, onSave, onClose }: {
       </div>
       <input value={form.nombre} onChange={e => onChange({ ...form, nombre: e.target.value })}
         placeholder="Nombre del grupo (ej: Reto verano 2026)"
-        className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none" />
+        className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none" />
       <input value={form.descripcion || ''} onChange={e => onChange({ ...form, descripcion: e.target.value })}
         placeholder="Descripción breve (opcional)"
-        className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none" />
+        className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none" />
       <p className="text-[10px] text-muted -mb-1">¿Es un reto con fecha límite? Déjalo en blanco para un grupo permanente.</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-[10px] font-bold uppercase text-muted">Inicio</label>
           <input type="date" value={form.fecha_inicio || ''} onChange={e => onChange({ ...form, fecha_inicio: e.target.value })}
-            className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+            className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
         </div>
         <div>
           <label className="text-[10px] font-bold uppercase text-muted">Fin</label>
           <input type="date" value={form.fecha_fin || ''} onChange={e => onChange({ ...form, fecha_fin: e.target.value })}
-            className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+            className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
         </div>
       </div>
       <div>
         <label className="text-[10px] font-bold uppercase text-muted">Puntos por sesión completada</label>
         <input type="number" min={1} value={form.puntos_por_sesion ?? 10} onChange={e => onChange({ ...form, puntos_por_sesion: parseInt(e.target.value) || 10 })}
-          className="w-full px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none mt-1" />
+          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
       </div>
       <div className="flex gap-1.5">
         {COLORS.map(c => (

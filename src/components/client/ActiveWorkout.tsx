@@ -741,13 +741,13 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   }
 
   const warmupBlock = (day.warmupExercises?.length || 0) > 0 ? (
-    <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
-      <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2">Calentamiento</p>
+    <div className="bg-accent/5 border-b border-accent/20 px-4 py-3">
+      <p className="text-xs font-bold text-accent uppercase tracking-wider mb-2">Calentamiento</p>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(day.warmupExercises || []).map((w, i) => (
-          <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
+          <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
             <p className="font-semibold text-gray-700">{w.name}</p>
-            {w.sets && <p className="text-orange-400">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
+            {w.sets && <p className="text-muted">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
           </div>
         ))}
       </div>
@@ -800,15 +800,15 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (
-        <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
-          <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <div className="bg-accent/5 border-b border-accent/20 px-4 py-3">
+          <p className="text-xs font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5" /> Calentamiento
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(day.warmupExercises || []).map((ex, i) => (
-              <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
+              <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
                 <p className="font-semibold text-gray-700">{ex.name}</p>
-                {ex.sets && <p className="text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                {ex.sets && <p className="text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
               </div>
             ))}
           </div>

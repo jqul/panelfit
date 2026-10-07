@@ -61,7 +61,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
   const overdue = allPending.filter(x => x.alert.date < today)
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+    <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
       <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
         <Bell className="w-3.5 h-3.5 text-warn" />
         <h3 className="text-sm font-semibold">Recordatorios</h3>

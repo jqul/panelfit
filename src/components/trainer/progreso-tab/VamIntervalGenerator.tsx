@@ -17,8 +17,8 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-white">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card">
           <h3 className="font-bold flex items-center gap-1.5"><Zap className="w-4 h-4 text-accent" /> Series por %VAM</h3>
           <button onClick={onClose}><X className="w-5 h-5 text-muted" /></button>
         </div>

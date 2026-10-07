@@ -18,9 +18,9 @@ export function RunEditor({ run, onChange }: Props) {
         <p className="text-xs font-bold text-accent">🏃 Ejercicio de carrera · {runLabel(run)}</p>
         <div className="flex rounded-lg overflow-hidden border border-accent/20 text-[10px] font-bold flex-shrink-0">
           <button onClick={() => onChange({ durationSec: undefined, reps: run.reps || 6, distanceM: run.distanceM || 200 })}
-            className={`px-2.5 py-1 ${!isTest ? 'bg-accent text-white' : 'bg-white text-muted'}`}>Tiradas</button>
+            className={`px-2.5 py-1 ${!isTest ? 'bg-accent text-white' : 'bg-card text-muted'}`}>Tiradas</button>
           <button onClick={() => onChange({ durationSec: run.durationSec || 720, reps: 1, distanceM: 0 })}
-            className={`px-2.5 py-1 ${isTest ? 'bg-accent text-white' : 'bg-white text-muted'}`}>Test de tiempo</button>
+            className={`px-2.5 py-1 ${isTest ? 'bg-accent text-white' : 'bg-card text-muted'}`}>Test de tiempo</button>
         </div>
       </div>
 

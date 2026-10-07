@@ -375,7 +375,7 @@ export function TrainingPlanEditor({
                   return (
                     <div key={group} title={status ? `${status.label} para ${group} (referencia MEV/MAV/MRV)` : undefined}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
-                      style={{ backgroundColor: color + '15', color }}>
+                      style={{ backgroundColor: color + '15', color: `color-mix(in srgb, ${color} 55%, var(--color-ink))` }}>
                       <span>{group}</span>
                       <span className="font-bold">{sets}</span>
                       {status && <span className="opacity-70">· {status.label}</span>}
@@ -598,13 +598,13 @@ export function TrainingPlanEditor({
                                     <select value={seriesTypeId}
                                       onChange={e => updateExercise(activeWeek, di, ri, { seriesType: e.target.value })}
                                       aria-label="Tipo de serie"
-                                      className="text-[11px] font-bold bg-white border border-accent/20 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer flex-shrink-0">
+                                      className="text-[11px] font-bold bg-card border border-accent/20 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer flex-shrink-0">
                                       {seriesTypes.map(t => (
                                         <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>
                                       ))}
                                     </select>
                                     <button onClick={() => setShowSeriesInfo(true)}
-                                      className="flex items-center gap-1 px-2 py-1 bg-white border border-accent/20 rounded-lg text-[10px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
+                                      className="flex items-center gap-1 px-2 py-1 bg-card border border-accent/20 rounded-lg text-[10px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
                                       <Info className="w-3 h-3" /> Saber más
                                     </button>
                                   </div>
@@ -709,7 +709,7 @@ export function TrainingPlanEditor({
                                           </p>
                                         </div>
                                         <div className={`w-8 h-5 rounded-full flex items-center px-0.5 transition-all flex-shrink-0 ${ex.hideRest ? 'bg-warn/40' : 'bg-ok'}`}>
-                                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${ex.hideRest ? 'translate-x-0' : 'translate-x-3'}`} />
+                                          <div className={`w-4 h-4 bg-card rounded-full shadow transition-all ${ex.hideRest ? 'translate-x-0' : 'translate-x-3'}`} />
                                         </div>
                                       </div>
                                     </div>

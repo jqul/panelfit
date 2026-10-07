@@ -120,7 +120,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
               <div className="bg-bg-alt/50 border border-border rounded-xl p-3 space-y-2 mb-3">
                 <input value={form.objetivo_semanal} onChange={e => setForm(f => ({ ...f, objetivo_semanal: e.target.value }))}
                   placeholder="Objetivo de esta semana (ej. 3 sesiones, subir 2,5kg en sentadilla)" aria-label="Objetivo de esta semana"
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none" />
+                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none" />
                 <div className="flex gap-1.5">
                   {(Object.keys(ESTADO_META) as WeeklyReview['estado'][]).map(k => (
                     <button key={k} onClick={() => setForm(f => ({ ...f, estado: k }))}
@@ -131,7 +131,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
                 </div>
                 <textarea value={form.nota} onChange={e => setForm(f => ({ ...f, nota: e.target.value }))}
                   placeholder="Cómo fue, qué ajustar..." rows={2}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none resize-none" />
+                  className="w-full px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none resize-none" />
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs font-semibold text-muted">Cancelar</button>
                   <button onClick={addReview} disabled={saving} className="px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-bold disabled:opacity-40">

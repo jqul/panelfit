@@ -524,7 +524,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
                     </button>
                     <button onClick={() => toggleSchedule(sched.id, !sched.active)} role="switch" aria-checked={sched.active} aria-label={sched.active ? 'Pausar envío' : 'Activar envío'}
                       className={`w-9 h-5 rounded-full flex items-center px-0.5 transition-colors ${sched.active ? 'bg-ok' : 'bg-border'}`}>
-                      <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${sched.active ? 'translate-x-4' : ''}`} />
+                      <div className={`w-4 h-4 bg-card rounded-full shadow transition-transform ${sched.active ? 'translate-x-4' : ''}`} />
                     </button>
                     <button onClick={() => deleteSchedule(sched.id)} aria-label="Eliminar envío" className="p-1 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>

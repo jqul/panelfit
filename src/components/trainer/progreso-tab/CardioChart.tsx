@@ -63,7 +63,7 @@ export function CardioChart({ logs }: { logs: TrainingLogs }) {
               if (!active || !payload?.length) return null
               const p = payload[0].payload
               return (
-                <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+                <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
                   <p className="text-muted mb-1">{label}{p.test ? ' · test Cooper' : ''}</p>
                   <p className="font-bold text-accent">{formatDistance(p.distanciaM)}</p>
                   {p.ritmo && <p className="font-bold text-ok">{formatPace(p.ritmo)}</p>}

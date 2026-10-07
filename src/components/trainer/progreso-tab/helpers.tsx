@@ -13,7 +13,7 @@ export function getExName(key: string, plan?: TrainingPlan | null) {
 export function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="text-muted mb-1">{label}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} style={{ color: p.color }} className="font-bold">{p.value} {unit}</p>

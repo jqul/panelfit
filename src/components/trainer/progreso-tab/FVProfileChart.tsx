@@ -13,7 +13,7 @@ function FVTooltip({ active, payload }: any) {
   const p = payload[0]?.payload
   if (!p) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="font-bold">{p.force} N · {p.velocity} m/s</p>
       {p.loadKg !== undefined && <p className="text-muted">Carga: {p.loadKg}kg</p>}
     </div>
@@ -199,30 +199,30 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             <label className="block">
               <span className="text-[10px] text-muted uppercase tracking-wider">Carga externa (kg)</span>
               <input type="number" step="0.5" value={loadKg} onChange={e => setLoadKg(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
               <span className="text-[10px] text-muted uppercase tracking-wider">Altura de salto (cm)</span>
               <input type="number" step="0.1" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="ej. 32"
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
               <span className="text-[10px] text-muted uppercase tracking-wider">Peso corporal hoy (kg)</span>
               <input type="number" step="0.1" value={bodyweightKg} onChange={e => setBodyweightKg(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
               <span className="text-[10px] text-muted uppercase tracking-wider" title="Distancia que las piernas se extienden durante el salto — mide desde la posición más baja de la sentadilla hasta la extensión completa">Distancia de empuje (cm)</span>
               <input type="number" step="0.5" value={pushoffCm} onChange={e => setPushoffCm(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
           </div>
           <p className="text-[10px] text-muted -mt-1">Distancia de empuje: mide con cinta métrica desde la sentadilla más baja del salto hasta la extensión completa. Usa la misma en todas las cargas del día.</p>
           <div className="flex gap-2">
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+              className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas (opcional)"
-              className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+              className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowForm(false)} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>

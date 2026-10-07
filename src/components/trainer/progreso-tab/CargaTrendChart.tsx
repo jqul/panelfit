@@ -10,7 +10,7 @@ function CustomTrendTooltip({ active, payload, label }: any) {
   const p = payload[0]?.payload
   if (!p) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
       <p className="text-muted mb-1">{label}</p>
       <p style={{ color: '#6e5438' }} className="font-bold">Fitness: {p.fitness}</p>
       <p style={{ color: '#e07b54' }} className="font-bold">Fatiga: {p.fatigue}</p>

@@ -181,10 +181,10 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
                   {/* CALENTAMIENTO */}
                   {(warmup || (warmupExercises && warmupExercises.length > 0)) && (
-                    <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3 space-y-2">
+                    <div className="bg-accent/5 border-b border-accent/20 px-4 py-3 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Flame className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
-                        <p className="text-xs font-bold text-orange-600 uppercase tracking-wider">Calentamiento</p>
+                        <Flame className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                        <p className="text-xs font-bold text-accent uppercase tracking-wider">Calentamiento</p>
                       </div>
 
                       {/* Ejercicios de calentamiento si los hay */}
@@ -193,18 +193,18 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                           {warmupExercises.map((ex: any, ei: number) => {
                             const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
                             return (
-                              <div key={ei} className="flex items-center gap-2.5 bg-white/70 rounded-xl px-3 py-2.5 border border-orange-100">
-                                <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[10px] font-bold text-orange-500 flex-shrink-0">
+                              <div key={ei} className="flex items-center gap-2.5 bg-white/70 rounded-xl px-3 py-2.5 border border-accent/20">
+                                <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[10px] font-bold text-accent flex-shrink-0">
                                   {ei + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-800 truncate">{ex.name}</p>
-                                  {ex.sets && <p className="text-xs text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                                  {ex.sets && <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
                                   {ex.comment && <p className="text-xs text-gray-400 italic mt-0.5">"{ex.comment}"</p>}
                                 </div>
                                 {ytId && (
                                   <button onClick={() => setVideoUrl(ex.videoUrl)}
-                                    className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-orange-200 active:scale-95 transition-transform">
+                                    className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-accent/30 active:scale-95 transition-transform">
                                     <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
                                   </button>
                                 )}
@@ -216,7 +216,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
                       {/* Texto libre de calentamiento */}
                       {warmup && (
-                        <div className="text-xs text-orange-700 leading-relaxed whitespace-pre-line bg-white/50 rounded-xl px-3 py-2 border border-orange-100">
+                        <div className="text-xs text-accent leading-relaxed whitespace-pre-line bg-white/50 rounded-xl px-3 py-2 border border-accent/20">
                           {warmup}
                         </div>
                       )}

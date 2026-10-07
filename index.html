@@ -3,6 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <script>
+      // Tema oscuro desde el primer pintado: la preferencia se guardaba pero solo se aplicaba
+      // al montar el interruptor (en la vista del cliente, al entrar en "Más"), así que la app
+      // arrancaba clara aunque estuviera elegida la oscura, y con parpadeo en el panel.
+      try { if (localStorage.getItem("pf_dark_mode") === "1") document.documentElement.classList.add("dark") } catch (e) {}
+    </script>
+    <script>
       // Si un archivo con hash de /assets falla al cargar (despliegue nuevo con la
       // pestaña abierta, o index.html en caché apuntando a archivos ya borrados) la
       // app ni arranca: se recarga una vez para traer la versión nueva. Mismo freno

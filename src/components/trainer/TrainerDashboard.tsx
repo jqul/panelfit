@@ -207,7 +207,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         </div>
       </div>
       <div className="px-3 py-3 border-b border-border">
-        <p className="text-[11px] font-semibold text-muted/60 px-2 mb-2 tracking-wider">Accesos rápidos</p>
+        <p className="text-[11px] font-semibold text-muted px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
           {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
             <button key={label} onClick={action} disabled={disabled}
@@ -282,7 +282,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 { id: 'programas' as Tab, label: 'Programas' },
               ]).map(({ id, label }) => (
                 <button key={id} onClick={() => setActiveTab(id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTab === id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-ink hover:text-ink'}`}>
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTab === id ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted hover:border-ink hover:text-ink'}`}>
                   {label}
                 </button>
               ))}
@@ -302,7 +302,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   </div>
                   {clients.length > 0 && (
-                    <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-border/50 text-xs text-muted">
+                    <div className="hidden sm:flex items-center gap-2 bg-card rounded-xl px-3 py-2 shadow-sm border border-border/50 text-xs text-muted">
                       <Activity className="w-3.5 h-3.5 text-ok" />
                       <span><strong className="text-ink">{Math.round((activeToday / Math.max(clients.length, 1)) * 100)}%</strong> entrenaron hoy</span>
                     </div>
@@ -321,7 +321,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     { label: 'Caída de salto', value: jumpDropCount, prev: undefined,     icon: TrendingDown, color: jumpDropCount > 0 ? 'text-warn' : 'text-muted', accent: jumpDropCount > 0 ? '#e07b54' : '#9ca3af', border: jumpDropCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('jump-drop'); handleTabChange('clients') } },
                   ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
                     <button key={label} onClick={onClick}
-                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
+                      className="bg-card rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
                       style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                       <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: border }} />
                       <div className="flex items-center justify-between mb-4 mt-1">
@@ -361,7 +361,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                             <p className={`text-sm font-semibold ${primary ? 'text-white' : 'text-ink'}`}>{title}</p>
                             <p className={`text-xs mt-0.5 ${primary ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
                           </div>
-                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-white text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
+                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-card text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
                             {cta}
                           </button>
                         </div>
@@ -371,7 +371,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 )}
 
                 {/* Gráfica actividad */}
-                <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <h3 className="font-serif font-bold text-lg">Actividad semanal</h3>
@@ -397,7 +397,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 {/* Cumplimiento semanal */}
                 {clients.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                     <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
                       <div>
                         <h3 className="font-serif font-bold">Cumplimiento semanal</h3>
@@ -442,7 +442,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 )}
 
                 {/* Clientes recientes */}
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
                     <h3 className="font-serif font-bold">Clientes recientes</h3>
                     <button onClick={() => handleTabChange('clients')} className="text-xs text-accent hover:underline font-semibold">Ver todos →</button>
@@ -485,7 +485,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     ordenados por urgencia. Sustituye a los antiguos
                     "Requieren atención" y "Tareas de hoy", que mostraban lo
                     mismo (clientes en riesgo) en dos sitios distintos. */}
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <button onClick={() => handleTabChange('bandeja')}
                     className="w-full px-4 py-3 border-b border-border/50 flex items-center gap-2 hover:bg-bg-alt/30 transition-colors">
                     <Inbox className="w-3.5 h-3.5 text-accent" />
@@ -523,7 +523,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Activity className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Actividad reciente</h3>
@@ -545,7 +545,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Acciones rápidas</h3>
@@ -561,7 +561,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <StickyNote className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Notas rápidas</h3>
@@ -592,12 +592,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 <div className="relative flex-1 min-w-40">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input type="text" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
+                    className="w-full pl-9 pr-4 py-2.5 bg-card border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
                 <label className="flex items-center gap-2 text-xs font-semibold text-muted">
                   Ordenar
                   <select value={clientSort} onChange={e => setClientSort(e.target.value as ClientSort)}
-                    className="bg-white border border-border/50 rounded-xl px-3 py-2.5 text-sm font-medium text-ink outline-none focus:ring-2 focus:ring-accent/20 shadow-sm">
+                    className="bg-card border border-border/50 rounded-xl px-3 py-2.5 text-sm font-medium text-ink outline-none focus:ring-2 focus:ring-accent/20 shadow-sm">
                     <option value="attention">Atención primero</option>
                     <option value="name">Nombre</option>
                     <option value="last">Más tiempo sin entrenar</option>
@@ -618,15 +618,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   .filter(f => f.always || f.n > 0 || clientFilter === f.id)
                   .map(f => (
                     <button key={f.id} onClick={() => setClientFilter(f.id)} aria-pressed={clientFilter === f.id}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
-                      {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted/60'}>{f.n}</span>
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted hover:border-accent shadow-sm'}`}>
+                      {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted'}>{f.n}</span>
                     </button>
                   ))}
               </div>
               {loading ? (
-                <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
+                <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
               ) : sortedClients.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
+                <div className="text-center py-20 bg-card rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
                 <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
                   onOpen={onSelectClient} onSend={setLinkModal} onDelete={handleDelete} />
@@ -680,7 +680,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
                 ]).map(({ id, icon: Icon, label, desc }) => (
                   <button key={id} onClick={() => setActiveTab(id)}
-                    className="flex flex-col items-start gap-2 p-4 bg-white border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
+                    className="flex flex-col items-start gap-2 p-4 bg-card border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
                     <div className="w-9 h-9 rounded-xl bg-bg-alt flex items-center justify-center">
                       <Icon className="w-4 h-4 text-ink" />
                     </div>
@@ -899,7 +899,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           <p className="text-muted/60 italic text-xs">Así se verá el panel de tus clientes</p>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Identidad</h3>
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label><input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
@@ -908,7 +908,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-3 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-3 shadow-sm">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Notificaciones</h3>
           <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
@@ -924,11 +924,11 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
             disabled={checkinLoading}
             className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${autoCheckin ? 'bg-accent' : 'bg-border'} ${checkinLoading ? 'opacity-50' : ''}`}
           >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Métricas activas</h3>
           <p className="text-xs text-muted mt-0.5">Desmarca las que no uses para que no aparezcan en el menú de Progreso de tus clientes. Puedes afinar cuáles ve cada cliente en concreto desde su ficha → Configuración.</p>
@@ -953,7 +953,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
@@ -968,7 +968,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tema de colores</h3>
         <div className="grid grid-cols-4 gap-2">
           {TEMAS.map(tema => (
@@ -988,24 +988,24 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
             <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[11px] text-muted">Fondo del panel</p></div></div></div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Imagen de fondo</h3>
         <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
-          {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
+          {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-card">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
             : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[11px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-2 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
         <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 shadow-sm">
         <PublicPageEditor userProfile={userProfile} />
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 shadow-sm">
         <EquipoSection ownerId={realUid} />
       </div>
-      <div className="bg-white rounded-2xl p-5 shadow-sm">
+      <div className="bg-card rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>
         <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
         <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>

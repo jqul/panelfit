@@ -35,26 +35,26 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
         </div>
         <div className="flex gap-2">
           <button onClick={() => setOnlyPending(true)}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${onlyPending ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted'}`}>
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${onlyPending ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted'}`}>
             Pendientes {pendingCount > 0 && `(${pendingCount})`}
           </button>
           <button onClick={() => setOnlyPending(false)}
-            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${!onlyPending ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted'}`}>
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${!onlyPending ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted'}`}>
             Todos
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
+        <div className="text-center py-16 bg-card rounded-2xl shadow-sm">
           <Inbox className="w-10 h-10 text-muted/30 mx-auto mb-3" />
           <p className="font-serif font-bold text-lg">{onlyPending ? 'Todo revisado ✓' : 'Sin actividad reciente'}</p>
           <p className="text-sm text-muted mt-1">{onlyPending ? 'No hay nada pendiente de revisar.' : `Nada en los últimos ${DAYS_BACK} días.`}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl overflow-hidden divide-y divide-border/50" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="bg-card rounded-2xl overflow-hidden divide-y divide-border/50" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           {items.map(item => {
             const client = clients.find(c => c.id === item.clientId)
             const isReviewed = reviewed.has(item.key)

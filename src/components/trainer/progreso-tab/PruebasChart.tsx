@@ -119,12 +119,12 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     )}
                     <div className="flex gap-2">
                       <input type="number" step="0.1" value={valor} onChange={e => setValor(e.target.value)} placeholder={`Valor (${test.unidad})`}
-                        className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                        className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                       <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-                        className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                        className="px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                     </div>
                     <input value={notas} onChange={e => setNotas(e.target.value)} placeholder="Notas (opcional)"
-                      className="w-full px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                      className="w-full px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                     <div className="flex gap-2">
                       <button onClick={() => setLogging(null)} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>
                       <button onClick={() => confirmLog(test.id)} className="flex-1 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold">Guardar</button>

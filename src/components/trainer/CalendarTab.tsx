@@ -43,10 +43,11 @@ function weekDays(anchor: Date) {
 }
 
 const STATUS_META = {
-  pendiente: { label: 'Solicitada', color: '#e0a854', bg: '#fef9ec' },
-  confirmada: { label: 'Confirmada', color: '#22c55e', bg: '#f0fdf4' },
-  completada: { label: 'Completada', color: '#3b82f6', bg: '#eff6ff' },
-  cancelada: { label: 'Cancelada', color: '#ef4444', bg: '#fef2f2' },
+  // Con los tokens del tema (antes colores fijos: ~2,2:1 de contraste y ilegibles en oscuro)
+  pendiente: { label: 'Solicitada', cls: 'text-accent bg-accent/10' },
+  confirmada: { label: 'Confirmada', cls: 'text-ok bg-ok/10' },
+  completada: { label: 'Completada', cls: 'text-ink bg-bg-alt' },
+  cancelada: { label: 'Cancelada', cls: 'text-warn bg-warn/10' },
 }
 
 export function CalendarTab({ trainerId, clients }: Props) {
@@ -213,7 +214,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                           </p>
                           {name && <p className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{name}</p>}
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ color: meta.color, backgroundColor: meta.bg }}>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
                           {meta.label}
                         </span>
                         {cita.status === 'pendiente' && (

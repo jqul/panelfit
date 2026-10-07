@@ -78,9 +78,9 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
           <div className="px-4 py-3 border-b border-border bg-bg-alt/30 space-y-2">
             <div className="flex gap-2">
               <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={e => setDate(e.target.value)}
-                className="flex-1 px-2.5 py-2 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="flex-1 px-2.5 py-2 bg-card border border-border rounded-lg text-xs outline-none" />
               <input type="time" value={time} onChange={e => setTime(e.target.value)}
-                className="px-2.5 py-2 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="px-2.5 py-2 bg-card border border-border rounded-lg text-xs outline-none" />
             </div>
             <button onClick={solicitar} disabled={saving}
               className="w-full py-2 bg-ink text-white rounded-lg text-xs font-bold disabled:opacity-50">

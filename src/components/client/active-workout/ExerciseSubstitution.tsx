@@ -43,7 +43,7 @@ export function ExerciseSubstitution({
                 if (e.key === 'Enter') onConfirmEdit(draft)
                 if (e.key === 'Escape') onCancelEdit()
               }}
-              className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
+              className="flex-1 px-3 py-2 bg-card border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
             <button onClick={() => onConfirmEdit(draft)}
               title="Usar tal cual lo has escrito, si no está en la lista"
               className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
@@ -51,7 +51,7 @@ export function ExerciseSubstitution({
               className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
           </div>
           {suggestions.length > 0 && (
-            <div className="absolute left-0 right-12 top-full mt-1 bg-white border border-border rounded-xl shadow-lg z-10 overflow-hidden">
+            <div className="absolute left-0 right-12 top-full mt-1 bg-card border border-border rounded-xl shadow-lg z-10 overflow-hidden">
               {suggestions.map(s => (
                 <button key={s.id} onClick={() => onConfirmEdit(s.name)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-bg-alt transition-colors">
@@ -107,7 +107,7 @@ export function ExerciseSubstitution({
               </p>
               {alternatives.length > 0 ? alternatives.map(alt => (
                 <button key={alt.id} onClick={() => onPickAlternative(alt.name)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-white border border-border rounded-xl text-left text-sm font-semibold hover:border-ok hover:bg-ok/5 transition-colors">
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl text-left text-sm font-semibold hover:border-ok hover:bg-ok/5 transition-colors">
                   <Repeat className="w-3.5 h-3.5 text-ok flex-shrink-0" /> {alt.name}
                 </button>
               )) : (

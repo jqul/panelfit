@@ -238,7 +238,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       )}
 
       {/* ── MENSAJES PROGRAMADOS ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarClock className="w-4 h-4 text-accent" />
@@ -321,7 +321,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── ENCUESTAS ESTA SEMANA ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-accent" />
@@ -394,7 +394,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── ALERTAS DE INACTIVIDAD ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <button
           className="w-full px-5 py-4 border-b border-border flex items-center justify-between"
           onClick={() => setShowAlerts(!showAlerts)}>
@@ -459,7 +459,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── TODOS LOS CLIENTES — envío rápido ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <button
           className="w-full px-5 py-4 border-b border-border flex items-center justify-between"
           onClick={() => setShowInactivos(!showInactivos)}>

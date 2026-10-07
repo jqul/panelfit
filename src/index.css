@@ -30,6 +30,14 @@
   --color-warn:    #ef6b5e;
 }
 
+/* Tema oscuro: los rellenos sólidos de tinta, acento, ok y aviso se aclaran, y el texto
+   blanco que llevan encima (text-white, text-white/70...) pasa al fondo oscuro. Sin
+   esto quedaban botones con texto blanco sobre crema (contraste 1,2:1). Las
+   variantes con opacidad (bg-ok/10) son otras clases y no se tocan. */
+.dark .bg-ink, .dark .bg-accent, .dark .bg-ok, .dark .bg-warn { color: var(--color-bg); }
+.dark :is(.bg-ink, .bg-accent, .bg-ok, .bg-warn)[class*='text-white'],
+.dark :is(.bg-ink, .bg-accent, .bg-ok, .bg-warn) [class*='text-white'] { color: var(--color-bg); }
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   body {

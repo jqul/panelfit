@@ -116,7 +116,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
           { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div key={s.label} className="bg-card border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <p className="text-xl mb-1">{s.icon}</p>
             <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
             <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
@@ -135,7 +135,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (
-        <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Etiquetas</p>
           </div>
@@ -164,12 +164,12 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-dashed border-border rounded-2xl p-4 text-center">
+        <div className="bg-card border border-dashed border-border rounded-2xl p-4 text-center">
           <p className="text-xs text-muted">Aún no tienes etiquetas creadas. Créalas desde la pestaña <span className="font-semibold">Etiquetas</span> del menú lateral para poder asignarlas aquí.</p>
         </div>
       )}
       {/* ── RECORDATORIOS / ALERTAS ── */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-warn" />
@@ -199,14 +199,14 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             {/* Nota */}
             <input value={newAlert.note} onChange={e => setNewAlert(a => ({ ...a, note: e.target.value }))}
               placeholder="Descripción del recordatorio..." aria-label="Descripción del recordatorio"
-              className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
               onKeyDown={e => e.key === 'Enter' && addAlert()}
             />
             {/* Fecha */}
             <div className="flex gap-2 items-center">
               <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" />
               <input type="date" value={newAlert.date} onChange={e => setNewAlert(a => ({ ...a, date: e.target.value }))}
-                className="flex-1 px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none" />
+                className="flex-1 px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
               <button onClick={addAlert}
                 className="px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
                 Guardar
@@ -279,7 +279,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Datos personales */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
         </div>
@@ -336,7 +336,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       <HabitosSection clientId={client.id} />
 
       {/* Lesiones/limitaciones y equipo disponible — ficha rápida de referencia al programar */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">🩺 Lesiones y equipo</p>
         </div>
@@ -362,7 +362,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Notas privadas */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas</p>
         </div>

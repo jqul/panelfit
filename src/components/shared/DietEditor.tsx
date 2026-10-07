@@ -421,7 +421,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
               <span className="text-[10px] text-muted">Mostrar cliente</span>
               <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${diet.showSupplements ? 'bg-ok' : 'bg-border'}`} onClick={() => updateDiet({ showSupplements: !diet.showSupplements })}>
-                <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
+                <div className={`w-4 h-4 bg-card rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
               </div>
             </div>
             {openSups ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}

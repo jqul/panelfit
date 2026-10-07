@@ -27,7 +27,7 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
   const now = new Date()
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+    <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
       <div className="hidden md:grid grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,2fr)_auto] gap-4 px-5 py-2.5 border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted">
         <span>Cliente</span><span>Estado</span><span>Último entreno</span><span>Esta semana</span><span>Alertas</span><span className="w-[88px]" />
       </div>
@@ -73,7 +73,7 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
 
               <div className="order-last w-full md:order-none md:w-auto min-w-0">
                 {status.reasons.length === 0 ? (
-                  <span className="hidden md:inline text-sm text-muted/60">Sin alertas</span>
+                  <span className="hidden md:inline text-sm text-muted">Sin alertas</span>
                 ) : (
                   <ul className="space-y-0.5">
                     {status.reasons.map(r => <li key={r} className="text-xs text-warn font-medium truncate">{r}</li>)}

@@ -354,7 +354,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col"
-      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: '#f5f0ea' }}>
+      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: 'var(--color-bg)' }}>
 
       <header className="bg-card/95 backdrop-blur-sm border-b border-border flex-shrink-0 z-20">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">

@@ -22,7 +22,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
   const lowReadiness = last.sleep <= 2 || last.soreness <= 2 || last.motivation <= 2
 
   return (
-    <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
       <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center gap-2">
         <Moon className="w-3.5 h-3.5 text-muted" />
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Readiness (últimos 7 días)</p>

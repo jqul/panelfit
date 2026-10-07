@@ -80,7 +80,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
   const contactSuspicious = contactTime !== null && contactTime > 0 && (contactTime < 0.08 || contactTime > 0.6)
 
   return (
-    <div className="bg-white border-2 border-accent/30 rounded-xl p-3 space-y-3">
+    <div className="bg-card border-2 border-accent/30 rounded-xl p-3 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-accent flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> {isDropJump ? 'Calcular RSI desde vídeo' : 'Calcular altura desde vídeo'}</p>
         <button onClick={onClose} className="text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>

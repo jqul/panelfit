@@ -44,7 +44,7 @@ export function PlanHistoryModal({ clientId, onClose, onRestore }: {
             const seen = !!lastOpened && lastOpened >= r.published_at
             const isCurrent = i === 0
             return (
-              <div key={r.id} className={`border rounded-2xl p-3.5 ${isCurrent ? 'border-accent/30 bg-accent/5' : 'border-border bg-white'}`}>
+              <div key={r.id} className={`border rounded-2xl p-3.5 ${isCurrent ? 'border-accent/30 bg-accent/5' : 'border-border bg-card'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-ink">
