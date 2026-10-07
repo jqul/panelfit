@@ -257,7 +257,7 @@ export function TrainingPlanEditor({
         />
       )}
 
-      <Modal open={showSeriesManager} onClose={() => setShowSeriesManager(false)} title="Gestionar tipos de serie">
+      <Modal open={showSeriesManager} onClose={() => setShowSeriesManager(false)} title="Gestionar tipos de serie" variant="drawer">
         <SeriesTypesManager
           types={seriesTypes}
           onSave={saveTypes}
@@ -773,7 +773,7 @@ export function TrainingPlanEditor({
         )}
       </div>
 
-      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl">
+      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl" variant="drawer">
         {pickerFor && (
           <ExercisePicker library={library}
             onSelect={ex => addExercise(activeWeek, pickerFor.dayIdx, ex)}
@@ -781,7 +781,7 @@ export function TrainingPlanEditor({
         )}
       </Modal>
 
-      <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar plan de otro cliente">
+      <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar plan de otro cliente" variant="drawer">
         <div className="space-y-2">
           <p className="text-sm text-muted mb-3">Copia el plan de otro cliente:</p>
           {allClients.map(c => (
@@ -794,7 +794,7 @@ export function TrainingPlanEditor({
         </div>
       </Modal>
 
-      <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización">
+      <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización" variant="drawer">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm text-muted flex-1">
@@ -818,7 +818,7 @@ export function TrainingPlanEditor({
         </div>
       </Modal>
 
-      <Modal open={showBlockManager} onClose={() => setShowBlockManager(false)} title="Gestionar bloques de periodización">
+      <Modal open={showBlockManager} onClose={() => setShowBlockManager(false)} title="Gestionar bloques de periodización" variant="drawer">
         <BlockManager blocks={periodizationBlocks} onSave={savePeriodizationBlocks} onClose={() => setShowBlockManager(false)} />
       </Modal>
 

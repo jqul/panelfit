@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
@@ -8,6 +7,7 @@ import {
   MessageSquare, Video, Calendar, Tag, Users, Search, MoreHorizontal
 } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
+import { Modal } from '../shared/Modal'
 import { matchesQuery, plural } from '../../lib/workoutList'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
@@ -143,61 +143,55 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
     if (task) { onAdd(task); onClose() }
   }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{maxHeight:"85dvh",overflow:"hidden"}} onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
-          <h3 className="font-bold text-lg">Añadir tarea — {DAY_NAMES[dayIdx]}</h3>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
-        </div>
-        <div className="overflow-y-auto flex-1">
+  return (
+    <Modal open onClose={onClose} title={`Añadir tarea — ${DAY_NAMES[dayIdx]}`} variant="drawer" bare>
           {TASK_TYPES.map(type => {
             const isOpen = openType === type.id
             const Icon = type.icon
             return (
-              <div key={type.id} className="border-b border-gray-100 last:border-0">
+              <div key={type.id} className="border-b border-border last:border-0">
                 <button onClick={() => setOpenType(isOpen ? null : type.id)}
-                  className="w-full flex items-center gap-3 px-6 py-4 hover:bg-gray-50 transition-colors text-left">
+                  className="w-full flex items-center gap-3 px-6 py-4 hover:bg-bg-alt transition-colors text-left">
                   <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: type.color }} />
-                  <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <Icon className="w-4 h-4 text-muted flex-shrink-0" />
                   <span className="flex-1 font-medium text-sm">{type.label}</span>
-                  {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {isOpen ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
                 </button>
                 {isOpen && (
-                  <div className="px-6 pb-5 space-y-3 bg-gray-50/50">
+                  <div className="px-6 pb-5 space-y-3 bg-bg-alt/40">
                     {/* WORKOUT */}
                     {type.id === 'workout' && (
                       <div className="space-y-3">
                         {planTemplates.length === 0 ? (
-                          <p className="text-sm text-gray-500">No tienes workouts creados. Ve a la pestaña Workouts para crear uno.</p>
+                          <p className="text-sm text-muted">No tienes workouts creados. Ve a la pestaña Workouts para crear uno.</p>
                         ) : (
                           <>
                             <div className="relative">
                               <input value={workoutSearch} onChange={e => setWorkoutSearch(e.target.value)}
                                 placeholder="Buscar workout..."
-                                className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
-                              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                className="w-full pl-8 pr-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                               </svg>
                             </div>
-                            <div className="max-h-52 overflow-y-auto space-y-1 border border-gray-100 rounded-xl p-2 bg-white">
+                            <div className="max-h-52 overflow-y-auto space-y-1 border border-border rounded-xl p-2 bg-card">
                               {planTemplates
                                 .filter(t => t.name.toLowerCase().includes(workoutSearch.toLowerCase()))
                                 .map(tmpl => (
                                   <label key={tmpl.id}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedWorkoutId === tmpl.id ? 'bg-accent/10 border-accent' : 'border-transparent hover:bg-gray-50'}`}>
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedWorkoutId === tmpl.id ? 'bg-accent/10 border-accent' : 'border-transparent hover:bg-bg-alt'}`}>
                                     <div onClick={() => setSelectedWorkoutId(tmpl.id)}
-                                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedWorkoutId === tmpl.id ? 'border-accent bg-accent' : 'border-gray-300'}`}>
-                                      {selectedWorkoutId === tmpl.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedWorkoutId === tmpl.id ? 'border-accent bg-accent' : 'border-border'}`}>
+                                      {selectedWorkoutId === tmpl.id && <div className="w-2 h-2 bg-card rounded-full" />}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-medium truncate">{tmpl.name}</p>
-                                      {tmpl.type && <p className="text-[10px] text-gray-400">{tmpl.type}</p>}
+                                      {tmpl.type && <p className="text-[10px] text-muted">{tmpl.type}</p>}
                                     </div>
                                   </label>
                                 ))}
                               {planTemplates.filter(t => t.name.toLowerCase().includes(workoutSearch.toLowerCase())).length === 0 && (
-                                <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>
+                                <p className="text-sm text-muted text-center py-3">Sin resultados</p>
                               )}
                             </div>
                             <button
@@ -221,14 +215,14 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                         <div className="grid grid-cols-2 gap-1.5">
                           {CARDIO_TYPES.map(ct => (
                             <button key={ct} onClick={() => setCardioType(ct)}
-                              className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all text-left ${cardioType === ct ? 'bg-accent/10 border-accent text-accent' : 'bg-white border-gray-200 text-gray-600'}`}>
+                              className={`py-2 px-3 rounded-xl text-xs font-medium border transition-all text-left ${cardioType === ct ? 'bg-accent/10 border-accent text-accent' : 'bg-card border-border text-muted'}`}>
                               {ct}
                             </button>
                           ))}
                         </div>
                         <textarea value={cardioObjective} onChange={e => setCardioObjective(e.target.value)}
                           placeholder="Ej: 30 min al 70% FCM..." rows={2}
-                          className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none resize-none" />
+                          className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none resize-none" />
                         <button onClick={() => saveTask('cardio')}
                           className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Guardar cardio</button>
                       </div>
@@ -238,9 +232,9 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                       <div className="space-y-2">
                         {Object.entries(evolucionItems).map(([key, val]) => (
                           <label key={key}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${val ? 'bg-accent/10 border-accent' : 'bg-white border-gray-200'}`}
+                            className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${val ? 'bg-accent/10 border-accent' : 'bg-card border-border'}`}
                             onClick={() => setEvolucionItems(p => ({ ...p, [key]: !p[key as keyof typeof p] }))}>
-                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${val ? 'bg-accent border-accent' : 'border-gray-300'}`}>
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${val ? 'bg-accent border-accent' : 'border-border'}`}>
                               {val && <Check className="w-3 h-3 text-white" />}
                             </div>
                             <span className="text-sm font-medium">{EVOLUCION_LABELS[key]}</span>
@@ -254,15 +248,15 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                     {type.id === 'formulario' && (
                       <div className="space-y-2">
                         {surveyTemplates.length === 0 ? (
-                          <p className="text-sm text-gray-500">No tienes formularios. Créalos en la pestaña Encuestas.</p>
+                          <p className="text-sm text-muted">No tienes formularios. Créalos en la pestaña Encuestas.</p>
                         ) : (
                           <>
                             {surveyTemplates.map(t => (
                               <label key={t.id}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${formularioId === t.id ? 'bg-accent/10 border-accent' : 'bg-white border-gray-200'}`}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${formularioId === t.id ? 'bg-accent/10 border-accent' : 'bg-card border-border'}`}
                                 onClick={() => setFormularioId(t.id)}>
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${formularioId === t.id ? 'border-accent bg-accent' : 'border-gray-300'}`}>
-                                  {formularioId === t.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${formularioId === t.id ? 'border-accent bg-accent' : 'border-border'}`}>
+                                  {formularioId === t.id && <div className="w-2 h-2 bg-card rounded-full" />}
                                 </div>
                                 <span className="text-sm">{t.name}</span>
                               </label>
@@ -278,7 +272,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                       <div className="space-y-2">
                         <textarea value={mensaje} onChange={e => setMensaje(e.target.value)}
                           placeholder="Mensaje que verá el cliente este día..." rows={3}
-                          className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm outline-none resize-none" />
+                          className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none resize-none" />
                         <button onClick={() => saveTask('mensaje')} disabled={!mensaje.trim()}
                           className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir mensaje</button>
                       </div>
@@ -288,10 +282,10 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                       <div className="space-y-2">
                         <input value={videoTitle} onChange={e => setVideoTitle(e.target.value)}
                           placeholder="Título del vídeo"
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
                         <input value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
                           placeholder="URL (YouTube, Vimeo...)"
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
                         <button onClick={() => saveTask('video')} disabled={!videoUrl.trim()}
                           className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir vídeo</button>
                       </div>
@@ -301,10 +295,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
               </div>
             )
           })}
-        </div>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   )
 }
 
@@ -470,6 +461,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
                 ))}
                 <button
                   onClick={() => setAddTaskModal({ weekIdx: activeWeek, dayIdx: di })}
+                  aria-label={`Añadir tarea el ${DAY_NAMES[di]}`}
                   className="w-full flex items-center justify-center py-2 rounded-xl border border-dashed border-border/60 text-muted hover:border-accent hover:text-accent hover:bg-accent/3 transition-all">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -541,36 +533,35 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     ? (selectedCohorte ? undefined : 0)
     : selectedIds.size
 
-  return createPortal(
-    <div className="fixed inset-0 z-[200] bg-ink/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col" style={{ maxHeight: '85dvh', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-lg">Asignar a varios</h3>
-            <p className="text-xs text-gray-500 mt-0.5 truncate">{program.name} — se publica de inmediato, sin borrador</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
-        </div>
-
+  return (
+    <Modal open onClose={onClose} title="Asignar a varios" variant="drawer" bare
+      footer={
+        <button onClick={confirm} disabled={assigning || targetCount === 0}
+            className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-2">
+            <Users className="w-4 h-4" />
+            {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
+          </button>
+      }>
+      <p className="px-6 pt-4 text-xs text-muted">{program.name} — se publica de inmediato, sin borrador y sustituye el plan actual de cada cliente</p>
         <div className="px-6 pt-4 flex gap-2 flex-shrink-0">
-          <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Elegir clientes</button>
-          <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-gray-200 text-gray-500'}`}>Grupo completo</button>
+          <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Elegir clientes</button>
+          <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Grupo completo</button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-4">
           {mode === 'clients' ? (
             <>
               <div className="relative mb-3">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar cliente..."
-                  className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-sm outline-none" />
+                  className="w-full pl-8 pr-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
               </div>
-              <div className="space-y-1 border border-gray-100 rounded-xl p-2 max-h-64 overflow-y-auto">
-                {filteredClients.length === 0 && <p className="text-sm text-gray-400 text-center py-3">Sin resultados</p>}
+              <div className="space-y-1 border border-border rounded-xl p-2 max-h-64 overflow-y-auto">
+                {filteredClients.length === 0 && <p className="text-sm text-muted text-center py-3">Sin resultados</p>}
                 {filteredClients.map(c => (
-                  <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 cursor-pointer">
+                  <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-bg-alt cursor-pointer">
                     <div onClick={() => toggle(c.id)}
-                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-gray-300'}`}>
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-border'}`}>
                       {selectedIds.has(c.id) && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <span className="text-sm truncate">{c.name} {c.surname}</span>
@@ -580,11 +571,11 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
             </>
           ) : (
             cohortes.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-6">No tienes grupos creados todavía (pestaña Grupos).</p>
+              <p className="text-sm text-muted text-center py-6">No tienes grupos creados todavía (pestaña Grupos).</p>
             ) : (
               <div className="space-y-1">
                 {cohortes.map(c => (
-                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedCohorte === c.id ? 'bg-accent/10 border-accent' : 'border-gray-100'}`}>
+                  <label key={c.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedCohorte === c.id ? 'bg-accent/10 border-accent' : 'border-border'}`}>
                     <input type="radio" name="cohorte" checked={selectedCohorte === c.id} onChange={() => setSelectedCohorte(c.id)} className="accent-accent" />
                     <span className="text-sm">{c.name}</span>
                   </label>
@@ -594,16 +585,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex-shrink-0">
-          <button onClick={confirm} disabled={assigning || targetCount === 0}
-            className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-2">
-            <Users className="w-4 h-4" />
-            {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   )
 }
 

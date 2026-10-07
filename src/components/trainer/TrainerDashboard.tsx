@@ -698,7 +698,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       </main>
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente" variant="drawer">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>

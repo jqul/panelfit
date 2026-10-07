@@ -55,6 +55,10 @@
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
@@ -68,5 +72,9 @@
 }
 .animate-fade-in  { animation: fadeIn  0.2s ease forwards; }
 .animate-slide-up { animation: slideUp 0.25s ease forwards; }
+.animate-slide-in-right { animation: slideInRight 0.22s ease forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in, .animate-slide-up, .animate-slide-in-right { animation-duration: 0.01ms; }
+}
 .pulse-dot        { animation: pulse-dot 2s infinite; }
 .animate-pr-pop   { animation: prPop 3.6s ease forwards; }

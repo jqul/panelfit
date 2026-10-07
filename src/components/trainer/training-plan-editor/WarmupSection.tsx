@@ -107,7 +107,7 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
       )}
 
       {/* Picker de ejercicios de la librería */}
-      <Modal open={showPicker} onClose={() => setShowPicker(false)} title="Añadir ejercicio de calentamiento" maxWidth="max-w-2xl">
+      <Modal open={showPicker} onClose={() => setShowPicker(false)} title="Añadir ejercicio de calentamiento" maxWidth="max-w-2xl" variant="drawer">
         <ExercisePicker
           library={library}
           onSelect={ex => { onAdd(ex); setShowPicker(false) }}
