@@ -89,8 +89,8 @@ function TaskCard({ task, onDelete }: { task: ProgramTask; onDelete: () => void 
       <Icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${meta.text}`} />
       <div className="flex-1 min-w-0">
         <p className={`font-semibold leading-tight truncate ${meta.text}`}>{task.title}</p>
-        {task.data.objective && <p className="text-gray-500 text-[10px] mt-0.5 truncate">{task.data.objective}</p>}
-        {task.data.text && <p className="text-gray-500 text-[10px] mt-0.5 truncate">"{task.data.text}"</p>}
+        {task.data.objective && <p className="text-gray-500 text-[11px] mt-0.5 truncate">{task.data.objective}</p>}
+        {task.data.text && <p className="text-gray-500 text-[11px] mt-0.5 truncate">"{task.data.text}"</p>}
       </div>
       <button onClick={onDelete}
         className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 transition-all flex-shrink-0">
@@ -186,7 +186,7 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                                     </div>
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-medium truncate">{tmpl.name}</p>
-                                      {tmpl.type && <p className="text-[10px] text-muted">{tmpl.type}</p>}
+                                      {tmpl.type && <p className="text-[11px] text-muted">{tmpl.type}</p>}
                                     </div>
                                   </label>
                                 ))}
@@ -392,7 +392,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
       {/* Tipo + etiquetas */}
       <div className="flex flex-wrap gap-4 items-start">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Tipo</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Tipo</p>
           <div className="flex flex-wrap gap-1.5">
             {allTipos.map(tipo => (
               <button key={tipo} onClick={() => update({ tipo })}
@@ -418,7 +418,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         </div>
         {labels.length > 0 && (
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Etiquetas</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Etiquetas</p>
             <LabelSelector labels={labels} selected={program.label_ids} onChange={(ids: string[]) => update({ label_ids: ids })} />
           </div>
         )}
@@ -452,7 +452,7 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         <div className="grid grid-cols-7 gap-2">
           {currentWeek.days.map((day, di) => (
             <div key={di} className="flex flex-col">
-              <p className={`text-[10px] font-bold uppercase tracking-wider text-center mb-1.5 ${di >= 5 ? 'text-accent' : 'text-muted'}`}>
+              <p className={`text-[11px] font-bold uppercase tracking-wider text-center mb-1.5 ${di >= 5 ? 'text-accent' : 'text-muted'}`}>
                 {DAY_NAMES[di]}
               </p>
               <div className="flex-1 bg-bg-alt/40 border border-border/60 rounded-2xl p-2 space-y-1.5 min-h-[100px]">
@@ -763,12 +763,12 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
               <div className="grid grid-cols-7 gap-1.5">
                 {['L','M','X','J','V','S','D'].map((d, i) => (
                   <div key={d} className={`text-center rounded-lg py-2 text-xs font-semibold ${i < 5 ? 'bg-accent/8 text-accent' : 'bg-bg-alt text-muted'}`}>
-                    <p className="text-[10px] mb-1">{d}</p>
+                    <p className="text-[11px] mb-1">{d}</p>
                     {i < 5 ? <div className="w-1.5 h-1.5 bg-accent/40 rounded-full mx-auto" /> : <div className="w-1.5 h-1.5 rounded-full mx-auto" />}
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted mt-2 text-center">5 días de entrenamiento + fin de semana libre</p>
+              <p className="text-[11px] text-muted mt-2 text-center">5 días de entrenamiento + fin de semana libre</p>
             </div>
           </div>
         )
@@ -788,7 +788,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-base truncate">{prog.name}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
+                        <span className="text-[11px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
                         <span className="text-[11px] text-muted">{plural((prog.weeks || []).length, 'semana', 'semanas')} · {plural(totalTasks, 'tarea', 'tareas')}</span>
                         {progLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                       </div>
@@ -814,7 +814,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
                     {(prog.weeks[0]?.days || Array(7).fill({ tasks: [] })).map((d: any, di: number) => (
                       <div key={di} className="flex flex-col gap-0.5">
                         <p className="text-[8px] text-muted text-center font-bold">{DAY_NAMES[di][0]}</p>
-                        <div className={`h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${d.tasks?.length > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-transparent'}`}>
+                        <div className={`h-6 rounded-md flex items-center justify-center text-[11px] font-bold ${d.tasks?.length > 0 ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-transparent'}`}>
                           {d.tasks?.length > 0 && d.tasks.length}
                         </div>
                       </div>

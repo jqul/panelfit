@@ -38,7 +38,7 @@ function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify
 function TagBadge({ tag }: { tag: CustomTag }) {
   const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
       {tag.emoji} {tag.label}
     </span>
   )
@@ -136,7 +136,7 @@ function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onC
           <>
             {/* Especialidades del sistema */}
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Del sistema (fijas)</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Del sistema (fijas)</p>
               <div className="flex flex-wrap gap-1.5">
                 {ESPECIALIDADES.map(e => (
                   <span key={e.value} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs bg-bg-alt border border-border text-muted">
@@ -148,7 +148,7 @@ function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onC
             {/* Personalizadas */}
             {esps.length > 0 && (
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Personalizadas</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Personalizadas</p>
                 <div className="space-y-1.5">
                   {esps.map(esp => (
                     <div key={esp.id} className="flex items-center gap-2">
@@ -303,7 +303,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-semibold text-muted">Especialidades del ejercicio</label>
-          <span className="text-[10px] text-muted">Añade más en ⚙️ Configurar</span>
+          <span className="text-[11px] text-muted">Añade más en ⚙️ Configurar</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {allEsps.map(e => (
@@ -349,7 +349,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                 </div>
                 {/* Edición rápida de especialidades del vídeo */}
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-[10px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
+                  <span className="text-[11px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
                   {allEsps.map(e => {
                     const active = (v.especialidades||[]).includes(e.id)
                     return (
@@ -360,7 +360,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                           vs[i]={...vs[i],especialidades:active?esps.filter(x=>x!==e.id):[...esps,e.id]}
                           setForm(f=>({...f,videos:vs}))
                         }}
-                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
+                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
                         {e.emoji} {e.label}
                       </button>
                     )
@@ -374,11 +374,11 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 
       {/* Añadir vídeo */}
       <div className="bg-bg-alt border border-border rounded-xl p-3 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
+        <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
         <div className="flex gap-1 bg-bg p-0.5 rounded-lg border border-border w-fit">
           {(['url','file'] as const).map(m => (
             <button key={m} type="button" onClick={()=>setVideoMode(m)}
-              className={`px-3 py-1 rounded-md text-[10px] font-semibold transition-all ${videoMode===m?'bg-card shadow-sm text-ink':'text-muted'}`}>
+              className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${videoMode===m?'bg-card shadow-sm text-ink':'text-muted'}`}>
               {m==='url'?'🔗 YouTube URL':'📁 Subir archivo'}
             </button>
           ))}
@@ -408,7 +408,7 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
             <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
               placeholder="Etiqueta del vídeo (opcional)" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
             <div>
-              <p className="text-[10px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
               <div className="flex flex-wrap gap-1.5">
                 {allEsps.map(e => {
                   const esps = videoMode === 'file' ? uploadVideoEsps : newVideoEsps
@@ -416,13 +416,13 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
                   const active = esps.includes(e.id)
                   return (
                     <button key={e.id} type="button" onClick={()=>setEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
                       {e.emoji} {e.label}
                     </button>
                   )
                 })}
               </div>
-              <p className="text-[10px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
+              <p className="text-[11px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
             </div>
           </>
         )}

@@ -64,7 +64,7 @@ interface DietTemplate {
 function MacroPill({ label, value, unit, color, onChange }: { label: string; value: number; unit: string; color: string; onChange: (v: number) => void }) {
   return (
     <div className={`flex-1 bg-card border rounded-2xl p-4 ${color}`}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-widest text-muted mb-2">{label}</p>
       <div className="flex items-baseline gap-1">
         <input type="number" min={0} max={9999} value={value} onChange={e => onChange(parseInt(e.target.value) || 0)}
           className="w-full text-2xl font-serif font-bold bg-transparent outline-none border-none p-0" />
@@ -99,7 +99,7 @@ function MealCard({ meal, index, onChange, onDelete }: { meal: Meal; index: numb
       </div>
       {open && (
         <div className="px-4 pb-4 space-y-2 border-t border-border">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-muted pt-3 mb-2">Alimentos</p>
+          <p className="text-[11px] uppercase tracking-widest font-bold text-muted pt-3 mb-2">Alimentos</p>
           {meal.items.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="text-muted text-xs w-4 flex-shrink-0">{i + 1}.</span>
@@ -257,7 +257,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[{label:'Calorías',value:diet.kcal,unit:'kcal',color:'border-accent/20'},{label:'Proteína',value:diet.protein,unit:'g',color:'border-ok/20'},{label:'Carbos',value:diet.carbs,unit:'g',color:'border-blue-200'},{label:'Grasas',value:diet.fats,unit:'g',color:'border-amber-200'}].map(m => (
             <div key={m.label} className={`bg-card border ${m.color} rounded-2xl p-4 text-center`}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-1">{m.label}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted mb-1">{m.label}</p>
               <p className="text-2xl font-serif font-bold">{m.value}</p>
               <p className="text-xs text-muted">{m.unit}</p>
             </div>
@@ -294,10 +294,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         {diet.showSupplements && (diet.supplements?.filter(s => s.visible).length ?? 0) > 0 && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación recomendada</p>
-            <div className="space-y-2">{(diet.supplements || []).filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
+            <div className="space-y-2">{(diet.supplements || []).filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[11px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
           </div>
         )}
-        {diet.advice && <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5"><p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p><p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p></div>}
+        {diet.advice && <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5"><p className="text-[11px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p><p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p></div>}
       </div>
     )
   }
@@ -315,7 +315,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         <div className="flex gap-2">
           <button onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
+            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[11px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
           </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={importing}
             className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-semibold text-muted hover:border-accent disabled:opacity-50">
@@ -347,7 +347,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           )}
           {savedTemplates.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Mis plantillas</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Mis plantillas</p>
               <div className="grid grid-cols-2 gap-2">
                 {savedTemplates.map(tpl => (
                   <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
@@ -362,7 +362,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             </div>
           )}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
             <div className="grid grid-cols-3 gap-2">
               {DIET_TEMPLATES.map(tpl => (
                 <button key={tpl.name} onClick={() => applyTemplate({ ...tpl.diet, meals: tpl.diet.meals || [] } as Partial<DietPlan>, tpl.name)}
@@ -373,19 +373,19 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-warn">⚠️ Aplicar sobreescribirá el plan actual</p>
+          <p className="text-[11px] text-warn">⚠️ Aplicar sobreescribirá el plan actual</p>
         </div>
       )}
 
       <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-3">Objetivos diarios</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted mb-3">Objetivos diarios</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MacroPill label="Calorías" value={diet.kcal} unit="kcal" color="border-accent/20" onChange={v => updateDiet({ kcal: v })} />
           <MacroPill label="Proteína" value={diet.protein} unit="g" color="border-ok/20" onChange={v => updateDiet({ protein: v })} />
           <MacroPill label="Carbos" value={diet.carbs} unit="g" color="border-blue-200" onChange={v => updateDiet({ carbs: v })} />
           <MacroPill label="Grasas" value={diet.fats} unit="g" color="border-amber-200" onChange={v => updateDiet({ fats: v })} />
         </div>
-        {syncedMacros && <p className="text-[10px] text-muted mt-2">↕ Sincronizado con la pestaña Macros</p>}
+        {syncedMacros && <p className="text-[11px] text-muted mt-2">↕ Sincronizado con la pestaña Macros</p>}
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -408,7 +408,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                 <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} aria-label="Eliminar franja horaria" className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
-            <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}%</p>
+            <p className="text-[11px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}%</p>
           </div>
         )}
       </div>
@@ -419,7 +419,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           <div className="flex items-center gap-3">
             {openSups && <button onClick={e => { e.stopPropagation(); updateDiet({ supplements: [...sups, { name: 'Nuevo suplemento', dosis: '', timing: '', visible: true }] }) }} className="text-xs text-accent hover:underline">+ Añadir</button>}
             <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-              <span className="text-[10px] text-muted">Mostrar cliente</span>
+              <span className="text-[11px] text-muted">Mostrar cliente</span>
               <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${diet.showSupplements ? 'bg-ok' : 'bg-border'}`} onClick={() => updateDiet({ showSupplements: !diet.showSupplements })}>
                 <div className={`w-4 h-4 bg-card rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
               </div>
@@ -447,7 +447,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
       </div>
 
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Comidas del día</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted">Comidas del día</p>
         {diet.meals.length === 0 && <div className="bg-card border-2 border-dashed border-border rounded-2xl p-10 text-center text-muted"><Utensils className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Aún no has añadido comidas.</p></div>}
         {sortedMeals.map((meal, i) => (
           <MealCard key={meal.id} meal={meal} index={i}
@@ -462,7 +462,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
       </div>
 
       <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-2">Consejo / Nota para el cliente</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted mb-2">Consejo / Nota para el cliente</p>
         <textarea rows={3} placeholder="Ej: Prioriza los carbohidratos antes del entrenamiento..." value={diet.advice}
           onChange={e => updateDiet({ advice: e.target.value })}
           className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
