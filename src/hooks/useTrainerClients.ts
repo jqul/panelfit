@@ -300,7 +300,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     const newPlan = {
       clientId, type: prog.tipo, restMain: 180, restAcc: 90, restWarn: 30,
       weeks, programId: prog.id, programName: prog.name,
-      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaInicio: localDateKey(),
     }
     const { error: planError } = await supabase.from('planes')
       .upsert({ clientId, plan: { P: newPlan }, updatedAt: Date.now() }, { onConflict: 'clientId' })

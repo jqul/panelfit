@@ -3,6 +3,7 @@ import { ChevronLeft, Save, Plus, Edit2, Trash2, ChevronUp, ChevronDown } from '
 import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 interface Valoracion {
   id: string
@@ -30,7 +31,7 @@ function emptyValoracion(clientId: string, trainerId: string): Valoracion {
     id: `val_${Date.now()}`,
     client_id: clientId,
     trainer_id: trainerId,
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: localDateKey(),
     peso: null, imc: null, grasa_corporal: null, masa_muscular: null,
     cintura: null, cadera: null, pecho: null,
     brazo_d: null, brazo_i: null, muslo_d: null, muslo_i: null,

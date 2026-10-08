@@ -182,7 +182,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                 {Array.from({ length: 7 }, (_, di) => {
                   const d = new Date(weekStart)
                   d.setDate(d.getDate() + di)
-                  const dateStr = d.toISOString().split('T')[0]
+                  const dateStr = localDateKey(d)
                   const trained = trainingDates.has(dateStr)
                   const isFuture = dateStr > today
                   return (

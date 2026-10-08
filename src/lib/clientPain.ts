@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { sendPush } from './usePushNotifications'
+import { localDateKey } from './dates'
 
 // Historial de dolor del cliente — pensado para seguimiento de rehabilitación
 // (zona + intensidad 0-10 a lo largo del tiempo). Mismo patrón que
@@ -51,7 +52,7 @@ export function useClientPain(clientId?: string, trainerId?: string) {
 
   const addEntry = useCallback(async (zona: string, intensidad: number, nota?: string, date?: string, tipo?: 'doms' | 'articular') => {
     if (!clientId) return
-    const entry: PainEntry = { id: crypto.randomUUID().replace(/-/g, ''), date: date || new Date().toISOString().split('T')[0], zona, intensidad, nota, tipo }
+    const entry: PainEntry = { id: crypto.randomUUID().replace(/-/g, ''), date: date || localDateKey(), zona, intensidad, nota, tipo }
     const updated = [entry, ...entries].sort((a, b) => b.date.localeCompare(a.date))
     setEntries(updated)
     const isDemo = clientId.startsWith('demo-client-')
@@ -100,7 +101,7 @@ export function useRecentPainZonas(clientId?: string) {
     if (!clientId) { setZonas(new Set()); return }
     fetchClientPain(clientId).then(entries => {
       const since = new Date(); since.setDate(since.getDate() - 7)
-      const sinceKey = since.toISOString().split('T')[0]
+      const sinceKey = localDateKey(since)
       const relevant = entries.filter(e => e.date >= sinceKey && e.intensidad >= 4 && e.tipo !== 'doms')
       setZonas(new Set(relevant.map(e => e.zona)))
     })

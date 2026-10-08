@@ -5,6 +5,7 @@ import {
 import { Activity } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap, VOLUME_LANDMARKS, getVolumeStatus } from './helpers'
+import { localDateKey } from '../../../lib/dates'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -15,7 +16,7 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const key = lunes.toISOString().split('T')[0]
+      const key = localDateKey(lunes)
       const vol = Object.values(log.sets || {}).reduce((acc, s: any) => acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
       semanas[key] = (semanas[key] || 0) + vol
     })
@@ -69,7 +70,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const weekKey = lunes.toISOString().split('T')[0]
+      const weekKey = localDateKey(lunes)
       if (!byWeek[weekKey]) byWeek[weekKey] = {}
       byWeek[weekKey][g] = (byWeek[weekKey][g] || 0) + setsDone
       groupSet.add(g)

@@ -4,6 +4,7 @@ import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 import { Zap, BarChart2 } from 'lucide-react'
 import { buildConclusions } from '../../lib/conclusions'
 import { ConclusionList } from './ConclusionList'
+import { localDateKey } from '../../lib/dates'
 
 interface Props {
   clients: ClientData[]
@@ -48,7 +49,7 @@ function calcClientStats(client: ClientData, logs: TrainingLogs) {
   const fechaSet = new Set(fechas)
   const d = new Date(hoy)
   while (true) {
-    const key = d.toISOString().split('T')[0]
+    const key = localDateKey(d)
     if (fechaSet.has(key)) { racha++; d.setDate(d.getDate() - 1) } else break
   }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CheckSquare, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { localDateKey } from '../../lib/dates'
 
 interface Habito { id: string; text: string; sub?: string; order: number }
 
@@ -8,7 +9,7 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
   const [habitos, setHabitos] = useState<Habito[]>([])
   const [completed, setCompleted] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   useEffect(() => {
     if (clientId.startsWith('demo-client-')) { setLoading(false); return }

@@ -4,6 +4,7 @@ import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs } from '../../.
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
 import { toast } from '../../shared/Toast'
 import { Modal } from '../../shared/Modal'
+import { localDateKey } from '../../../lib/dates'
 
 interface ProgramTask { id: string; type: string; title: string }
 interface ProgramDay { tasks: ProgramTask[] }
@@ -69,7 +70,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       weeks,
       programId: prog.id,
       programName: prog.name,
-      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaInicio: localDateKey(),
     }
 
     onPlanChange(newPlan)
@@ -92,7 +93,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   const generateNextBlock = () => {
     const weeks = JSON.parse(JSON.stringify(plan.weeks)) as typeof plan.weeks
     weeks.forEach((w, i) => { w.isCurrent = i === 0 })
-    const newPlan: TrainingPlan = { ...plan, weeks, fechaInicio: new Date().toISOString().split('T')[0] }
+    const newPlan: TrainingPlan = { ...plan, weeks, fechaInicio: localDateKey() }
     onPlanChange(newPlan)
     toast('Nuevo bloque generado — mismos ejercicios, ajusta cargas si hace falta', 'ok')
   }

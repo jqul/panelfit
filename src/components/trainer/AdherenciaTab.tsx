@@ -4,6 +4,7 @@ import { getNudge, Objetivo } from '../../lib/nudges'
 import { TrendingUp, TrendingDown, Minus, MessageCircle, Bell, CheckCircle2, Clock } from 'lucide-react'
 import { buildConclusions, rankAdherence, ConclusionRow } from '../../lib/conclusions'
 import { ConclusionList } from './ConclusionList'
+import { localDateKey } from '../../lib/dates'
 
 interface ClientStats {
   client: ClientData
@@ -64,7 +65,7 @@ function calcStats(client: ClientData, logs: TrainingLogs): ClientStats {
   const fechaSet = new Set(fechas)
   const d = new Date(hoy)
   while (true) {
-    const key = d.toISOString().split('T')[0]
+    const key = localDateKey(d)
     if (fechaSet.has(key)) { racha++; d.setDate(d.getDate() - 1) } else break
   }
 

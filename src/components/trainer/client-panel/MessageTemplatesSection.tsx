@@ -4,6 +4,7 @@ import { ClientData, TrainingPlan } from '../../../types'
 import { useMessageTemplates, resolveMessage, MESSAGE_TYPE_LABEL } from '../../../lib/messageTemplates'
 import { useScheduledMessages } from '../../../lib/scheduledMessages'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
   client: ClientData; plan: TrainingPlan; onChange: (p: TrainingPlan) => void; trainerId: string
@@ -105,7 +106,7 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                   </div>
                   {scheduling === t.id && (
                     <div className="flex items-center gap-2 pt-1">
-                      <input type="date" value={scheduleDate} min={new Date().toISOString().slice(0, 10)}
+                      <input type="date" value={scheduleDate} min={localDateKey()}
                         onChange={e => setScheduleDate(e.target.value)}
                         className="flex-1 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
                       <button onClick={() => setScheduling(null)} className="px-2.5 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>

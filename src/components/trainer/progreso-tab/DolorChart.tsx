@@ -4,6 +4,7 @@ import { HeartPulse } from 'lucide-react'
 import { EmptyState } from './helpers'
 import { useClientPain } from '../../../lib/clientPain'
 import { TrainingLogs } from '../../../types'
+import { localDateKey } from '../../../lib/dates'
 
 const INTENSIDAD_COLOR = (v: number) => v >= 7 ? '#dc2626' : v >= 4 ? '#e0a854' : '#4caf7d'
 
@@ -13,7 +14,7 @@ function mondayKey(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   const lunes = new Date(d); lunes.setDate(diff)
-  return lunes.toISOString().split('T')[0]
+  return localDateKey(lunes)
 }
 
 function DolorTooltip({ active, payload, label }: any) {

@@ -593,7 +593,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
 
   const createSession = async () => {
     const id = `s_${Date.now()}`
-    const date = new Date().toISOString().split('T')[0]
+    const date = localDateKey()
     const { error } = await supabase.from('foto_sessions').insert({ id, client_id: clientId, date, created_at: Date.now() })
     if (!error) { await loadPhotos(); setExpandedSession(id) }
   }

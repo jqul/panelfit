@@ -7,6 +7,7 @@ import { ActiveWorkout } from './ActiveWorkout'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
+import { localDateKey } from '../../lib/dates'
 
 interface Props {
   plan: TrainingPlan
@@ -283,8 +284,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
               const monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
               return Array.from({ length: 7 }, (_, i) => {
                 const d = new Date(monday); d.setDate(monday.getDate() + i)
-                const key = d.toISOString().split('T')[0]
-                const todayKey = now.toISOString().split('T')[0]
+                const key = localDateKey(d)
+                const todayKey = localDateKey(now)
                 const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
                 const isToday = key === todayKey
                 const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })

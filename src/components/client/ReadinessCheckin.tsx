@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, HeartPulse } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { localDateKey } from '../../lib/dates'
 
 interface Metric { key: 'motivation' | 'sleep' | 'soreness' | 'stress'; label: string; emoji: string; lowLabel: string; highLabel: string }
 
@@ -28,7 +29,7 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
   // número del check-in.
   const [painStep, setPainStep] = useState<'none' | 'classify' | 'zone' | 'thanks'>('none')
   const { addEntry } = useClientPain(clientId, trainerId)
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   useEffect(() => {
     if (clientId.startsWith('demo-client-')) { setLoading(false); return }

@@ -13,6 +13,7 @@ import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
 import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
 import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
+import { localDateKey } from '../../lib/dates'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -517,7 +518,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
         clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
         weeks: JSON.parse(JSON.stringify(weeks)),
         programId: program.id, programName: program.name,
-        fechaInicio: new Date().toISOString().split('T')[0],
+        fechaInicio: localDateKey(),
       }
       const { error } = await supabase.from('planes').upsert(
         { clientId, plan: { P: newPlan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() },

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
+import { localDateKey } from '../../lib/dates'
 
 interface ClientAlert {
   id: string
@@ -40,7 +41,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
     fetchAlerts()
   }, [clients.map(c => c.id).join(',')])
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   const allPending: { alert: ClientAlert; client: ClientData }[] = []
   clients.forEach(c => {

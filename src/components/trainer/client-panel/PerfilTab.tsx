@@ -10,6 +10,7 @@ import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { FichaSections } from './FichaSections'
+import { localDateKey } from '../../../lib/dates'
 
 export interface ClientAlert {
   id: string
@@ -43,7 +44,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
   const [saving, setSaving] = useState(false)
   const [showNewAlert, setShowNewAlert] = useState(false)
   const [newAlert, setNewAlert] = useState<{ type: ClientAlert['type']; note: string; date: string }>({
-    type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    type: 'llamar', note: '', date: localDateKey(new Date(Date.now() + 86400000))
   })
 
   const edad = (() => {
@@ -70,7 +71,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       date: newAlert.date, done: false, createdAt: Date.now()
     }
     await onSaveAlerts([...alerts, alert])
-    setNewAlert({ type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0] })
+    setNewAlert({ type: 'llamar', note: '', date: localDateKey(new Date(Date.now() + 86400000)) })
     setShowNewAlert(false)
     toast('Recordatorio añadido ✓', 'ok')
   }
@@ -86,7 +87,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
   const pendingAlerts = alerts.filter(a => !a.done).sort((a, b) => a.date.localeCompare(b.date))
   const doneAlerts = alerts.filter(a => a.done)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   return (
     <div className="animate-fade-in space-y-5 max-w-xl">

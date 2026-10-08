@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { CustomTooltip } from './helpers'
+import { localDateKey } from '../../../lib/dates'
 
 export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const diasProgramados = plan?.weeks?.reduce((acc, w) => acc + w.days.filter(d => d.exercises.length > 0).length, 0) || 0
@@ -16,7 +17,7 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const key = lunes.toISOString().split('T')[0]
+      const key = localDateKey(lunes)
       if (!byWeek[key]) byWeek[key] = new Set()
       byWeek[key].add(log.dateDone)
     })

@@ -3,6 +3,7 @@ import { CalendarDays, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { logError } from '../../../lib/errors'
 import { sendPush } from '../../../lib/usePushNotifications'
+import { localDateKey } from '../../../lib/dates'
 
 interface CitaCliente {
   id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
@@ -12,7 +13,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   const [citas, setCitas] = useState<CitaCliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [date, setDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
+  const [date, setDate] = useState(() => localDateKey(new Date(Date.now() + 86400000)))
   const [time, setTime] = useState('09:00')
   const [saving, setSaving] = useState(false)
 
@@ -77,7 +78,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
         {showForm && (
           <div className="px-4 py-3 border-b border-border bg-bg-alt/30 space-y-2">
             <div className="flex gap-2">
-              <input type="date" value={date} min={new Date().toISOString().split('T')[0]} onChange={e => setDate(e.target.value)}
+              <input type="date" value={date} min={localDateKey()} onChange={e => setDate(e.target.value)}
                 className="flex-1 px-2.5 py-2 bg-card border border-border rounded-lg text-xs outline-none" />
               <input type="time" value={time} onChange={e => setTime(e.target.value)}
                 className="px-2.5 py-2 bg-card border border-border rounded-lg text-xs outline-none" />

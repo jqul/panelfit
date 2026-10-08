@@ -7,6 +7,7 @@ import { EmptyState } from './helpers'
 import { CargaTrendChart } from './CargaTrendChart'
 import { HoloRangeBar } from '../../shared/HoloRangeBar'
 import { DEMO_READINESS_MAP, DEMO_SESSION_LOAD_MAP } from '../../../lib/demo-data'
+import { localDateKey } from '../../../lib/dates'
 
 const RISK_META = {
   bajo: { color: '#22c55e', bg: '#f0fdf4', label: 'Riesgo bajo', emoji: '✅' },
@@ -29,7 +30,7 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
     const since = new Date(); since.setDate(since.getDate() - 7)
     Promise.all([
       supabase.from('readiness_checkins').select('sleep, soreness, stress, motivation')
-        .eq('clientId', clientId).gte('date', since.toISOString().split('T')[0]),
+        .eq('clientId', clientId).gte('date', localDateKey(since)),
       supabase.from('session_load').select('date, duration_min, rpe').eq('client_id', clientId),
     ]).then(([readinessRes, loadRes]) => {
       setReadinessRows(readinessRes.data || [])

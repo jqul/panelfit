@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Target, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { ClientData } from '../../../types'
+import { localDateKey } from '../../../lib/dates'
 
 interface WeeklyReview {
   id: string
@@ -22,7 +23,7 @@ const ESTADO_META: Record<WeeklyReview['estado'], { label: string; color: string
 function mondayOf(d: Date): string {
   const m = new Date(d.getFullYear(), d.getMonth(), d.getDate())
   m.setDate(m.getDate() - (m.getDay() === 0 ? 6 : m.getDay() - 1))
-  return m.toISOString().split('T')[0]
+  return localDateKey(m)
 }
 
 // Objetivo principal del cliente (distinto de client.objetivo, que es la

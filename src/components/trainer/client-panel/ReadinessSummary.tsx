@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Moon } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { localDateKey } from '../../../lib/dates'
 
 interface ReadinessRow { date: string; sleep: number; soreness: number; stress: number; motivation: number }
 
@@ -11,7 +12,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
   useEffect(() => {
     const since = new Date(); since.setDate(since.getDate() - 7)
     supabase.from('readiness_checkins').select('date, sleep, soreness, stress, motivation')
-      .eq('clientId', clientId).gte('date', since.toISOString().split('T')[0]).order('date', { ascending: false })
+      .eq('clientId', clientId).gte('date', localDateKey(since)).order('date', { ascending: false })
       .then(({ data }) => { setRows(data || []); setLoading(false) })
   }, [clientId])
 

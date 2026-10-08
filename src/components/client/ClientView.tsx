@@ -26,6 +26,7 @@ import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } 
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
+import { localDateKey } from '../../lib/dates'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -328,7 +329,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   // Series de hoy guardadas en local — para el aviso de "sin conexión" del
   // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
-  const todayKey = new Date().toISOString().split('T')[0]
+  const todayKey = localDateKey()
   const pendingSetsCount = Object.values(logs).reduce((acc, log: any) => {
     if (log?.dateDone !== todayKey) return acc
     return acc + Object.values(log.sets || {}).filter((s: any) => s?.weight).length

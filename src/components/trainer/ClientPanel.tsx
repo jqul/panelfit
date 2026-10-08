@@ -27,6 +27,7 @@ import { PlanHistoryModal } from './client-panel/PlanHistoryModal'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
 import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
+import { localDateKey } from '../../lib/dates'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
 
@@ -102,7 +103,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [showTemplates, setShowTemplates] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
-  const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [wizardFechaInicio, setWizardFechaInicio] = useState(localDateKey())
   const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
   const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
   const [mobileShowSidebar, setMobileShowSidebar] = useState(false)

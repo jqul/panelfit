@@ -6,6 +6,7 @@ import { CustomTooltip, EmptyState } from './helpers'
 import { toast } from '../../shared/Toast'
 import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
 import { VamIntervalGenerator } from './VamIntervalGenerator'
+import { localDateKey } from '../../../lib/dates'
 
 export function PruebasChart({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const { tests, loading: loadingTests, addTest, deleteTest } = useTestCatalog(trainerId)
@@ -13,7 +14,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   const [expanded, setExpanded] = useState<string | null>(null)
   const [logging, setLogging] = useState<string | null>(null)
   const [valor, setValor] = useState('')
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [fecha, setFecha] = useState(localDateKey())
   const [notas, setNotas] = useState('')
   const [showVideoAnalyzer, setShowVideoAnalyzer] = useState(false)
   const [showVamGenerator, setShowVamGenerator] = useState<number | null>(null)
@@ -29,7 +30,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   )
 
   const startLogging = (testId: string) => {
-    setLogging(testId); setValor(''); setFecha(new Date().toISOString().slice(0, 10)); setNotas(''); setShowVideoAnalyzer(false)
+    setLogging(testId); setValor(''); setFecha(localDateKey()); setNotas(''); setShowVideoAnalyzer(false)
   }
 
   const confirmLog = async (testId: string) => {

@@ -7,6 +7,7 @@ import { fitForceVelocityProfile, relativePower } from '../../../lib/forceVeloci
 import { EmptyState } from './helpers'
 import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 function FVTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
@@ -28,7 +29,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
   const [bodyweightKg, setBodyweightKg] = useState('')
   const [pushoffCm, setPushoffCm] = useState('40')
   const [heightCm, setHeightCm] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(localDateKey())
   const [notes, setNotes] = useState('')
 
   const byDate = useMemo(() => {
@@ -69,7 +70,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
     setLoadKg('0')
     setBodyweightKg(String(client.weight || trials[0]?.bodyweight_kg || ''))
     setPushoffCm(trials[0] ? String(Math.round(trials[0].pushoff_distance_m * 100)) : '40')
-    setHeightCm(''); setDate(new Date().toISOString().slice(0, 10)); setNotes('')
+    setHeightCm(''); setDate(localDateKey()); setNotes('')
   }
 
   const confirmAdd = async () => {

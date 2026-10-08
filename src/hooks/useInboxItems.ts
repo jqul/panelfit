@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP } from '../lib/demo-data'
 import { PainEntry } from '../lib/clientPain'
 import { ClientWithStats } from './useTrainerClients'
+import { localDateKey } from '../lib/dates'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
@@ -76,7 +77,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       return
     }
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
-    const sinceKey = since.toISOString().split('T')[0]
+    const sinceKey = localDateKey(since)
     const goalClientIds = clients.filter(c => c.main_goal).map(c => c.id)
     Promise.all([
       supabase.from('readiness_checkins').select('clientId, date, sleep, soreness, stress, motivation')
@@ -104,8 +105,8 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
 
   const items = useMemo(() => {
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
-    const sinceKey = since.toISOString().split('T')[0]
-    const hoy = new Date().toISOString().split('T')[0]
+    const sinceKey = localDateKey(since)
+    const hoy = localDateKey()
     const list: InboxItem[] = []
     const nameOf = (id: string) => { const c = clients.find(cl => cl.id === id); return c ? `${c.name} ${c.surname}` : '' }
 
@@ -138,13 +139,13 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
 
     videos.forEach(v => {
       const name = nameOf(v.client_id); if (!name) return
-      list.push({ key: `video:${v.id}`, clientId: v.client_id, clientName: name, date: new Date(v.created_at).toISOString().split('T')[0], kind: 'video',
+      list.push({ key: `video:${v.id}`, clientId: v.client_id, clientName: name, date: localDateKey(new Date(v.created_at)), kind: 'video',
         detail: `🎥 Pide feedback de "${v.exercise_name}"`, warn: true })
     })
 
     borradores.forEach(b => {
       const name = nameOf(b.clientId); if (!name) return
-      const date = b.borrador_started_at ? b.borrador_started_at.split('T')[0] : hoy
+      const date = b.borrador_started_at ? localDateKey(new Date(b.borrador_started_at)) : hoy
       list.push({ key: `borrador:${b.clientId}`, clientId: b.clientId, clientName: name, date, kind: 'borrador',
         detail: '📝 Borrador del plan sin publicar', warn: true })
     })
@@ -161,11 +162,11 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
     // semana que viene — lo que de verdad lo quita de la lista es añadir una
     // revisión real, que actualiza lastReviews en el siguiente fetch.
     const hace7 = new Date(); hace7.setDate(hace7.getDate() - 7)
-    const hace7Key = hace7.toISOString().split('T')[0]
+    const hace7Key = localDateKey(hace7)
     const now = new Date()
     const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1))
-    const weekKey = monday.toISOString().split('T')[0]
+    const weekKey = localDateKey(monday)
     clients.forEach(c => {
       if (!c.main_goal) return
       const last = lastReviews[c.id]

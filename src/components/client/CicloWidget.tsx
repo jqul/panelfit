@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Moon } from 'lucide-react'
 import { useCicloTracking, getCyclePhase, PHASE_INFO } from '../../lib/cyclePhase'
+import { localDateKey } from '../../lib/dates'
 
 export function CicloWidget({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const { ciclo, loading, save } = useCicloTracking(clientId)
@@ -37,7 +38,7 @@ export function CicloWidget({ clientId, trainerId }: { clientId: string; trainer
             <div>
               <label className="block text-xs font-semibold text-muted mb-1.5">Última regla</label>
               <input type="date" value={ciclo?.ultima_regla || ultimaRegla}
-                max={new Date().toISOString().split('T')[0]}
+                max={localDateKey()}
                 onChange={e => { setUltimaRegla(e.target.value); save(trainerId, { ultima_regla: e.target.value }) }}
                 className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
             </div>
