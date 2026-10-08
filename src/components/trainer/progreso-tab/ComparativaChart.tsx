@@ -47,7 +47,7 @@ export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="vol" name="Volumen" fill="#6e5438" radius={[4,4,0,0]} />
           </BarChart>

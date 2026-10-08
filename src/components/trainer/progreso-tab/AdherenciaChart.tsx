@@ -39,11 +39,11 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-              <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} unit="%" />
+              <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} unit="%" />
               <Tooltip content={<CustomTooltip unit="%" />} />
-              <ReferenceLine y={80} stroke="#4caf7d" strokeDasharray="4 2" strokeWidth={1} label={{ value: '80%', position: 'right', fontSize: 9, fill: '#4caf7d' }} />
-              <Bar dataKey="pct" name="Adherencia" radius={[4,4,0,0]} fill="#6e5438" label={{ position: 'top', fontSize: 9, fill: '#8a8278', formatter: (v: number) => v > 0 ? `${v}%` : '' }} />
+              <ReferenceLine y={80} stroke="#4caf7d" strokeDasharray="4 2" strokeWidth={1} label={{ value: '80%', position: 'right', fontSize: 11, fill: '#4caf7d' }} />
+              <Bar dataKey="pct" name="Adherencia" radius={[4,4,0,0]} fill="#6e5438" label={{ position: 'top', fontSize: 11, fill: '#8a8278', formatter: (v: number) => v > 0 ? `${v}%` : '' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -42,10 +42,10 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={avg} stroke="#8a8278" strokeDasharray="4 2" strokeWidth={1} label={{ value: 'media', position: 'right', fontSize: 9, fill: '#8a8278' }} />
+            <ReferenceLine y={avg} stroke="#8a8278" strokeDasharray="4 2" strokeWidth={1} label={{ value: 'media', position: 'right', fontSize: 11, fill: '#8a8278' }} />
             <Bar dataKey="kg" name="Volumen" fill="#6e5438" radius={[4,4,0,0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -131,8 +131,8 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} label={{ value: 'series', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#8a8278' }} />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} label={{ value: 'series', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip unit="series" />} />
             {groups.map(g => (
               <Bar key={g} dataKey={g} name={g} stackId="vol" fill={GROUP_COLORS[g] || '#94a3b8'} radius={groups.indexOf(g) === groups.length - 1 ? [4, 4, 0, 0] : undefined} />

@@ -149,9 +149,9 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
-                <XAxis dataKey="velocity" type="number" domain={[0, Math.ceil(vMax)]} tick={{ fontSize: 9, fill: '#8a8278' }}
-                  label={{ value: 'Velocidad (m/s)', position: 'insideBottom', offset: -2, fontSize: 9, fill: '#8a8278' }} />
-                <YAxis dataKey="force" type="number" domain={[0, Math.ceil(fMax / 100) * 100]} tick={{ fontSize: 9, fill: '#8a8278' }} />
+                <XAxis dataKey="velocity" type="number" domain={[0, Math.ceil(vMax)]} tick={{ fontSize: 11, fill: '#8a8278' }}
+                  label={{ value: 'Velocidad (m/s)', position: 'insideBottom', offset: -2, fontSize: 11, fill: '#8a8278' }} />
+                <YAxis dataKey="force" type="number" domain={[0, Math.ceil(fMax / 100) * 100]} tick={{ fontSize: 11, fill: '#8a8278' }} />
                 <Tooltip content={<FVTooltip />} />
                 {linePoints.length > 0 && <Line data={linePoints} dataKey="force" stroke="#6e5438" strokeWidth={2} dot={false} isAnimationActive={false} />}
                 <Scatter data={currentPoints} dataKey="force" fill="#e07b54" />
@@ -170,8 +170,8 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={sessionTrend.map(s => ({ ...s, fecha: new Date(s.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) }))} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 9, fill: '#8a8278' }} />
-                <YAxis tick={{ fontSize: 9, fill: '#8a8278' }} />
+                <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: '#8a8278' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#8a8278' }} />
                 <Tooltip formatter={(v: number) => [`${v} W/kg`, 'Pmax relativa']} />
                 <Line type="monotone" dataKey="pmaxKg" stroke="#6e5438" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>

@@ -91,8 +91,8 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                        <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8a8278' }} />
+                        <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
                         <Tooltip content={<CustomTooltip unit={test.unidad} />} />
                         <Line type="monotone" dataKey="valor" stroke="#6e5438" strokeWidth={2} dot={{ r: 3 }} />
                       </LineChart>

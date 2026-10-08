@@ -101,15 +101,15 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={weeklyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                <YAxis yAxisId="dolor" domain={[0, 10]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#e07b54' }} width={24} />
+                <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+                <YAxis yAxisId="dolor" domain={[0, 10]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#e07b54' }} width={24} />
                 {hasVolumen && (
                   <YAxis yAxisId="volumen" orientation="right" axisLine={false} tickLine={false}
-                    tick={{ fontSize: 10, fill: '#8a8278' }} width={36}
+                    tick={{ fontSize: 11, fill: '#8a8278' }} width={36}
                     tickFormatter={v => v >= 1000 ? `${Math.round(v / 1000)}t` : String(v)} />
                 )}
                 <Tooltip content={<DolorTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 {hasVolumen && (
                   <Bar yAxisId="volumen" dataKey="volumen" name="Volumen" fill="#c9c2b6" radius={[4, 4, 0, 0]} barSize={18} />
                 )}

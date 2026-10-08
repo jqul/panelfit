@@ -55,9 +55,9 @@ export function CardioChart({ logs }: { logs: TrainingLogs }) {
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis yAxisId="km" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} unit=" km" />
-            <YAxis yAxisId="ritmo" orientation="right" reversed axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }}
+            <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis yAxisId="km" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} unit=" km" />
+            <YAxis yAxisId="ritmo" orientation="right" reversed axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }}
               domain={['dataMin - 20', 'dataMax + 20']} tickFormatter={(v: number) => formatDuration(v)} />
             <Tooltip content={({ active, payload, label }: any) => {
               if (!active || !payload?.length) return null
