@@ -38,6 +38,13 @@
 .dark :is(.bg-ink, .bg-accent, .bg-ok, .bg-warn)[class*='text-white'],
 .dark :is(.bg-ink, .bg-accent, .bg-ok, .bg-warn) [class*='text-white'] { color: var(--color-bg); }
 
+/* Filas del editor de ejercicios: en pantallas estrechas la columna de descanso se oculta
+   (sigue en el panel del ejercicio) y peso y series se estrechan; así el nombre no queda en 25 px. */
+.plan-grid { grid-template-columns: 20px minmax(0, 1fr) 56px 88px 36px; }
+@media (min-width: 640px) {
+  .plan-grid { grid-template-columns: 20px minmax(0, 1fr) 80px 140px 90px 36px; }
+}
+
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   body {

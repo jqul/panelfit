@@ -22,6 +22,7 @@ import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
 import { useTestCatalog } from '../../lib/testCatalog'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { useMediaQuery } from '../../lib/useMediaQuery'
 
 export { getYTId } from './training-plan-editor/utils'
 export type { SeriesTypeDef } from './training-plan-editor/seriesTypes'
@@ -57,6 +58,9 @@ export function TrainingPlanEditor({
   // hay cliente ni "semana actual", así que ahí se abre en la primera.
   const isTemplate = plan.clientId === 'template'
   const realWeekIdx = isTemplate ? -1 : getEffectiveWeekIdx(plan, logs)
+  // En pantallas estrechas el análisis del ejercicio no cabe como columna (dejaba el editor en
+  // ~190 px y tapaba las filas): se abre como panel lateral.
+  const wide = useMediaQuery('(min-width: 768px)')
   const [activeWeek, setActiveWeek] = useState(() => Math.max(0, realWeekIdx))
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({ 0: true })
   const [pickerFor, setPickerFor] = useState<{ dayIdx: number } | null>(null)
@@ -358,9 +362,9 @@ export function TrainingPlanEditor({
               <button onClick={() => copyWeek(activeWeek)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
               {confirmDeleteWeek === activeWeek ? (
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                  <span className="text-[10px] text-warn font-semibold">¿Borrar?</span>
-                  <button onClick={confirmDeleteWeekFn} className="px-2 py-1 bg-warn text-white rounded text-[10px] font-bold">Sí</button>
-                  <button onClick={() => setConfirmDeleteWeek(null)} className="px-2 py-1 border border-border rounded text-[10px] text-muted">No</button>
+                  <span className="text-[11px] text-warn font-semibold">¿Borrar?</span>
+                  <button onClick={confirmDeleteWeekFn} className="px-2 py-1 bg-warn text-white rounded text-[11px] font-bold">Sí</button>
+                  <button onClick={() => setConfirmDeleteWeek(null)} className="px-2 py-1 border border-border rounded text-[11px] text-muted">No</button>
                 </div>
               ) : (
                 <button onClick={() => deleteWeek(activeWeek)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -374,7 +378,7 @@ export function TrainingPlanEditor({
                   const color = GROUP_COLORS[group] || GROUP_COLORS['Otros']
                   return (
                     <div key={group} title={status ? `${status.label} para ${group} (referencia MEV/MAV/MRV)` : undefined}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
                       style={{ backgroundColor: color + '15', color: `color-mix(in srgb, ${color} 55%, var(--color-ink))` }}>
                       <span>{group}</span>
                       <span className="font-bold">{sets}</span>
@@ -403,7 +407,7 @@ export function TrainingPlanEditor({
                       <input value={day.focus} onChange={e => updateDay(activeWeek, di, { focus: e.target.value })}
                         placeholder="foco del día..." className="text-xs text-muted bg-transparent outline-none flex-1 min-w-0" />
                     </div>
-                    <span className="text-[10px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium">{day.exercises.length}ej</span>
+                    <span className="text-[11px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium">{day.exercises.length}ej</span>
                     <button onClick={e => { e.stopPropagation(); copyDay(activeWeek, di) }} className="p-1 text-muted hover:text-accent opacity-0 group-hover/day:opacity-100 transition-all"><Copy className="w-3 h-3" /></button>
                     <button onClick={e => { e.stopPropagation(); deleteDay(activeWeek, di) }} className="p-1 text-muted hover:text-warn opacity-0 group-hover/day:opacity-100 transition-all"><Trash2 className="w-3 h-3" /></button>
                     {openDays[di] ? <ChevronUp className="w-3.5 h-3.5 text-muted flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" />}
@@ -441,10 +445,9 @@ export function TrainingPlanEditor({
 
                       {/* Cabecera tabla */}
                       {day.exercises.length > 0 && (
-                        <div className="grid gap-0 px-4 py-1.5 bg-bg-alt/30 border-b border-border/30"
-                          style={{ gridTemplateColumns: '20px 1fr 80px 140px 90px 36px' }}>
+                        <div className="plan-grid grid gap-0 px-4 py-1.5 bg-bg-alt/30 border-b border-border/30">
                           {['', 'EJERCICIO', 'SERIES', 'PESO / INT.', 'REST', ''].map((h, i) => (
-                            <p key={i} className="text-[10px] font-bold uppercase tracking-wider text-muted text-center first:text-left">{h}</p>
+                            <p key={i} className={`text-[11px] font-bold uppercase tracking-wider text-muted text-center first:text-left ${i === 4 ? 'hidden sm:block' : ''}`}>{h}</p>
                           ))}
                         </div>
                       )}
@@ -470,17 +473,16 @@ export function TrainingPlanEditor({
                               onDragEnd={() => setDragEx(null)}
                               className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''} ${ex.supersetId ? 'border-l-2 border-warn' : ''}`}>
                               {ex.supersetId && (
-                                <p className="px-4 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
+                                <p className="px-4 pt-1.5 text-[11px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
                               )}
-                              <div className="grid items-center gap-0 px-4 py-2 cursor-pointer"
-                                style={{ gridTemplateColumns: '20px 1fr 80px 140px 90px 36px' }}
+                              <div className="plan-grid grid items-center gap-0 px-4 py-2 cursor-pointer"
                                 onClick={() => setSelectedEx(isSelected ? null : { wi: activeWeek, di, ri })}>
 
                                 {/* Nº / asa de arrastre */}
                                 <div className="flex items-center justify-center cursor-grab active:cursor-grabbing" title="Arrastra para reordenar">
                                   {ex.isMain
                                     ? <span className="w-4 h-4 rounded-full bg-accent flex items-center justify-center text-white text-[8px] font-bold">{ri + 1}</span>
-                                    : <span className="text-[10px] text-muted font-bold">{ri + 1}</span>}
+                                    : <span className="text-[11px] text-muted font-bold">{ri + 1}</span>}
                                 </div>
 
                                 {/* Nombre */}
@@ -500,8 +502,8 @@ export function TrainingPlanEditor({
                                     const log = logs[`ex_w${activeWeek}_d${di}_r${ri}`]
                                     const n = Object.keys(log?.sets || {}).length
                                     return (<>
-                                      {n > 0 && <span className="flex-shrink-0 text-[10px] font-bold text-ok" title="Series registradas por el cliente">{n}×✓</span>}
-                                      {log?.substituteName && <span title={`Sustituido por: ${log.substituteName}`} className="flex-shrink-0 text-[10px] font-semibold text-warn">🔄</span>}
+                                      {n > 0 && <span className="flex-shrink-0 text-[11px] font-bold text-ok" title="Series registradas por el cliente">{n}×✓</span>}
+                                      {log?.substituteName && <span title={`Sustituido por: ${log.substituteName}`} className="flex-shrink-0 text-[11px] font-semibold text-warn">🔄</span>}
                                     </>)
                                   })()}
                                 </div>
@@ -532,7 +534,7 @@ export function TrainingPlanEditor({
                                 </>)}
 
                                 {/* Rest sets */}
-                                <div className="relative flex justify-center" onClick={e => e.stopPropagation()}>
+                                <div className="relative hidden sm:flex justify-center" onClick={e => e.stopPropagation()}>
                                   <button
                                     onClick={() => setRestPopup(isRestPopupOpen ? null : { wi: activeWeek, di, ri, field: 'restSets' })}
                                     className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all w-full justify-center ${
@@ -593,7 +595,7 @@ export function TrainingPlanEditor({
                                     <span className="text-base">{seriesMeta?.emoji}</span>
                                     <div className="flex-1 min-w-[140px]">
                                       <p className="text-xs font-bold text-accent">{seriesMeta?.label}</p>
-                                      <p className="text-[10px] text-muted leading-tight">{seriesMeta?.desc}</p>
+                                      <p className="text-[11px] text-muted leading-tight">{seriesMeta?.desc}</p>
                                     </div>
                                     <select value={seriesTypeId}
                                       onChange={e => updateExercise(activeWeek, di, ri, { seriesType: e.target.value })}
@@ -604,7 +606,7 @@ export function TrainingPlanEditor({
                                       ))}
                                     </select>
                                     <button onClick={() => setShowSeriesInfo(true)}
-                                      className="flex items-center gap-1 px-2 py-1 bg-card border border-accent/20 rounded-lg text-[10px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
+                                      className="flex items-center gap-1 px-2 py-1 bg-card border border-accent/20 rounded-lg text-[11px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
                                       <Info className="w-3 h-3" /> Saber más
                                     </button>
                                   </div>
@@ -632,13 +634,13 @@ export function TrainingPlanEditor({
                                         <div className="flex flex-wrap gap-1 pl-5">
                                           {TEMPO_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { tempo: p })}
-                                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {p}
                                             </button>
                                           ))}
                                           {ex.tempo && (
                                             <button onClick={() => updateExercise(activeWeek, di, ri, { tempo: '' })}
-                                              className="px-2 py-0.5 rounded-md text-[10px] font-bold text-muted hover:text-warn">
+                                              className="px-2 py-0.5 rounded-md text-[11px] font-bold text-muted hover:text-warn">
                                               Quitar
                                             </button>
                                           )}
@@ -670,25 +672,25 @@ export function TrainingPlanEditor({
                                     <div className="p-3 space-y-3">
                                       <div className="flex items-center gap-1.5">
                                         <Timer className="w-3.5 h-3.5 text-accent" />
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Tiempos de descanso</p>
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Tiempos de descanso</p>
                                       </div>
                                       <div className="space-y-1.5">
-                                        <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Entre series</p>
+                                        <p className="text-[11px] text-muted font-semibold uppercase tracking-wider">Entre series</p>
                                         <div className="flex flex-wrap gap-1">
                                           {REST_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { restSets: p })}
-                                              className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${restSets === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-all ${restSets === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {fmtRest(p)}
                                             </button>
                                           ))}
                                         </div>
                                       </div>
                                       <div className="space-y-1.5">
-                                        <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tras el ejercicio</p>
+                                        <p className="text-[11px] text-muted font-semibold uppercase tracking-wider">Tras el ejercicio</p>
                                         <div className="flex flex-wrap gap-1">
                                           {REST_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { restAfter: p })}
-                                              className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${restAfter === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-all ${restAfter === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {fmtRest(p)}
                                             </button>
                                           ))}
@@ -703,8 +705,8 @@ export function TrainingPlanEditor({
                                             : 'bg-ok/5 border-ok/20'
                                         }`}>
                                         <div>
-                                          <p className="text-[10px] font-bold text-ink">Mostrar timer al cliente</p>
-                                          <p className="text-[10px] text-muted">
+                                          <p className="text-[11px] font-bold text-ink">Mostrar timer al cliente</p>
+                                          <p className="text-[11px] text-muted">
                                             {ex.hideRest ? 'Oculto — el cliente no verá la cuenta atrás' : 'Visible — el cliente verá el descanso'}
                                           </p>
                                         </div>
@@ -762,8 +764,8 @@ export function TrainingPlanEditor({
       </div>
 
       {/* Panel derecho analytics */}
-      <div className={`flex-shrink-0 transition-all duration-200 overflow-hidden ${selEx ? 'w-72' : 'w-0'}`}>
-        {selEx && selectedEx && (
+      <div className={`flex-shrink-0 transition-all duration-200 overflow-hidden ${wide && selEx ? 'w-72' : 'w-0'}`}>
+        {wide && selEx && selectedEx && (
           <ExerciseAnalyticsPanel
             ex={selEx} libEx={selLibEx} logs={logs} plan={plan}
             exName={selEx.name} clientName={clientName}
@@ -772,6 +774,17 @@ export function TrainingPlanEditor({
           />
         )}
       </div>
+
+      {!wide && selEx && selectedEx && (
+        <Modal open onClose={() => setSelectedEx(null)} variant="drawer" bare ariaLabel={`Análisis de ${selEx.name}`}>
+          <ExerciseAnalyticsPanel
+            ex={selEx} libEx={selLibEx} logs={logs} plan={plan}
+            exName={selEx.name} clientName={clientName}
+            seriesTypes={seriesTypes}
+            onClose={() => setSelectedEx(null)}
+          />
+        </Modal>
+      )}
 
       <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl" variant="drawer">
         {pickerFor && (

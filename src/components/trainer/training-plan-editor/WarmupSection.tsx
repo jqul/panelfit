@@ -27,8 +27,8 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
         <Flame className="w-3.5 h-3.5 flex-shrink-0" />
         <span>Calentamiento</span>
         {warmupExercises.length > 0
-          ? <span className="ml-1 text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{warmupExercises.length} ejerc.</span>
-          : <span className="ml-auto text-[10px] text-muted font-normal">Sin definir</span>
+          ? <span className="ml-1 text-[11px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{warmupExercises.length} ejerc.</span>
+          : <span className="ml-auto text-[11px] text-muted font-normal">Sin definir</span>
         }
         {isOpen
           ? <ChevronUp className="w-3 h-3 flex-shrink-0 ml-auto" />
@@ -43,7 +43,7 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
             <div className="space-y-1">
               {warmupExercises.map((ex, ri) => (
                 <div key={ri} className="flex items-center gap-2 bg-card/80 border border-accent/20 rounded-xl px-3 py-2 group">
-                  <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[10px] font-bold text-accent flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[11px] font-bold text-accent flex-shrink-0">
                     {ri + 1}
                   </div>
                   <input
@@ -56,19 +56,19 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
                     value={ex.sets}
                     onChange={e => onUpdate(ri, { sets: e.target.value })}
                     placeholder="2×10"
-                    className="w-14 text-[10px] font-bold text-center bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none"
+                    className="w-14 text-[11px] font-bold text-center bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none"
                   />
                   <input
                     value={ex.weight || ''}
                     onChange={e => onUpdate(ri, { weight: e.target.value })}
                     placeholder="Peso"
-                    className="w-16 text-[10px] text-center bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none"
+                    className="w-16 text-[11px] text-center bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none"
                   />
                   <input
                     value={ex.videoUrl || ''}
                     onChange={e => onUpdate(ri, { videoUrl: e.target.value })}
                     placeholder="URL vídeo..."
-                    className="w-24 text-[10px] bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none hidden sm:block"
+                    className="w-24 text-[11px] bg-accent/5 border border-accent/20 rounded-lg px-1.5 py-1 outline-none hidden sm:block"
                   />
                   <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -100,7 +100,7 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
             className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-accent/30 rounded-xl text-[11px] text-muted hover:border-accent hover:text-accent transition-all">
             <Plus className="w-3.5 h-3.5" /> Añadir ejercicio de calentamiento
           </button>
-          <p className="text-[10px] text-muted text-center">
+          <p className="text-[11px] text-muted text-center">
             El cliente lo verá antes de empezar los ejercicios principales
           </p>
         </div>

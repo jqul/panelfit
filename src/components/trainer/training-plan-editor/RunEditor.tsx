@@ -6,7 +6,7 @@ interface Props { run: RunSpec; onChange: (patch: Partial<RunSpec>) => void }
 const num = (v: string, min = 0) => { const n = parseInt(v, 10); return isNaN(n) ? min : Math.max(min, n) }
 
 const inputCls = 'w-full text-sm font-semibold text-center bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20'
-const labelCls = 'text-[10px] font-bold uppercase tracking-wider text-muted mb-1 block'
+const labelCls = 'text-[11px] font-bold uppercase tracking-wider text-muted mb-1 block'
 
 // Editor de un ejercicio de carrera: "6 × 200 m · rec 100 m andando" o un test
 // de tiempo fijo (Cooper) — en vez de series × reps × kg.
@@ -16,7 +16,7 @@ export function RunEditor({ run, onChange }: Props) {
     <div className="px-4 py-3 border-b border-accent/10 bg-accent/5 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold text-accent">🏃 Ejercicio de carrera · {runLabel(run)}</p>
-        <div className="flex rounded-lg overflow-hidden border border-accent/20 text-[10px] font-bold flex-shrink-0">
+        <div className="flex rounded-lg overflow-hidden border border-accent/20 text-[11px] font-bold flex-shrink-0">
           <button onClick={() => onChange({ durationSec: undefined, reps: run.reps || 6, distanceM: run.distanceM || 200 })}
             className={`px-2.5 py-1 ${!isTest ? 'bg-accent text-white' : 'bg-card text-muted'}`}>Tiradas</button>
           <button onClick={() => onChange({ durationSec: run.durationSec || 720, reps: 1, distanceM: 0 })}
@@ -36,7 +36,7 @@ export function RunEditor({ run, onChange }: Props) {
             <input value={run.intensity || ''} placeholder="Máxima distancia"
               onChange={e => onChange({ intensity: e.target.value })} className={inputCls} />
           </div>
-          <p className="col-span-2 text-[10px] text-muted">El cliente corre el tiempo indicado y anota los metros que consigue (test Cooper: 12 min).</p>
+          <p className="col-span-2 text-[11px] text-muted">El cliente corre el tiempo indicado y anota los metros que consigue (test Cooper: 12 min).</p>
         </div>
       ) : (
         <div className="grid grid-cols-4 gap-2">
@@ -57,7 +57,7 @@ export function RunEditor({ run, onChange }: Props) {
             <input value={run.intensity || ''} placeholder="RPE 5-6"
               onChange={e => onChange({ intensity: e.target.value })} className={inputCls} />
           </div>
-          <p className="col-span-4 text-[10px] text-muted">Una tirada continua = 1 tirada. La recuperación es andando esa distancia entre tiradas (0 = sin recuperación medida). El cliente anota el tiempo de cada tirada y ve su ritmo.</p>
+          <p className="col-span-4 text-[11px] text-muted">Una tirada continua = 1 tirada. La recuperación es andando esa distancia entre tiradas (0 = sin recuperación medida). El cliente anota el tiempo de cada tirada y ve su ritmo.</p>
         </div>
       )}
     </div>

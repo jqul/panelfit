@@ -16,7 +16,7 @@ export function RestPopup({ value, onChange, onClose, label }: {
     <div className="absolute z-30 top-full mt-1 right-0 bg-card border border-border rounded-2xl shadow-xl p-3 w-56"
       onClick={e => e.stopPropagation()}>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
         <button onClick={onClose} className="p-0.5 text-muted hover:text-ink"><X className="w-3 h-3" /></button>
       </div>
       <div className="grid grid-cols-3 gap-1 mb-2">
@@ -34,7 +34,7 @@ export function RestPopup({ value, onChange, onClose, label }: {
         <input type="number" value={value} min={0} max={600} step={5}
           onChange={e => onChange(Number(e.target.value))}
           className="flex-1 text-xs bg-transparent outline-none font-bold" />
-        <span className="text-[10px] text-muted">seg</span>
+        <span className="text-[11px] text-muted">seg</span>
       </div>
     </div>
   )

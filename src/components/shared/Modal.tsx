@@ -19,6 +19,8 @@ interface ModalProps {
   bare?: boolean
   /** Pie fijo (botón de confirmar) que no se va con el scroll. */
   footer?: ReactNode
+  /** Nombre accesible cuando no hay title (el contenido trae su propia cabecera). */
+  ariaLabel?: string
 }
 
 // Los max-w de Tailwind que se usan; como estilo en línea para el panel lateral
@@ -27,7 +29,7 @@ const WIDTHS: Record<string, string> = {
   'max-w-sm': '24rem', 'max-w-md': '28rem', 'max-w-lg': '32rem', 'max-w-xl': '36rem', 'max-w-2xl': '42rem', 'max-w-3xl': '48rem',
 }
 
-export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', variant = 'dialog', bare = false, footer }: ModalProps) {
+export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', variant = 'dialog', bare = false, footer, ariaLabel }: ModalProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   // onClose suele llegar como función nueva en cada render; si el efecto dependiera
@@ -69,7 +71,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', v
   const foot = footer && (
     <div className="px-5 sm:px-6 py-4 border-t border-border flex-shrink-0 bg-card" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>{footer}</div>
   )
-  const aria = { role: 'dialog', 'aria-modal': true, 'aria-labelledby': title ? titleId : undefined, tabIndex: -1 } as const
+  const aria = { role: 'dialog', 'aria-modal': true, 'aria-labelledby': title ? titleId : undefined, 'aria-label': title ? undefined : ariaLabel, tabIndex: -1 } as const
 
   if (variant === 'drawer') {
     return createPortal(

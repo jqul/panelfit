@@ -68,22 +68,22 @@ export function ConditioningModal({ trainerId, onApply, onClose }: {
 
         <div className="grid grid-cols-3 gap-2">
           {(type === 'tabata' || type === 'circuito') && (
-            <div><label className="block text-[10px] font-bold text-muted mb-1">Rondas</label>
+            <div><label className="block text-[11px] font-bold text-muted mb-1">Rondas</label>
               <input type="number" min={1} value={rounds} onChange={e => setRounds(e.target.value ? Number(e.target.value) : '')}
                 className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" /></div>
           )}
           {type === 'tabata' && (
             <>
-              <div><label className="block text-[10px] font-bold text-muted mb-1">Trabajo (s)</label>
+              <div><label className="block text-[11px] font-bold text-muted mb-1">Trabajo (s)</label>
                 <input type="number" min={1} value={workSec} onChange={e => setWorkSec(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" /></div>
-              <div><label className="block text-[10px] font-bold text-muted mb-1">Descanso (s)</label>
+              <div><label className="block text-[11px] font-bold text-muted mb-1">Descanso (s)</label>
                 <input type="number" min={0} value={restSec} onChange={e => setRestSec(e.target.value ? Number(e.target.value) : '')}
                   className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" /></div>
             </>
           )}
           {(type === 'amrap' || type === 'emom') && (
-            <div><label className="block text-[10px] font-bold text-muted mb-1">{type === 'emom' ? 'Minutos' : 'Duración (min)'}</label>
+            <div><label className="block text-[11px] font-bold text-muted mb-1">{type === 'emom' ? 'Minutos' : 'Duración (min)'}</label>
               <input type="number" min={1} value={type === 'emom' ? rounds : durationMin}
                 onChange={e => type === 'emom' ? setRounds(e.target.value ? Number(e.target.value) : '') : setDurationMin(e.target.value ? Number(e.target.value) : '')}
                 className="w-full px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" /></div>
@@ -91,7 +91,7 @@ export function ConditioningModal({ trainerId, onApply, onClose }: {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted">Ejercicios</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted">Ejercicios</label>
           {items.map((it, i) => (
             <div key={i} className="flex items-center gap-2">
               <input value={it.exercise} onChange={e => setItems(its => its.map((x, idx) => idx === i ? { ...x, exercise: e.target.value } : x))}
@@ -135,7 +135,7 @@ export function ConditioningModal({ trainerId, onApply, onClose }: {
             <div key={b.id} className="border border-border rounded-xl px-3 py-2.5 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{b.name}</p>
-                <p className="text-[10px] text-muted">{CONDITIONING_TYPE_LABEL[b.type]} · {conditioningProtocolLabel(b)} · {b.items.length} ejercicios</p>
+                <p className="text-[11px] text-muted">{CONDITIONING_TYPE_LABEL[b.type]} · {conditioningProtocolLabel(b)} · {b.items.length} ejercicios</p>
               </div>
               <button onClick={() => onApply(blockToDay(b))}
                 className="px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 flex-shrink-0">Añadir a semana</button>

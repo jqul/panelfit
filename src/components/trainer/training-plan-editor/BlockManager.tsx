@@ -72,7 +72,7 @@ export function BlockManager({ blocks, onSave, onClose }: {
             <div className="flex items-center gap-3 px-4 py-3">
               <input value={block.label} onChange={e => update(block.id, { label: e.target.value })}
                 className="flex-1 text-sm font-bold bg-transparent outline-none min-w-0 border-b border-transparent focus:border-accent/40 pb-0.5 transition-colors" />
-              <span className="text-[10px] text-muted flex-shrink-0">{block.steps.length} sem.</span>
+              <span className="text-[11px] text-muted flex-shrink-0">{block.steps.length} sem.</span>
               <button onClick={() => setEditing(editing === block.id ? null : block.id)}
                 className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${editing === block.id ? 'text-accent bg-accent/10' : 'text-muted hover:text-accent hover:bg-accent/5'}`}>
                 <Pencil className="w-3.5 h-3.5" />
@@ -86,17 +86,17 @@ export function BlockManager({ blocks, onSave, onClose }: {
             {editing === block.id && (
               <div className="px-4 pb-4 space-y-3 border-t border-border/50">
                 <div className="pt-3">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Descripción</label>
                   <input value={block.desc} onChange={e => update(block.id, { desc: e.target.value })}
                     placeholder="Ej: Acumulación progresiva + descarga..."
                     className="w-full text-xs bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted">Semanas del bloque</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted">Semanas del bloque</label>
                   {block.steps.map((step, i) => (
                     <div key={i} className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-2">
-                      <span className="text-[10px] font-bold text-muted w-12 flex-shrink-0">Sem {i + 1}</span>
+                      <span className="text-[11px] font-bold text-muted w-12 flex-shrink-0">Sem {i + 1}</span>
                       <input value={step.rpe} onChange={e => updateStep(block.id, i, { rpe: e.target.value })}
                         placeholder="@7" className="w-16 text-xs font-mono text-center bg-bg border border-border rounded-lg px-1.5 py-1 outline-none flex-shrink-0" />
                       <button onClick={() => updateStep(block.id, i, { isDeload: !step.isDeload })}

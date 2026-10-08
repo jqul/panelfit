@@ -13,7 +13,7 @@ export interface TrainerLabel {
 
 export function LabelPill({ label, onRemove, small }: { label: TrainerLabel; onRemove?: () => void; small?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full font-semibold border ${small ? 'text-[10px] px-1.5 py-0.5' : 'text-[10px] px-2 py-0.5'}`}
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold border ${small ? 'text-[11px] px-1.5 py-0.5' : 'text-[11px] px-2 py-0.5'}`}
       style={{ backgroundColor: label.color + '18', borderColor: label.color + '40', color: label.color }}>
       <span>{label.emoji}</span>
       <span>{label.name}</span>
@@ -35,7 +35,7 @@ export function LabelSelector({ labels, selected, onChange }: {
         return (
           <button key={label.id}
             onClick={() => onChange(active ? selected.filter(id => id !== label.id) : [...selected, label.id])}
-            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border transition-all ${active ? 'opacity-100' : 'opacity-40 hover:opacity-70'}`}
+            className={`flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold border transition-all ${active ? 'opacity-100' : 'opacity-40 hover:opacity-70'}`}
             style={{ backgroundColor: active ? label.color + '18' : 'transparent', borderColor: label.color + '60', color: label.color }}>
             <span>{label.emoji}</span>
             <span>{label.name}</span>
