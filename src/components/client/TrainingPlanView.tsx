@@ -8,6 +8,7 @@ import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { CalendarioTab } from './CalendarioTab'
+import { Modal } from '../shared/Modal'
 
 interface Props {
   plan: TrainingPlan
@@ -27,8 +28,8 @@ function getYTId(url: string) {
 // ── Modal info tipo de serie ──────────────────────────────
 function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center p-4">
-      <div className="bg-card rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-fade-in">
+    <Modal open plain onClose={onClose} ariaLabel={`Tipo de serie: ${type.label}`} maxWidth="max-w-sm">
+      <div className="p-6 space-y-4 overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-3xl">{type.emoji}</span>
@@ -49,7 +50,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
           Entendido
         </button>
       </div>
-    </div>
+</Modal>
   )
 }
 

@@ -21,6 +21,11 @@ interface ModalProps {
   footer?: ReactNode
   /** Nombre accesible cuando no hay title (el contenido trae su propia cabecera). */
   ariaLabel?: string
+  /**
+   * Solo el marco (portal, Esc, foco, aria, radio y altura máxima): sin cabecera, cuerpo ni pie.
+   * El contenido trae los suyos; sirve para diálogos que ya tenían su cabecera propia.
+   */
+  plain?: boolean
 }
 
 // Los max-w de Tailwind que se usan; como estilo en línea para el panel lateral
@@ -29,7 +34,7 @@ const WIDTHS: Record<string, string> = {
   'max-w-sm': '24rem', 'max-w-md': '28rem', 'max-w-lg': '32rem', 'max-w-xl': '36rem', 'max-w-2xl': '42rem', 'max-w-3xl': '48rem',
 }
 
-export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', variant = 'dialog', bare = false, footer, ariaLabel }: ModalProps) {
+export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', variant = 'dialog', bare = false, footer, ariaLabel, plain = false }: ModalProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   // onClose suele llegar como función nueva en cada render; si el efecto dependiera
@@ -80,7 +85,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', v
         <div ref={panelRef} {...aria}
           className="bg-card w-full h-[100dvh] sm:border-l border-border shadow-2xl animate-slide-in-right flex flex-col overflow-hidden outline-none"
           style={{ maxWidth: WIDTHS[maxWidth] || '28rem' }}>
-          {header}{body}{foot}
+          {plain ? children : <>{header}{body}{foot}</>}
         </div>
       </div>,
       document.body
@@ -93,7 +98,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', v
       <div ref={panelRef} {...aria}
         className={`bg-card w-full ${maxWidth} rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl animate-slide-up flex flex-col overflow-hidden outline-none`}
         style={{ maxHeight: '88dvh' }}>
-        {header}{body}{foot}
+        {plain ? children : <>{header}{body}{foot}</>}
       </div>
     </div>,
     document.body

@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
 import { SignedVideo } from '../../shared/SignedMedia'
+import { Modal } from '../../shared/Modal'
 
 interface VideoFeedbackRow {
   id: string
@@ -115,8 +116,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
 
       {/* Modal de revisión */}
       {activeVideo && (
-        <div className="fixed inset-0 z-[60] bg-ink/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setActiveVideo(null)}>
-          <div className="bg-card rounded-t-2xl sm:rounded-2xl w-full max-w-md flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+        <Modal open plain onClose={() => setActiveVideo(null)} ariaLabel="Revisión de vídeo" maxWidth="max-w-md">
             <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
               <div>
                 <p className="font-serif font-bold text-lg">{activeVideo.exercise_name}</p>
@@ -159,8 +159,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
     </div>
   )

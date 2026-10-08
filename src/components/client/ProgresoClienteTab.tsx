@@ -19,6 +19,7 @@ import { SignedVideo, SignedImage } from '../shared/SignedMedia'
 import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
 import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
+import { Modal } from '../shared/Modal'
 
 
 interface Props {
@@ -451,8 +452,8 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center" onClick={() => !uploading && setShowModal(false)}>
-          <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+        <Modal open plain onClose={() => { if (!uploading) setShowModal(false) }} ariaLabel="Subir vídeo" maxWidth="max-w-md">
+          <div className="p-5 space-y-3 overflow-y-auto">
             <p className="font-serif font-bold text-lg">Subir vídeo</p>
             <div>
               <label className="block text-xs font-bold text-muted mb-1.5">¿De qué es el vídeo?</label>
@@ -475,7 +476,7 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
             </button>
             <button onClick={() => setShowModal(false)} disabled={uploading || compressing} className="w-full py-2 text-xs text-muted">Cancelar</button>
           </div>
-        </div>
+</Modal>
       )}
     </>
   )

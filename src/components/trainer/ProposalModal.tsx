@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, FileText } from 'lucide-react'
 import { TrainerTier, TIER_LABEL, TIER_FEATURES } from '../../lib/tier'
+import { Modal } from '../shared/Modal'
 
 function buildProposalHtml(opts: {
   nombre: string; tier: TrainerTier; clientLimit: number; precio: number; notas: string
@@ -53,8 +54,8 @@ export function ProposalModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-ink/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+    <Modal open plain onClose={onClose} ariaLabel="Generar propuesta" maxWidth="max-w-md">
+      <div className="p-6 space-y-4 overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5" /> Generar propuesta</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
@@ -103,6 +104,6 @@ export function ProposalModal({ onClose }: { onClose: () => void }) {
           Generar propuesta
         </button>
       </div>
-    </div>
+</Modal>
   )
 }

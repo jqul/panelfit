@@ -7,6 +7,7 @@ import {
   UserPlus, UserMinus
 } from 'lucide-react'
 import { DEMO_TRAINER_ID, DEMO_COHORTES, DEMO_COHORTE_CLIENTES } from '../../lib/demo-data'
+import { Modal } from '../shared/Modal'
 
 interface Props {
   trainerId: string
@@ -306,8 +307,8 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
 
         {/* Modal añadir clientes */}
         {showAddClients && (
-          <div className="fixed inset-0 z-50 bg-ink/60 flex items-end justify-center" onClick={() => setShowAddClients(false)}>
-            <div className="bg-card rounded-t-3xl w-full max-w-md max-h-[70vh] overflow-y-auto p-5 space-y-3" onClick={e => e.stopPropagation()}>
+          <Modal open plain onClose={() => setShowAddClients(false)} ariaLabel="Añadir clientes al grupo" maxWidth="max-w-md">
+            <div className="max-h-[70dvh] overflow-y-auto p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-bold text-sm">Añadir clientes al grupo</p>
                 <button onClick={() => setShowAddClients(false)} className="p-1 text-muted"><X className="w-4 h-4" /></button>
@@ -327,7 +328,7 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
                 </div>
               )}
             </div>
-          </div>
+</Modal>
         )}
 
         {/* Modal editar grupo */}
@@ -456,8 +457,8 @@ function CohorteEditModal({ cohorte, onChange, onSave, onClose }: {
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-ink/60 flex items-end justify-center" onClick={onClose}>
-      <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+    <Modal open plain onClose={onClose} ariaLabel="Editar grupo" maxWidth="max-w-md">
+      <div className="p-5 space-y-3 overflow-y-auto">
         <div className="flex items-center justify-between">
           <p className="font-bold text-sm">Editar grupo</p>
           <button onClick={onClose} className="p-1 text-muted"><X className="w-4 h-4" /></button>
@@ -493,6 +494,6 @@ function CohorteEditModal({ cohorte, onChange, onSave, onClose }: {
         </div>
         <button onClick={onSave} className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold">Guardar cambios</button>
       </div>
-    </div>
+</Modal>
   )
 }

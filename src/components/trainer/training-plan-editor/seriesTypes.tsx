@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 import { toast } from '../../shared/Toast'
 import { supabase } from '../../../lib/supabase'
+import { Modal } from '../../shared/Modal'
 
 // ── Tipos de serie ────────────────────────────────────────
 export interface SeriesTypeDef {
@@ -196,8 +197,7 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
   onManage: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[70] bg-ink/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
+    <Modal open plain onClose={onClose} ariaLabel="Tipos de serie" maxWidth="max-w-lg">
         <div className="flex items-center justify-between p-6 pb-4 border-b border-border flex-shrink-0">
           <h3 className="font-serif font-bold text-xl">Tipos de serie</h3>
           <div className="flex items-center gap-2">
@@ -219,7 +219,6 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }
