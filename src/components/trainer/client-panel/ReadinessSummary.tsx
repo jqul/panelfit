@@ -47,7 +47,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-muted">Media sobre {rows.length} día{rows.length > 1 ? 's' : ''} (escala 1-5)</p>
+        <p className="text-[11px] text-muted">Media sobre {rows.length} día{rows.length > 1 ? 's' : ''} (escala 1-5)</p>
       </div>
     </div>
   )

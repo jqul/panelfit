@@ -37,8 +37,8 @@ export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
         ].map(({ label, value, diff, unit }) => (
           <div key={label} className="bg-bg rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-ink">{value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
-            {diff !== 0 && <p className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-ok' : 'text-warn'}`}>{diff > 0 ? '↑' : '↓'} {Math.abs(diff)}{unit} vs ant.</p>}
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
+            {diff !== 0 && <p className={`text-[11px] font-bold mt-1 ${diff > 0 ? 'text-ok' : 'text-warn'}`}>{diff > 0 ? '↑' : '↓'} {Math.abs(diff)}{unit} vs ant.</p>}
           </div>
         ))}
       </div>

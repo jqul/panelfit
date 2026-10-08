@@ -45,7 +45,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
                   <option value="">Seleccionar...</option>
                   {sessionsWithPhotos.map(s => <option key={s.id} value={s.id}>{new Date(s.date+'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</option>)}
                 </select>
-                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[10px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><SignedImage bucket="media" src={session[t]} alt={`Foto de progreso - ${TYPE_LABELS[t]}`} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" /></div> : null)}</div>}
+                {session && <div className="grid grid-cols-3 gap-1">{TYPES.map(t => session[t] ? <div key={t}><p className="text-[11px] text-muted text-center font-semibold">{TYPE_LABELS[t]}</p><SignedImage bucket="media" src={session[t]} alt={`Foto de progreso - ${TYPE_LABELS[t]}`} className="w-full aspect-[3/4] object-cover rounded-lg border border-border" /></div> : null)}</div>}
               </div>
             )
           })}
@@ -60,9 +60,9 @@ export function FotosTab({ clientId }: { clientId: string }) {
           </div>
           <div className="p-3 grid grid-cols-3 gap-2">
             {TYPES.map(type => session[type] ? (
-              <div key={type} className="space-y-1"><p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><button onClick={() => setLightbox({ session, type })} aria-label={`Ver foto de progreso - ${TYPE_LABELS[type]}`} className="w-full aspect-[3/4] rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"><SignedImage bucket="media" src={session[type]} alt={`Foto de progreso - ${TYPE_LABELS[type]}`} className="w-full h-full object-cover" /></button></div>
+              <div key={type} className="space-y-1"><p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><button onClick={() => setLightbox({ session, type })} aria-label={`Ver foto de progreso - ${TYPE_LABELS[type]}`} className="w-full aspect-[3/4] rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"><SignedImage bucket="media" src={session[type]} alt={`Foto de progreso - ${TYPE_LABELS[type]}`} className="w-full h-full object-cover" /></button></div>
             ) : (
-              <div key={type} className="space-y-1"><p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-border flex items-center justify-center"><Camera className="w-4 h-4 text-muted/30" /></div></div>
+              <div key={type} className="space-y-1"><p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center">{TYPE_LABELS[type]}</p><div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-border flex items-center justify-center"><Camera className="w-4 h-4 text-muted/30" /></div></div>
             ))}
           </div>
         </div>

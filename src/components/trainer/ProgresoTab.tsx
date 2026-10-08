@@ -115,7 +115,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
           </div>
         )}
       </div>
-      <p className="text-[10px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
+      <p className="text-[11px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
     </div>
   )
 }

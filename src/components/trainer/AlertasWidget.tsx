@@ -66,14 +66,14 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
       <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
         <Bell className="w-3.5 h-3.5 text-warn" />
         <h3 className="text-sm font-semibold">Recordatorios</h3>
-        <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">
+        <span className="ml-auto text-[11px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">
           {allPending.length}
         </span>
       </div>
       <div className="divide-y divide-border/50 max-h-64 overflow-y-auto">
         {overdue.length > 0 && (
           <div className="px-3 py-1.5 bg-warn/5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-warn">Vencidos</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-warn">Vencidos</p>
           </div>
         )}
         {allPending.slice(0, 8).map(({ alert, client }) => {
@@ -88,12 +88,12 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px]">{ALERT_EMOJIS[alert.type]}</span>
+                  <span className="text-[11px]">{ALERT_EMOJIS[alert.type]}</span>
                   <p className="text-xs font-semibold truncate">{client.name} {client.surname}</p>
                 </div>
-                <p className="text-[10px] text-muted truncate mt-0.5">{alert.note}</p>
+                <p className="text-[11px] text-muted truncate mt-0.5">{alert.note}</p>
               </div>
-              <span className={`text-[10px] font-bold flex-shrink-0 mt-0.5 ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
+              <span className={`text-[11px] font-bold flex-shrink-0 mt-0.5 ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
                 {isOverdue ? '⚠' : isToday ? 'Hoy' : new Date(alert.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
               </span>
             </button>
@@ -101,7 +101,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
         })}
         {allPending.length > 8 && (
           <div className="px-4 py-2 text-center">
-            <p className="text-[10px] text-muted">+{allPending.length - 8} más</p>
+            <p className="text-[11px] text-muted">+{allPending.length - 8} más</p>
           </div>
         )}
       </div>

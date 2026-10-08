@@ -115,7 +115,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
                 <button key={v.id} onClick={() => pickLibraryVideo(v)}
                   className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border border-border text-left hover:border-accent transition-colors">
                   <span className="text-xs font-semibold truncate">{v.exercise_name}</span>
-                  <span className="text-[10px] text-muted flex-shrink-0">{new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                  <span className="text-[11px] text-muted flex-shrink-0">{new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
                 </button>
               ))}
             </div>
@@ -134,11 +134,11 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <label className="text-[10px] text-muted font-semibold">FPS del vídeo</label>
+            <label className="text-[11px] text-muted font-semibold">FPS del vídeo</label>
             <select value={fps} onChange={e => setFps(parseInt(e.target.value))} className="px-2 py-1 bg-bg border border-border rounded-lg text-xs outline-none">
               {FPS_OPTIONS.map(f => <option key={f} value={f}>{f} fps</option>)}
             </select>
-            <span className="text-[10px] text-muted">A más fps, más precisión — usa cámara lenta si tu móvil la tiene</span>
+            <span className="text-[11px] text-muted">A más fps, más precisión — usa cámara lenta si tu móvil la tiene</span>
           </div>
 
           <div className={`grid gap-2 ${isDropJump ? 'grid-cols-3' : 'grid-cols-2'}`}>
@@ -157,7 +157,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
               {landing !== null ? `✓ Aterrizaje ${landing.toFixed(3)}s` : 'Marcar aterrizaje'}
             </button>
           </div>
-          {isDropJump && <p className="text-[10px] text-muted -mt-1">Contacto = el pie toca el suelo tras bajar del cajón (antes de saltar)</p>}
+          {isDropJump && <p className="text-[11px] text-muted -mt-1">Contacto = el pie toca el suelo tras bajar del cajón (antes de saltar)</p>}
 
           {isDropJump ? (
             contactTime !== null && flightTime !== null && (
@@ -167,8 +167,8 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
                 <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-1">
                   <p className="text-xs text-muted">T. contacto: <strong className="text-ink">{(contactTime * 1000).toFixed(0)} ms</strong> · T. vuelo: <strong className="text-ink">{(flightTime * 1000).toFixed(0)} ms</strong></p>
                   <p className="text-lg font-serif font-bold text-accent">RSI {rsi!.toFixed(2)}</p>
-                  <p className="text-[10px] text-muted">Altura estimada: {heightCm!.toFixed(1)} cm</p>
-                  {(suspicious || contactSuspicious) && <p className="text-[10px] text-warn">⚠ Algún tiempo poco habitual — revisa las marcas antes de guardar.</p>}
+                  <p className="text-[11px] text-muted">Altura estimada: {heightCm!.toFixed(1)} cm</p>
+                  {(suspicious || contactSuspicious) && <p className="text-[11px] text-warn">⚠ Algún tiempo poco habitual — revisa las marcas antes de guardar.</p>}
                   <button
                     onClick={() => onComputed(Math.round(rsi! * 100) / 100, `Calculado desde vídeo · t. vuelo ${(flightTime * 1000).toFixed(0)}ms · t. contacto ${(contactTime * 1000).toFixed(0)}ms · ${fps}fps`)}
                     className="w-full mt-1 py-2 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">
@@ -185,7 +185,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
                 <div className="bg-accent/5 border border-accent/20 rounded-xl p-3 space-y-1">
                   <p className="text-xs text-muted">Tiempo de vuelo: <strong className="text-ink">{(flightTime * 1000).toFixed(0)} ms</strong></p>
                   <p className="text-lg font-serif font-bold text-accent">{heightCm!.toFixed(1)} cm</p>
-                  {suspicious && <p className="text-[10px] text-warn">⚠ Tiempo de vuelo poco habitual — revisa las marcas antes de guardar.</p>}
+                  {suspicious && <p className="text-[11px] text-warn">⚠ Tiempo de vuelo poco habitual — revisa las marcas antes de guardar.</p>}
                   <button
                     onClick={() => onComputed(Math.round(heightCm! * 10) / 10, `Calculado desde vídeo · t. vuelo ${(flightTime * 1000).toFixed(0)}ms · ${fps}fps`)}
                     className="w-full mt-1 py-2 bg-ink text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity">

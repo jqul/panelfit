@@ -68,7 +68,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
                   {row.description && <p className="text-xs text-muted italic">{row.description}</p>}
                   {(row.plan?.weeks || []).map((week, wi) => (
                     <div key={wi}>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}</p>
                       <div className="space-y-2">
                         {week.days.map((day, di) => (
                           <div key={di} className="bg-bg border border-border rounded-xl px-3 py-2">

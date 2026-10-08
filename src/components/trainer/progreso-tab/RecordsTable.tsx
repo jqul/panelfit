@@ -25,9 +25,9 @@ export function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: Traini
           <span className="text-sm w-6 text-center flex-shrink-0">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-xs text-muted">{i+1}</span>}</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{name}</p>
-            {rec.date && <p className="text-[10px] text-muted">{new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
+            {rec.date && <p className="text-[11px] text-muted">{new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
           </div>
-          <div className="text-right flex-shrink-0"><p className="text-sm font-bold text-accent">{rec.best} kg</p><p className="text-[10px] text-muted">×{rec.reps}</p></div>
+          <div className="text-right flex-shrink-0"><p className="text-sm font-bold text-accent">{rec.best} kg</p><p className="text-[11px] text-muted">×{rec.reps}</p></div>
         </div>
       ))}
     </div>

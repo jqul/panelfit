@@ -81,13 +81,13 @@ export function CicloRendimientoChart({ clientId, logs }: { clientId: string; lo
       <div className="grid grid-cols-4 gap-2">
         {data.map(d => (
           <div key={d.fase} className="text-center">
-            <p className="text-[10px] text-muted uppercase tracking-wider">{d.fase}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider">{d.fase}</p>
             <p className="text-xs font-bold">{d.sesiones} ses.</p>
-            <p className="text-[10px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
+            <p className="text-[11px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-muted leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         Estimación orientativa: la fase de cada sesión pasada se calcula proyectando hacia atrás desde la última regla registrada, asumiendo ciclos de duración regular — no sustituye un registro real de reglas anteriores.
       </p>
     </div>

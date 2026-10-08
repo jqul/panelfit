@@ -123,7 +123,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
                   <button onClick={() => moveQ(q.id, -1)} disabled={i === 0} className="p-1 text-muted disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
                   <button onClick={() => moveQ(q.id, 1)} disabled={i === questions.length - 1} className="p-1 text-muted disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
                   <button onClick={() => updateQ(q.id, { required: !q.required })}
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all ${q.required ? 'bg-accent text-white border-accent' : 'border-border text-muted'}`}>
+                    className={`px-1.5 py-0.5 rounded text-[11px] font-bold border transition-all ${q.required ? 'bg-accent text-white border-accent' : 'border-border text-muted'}`}>
                     {q.required ? 'REQ' : 'OPC'}
                   </button>
                   <button onClick={() => deleteQ(q.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>
@@ -140,7 +140,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
                     className="px-2 py-1 border border-dashed border-border rounded-lg text-xs text-muted hover:border-accent">+ Añadir</button>
                 </div>
               )}
-              <p className="text-[10px] text-muted ml-6">{TYPE_LABELS[q.type]}</p>
+              <p className="text-[11px] text-muted ml-6">{TYPE_LABELS[q.type]}</p>
             </div>
           ))}
           <div className="flex gap-2 flex-wrap">
@@ -398,7 +398,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${section === s.id ? 'bg-card shadow-sm text-ink' : 'text-muted hover:text-ink'}`}>
             {s.label}
             {s.count > 0 && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${section === s.id ? 'bg-ink text-white' : 'bg-bg-alt text-muted'}`}>
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${section === s.id ? 'bg-ink text-white' : 'bg-bg-alt text-muted'}`}>
                 {s.count}
               </span>
             )}

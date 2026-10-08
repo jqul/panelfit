@@ -90,19 +90,19 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                   <p className="text-sm italic">"{resolveMessage(effectiveText, client.name)}"</p>
                   <div className="flex items-center gap-2">
                     {override !== undefined
-                      ? <span className="text-[10px] text-accent font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Personalizado para {client.name}</span>
-                      : <button onClick={() => { setEditingClient(t.id); setDraft(t.texto) }} className="text-[10px] text-muted hover:text-accent underline">Personalizar para {client.name}</button>}
+                      ? <span className="text-[11px] text-accent font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Personalizado para {client.name}</span>
+                      : <button onClick={() => { setEditingClient(t.id); setDraft(t.texto) }} className="text-[11px] text-muted hover:text-accent underline">Personalizar para {client.name}</button>}
                     {override !== undefined && (
                       <button onClick={() => { const o = { ...overrides }; delete o[t.id]; onChange({ ...plan, customMessages: o }) }}
-                        className="text-[10px] text-muted hover:text-warn underline">Quitar personalización</button>
+                        className="text-[11px] text-muted hover:text-warn underline">Quitar personalización</button>
                     )}
                     <button onClick={() => { setScheduling(t.id); setScheduleDate('') }}
-                      className="ml-auto flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[10px] font-bold text-muted hover:text-accent hover:border-accent/40"
+                      className="ml-auto flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[11px] font-bold text-muted hover:text-accent hover:border-accent/40"
                       title="Programar envío para más adelante">
                       <CalendarClock className="w-3 h-3" /> Programar
                     </button>
                     <button onClick={() => sendWhatsApp(effectiveText)}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[10px] font-bold">📱 Enviar</button>
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[11px] font-bold">📱 Enviar</button>
                   </div>
                   {scheduling === t.id && (
                     <div className="flex items-center gap-2 pt-1">

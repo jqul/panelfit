@@ -400,9 +400,9 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold truncate">{tmpl.name}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {tmpl.type && <span className="text-[10px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
+                      {tmpl.type && <span className="text-[11px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
                       <p className="text-xs text-muted">{plural(stats.exercises, 'ejercicio', 'ejercicios')} · {plural(stats.days, 'día', 'días')}{stats.weeks > 1 ? ` · ${stats.weeks} sem` : ''}{upd ? ` · ${upd}` : ''}</p>
-                      {tmpl.isPublic && <span className="text-[10px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
+                      {tmpl.isPublic && <span className="text-[11px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
                   </div>
@@ -442,7 +442,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
                           {(week.days || []).map((day, di) => (
                             <div key={di} className="bg-bg border border-border rounded-lg px-3 py-2">
                               <p className="text-xs font-semibold truncate">{day.title}</p>
-                              <p className="text-[10px] text-muted">{day.exercises?.length || 0} ejercicios</p>
+                              <p className="text-[11px] text-muted">{day.exercises?.length || 0} ejercicios</p>
                             </div>
                           ))}
                         </div>

@@ -109,14 +109,14 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-2xl p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2" title="Tonelaje medio diario, agudo (7d) ÷ crónico (28d) — modelo de Gabbett con EWMA">ACWR (tonelaje)</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2" title="Tonelaje medio diario, agudo (7d) ÷ crónico (28d) — modelo de Gabbett con EWMA">ACWR (tonelaje)</p>
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between"><span className="text-muted">Agudo (7d)</span><span className="font-bold">{tonnageAcwr.acute} kg·rep/día</span></div>
             <div className="flex justify-between"><span className="text-muted">Crónico (28d)</span><span className="font-bold">{tonnageAcwr.chronic} kg·rep/día</span></div>
           </div>
         </div>
         <div className="bg-card border border-border rounded-2xl p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1" title="Duración × RPE de la sesión (sRPE de Foster) — capta carga de campo/pista que el tonelaje no ve">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1" title="Duración × RPE de la sesión (sRPE de Foster) — capta carga de campo/pista que el tonelaje no ve">
             <Flame className="w-3 h-3" /> Carga interna (sRPE)
           </p>
           {srpeAcwr.hasData ? (
@@ -129,7 +129,7 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
           )}
         </div>
         <div className="bg-card border border-border rounded-2xl p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Entrenamiento</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Entrenamiento</p>
           <div className="space-y-1.5 text-xs">
             <div className="flex justify-between"><span className="text-muted">RIR medio</span><span className="font-bold">{training.avgRirThis !== null ? training.avgRirThis.toFixed(1) : '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted">Cambio volumen</span><span className="font-bold">{training.volChangePct !== null ? `${training.volChangePct >= 0 ? '+' : ''}${training.volChangePct}%` : '—'}</span></div>
@@ -137,7 +137,7 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
           </div>
         </div>
         <div className="bg-card border border-border rounded-2xl p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Moon className="w-3 h-3" /> Bienestar</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Moon className="w-3 h-3" /> Bienestar</p>
           {readiness.hasData ? (
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between"><span className="text-muted">Sueño</span><span className="font-bold">{readiness.avgSleep}/5</span></div>

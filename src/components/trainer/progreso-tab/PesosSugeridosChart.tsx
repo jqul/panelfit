@@ -52,11 +52,11 @@ export function PesosSugeridosChart({ logs, plan }: { logs: TrainingLogs; plan?:
           <div key={name} className="flex items-center gap-3 px-4 py-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{name}</p>
-              <p className="text-[10px] text-muted">Último: {weight}kg × {reps} · RIR {rir} · {new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+              <p className="text-[11px] text-muted">Último: {weight}kg × {reps} · RIR {rir} · {new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-sm font-bold" style={{ color: suggestion.color }}>{suggestedWeight} kg</p>
-              <p className="text-[10px] font-semibold" style={{ color: suggestion.color }}>{suggestion.label}</p>
+              <p className="text-[11px] font-semibold" style={{ color: suggestion.color }}>{suggestion.label}</p>
             </div>
           </div>
         ))}

@@ -209,7 +209,7 @@ export function EtiquetasTab({ trainerId }: Props) {
 
                 {isExpanded && (
                   <div className="border-t border-border pt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Clientes con esta etiqueta</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Clientes con esta etiqueta</p>
                     {clients.length === 0 ? (
                       <p className="text-xs text-muted">Aún no tienes clientes.</p>
                     ) : (
@@ -235,7 +235,7 @@ export function EtiquetasTab({ trainerId }: Props) {
               </div>
             )
           })}
-          <p className="text-[10px] text-muted text-center pt-1">
+          <p className="text-[11px] text-muted text-center pt-1">
             <Users className="w-2.5 h-2.5 inline" /> clientes · <Dumbbell className="w-2.5 h-2.5 inline" /> workouts · <CalendarIcon className="w-2.5 h-2.5 inline" /> programas con esta etiqueta
           </p>
         </div>

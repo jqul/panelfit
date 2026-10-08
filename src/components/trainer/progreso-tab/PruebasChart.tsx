@@ -64,12 +64,12 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
             <button onClick={() => setExpanded(isExpanded ? null : test.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold">{test.nombre}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider">{test.categoria} · {test.unidad}</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider">{test.categoria} · {test.unidad}</p>
               </div>
               {latest && (
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-accent">{latest.valor} {test.unidad}</p>
-                  <p className="text-[10px] text-muted">{new Date(latest.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                  <p className="text-[11px] text-muted">{new Date(latest.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
                 </div>
               )}
               {isExpanded ? <ChevronUp className="w-4 h-4 text-muted flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />}
@@ -152,7 +152,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                 )}
 
                 {test.es_default === false && (
-                  <button onClick={() => deleteTest(test.id)} className="text-[10px] text-muted hover:text-warn underline">Eliminar prueba del catálogo</button>
+                  <button onClick={() => deleteTest(test.id)} className="text-[11px] text-muted hover:text-warn underline">Eliminar prueba del catálogo</button>
                 )}
               </div>
             )}

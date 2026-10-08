@@ -40,7 +40,7 @@ export function CardioChart({ logs }: { logs: TrainingLogs }) {
         ].map((k, i) => (
           <div key={i} className="bg-bg rounded-xl p-3 text-center">
             <p className={`text-sm font-bold ${k.color}`}>{k.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
           </div>
         ))}
       </div>
@@ -75,7 +75,7 @@ export function CardioChart({ logs }: { logs: TrainingLogs }) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[10px] text-muted">Barras: distancia por sesión · Línea verde: ritmo medio (más arriba = más rápido).</p>
+      <p className="text-[11px] text-muted">Barras: distancia por sesión · Línea verde: ritmo medio (más arriba = más rápido).</p>
     </div>
   )
 }

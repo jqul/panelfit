@@ -116,13 +116,13 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                         <p className="text-xs font-semibold text-warn flex items-center gap-1">🔄 {substituteName}</p>
                       )}
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                        {setsArr.map((s, si) => <span key={si} className="text-[10px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}
+                        {setsArr.map((s, si) => <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}
                         {dolorEva !== undefined && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: evaColor + '18', color: evaColor }}>🩹 EVA {dolorEva}/10</span>
+                          <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: evaColor + '18', color: evaColor }}>🩹 EVA {dolorEva}/10</span>
                         )}
                       </div>
                     </div>
-                    {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[10px] text-muted">mejor</p></div>}
+                    {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[11px] text-muted">mejor</p></div>}
                     {(exHistory[exName]?.length ?? 0) >= 2 && (
                       <button
                         onClick={() => setExpandedEx(expandedEx === key ? null : key)}
@@ -134,9 +134,9 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                   </div>
                   {expandedEx === key && exHistory[exName] && (
                     <div className="mx-4 mb-3 bg-bg border border-border rounded-xl p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted font-bold mb-2">Progresión · {exHistory[exName].length} sesión{exHistory[exName].length !== 1 ? 'es' : ''}</p>
+                      <p className="text-[11px] uppercase tracking-wider text-muted font-bold mb-2">Progresión · {exHistory[exName].length} sesión{exHistory[exName].length !== 1 ? 'es' : ''}</p>
                       <MiniLineChart data={exHistory[exName].map(e => ({ x: e.date, y: e.bestWeight }))} />
-                      <div className="flex justify-between mt-1.5 text-[10px] text-muted">
+                      <div className="flex justify-between mt-1.5 text-[11px] text-muted">
                         <span>Inicio: <strong className="text-ink">{exHistory[exName][0].bestWeight}kg</strong></span>
                         <span>Mejor: <strong className="text-accent">{Math.max(...exHistory[exName].map(e => e.bestWeight))}kg</strong></span>
                         <span>Último: <strong className="text-ink">{exHistory[exName][exHistory[exName].length - 1].bestWeight}kg</strong></span>

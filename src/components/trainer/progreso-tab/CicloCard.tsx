@@ -24,7 +24,7 @@ export function CicloCard({ clientId }: { clientId: string }) {
         <p className="text-sm font-bold" style={{ color: info.color }}>Día {day} de {ciclo.duracion_ciclo} · Fase {info.label}</p>
         <p className="text-xs text-muted leading-relaxed">{info.guidance}</p>
       </div>
-      <p className="text-[10px] text-muted">Estimación orientativa basada en la fecha de última regla que registró la clienta — no sustituye su criterio del día a día.</p>
+      <p className="text-[11px] text-muted">Estimación orientativa basada en la fecha de última regla que registró la clienta — no sustituye su criterio del día a día.</p>
     </div>
   )
 }

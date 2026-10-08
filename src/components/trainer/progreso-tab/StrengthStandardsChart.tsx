@@ -56,7 +56,7 @@ export function StrengthStandardsChart({ client, logs, plan }: { client: ClientD
                 <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
                   <div className="h-full transition-all" style={{ width: `${standard.progressToNext * 100}%`, backgroundColor: meta.color }} />
                 </div>
-                <p className="text-[10px] text-muted mt-1">
+                <p className="text-[11px] text-muted mt-1">
                   Te faltan ~{standard.kgToNext}kg de 1RM para llegar a <span className="font-semibold capitalize">{standard.nextLevel}</span>
                 </p>
               </div>

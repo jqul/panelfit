@@ -48,7 +48,7 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
                     <tr key={r.pct} className={`border-t border-border/60 ${r.pct === 100 ? 'bg-accent/5' : ''}`}>
                       <td className="py-1.5 pr-2">
                         <p className="font-semibold">{r.pct}% VAM</p>
-                        <p className="text-[10px] text-muted">{r.label}</p>
+                        <p className="text-[11px] text-muted">{r.label}</p>
                       </td>
                       <td className="py-1.5 pr-2 text-right font-semibold">{r.speedKmh}</td>
                       <td className="py-1.5 pr-2 text-right">{r.paceMinPerKm}</td>
@@ -63,7 +63,7 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
             <p className="text-xs text-muted">Introduce la VAM para generar la tabla de ritmos.</p>
           )}
 
-          <p className="text-[10px] text-muted leading-relaxed">
+          <p className="text-[11px] text-muted leading-relaxed">
             Tiempos por tramo asumiendo ritmo constante a esa %VAM — para series de campo, ajusta con la recuperación entre repeticiones según el objetivo (aeróbico extensivo: recuperación corta; velocidad/potencia: recuperación completa).
           </p>
         </div>

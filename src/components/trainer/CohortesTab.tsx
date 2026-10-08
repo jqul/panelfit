@@ -217,15 +217,15 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.totalClientes}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Clientes</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Clientes</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.sesionesUltimaSemana}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Sesiones · 7d</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Sesiones · 7d</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
             <p className="text-xl font-bold">{stats.promedioSesiones}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Media/cliente</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Media/cliente</p>
           </div>
         </div>
 
@@ -262,7 +262,7 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
                   }`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
-                    <p className="text-[10px] text-muted">{sesiones} sesion{sesiones !== 1 ? 'es' : ''}</p>
+                    <p className="text-[11px] text-muted">{sesiones} sesion{sesiones !== 1 ? 'es' : ''}</p>
                   </div>
                   <span className="text-sm font-bold text-accent flex-shrink-0">{puntos} pts</span>
                 </button>
@@ -379,14 +379,14 @@ export function CohortesTab({ trainerId, clients, logsMap = {}, onSelectClient }
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold truncate">{coh.nombre}</p>
-                      {!coh.activa && <span className="text-[10px] font-bold text-muted bg-bg-alt px-1.5 py-0.5 rounded-full">Inactivo</span>}
+                      {!coh.activa && <span className="text-[11px] font-bold text-muted bg-bg-alt px-1.5 py-0.5 rounded-full">Inactivo</span>}
                       {isChallenge && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${left !== null && left < 0 ? 'bg-muted/10 text-muted' : left !== null && left <= 2 ? 'bg-warn/10 text-warn' : 'bg-accent/10 text-accent'}`}>
+                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${left !== null && left < 0 ? 'bg-muted/10 text-muted' : left !== null && left <= 2 ? 'bg-warn/10 text-warn' : 'bg-accent/10 text-accent'}`}>
                           🏆 {left === null ? 'Reto' : left < 0 ? 'Terminado' : left === 0 ? 'Último día' : `${left}d`}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-muted mt-0.5">{stats.totalClientes} cliente{stats.totalClientes !== 1 ? 's' : ''} · {stats.sesionesUltimaSemana} sesiones esta semana</p>
+                    <p className="text-[11px] text-muted mt-0.5">{stats.totalClientes} cliente{stats.totalClientes !== 1 ? 's' : ''} · {stats.sesionesUltimaSemana} sesiones esta semana</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
                 </button>
@@ -417,21 +417,21 @@ function CohorteCreateForm({ form, onChange, onSave, onClose }: {
       <input value={form.descripcion || ''} onChange={e => onChange({ ...form, descripcion: e.target.value })}
         placeholder="Descripción breve (opcional)"
         className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none" />
-      <p className="text-[10px] text-muted -mb-1">¿Es un reto con fecha límite? Déjalo en blanco para un grupo permanente.</p>
+      <p className="text-[11px] text-muted -mb-1">¿Es un reto con fecha límite? Déjalo en blanco para un grupo permanente.</p>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] font-bold uppercase text-muted">Inicio</label>
+          <label className="text-[11px] font-bold uppercase text-muted">Inicio</label>
           <input type="date" value={form.fecha_inicio || ''} onChange={e => onChange({ ...form, fecha_inicio: e.target.value })}
             className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase text-muted">Fin</label>
+          <label className="text-[11px] font-bold uppercase text-muted">Fin</label>
           <input type="date" value={form.fecha_fin || ''} onChange={e => onChange({ ...form, fecha_fin: e.target.value })}
             className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
         </div>
       </div>
       <div>
-        <label className="text-[10px] font-bold uppercase text-muted">Puntos por sesión completada</label>
+        <label className="text-[11px] font-bold uppercase text-muted">Puntos por sesión completada</label>
         <input type="number" min={1} value={form.puntos_por_sesion ?? 10} onChange={e => onChange({ ...form, puntos_por_sesion: parseInt(e.target.value) || 10 })}
           className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none mt-1" />
       </div>
@@ -470,18 +470,18 @@ function CohorteEditModal({ cohorte, onChange, onSave, onClose }: {
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] font-bold uppercase text-muted">Inicio</label>
+            <label className="text-[11px] font-bold uppercase text-muted">Inicio</label>
             <input type="date" value={cohorte.fecha_inicio || ''} onChange={e => onChange({ ...cohorte, fecha_inicio: e.target.value })}
               className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none mt-1" />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase text-muted">Fin</label>
+            <label className="text-[11px] font-bold uppercase text-muted">Fin</label>
             <input type="date" value={cohorte.fecha_fin || ''} onChange={e => onChange({ ...cohorte, fecha_fin: e.target.value })}
               className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none mt-1" />
           </div>
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase text-muted">Puntos por sesión completada</label>
+          <label className="text-[11px] font-bold uppercase text-muted">Puntos por sesión completada</label>
           <input type="number" min={1} value={cohorte.puntos_por_sesion ?? 10} onChange={e => onChange({ ...cohorte, puntos_por_sesion: parseInt(e.target.value) || 10 })}
             className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none mt-1" />
         </div>

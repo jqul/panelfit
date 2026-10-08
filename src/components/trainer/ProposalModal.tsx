@@ -63,13 +63,13 @@ export function ProposalModal({ onClose }: { onClose: () => void }) {
         <p className="text-xs text-muted">Rellena lo acordado en la llamada y se abrirá un documento listo para guardar como PDF (Ctrl+P → Guardar como PDF).</p>
 
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Nombre / negocio</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Nombre / negocio</label>
           <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Marta Pérez Coaching"
             className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Nivel</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Nivel</label>
           <div className="flex gap-2">
             {(['basico', 'alto_rendimiento'] as const).map(t => (
               <button key={t} onClick={() => setTier(t)}
@@ -82,19 +82,19 @@ export function ProposalModal({ onClose }: { onClose: () => void }) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Límite de clientes</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Límite de clientes</label>
             <input type="number" min={1} value={clientLimit} onChange={e => setClientLimit(Number(e.target.value) || 1)}
               className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Precio mensual (€)</label>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Precio mensual (€)</label>
             <input type="number" min={0} value={precio} onChange={e => setPrecio(Number(e.target.value) || 0)}
               className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Notas (opcional)</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Notas (opcional)</label>
           <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={3}
             placeholder="Condiciones acordadas, descuentos, fecha de inicio..."
             className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />

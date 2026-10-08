@@ -31,8 +31,8 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-bg rounded-xl p-3 text-center"><p className={`text-2xl font-bold ${avgPct >= 80 ? 'text-ok' : avgPct >= 50 ? 'text-accent' : 'text-warn'}`}>{avgPct}%</p><p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Adherencia media</p></div>
-        <div className="bg-bg rounded-xl p-3 text-center"><p className="text-2xl font-bold text-ink">{diasPorSemana > 0 ? diasPorSemana.toFixed(0) : '—'}</p><p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">Días/sem planificados</p></div>
+        <div className="bg-bg rounded-xl p-3 text-center"><p className={`text-2xl font-bold ${avgPct >= 80 ? 'text-ok' : avgPct >= 50 ? 'text-accent' : 'text-warn'}`}>{avgPct}%</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Adherencia media</p></div>
+        <div className="bg-bg rounded-xl p-3 text-center"><p className="text-2xl font-bold text-ink">{diasPorSemana > 0 ? diasPorSemana.toFixed(0) : '—'}</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Días/sem planificados</p></div>
       </div>
       {data.length >= 2 ? (
         <div className="h-48">

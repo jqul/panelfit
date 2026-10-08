@@ -109,11 +109,11 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
                     <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                     </div>
-                    <span className="text-[10px] font-bold flex-shrink-0" style={{ color: barColor }}>{sesiones} ses.</span>
+                    <span className="text-[11px] font-bold flex-shrink-0" style={{ color: barColor }}>{sesiones} ses.</span>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[10px] text-muted">Última sesión</p>
+                  <p className="text-[11px] text-muted">Última sesión</p>
                   <p className="text-xs font-semibold">
                     {ultima
                       ? new Date(ultima + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })

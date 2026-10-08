@@ -77,9 +77,9 @@ export function MonthlyRecap({ logs, plan }: { logs: TrainingLogs; plan?: Traini
           return (
             <div key={key} className="bg-bg rounded-xl p-4 text-center">
               <p className="text-2xl font-serif font-bold text-ink">{cur.toLocaleString()}{unit && ` ${unit}`}</p>
-              <p className="text-[10px] text-muted uppercase tracking-wider mt-1">{label}</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider mt-1">{label}</p>
               {prev > 0 || cur > 0 ? (
-                <p className={`text-[10px] font-bold mt-1.5 ${diff > 0 ? 'text-ok' : diff < 0 ? 'text-warn' : 'text-muted'}`}>
+                <p className={`text-[11px] font-bold mt-1.5 ${diff > 0 ? 'text-ok' : diff < 0 ? 'text-warn' : 'text-muted'}`}>
                   {diff > 0 ? '↑' : diff < 0 ? '↓' : '='} {Math.abs(diff).toLocaleString()}{unit} vs. mes anterior
                 </p>
               ) : null}
@@ -87,7 +87,7 @@ export function MonthlyRecap({ logs, plan }: { logs: TrainingLogs; plan?: Traini
           )
         })}
       </div>
-      <p className="text-[10px] text-muted">Récords = nº de veces que se superó la mejor marca histórica de un ejercicio ese mes.</p>
+      <p className="text-[11px] text-muted">Récords = nº de veces que se superó la mejor marca histórica de un ejercicio ese mes.</p>
     </div>
   )
 }

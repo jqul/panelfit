@@ -20,7 +20,7 @@ export function PesoChart({ clientId }: { clientId: string }) {
           { label: 'Peso inicial', value: `${data[0].kg} kg`, color: 'text-muted' },
           { label: 'Peso actual', value: `${data[data.length-1].kg} kg`, color: 'text-ink' },
           { label: 'Cambio total', value: `${cambio >= 0 ? '+' : ''}${cambio.toFixed(1)} kg`, color: cambio <= 0 ? 'text-ok' : 'text-warn' },
-        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-lg font-bold ${k.color}`}>{k.value}</p><p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
+        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-lg font-bold ${k.color}`}>{k.value}</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
       </div>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">

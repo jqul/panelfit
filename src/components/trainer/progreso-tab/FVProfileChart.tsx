@@ -114,7 +114,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
       {currentTrials.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-2xl p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Perfil actual ({new Date(latestDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Perfil actual ({new Date(latestDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})</p>
             {currentProfile.F0 !== null ? (
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between"><span className="text-muted">F0 (fuerza máx.)</span><span className="font-bold">{currentProfile.F0} N</span></div>
@@ -127,7 +127,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             )}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Gauge className="w-3 h-3" /> Saltos de esta sesión</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Gauge className="w-3 h-3" /> Saltos de esta sesión</p>
             <div className="space-y-1 text-xs">
               {currentTrials.map(t => (
                 <div key={t.id} className="flex justify-between">
@@ -198,27 +198,27 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
           )}
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="text-[10px] text-muted uppercase tracking-wider">Carga externa (kg)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Carga externa (kg)</span>
               <input type="number" step="0.5" value={loadKg} onChange={e => setLoadKg(e.target.value)}
                 className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[10px] text-muted uppercase tracking-wider">Altura de salto (cm)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Altura de salto (cm)</span>
               <input type="number" step="0.1" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="ej. 32"
                 className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[10px] text-muted uppercase tracking-wider">Peso corporal hoy (kg)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Peso corporal hoy (kg)</span>
               <input type="number" step="0.1" value={bodyweightKg} onChange={e => setBodyweightKg(e.target.value)}
                 className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[10px] text-muted uppercase tracking-wider" title="Distancia que las piernas se extienden durante el salto — mide desde la posición más baja de la sentadilla hasta la extensión completa">Distancia de empuje (cm)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider" title="Distancia que las piernas se extienden durante el salto — mide desde la posición más baja de la sentadilla hasta la extensión completa">Distancia de empuje (cm)</span>
               <input type="number" step="0.5" value={pushoffCm} onChange={e => setPushoffCm(e.target.value)}
                 className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
           </div>
-          <p className="text-[10px] text-muted -mt-1">Distancia de empuje: mide con cinta métrica desde la sentadilla más baja del salto hasta la extensión completa. Usa la misma en todas las cargas del día.</p>
+          <p className="text-[11px] text-muted -mt-1">Distancia de empuje: mide con cinta métrica desde la sentadilla más baja del salto hasta la extensión completa. Usa la misma en todas las cargas del día.</p>
           <div className="flex gap-2">
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
@@ -239,7 +239,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
 
       {trials.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Historial</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Historial</p>
           {trials.map(t => (
             <div key={t.id} className="flex items-center gap-2 text-xs text-muted">
               <span className="flex-1">{new Date(t.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>

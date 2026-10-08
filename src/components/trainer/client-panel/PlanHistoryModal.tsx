@@ -51,12 +51,12 @@ export function PlanHistoryModal({ clientId, onClose, onRestore }: {
                       {new Date(r.published_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                       <span className="text-muted font-normal"> · {new Date(r.published_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                     </p>
-                    {r.published_by && <p className="text-[10px] text-muted mt-0.5">Publicado por {r.published_by}</p>}
+                    {r.published_by && <p className="text-[11px] text-muted mt-0.5">Publicado por {r.published_by}</p>}
                   </div>
                   {isCurrent && (
                     seen
-                      ? <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full"><CheckCircle2 className="w-3 h-3" /> Visto</span>
-                      : <span className="flex-shrink-0 text-[10px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full">Sin abrir</span>
+                      ? <span className="flex-shrink-0 flex items-center gap-1 text-[11px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full"><CheckCircle2 className="w-3 h-3" /> Visto</span>
+                      : <span className="flex-shrink-0 text-[11px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full">Sin abrir</span>
                   )}
                 </div>
                 <p className="text-sm mt-2">{r.note ? `"${r.note}"` : <span className="text-muted italic">Sin nota de cambios</span>}</p>

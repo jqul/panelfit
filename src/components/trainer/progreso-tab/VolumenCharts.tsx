@@ -36,7 +36,7 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
           { label: 'Pico semanal', value: `${maxVol.toLocaleString()} kg`, color: 'text-accent' },
           { label: 'Media/semana', value: `${avg.toLocaleString()} kg`, color: 'text-ink' },
           { label: 'Tendencia', value: `${trend >= 0 ? '+' : ''}${trend.toLocaleString()} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
-        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
+        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
       </div>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
@@ -92,7 +92,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
     <div className="space-y-3">
       {withLandmarks.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
           {withLandmarks.map(g => {
             const sets = lastWeek[g] || 0
             const status = getVolumeStatus(g, sets)!
@@ -106,7 +106,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
                   <span className="font-semibold">{g}</span>
                   <span className="flex items-center gap-1.5">
                     <span className="font-bold">{sets} series</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
                   </span>
                 </div>
                 <div className="relative h-1.5 rounded-full bg-bg-alt overflow-hidden">
@@ -117,12 +117,12 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
               </div>
             )
           })}
-          <p className="text-[10px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
+          <p className="text-[11px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
         {groups.map(g => (
-          <span key={g} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted">
+          <span key={g} className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: GROUP_COLORS[g] || '#94a3b8' }} />{g}
           </span>
         ))}
@@ -140,7 +140,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[10px] text-muted">
+      <p className="text-[11px] text-muted">
         {library?.length ? 'Grupos según la biblioteca de ejercicios (con fallback por nombre).' : 'Grupos estimados por el nombre del ejercicio — configura la biblioteca para mayor precisión.'}
       </p>
     </div>

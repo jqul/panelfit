@@ -257,7 +257,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                       {CAMPOS_COMPOSICION.map(c => val[c.key] ? (
                         <div key={c.key} className="bg-bg border border-border rounded-xl p-2.5 text-center">
                           <p className="text-sm font-serif font-bold">{val[c.key]}{c.unit}</p>
-                          <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{c.label}</p>
+                          <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{c.label}</p>
                         </div>
                       ) : null)}
                     </div>

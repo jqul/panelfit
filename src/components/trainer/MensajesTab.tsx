@@ -227,7 +227,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {clientsSinTelefono.map(c => (
-                  <span key={c.id} className="text-[10px] bg-warn/10 text-warn px-2 py-0.5 rounded-full font-semibold">
+                  <span key={c.id} className="text-[11px] bg-warn/10 text-warn px-2 py-0.5 rounded-full font-semibold">
                     {c.name} {c.surname}
                   </span>
                 ))}
@@ -272,7 +272,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                       <p className="text-sm font-semibold truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
                       <p className="text-xs text-muted">Programado para el {new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
                     </div>
-                    <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    <button onClick={() => removeScheduled(m.id)} className="text-[11px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
                     <button
                       onClick={() => sendScheduled(m.id, client, m.mensaje)}
                       disabled={!hasPhone}
@@ -310,7 +310,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                         <p className="text-sm font-medium truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
                         <p className="text-xs text-muted truncate">{new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · "{m.mensaje}"</p>
                       </div>
-                      <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                      <button onClick={() => removeScheduled(m.id)} className="text-[11px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
                     </div>
                   )
                 })}
