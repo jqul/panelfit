@@ -149,7 +149,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       {/* Modal selector de programa */}
       {showProgramSelector && (
         <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="bg-card rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
             <div className="px-6 py-5 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>

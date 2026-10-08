@@ -298,7 +298,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 <div className="flex items-end justify-between">
                   <div>
-                    <h2 className="text-4xl font-serif font-bold">Resumen</h2>
+                    <h2 className="text-3xl font-serif font-bold">Resumen</h2>
                     <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   </div>
                   {clients.length > 0 && (

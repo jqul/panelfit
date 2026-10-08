@@ -207,7 +207,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
   )
 
   return (
-    <div className="animate-fade-in space-y-5 max-w-2xl">
+    <div className="animate-fade-in space-y-5 max-w-4xl">
       <div>
         <h2 className="text-3xl font-serif font-bold">Mensajes</h2>
         <p className="text-muted text-sm mt-1">Gestiona el contacto con tus clientes esta semana</p>

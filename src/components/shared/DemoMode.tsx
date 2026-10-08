@@ -17,7 +17,7 @@ export function DemoMode({ onEnterDemo }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/60 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-card w-full max-w-md rounded-3xl overflow-hidden">
+      <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden">
         <div className="bg-ink text-white px-6 py-5">
           <div className="flex items-start justify-between">
             <div>

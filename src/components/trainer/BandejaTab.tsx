@@ -27,7 +27,7 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   const items = visibleItems(onlyPending)
 
   return (
-    <div className="animate-fade-in space-y-5 max-w-3xl">
+    <div className="animate-fade-in space-y-5 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Bandeja</h2>

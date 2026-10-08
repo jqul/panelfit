@@ -197,7 +197,7 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
 }) {
   return (
     <div className="fixed inset-0 z-[70] bg-ink/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
+      <div className="bg-card rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
         <div className="flex items-center justify-between p-6 pb-4 border-b border-border flex-shrink-0">
           <h3 className="font-serif font-bold text-xl">Tipos de serie</h3>
           <div className="flex items-center gap-2">

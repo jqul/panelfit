@@ -35,7 +35,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
 
   return (
     <div className="fixed inset-0 z-[70] bg-ink/70 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-card rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
           <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Store className="w-5 h-5" /> Galería de la comunidad</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>

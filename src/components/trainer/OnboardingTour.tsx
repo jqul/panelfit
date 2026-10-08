@@ -16,7 +16,7 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-ink/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl w-full max-w-sm shadow-2xl p-6 space-y-5">
+      <div className="bg-card rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-5">
         <div className="flex gap-1.5">
           {STEPS.map((_, i) => (
             <div key={i} className={`flex-1 h-1 rounded-full transition-all ${i <= step ? 'bg-accent' : 'bg-border'}`} />

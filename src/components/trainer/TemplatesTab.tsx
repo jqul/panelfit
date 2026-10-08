@@ -276,7 +276,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
 
   // ── Lista ──
   return (
-    <div className="animate-fade-in space-y-5 max-w-2xl">
+    <div className="animate-fade-in space-y-5 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-serif font-bold">Workouts</h2>
