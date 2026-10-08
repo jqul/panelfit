@@ -85,16 +85,18 @@ function TaskCard({ task, onDelete }: { task: ProgramTask; onDelete: () => void 
   const meta = TASK_TYPES.find(t => t.id === task.type) || TASK_TYPES[0]
   const Icon = meta.icon
   return (
-    <div className={`group relative flex items-start gap-2 px-2.5 py-2 rounded-xl border ${meta.bg} ${meta.border} text-xs`}>
+    <div className={`group relative flex items-start gap-2 pl-2.5 pr-1 py-2 rounded-xl border ${meta.bg} ${meta.border} text-xs`}>
       <Icon className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${meta.text}`} />
       <div className="flex-1 min-w-0">
         <p className={`font-semibold leading-tight truncate ${meta.text}`}>{task.title}</p>
-        {task.data.objective && <p className="text-gray-500 text-[11px] mt-0.5 truncate">{task.data.objective}</p>}
-        {task.data.text && <p className="text-gray-500 text-[11px] mt-0.5 truncate">"{task.data.text}"</p>}
+        {task.data.objective && <p className="text-muted text-[11px] mt-0.5 truncate">{task.data.objective}</p>}
+        {task.data.text && <p className="text-muted text-[11px] mt-0.5 truncate">"{task.data.text}"</p>}
       </div>
-      <button onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-500 transition-all flex-shrink-0">
-        <X className="w-3 h-3" />
+      {/* Visible siempre salvo en pantallas anchas con ratón, donde aparece al pasar el cursor o al
+          enfocarla con el teclado (antes solo aparecía al pasar el ratón y en táctil no se podía borrar) */}
+      <button onClick={onDelete} aria-label={`Quitar la tarea "${task.title}"`} title="Quitar tarea"
+        className="p-2 -my-1 lg:p-1 lg:my-0 rounded-lg text-muted hover:text-warn hover:bg-warn/10 transition-colors flex-shrink-0 lg:[@media(hover:hover)]:opacity-0 lg:[@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100 lg:[@media(hover:hover)]:focus-visible:opacity-100">
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   )
@@ -447,15 +449,15 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
         </button>
       </div>
 
-      {/* Calendario 7 días */}
+      {/* Calendario: 7 columnas solo desde 1024 px, 2 en tablet y un día por fila en móvil (con 7 columnas de ~40 px las tareas quedaban en un icono) */}
       {currentWeek && (
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3 lg:gap-2">
           {currentWeek.days.map((day, di) => (
             <div key={di} className="flex flex-col">
-              <p className={`text-[11px] font-bold uppercase tracking-wider text-center mb-1.5 ${di >= 5 ? 'text-accent' : 'text-muted'}`}>
+              <p className={`text-[11px] font-bold uppercase tracking-wider text-left lg:text-center mb-1.5 ${di >= 5 ? 'text-accent' : 'text-muted'}`}>
                 {DAY_NAMES[di]}
               </p>
-              <div className="flex-1 bg-bg-alt/40 border border-border/60 rounded-2xl p-2 space-y-1.5 min-h-[100px]">
+              <div className="flex-1 bg-bg-alt/40 border border-border/60 rounded-2xl p-2 space-y-1.5 lg:min-h-[100px]">
                 {day.tasks.map((task, ti) => (
                   <TaskCard key={task.id} task={task} onDelete={() => deleteTask(activeWeek, di, ti)} />
                 ))}
