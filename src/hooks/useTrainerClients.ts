@@ -7,6 +7,8 @@ import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from '../lib/demo-data'
 import { localDateKey } from '../lib/dates'
+import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
+import { loadProgramTemplates } from '../lib/programTemplates'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -92,21 +94,6 @@ const OBJETIVO_TO_TIPO: Record<string, string> = {
   perdida_grasa: 'Pérdida de grasa',
   resistencia: 'Resistencia',
   general: 'General',
-}
-
-function programWeeksToPlanWeeks(weeks: any[]) {
-  const result = (weeks || []).map((w: any) => ({
-    label: w.label,
-    rpe: '',
-    isCurrent: false,
-    days: (w.days || []).map((d: any) => ({
-      title: d.tasks?.find((t: any) => t.type === 'workout')?.title || 'Día',
-      focus: d.tasks?.filter((t: any) => t.type !== 'workout').map((t: any) => t.title).join(', ') || '',
-      exercises: [],
-    }))
-  }))
-  if (result.length > 0) result[0].isCurrent = true
-  return result
 }
 
 interface Options {
@@ -296,7 +283,11 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       .eq('trainer_id', trainerId).ilike('tipo', tipo).order('created_at', { ascending: false }).limit(1)
     const prog = progs?.[0]
     if (!prog) return
-    const weeks = programWeeksToPlanWeeks(prog.weeks)
+    // Cliente nuevo: no hay plan que proteger, así que si falla la lectura de los workouts se asigna
+    // igualmente la estructura del programa (días sin ejercicios) y se avisa.
+    const templates = await loadProgramTemplates(trainerId, workoutTemplateIds(prog.weeks))
+    const { weeks, missing } = programToPlanWeeks(prog.weeks, templates ?? {})
+    if (templates === null || missing.length) toast('El programa se asignó, pero algunos de sus workouts no se pudieron copiar: revisa el plan del cliente', 'warn')
     const newPlan = {
       clientId, type: prog.tipo, restMain: 180, restAcc: 90, restWarn: 30,
       weeks, programId: prog.id, programName: prog.name,

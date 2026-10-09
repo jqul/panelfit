@@ -11,10 +11,12 @@ import { Modal } from '../shared/Modal'
 import { matchesQuery, plural } from '../../lib/workoutList'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
-import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
+import type { ClientData, TrainingPlan } from '../../types'
 import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
 import { localDateKey } from '../../lib/dates'
 import { snapshotBeforeAssign, restoreSnapshots } from '../../lib/planSnapshot'
+import { programToPlanWeeks, workoutTemplateIds } from '../../lib/programPlan'
+import { loadProgramTemplates } from '../../lib/programTemplates'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -43,21 +45,6 @@ export interface Program {
 }
 
 interface Props { trainerId: string; onManageLabels: () => void; clients: ClientData[] }
-
-function programToWeeks(weeks: ProgramWeek[]): WeekPlan[] {
-  const result = (weeks || []).map(w => ({
-    label: w.label,
-    rpe: '',
-    isCurrent: false,
-    days: (w.days || []).map(d => ({
-      title: d.tasks?.find(t => t.type === 'workout')?.title || 'Día',
-      focus: d.tasks?.filter(t => t.type !== 'workout').map(t => t.title).join(', ') || '',
-      exercises: [],
-    }))
-  }))
-  if (result.length > 0) result[0].isCurrent = true
-  return result
-}
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
@@ -513,15 +500,24 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     if (targetIds.length === 0) { toast('Selecciona al menos un cliente', 'warn'); return }
 
     setAssigning(true)
+    // Los ejercicios de cada día vienen de los workouts que usa el programa: sin leerlos se asignaría
+    // un plan de días vacíos, así que si falla no se asigna nada.
+    const isDemo = trainerId === DEMO_TRAINER_ID
+    const templates = isDemo ? {} : await loadProgramTemplates(trainerId, workoutTemplateIds(program.weeks))
+    if (templates === null) {
+      setAssigning(false)
+      toast('No se pudieron leer los workouts del programa: no se ha asignado nada', 'warn')
+      return
+    }
     // Copia del plan (y del borrador, que esta asignación descarta) antes de sustituirlos.
     // Si no se pueden leer los planes actuales, no se toca nada.
-    const previous = trainerId === DEMO_TRAINER_ID ? [] : await snapshotBeforeAssign(targetIds, program.name)
+    const previous = isDemo ? [] : await snapshotBeforeAssign(targetIds, program.name)
     if (previous === null) {
       setAssigning(false)
       toast('No se pudo guardar una copia del plan anterior: no se ha asignado nada', 'warn')
       return
     }
-    const weeks = programToWeeks(program.weeks)
+    const { weeks, missing } = programToPlanWeeks(program.weeks, templates)
     const results = await Promise.all(targetIds.map(async clientId => {
       const newPlan: TrainingPlan = {
         clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
@@ -539,6 +535,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     const ok = results.filter(Boolean).length
     const assignedIds = new Set(targetIds.filter((_, i) => results[i]))
     const undoable = previous.filter(r => assignedIds.has(r.clientId))
+    if (missing.length) toast(`${missing.length === 1 ? 'Un workout del programa ya no existe' : `${missing.length} workouts del programa ya no existen`} (${missing.join(', ')}): esos días quedan sin ejercicios`, 'warn')
     toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn',
       undoable.length ? {
         label: 'Deshacer',

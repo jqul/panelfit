@@ -6,9 +6,11 @@ import { toast } from '../../shared/Toast'
 import { Modal } from '../../shared/Modal'
 import { localDateKey } from '../../../lib/dates'
 import { saveHistoryCopy } from '../../../lib/planSnapshot'
+import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan'
+import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demo-data'
 
-interface ProgramTask { id: string; type: string; title: string }
+interface ProgramTask { id: string; type: string; title: string; data?: Record<string, any> }
 interface ProgramDay { tasks: ProgramTask[] }
 interface ProgramWeek { label: string; days: ProgramDay[] }
 interface Program { id: string; name: string; tipo: string; label_ids?: string[]; weeks: ProgramWeek[] }
@@ -53,19 +55,15 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
 
   const assignProgram = async (prog: Program) => {
     setAssigning(true)
-    // Convertir programa a TrainingPlan
-    const weeks = (prog.weeks || []).map(w => ({
-      label: w.label,
-      rpe: '',
-      isCurrent: false,
-      days: (w.days || []).map(d => ({
-        title: d.tasks?.find(t => t.type === 'workout')?.title || 'Día',
-        focus: d.tasks?.filter(t => t.type !== 'workout').map(t => t.title).join(', ') || '',
-        exercises: [],
-      }))
-    }))
-    // Marcar semana 1 como actual
-    if (weeks.length > 0) weeks[0].isCurrent = true
+    // Convertir programa a TrainingPlan copiando los ejercicios de los workouts que usa. Sin poder
+    // leerlos se asignaría un plan de días vacíos, así que en ese caso no se toca nada.
+    const templates = trainerId === DEMO_TRAINER_ID ? {} : await loadProgramTemplates(trainerId, workoutTemplateIds(prog.weeks))
+    if (templates === null) {
+      setAssigning(false)
+      toast('No se pudieron leer los workouts del programa: no se ha asignado nada', 'warn')
+      return
+    }
+    const { weeks, missing } = programToPlanWeeks(prog.weeks, templates)
 
     const newPlan: TrainingPlan = {
       ...plan,
@@ -84,6 +82,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
     onPlanChange(newPlan)
     setShowProgramSelector(false)
     setAssigning(false)
+    if (missing.length) toast(`${missing.length === 1 ? 'Un workout del programa ya no existe' : `${missing.length} workouts del programa ya no existen`} (${missing.join(', ')}): esos días quedan sin ejercicios`, 'warn')
     toast(`Programa "${prog.name}" asignado ✓`, 'ok', {
       label: 'Deshacer',
       onClick: () => { onPlanChange(previous); toast('Plan anterior restaurado ✓', 'ok') },
