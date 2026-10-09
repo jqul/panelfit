@@ -502,6 +502,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     logs={logs}
                     otherClients={otherClients}
                     trainerId={userProfile.uid}
+                    borradorActivo={borradorActivo}
                   />
                 </div>
               )}

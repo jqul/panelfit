@@ -5,6 +5,8 @@ import { TrainingPlanEditor } from '../TrainingPlanEditor'
 import { toast } from '../../shared/Toast'
 import { Modal } from '../../shared/Modal'
 import { localDateKey } from '../../../lib/dates'
+import { saveHistoryCopy } from '../../../lib/planSnapshot'
+import { DEMO_TRAINER_ID } from '../../../lib/demo-data'
 
 interface ProgramTask { id: string; type: string; title: string }
 interface ProgramDay { tasks: ProgramTask[] }
@@ -12,7 +14,7 @@ interface ProgramWeek { label: string; days: ProgramDay[] }
 interface Program { id: string; name: string; tipo: string; label_ids?: string[]; weeks: ProgramWeek[] }
 interface Label { id: string; name: string; emoji: string; color: string }
 
-export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId }: {
+export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo }: {
   client: ClientData
   plan: TrainingPlan
   programs: Program[]
@@ -23,6 +25,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   logs: TrainingLogs
   otherClients: ClientData[]
   trainerId: string
+  borradorActivo: boolean
 }) {
   const [showProgramSelector, setShowProgramSelector] = useState(false)
   const [filterTipo, setFilterTipo] = useState<string | null>(null)
@@ -73,10 +76,18 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       fechaInicio: localDateKey(),
     }
 
+    // Con el plan vivo (sin borrador) el cambio llega al cliente en cuanto se autoguarda: antes se deja
+    // copia en el historial. Con borrador solo se toca el borrador y basta con poder deshacer.
+    const previous = plan
+    if (!borradorActivo && trainerId !== DEMO_TRAINER_ID) await saveHistoryCopy(client.id, { P: previous }, prog.name)
+
     onPlanChange(newPlan)
     setShowProgramSelector(false)
     setAssigning(false)
-    toast(`Programa "${prog.name}" asignado ✓`, 'ok')
+    toast(`Programa "${prog.name}" asignado ✓`, 'ok', {
+      label: 'Deshacer',
+      onClick: () => { onPlanChange(previous); toast('Plan anterior restaurado ✓', 'ok') },
+    })
   }
 
   // Bloque terminando/terminado — calculado en local a partir de inicio + nº semanas

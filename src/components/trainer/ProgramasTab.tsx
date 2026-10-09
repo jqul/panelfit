@@ -14,6 +14,7 @@ import { LabelPill, LabelSelector } from './labels'
 import type { ClientData, TrainingPlan, WeekPlan } from '../../types'
 import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
 import { localDateKey } from '../../lib/dates'
+import { snapshotBeforeAssign, restoreSnapshots } from '../../lib/planSnapshot'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -512,6 +513,14 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     if (targetIds.length === 0) { toast('Selecciona al menos un cliente', 'warn'); return }
 
     setAssigning(true)
+    // Copia del plan (y del borrador, que esta asignación descarta) antes de sustituirlos.
+    // Si no se pueden leer los planes actuales, no se toca nada.
+    const previous = trainerId === DEMO_TRAINER_ID ? [] : await snapshotBeforeAssign(targetIds, program.name)
+    if (previous === null) {
+      setAssigning(false)
+      toast('No se pudo guardar una copia del plan anterior: no se ha asignado nada', 'warn')
+      return
+    }
     const weeks = programToWeeks(program.weeks)
     const results = await Promise.all(targetIds.map(async clientId => {
       const newPlan: TrainingPlan = {
@@ -528,7 +537,16 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     }))
     setAssigning(false)
     const ok = results.filter(Boolean).length
-    toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn')
+    const assignedIds = new Set(targetIds.filter((_, i) => results[i]))
+    const undoable = previous.filter(r => assignedIds.has(r.clientId))
+    toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn',
+      undoable.length ? {
+        label: 'Deshacer',
+        onClick: async () => {
+          const n = await restoreSnapshots(undoable)
+          toast(n === undoable.length ? `Plan anterior restaurado en ${n} cliente${n > 1 ? 's' : ''} ✓` : `Solo se pudo restaurar ${n}/${undoable.length}; el resto está en el historial del plan`, n === undoable.length ? 'ok' : 'warn')
+        },
+      } : undefined)
     onClose()
   }
 
@@ -545,7 +563,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
             {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
           </button>
       }>
-      <p className="px-6 pt-4 text-xs text-muted">{program.name} — se publica de inmediato, sin borrador y sustituye el plan actual de cada cliente</p>
+      <p className="px-6 pt-4 text-xs text-muted">{program.name} — se publica de inmediato, sin borrador y sustituye el plan actual de cada cliente. Se guarda una copia del plan anterior en su historial y podrás deshacerlo desde el aviso.</p>
         <div className="px-6 pt-4 flex gap-2 flex-shrink-0">
           <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Elegir clientes</button>
           <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Grupo completo</button>
