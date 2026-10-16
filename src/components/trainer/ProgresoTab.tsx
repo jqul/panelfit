@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { FuerzaChart } from './progreso-tab/FuerzaChart'
+import { CardioChart } from './progreso-tab/CardioChart'
 import { PesoChart } from './progreso-tab/PesoChart'
 import { VolumenChart, VolumenGrupoChart } from './progreso-tab/VolumenCharts'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
@@ -70,13 +71,13 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
           const s = SECTIONS.find(x => x.id === id)!
           return (
             <button key={s.id} onClick={() => setSection(s.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${section === s.id ? 'bg-ink text-white border-ink' : 'bg-white border-border text-muted hover:border-accent'}`}>
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${section === s.id ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted hover:border-accent'}`}>
               {s.icon} {s.label}
             </button>
           )
         })}
       </div>
-      <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl p-5 shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="mb-4">
           <p className="text-sm font-bold">{current.icon} {current.label}</p>
           <p className="text-xs text-muted mt-0.5">{current.desc}</p>
@@ -85,6 +86,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
+        {section === 'cardio'       && <CardioChart       logs={logs} />}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
@@ -113,7 +115,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
           </div>
         )}
       </div>
-      <p className="text-[10px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
+      <p className="text-[11px] text-muted text-center">Datos calculados a partir de los entrenos registrados · Se actualiza en tiempo real</p>
     </div>
   )
 }

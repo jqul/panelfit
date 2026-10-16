@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CheckSquare, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { localDateKey } from '../../lib/dates'
 
 interface Habito { id: string; text: string; sub?: string; order: number }
 
@@ -8,7 +9,7 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
   const [habitos, setHabitos] = useState<Habito[]>([])
   const [completed, setCompleted] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   useEffect(() => {
     if (clientId.startsWith('demo-client-')) { setLoading(false); return }
@@ -40,7 +41,7 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Hábitos de hoy</p>
-          <span className="text-[10px] font-bold text-accent">{completed.length}/{habitos.length}</span>
+          <span className="text-[11px] font-bold text-accent">{completed.length}/{habitos.length}</span>
         </div>
         <div className="h-1 bg-bg-alt"><div className="h-full bg-ok transition-all" style={{ width: `${pct}%` }} /></div>
         <div className="divide-y divide-border">

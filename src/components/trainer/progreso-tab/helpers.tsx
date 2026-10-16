@@ -4,13 +4,16 @@ import { TrainingPlan } from '../../../types'
 export function getExName(key: string, plan?: TrainingPlan | null) {
   const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m || !plan) return null
-  return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || null
+  const ex = plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]
+  // Las carreras (kg×reps vacíos) no cuentan en fuerza/volumen/récords: van a su propia gráfica de cardio.
+  if (ex?.kind === 'run') return null
+  return ex?.name || null
 }
 
 export function CustomTooltip({ active, payload, label, unit = 'kg' }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="text-muted mb-1">{label}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} style={{ color: p.color }} className="font-bold">{p.value} {unit}</p>
@@ -35,11 +38,18 @@ export const GROUP_COLORS: Record<string, string> = {
   'Bíceps': '#3b82f6', 'Tríceps': '#8b5cf6', 'Core': '#ec4899', 'Glúteos': '#06b6d4', 'Otros': '#94a3b8',
 }
 
+// El "press" a secas SOLO en Pecho capturaba también press militar/hombro/
+// francés antes de que le tocara el turno a Hombros o Tríceps (se recorre en
+// este mismo orden y para en el primer grupo que matchea) — cualquier
+// ejercicio de hombro con "press" en el nombre (el más común: "Press militar")
+// se contaba entero como Pecho y Hombros se quedaba a 0 series aunque sí se
+// hubiera entrenado. Ahora Pecho solo matchea variantes de press específicas
+// de pecho; press militar/hombro cae correctamente en Hombros.
 const MUSCLE_GROUPS: Record<string, string[]> = {
-  'Pecho':     ['press','pecho','bench','aperturas','fondos'],
+  'Pecho':     ['press banca','press inclinado','press declinado','pecho','bench','aperturas','fondos'],
   'Espalda':   ['remo','dominadas','jalón','pull','espalda','trapecio','lumbar','jalon'],
   'Piernas':   ['squat','sentadilla','prensa','leg','femoral','cuádricep','gemelo','pantorrilla','lunges','zancada','cuadricep'],
-  'Hombros':   ['press hombro','elevaciones','deltoides','hombro','military'],
+  'Hombros':   ['press hombro','press militar','elevación lateral','elevaciones','deltoides','hombro','militar','military','arnold'],
   'Bíceps':    ['curl','bícep','bicep'],
   'Tríceps':   ['trícep','tricep','extensión','francés','frances'],
   'Core':      ['plancha','abdominales','crunch','core','oblicuos'],
@@ -72,6 +82,8 @@ export function getMuscleGroup(name: string, libraryMap?: Map<string, string>) {
   const fromLibrary = libraryMap?.get(name.toLowerCase().trim())
   if (fromLibrary) return fromLibrary
   const lower = name.toLowerCase()
+  // "curl" a secas es Bíceps, pero "curl abdominal" es Core y Bíceps se recorre antes.
+  if (lower.includes('abdominal')) return 'Core'
   for (const [group, kws] of Object.entries(MUSCLE_GROUPS)) if (kws.some(k => lower.includes(k))) return group
   return 'Otros'
 }

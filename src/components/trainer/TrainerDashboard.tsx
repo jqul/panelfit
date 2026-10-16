@@ -2,14 +2,15 @@ import { track } from '@vercel/analytics'
 import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
+import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLabels } from '../../hooks/useLabels'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
-  LogOut, UserPlus, Search, Trash2, ChevronRight,
+  LogOut, UserPlus, Search, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
-  Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, Calendar, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Send, Users2, Tag as TagIcon, Inbox
+  Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
+  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -28,6 +29,8 @@ import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
 import { BandejaTab } from './BandejaTab'
+import { ClientList } from './ClientList'
+import { sortClients, ClientSort } from '../../lib/clientStatus'
 import { EtiquetasTab } from './EtiquetasTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
@@ -39,7 +42,14 @@ import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
+
+// Menú reducido a 5 destinos (antes 14 sueltos) — lo menos usado a diario
+// queda agrupado en "Más" y "Planificar", en vez de competir por espacio en
+// el primer nivel. El id de cada pestaña original no cambia: solo cambia
+// cómo se agrupan en la navegación.
+const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
+const MAS_TABS: Tab[] = ['bandeja', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
 
 interface Props {
@@ -66,6 +76,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   })
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
+  const [clientSort, setClientSort] = useState<ClientSort>('attention')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
@@ -83,7 +94,6 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setNewObjetivoInput(''); setAddingObjetivo(false)
   }
   const [adding, setAdding] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
@@ -102,6 +112,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter })
+  const sortedClients = useMemo(() => sortClients(filteredClients, clientSort), [filteredClients, clientSort])
+  // Bandeja unificada: sesiones, check-ins, dolor, vídeos sin responder,
+  // borradores sin publicar y clientes en riesgo — una sola lista en vez de
+  // "Requieren atención" + "Tareas de hoy" + Bandeja calculando cada una lo
+  // suyo por separado.
+  const { visibleItems: inboxVisibleItems, pendingCount: inboxPendingCount, loading: inboxLoading } = useInboxItems(userProfile.uid, clients, logsMap)
+  const inboxTop = inboxVisibleItems(true).slice(0, 5)
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
@@ -116,47 +133,41 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setAdding(false)
   }
 
-  const handleDelete = async (id: string) => { await deleteClient(id); setDeletingId(null) }
+  const handleDelete = async (id: string) => { await deleteClient(id) }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
+  // Al pulsar "Planificar" desde fuera del grupo, entra por Workouts; si ya
+  // estás en Ejercicios/Programas, se queda donde estabas en vez de resetear.
+  const handleTopNavClick = (tab: Tab) => {
+    if (tab === 'templates' && PLANIFICAR_TABS.includes(activeTab)) { setSidebarOpen(false); return }
+    handleTabChange(tab)
+  }
 
+  // Solo dos acciones con peso visual: crear cliente (principal) y workouts.
+  // Encuestas, Adherencia, Mensajes e Insights ya están en la navegación.
   const QUICK_ACTIONS = [
-    { icon: UserPlus,      label: 'Nuevo cliente', color: 'text-accent', bg: 'bg-accent/8',  action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
-    { icon: Dumbbell,      label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('templates') },
-    { icon: Send,          label: 'Encuesta',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('encuestas') },
-    { icon: BarChart2,     label: 'Adherencia',    color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('adherencia') },
-    { icon: MessageCircle, label: 'Mensajes',      color: 'text-accent', bg: 'bg-accent/8',  action: () => handleTabChange('mensajes') },
-    { icon: TrendingUp,    label: 'Insights',      color: 'text-ink',   bg: 'bg-ink/5',     action: () => handleTabChange('insights') },
+    { icon: UserPlus, label: 'Nuevo cliente', color: 'text-white', bg: 'bg-ink',    action: () => { setShowAdd(true); setSidebarOpen(false) }, disabled: limitReached },
+    { icon: Dumbbell, label: 'Workouts',      color: 'text-ink',   bg: 'bg-ink/5', action: () => handleTabChange('templates'), disabled: false },
   ]
 
-  const NAV_GROUPS = [
-    { label: 'Gestión', items: [
-      { id: 'dashboard' as Tab, icon: LayoutDashboard, label: 'Resumen' },
-      { id: 'clients'   as Tab, icon: Users,           label: 'Clientes', badge: clients.length },
-      { id: 'bandeja'   as Tab, icon: Inbox,           label: 'Bandeja' },
-      { id: 'cohortes' as Tab, icon: Users2,          label: 'Grupos' },
-      { id: 'etiquetas' as Tab, icon: TagIcon,        label: 'Etiquetas' },
-      { id: 'calendario' as Tab, icon: CalendarDays,  label: 'Calendario' },
-      { id: 'mensajes'  as Tab, icon: MessageCircle,   label: 'Mensajes' },
-      { id: 'encuestas' as Tab, icon: ClipboardList,   label: 'Encuestas' },
-      { id: 'negocio'   as Tab, icon: TrendingUp,      label: 'Mi negocio' },
-    ]},
-    { label: 'Contenido', items: [
-      { id: 'exercises' as Tab, icon: Dumbbell,   label: 'Ejercicios' },
-      { id: 'templates' as Tab, icon: Dumbbell,   label: 'Workouts' },
-      { id: 'programas' as Tab, icon: Calendar,   label: 'Programas' },
-    ]},
-    { label: 'Análisis', items: [
-      { id: 'insights'   as Tab, icon: BarChart2,  label: 'Insights' },
-      { id: 'adherencia' as Tab, icon: TrendingUp, label: 'Adherencia' },
-    ]},
-    { label: 'Configuración', items: [
-      { id: 'settings' as Tab, icon: SettingsIcon, label: 'Ajustes' },
-    ]},
+  // 5 destinos visibles — "Planificar" y "Más" abren en su primer/único
+  // sub-apartado; cuál está activo se decide por si activeTab pertenece a su
+  // grupo (PLANIFICAR_TABS / MAS_TABS), no por un id propio de nivel superior.
+  const TOP_NAV: { id: Tab; icon: any; label: string; badge?: number }[] = [
+    { id: 'dashboard', icon: LayoutDashboard, label: 'Hoy' },
+    { id: 'clients',   icon: Users,           label: 'Clientes', badge: clients.length },
+    { id: 'templates', icon: Dumbbell,        label: 'Planificar' },
+    { id: 'mensajes',  icon: MessageCircle,   label: 'Mensajes' },
+    { id: 'mas',       icon: MoreHorizontal,  label: 'Más' },
   ]
+  const isTopNavActive = (item: Tab) => {
+    if (item === 'templates') return PLANIFICAR_TABS.includes(activeTab)
+    if (item === 'mas') return activeTab === 'mas' || MAS_TABS.includes(activeTab)
+    return activeTab === item
+  }
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -168,12 +179,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)
           }} />
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
+          <button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><X className="w-4 h-4" /></button>
         </div>
       </div>
       {myTeams.length > 0 && onSwitchTeam && (
         <div className="px-4 py-2.5 border-b border-border bg-bg-alt/30">
-          <label className="block text-[9px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Viendo como</label>
           <select value={teamContext?.uid || ''} onChange={e => {
               const sel = myTeams.find(t => t.uid === e.target.value)
               onSwitchTeam(sel || null)
@@ -191,39 +202,32 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-            <p className="text-[10px] text-muted truncate">{userProfile.email}</p>
+            <p className="text-[11px] text-muted truncate">{userProfile.email}</p>
           </div>
         </div>
       </div>
       <div className="px-3 py-3 border-b border-border">
-        <p className="text-[10px] font-semibold text-muted/50 px-2 mb-2 tracking-wider">Accesos rápidos</p>
+        <p className="text-[11px] font-semibold text-muted px-2 mb-2 tracking-wider">Accesos rápidos</p>
         <div className="grid grid-cols-2 gap-1.5">
           {QUICK_ACTIONS.map(({ icon: Icon, label, color, bg, action, disabled }) => (
             <button key={label} onClick={action} disabled={disabled}
               className={`flex items-center gap-2 px-2.5 py-2 rounded-xl text-left transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
               <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${color}`} />
-              <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
+              <span className={`text-xs font-semibold leading-tight ${color}`}>{label}</span>
             </button>
           ))}
         </div>
       </div>
-      <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
-        {NAV_GROUPS.map(group => (
-          <div key={group.label}>
-            <p className="text-[10px] font-semibold text-muted/50 px-3 mb-1 tracking-wider">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map(({ id, icon: Icon, label, badge }: any) => (
-                <button key={id} onClick={() => handleTabChange(id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === id ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
-                  <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span className="flex-1 text-left">{label}</span>
-                  {badge !== undefined && badge > 0 && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === id ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        {TOP_NAV.map(({ id, icon: Icon, label, badge }) => (
+          <button key={id} onClick={() => handleTopNavClick(id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${isTopNavActive(id) ? 'bg-ink text-white' : 'text-muted hover:bg-bg-alt hover:text-ink'}`}>
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1 text-left">{label}</span>
+            {badge !== undefined && badge > 0 && (
+              <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${isTopNavActive(id) ? 'bg-white/20' : 'bg-bg-alt text-muted'}`}>{badge}</span>
+            )}
+          </button>
         ))}
       </nav>
       <div className="p-3 border-t border-border space-y-1.5">
@@ -269,6 +273,22 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
         <div className="p-4 lg:p-6">
 
+          {/* ── Sub-navegación de "Planificar" — Ejercicios / Workouts / Programas ── */}
+          {PLANIFICAR_TABS.includes(activeTab) && (
+            <div className="flex gap-2 mb-5 -mt-1">
+              {([
+                { id: 'templates' as Tab, label: 'Workouts' },
+                { id: 'exercises' as Tab, label: 'Ejercicios' },
+                { id: 'programas' as Tab, label: 'Programas' },
+              ]).map(({ id, label }) => (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTab === id ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted hover:border-ink hover:text-ink'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* ── DASHBOARD ── */}
           {activeTab === 'dashboard' && (
             <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 animate-fade-in">
@@ -278,11 +298,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 <div className="flex items-end justify-between">
                   <div>
-                    <h2 className="text-4xl font-serif font-bold">Resumen</h2>
+                    <h2 className="text-3xl font-serif font-bold">Resumen</h2>
                     <p className="text-muted text-sm mt-1">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   </div>
                   {clients.length > 0 && (
-                    <div className="hidden sm:flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-border/50 text-xs text-muted">
+                    <div className="hidden sm:flex items-center gap-2 bg-card rounded-xl px-3 py-2 shadow-sm border border-border/50 text-xs text-muted">
                       <Activity className="w-3.5 h-3.5 text-ok" />
                       <span><strong className="text-ink">{Math.round((activeToday / Math.max(clients.length, 1)) * 100)}%</strong> entrenaron hoy</span>
                     </div>
@@ -301,7 +321,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     { label: 'Caída de salto', value: jumpDropCount, prev: undefined,     icon: TrendingDown, color: jumpDropCount > 0 ? 'text-warn' : 'text-muted', accent: jumpDropCount > 0 ? '#e07b54' : '#9ca3af', border: jumpDropCount > 0 ? '#e07b54' : '#e5e7eb', onClick: () => { setClientFilter('jump-drop'); handleTabChange('clients') } },
                   ].map(({ label, value, prev, icon: Icon, color, accent, border, onClick }) => (
                     <button key={label} onClick={onClick}
-                      className="bg-white rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
+                      className="bg-card rounded-2xl p-5 text-left hover:shadow-md transition-all shadow-sm overflow-hidden relative"
                       style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                       <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: border }} />
                       <div className="flex items-center justify-between mb-4 mt-1">
@@ -309,7 +329,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <Icon className={`w-4 h-4 ${color}`} />
                         </div>
                         {prev !== undefined && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${value >= prev ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'}`}>
                             {value >= prev ? '↑' : '↓'} {Math.abs(value - prev)}
                           </span>
                         )}
@@ -341,7 +361,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                             <p className={`text-sm font-semibold ${primary ? 'text-white' : 'text-ink'}`}>{title}</p>
                             <p className={`text-xs mt-0.5 ${primary ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
                           </div>
-                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-white text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
+                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-card text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
                             {cta}
                           </button>
                         </div>
@@ -351,7 +371,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 )}
 
                 {/* Gráfica actividad */}
-                <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
                       <h3 className="font-serif font-bold text-lg">Actividad semanal</h3>
@@ -377,7 +397,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 {/* Cumplimiento semanal */}
                 {clients.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                     <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
                       <div>
                         <h3 className="font-serif font-bold">Cumplimiento semanal</h3>
@@ -410,10 +430,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                                 <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
                                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                                 </div>
-                                <span className="text-[10px] font-bold w-8 text-right flex-shrink-0" style={{ color: barColor }}>{pct}%</span>
+                                <span className="text-[11px] font-bold w-8 text-right flex-shrink-0" style={{ color: barColor }}>{pct}%</span>
                               </div>
                             </div>
-                            <span className="text-[10px] text-muted flex-shrink-0 hidden sm:block">{formatLastActive(c.lastActive)}</span>
+                            <span className="text-[11px] text-muted flex-shrink-0 hidden sm:block">{formatLastActive(c.lastActive)}</span>
                           </button>
                         )
                       })}
@@ -422,7 +442,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 )}
 
                 {/* Clientes recientes */}
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-5 py-4 border-b border-border/50 flex items-center justify-between">
                     <h3 className="font-serif font-bold">Clientes recientes</h3>
                     <button onClick={() => handleTabChange('clients')} className="text-xs text-accent hover:underline font-semibold">Ver todos →</button>
@@ -437,9 +457,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            {!c.hasPlan && <span className="text-[10px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
-                            {c.hasPlan && <span className="text-[10px] text-muted">{formatLastActive(c.lastActive)}</span>}
-                            {!!c.weeklyDays && <span className="text-[10px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
+                            {!c.hasPlan && <span className="text-[11px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
+                            {c.hasPlan && <span className="text-[11px] text-muted">{formatLastActive(c.lastActive)}</span>}
+                            {!!c.weeklyDays && <span className="text-[11px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -460,31 +480,50 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
 
-                {alerts.length > 0 && (
-                  <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                      <Bell className="w-3.5 h-3.5 text-warn" />
-                      <h3 className="text-sm font-semibold">Requieren atención</h3>
-                      <span className="ml-auto text-[10px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{alerts.length}</span>
+                {/* Bandeja unificada — sesiones, check-ins, dolor, vídeos sin
+                    responder, borradores sin publicar y clientes en riesgo,
+                    ordenados por urgencia. Sustituye a los antiguos
+                    "Requieren atención" y "Tareas de hoy", que mostraban lo
+                    mismo (clientes en riesgo) en dos sitios distintos. */}
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <button onClick={() => handleTabChange('bandeja')}
+                    className="w-full px-4 py-3 border-b border-border/50 flex items-center gap-2 hover:bg-bg-alt/30 transition-colors">
+                    <Inbox className="w-3.5 h-3.5 text-accent" />
+                    <h3 className="text-sm font-semibold">Bandeja</h3>
+                    {inboxPendingCount > 0 && (
+                      <span className="ml-auto text-[11px] font-bold bg-warn/10 text-warn px-1.5 py-0.5 rounded-full">{inboxPendingCount}</span>
+                    )}
+                  </button>
+                  {inboxLoading ? (
+                    <div className="p-3 space-y-1.5">{[1, 2].map(i => <div key={i} className="h-10 bg-bg-alt rounded-xl animate-pulse" />)}</div>
+                  ) : inboxTop.length === 0 ? (
+                    <div className="px-3 py-6 text-center">
+                      <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
+                      <p className="text-xs text-muted">Todo al día ✓</p>
                     </div>
-                    <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
-                      {alerts.slice(0, 5).map(c => (
-                        <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
-                          <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{c.name[0]?.toUpperCase()}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate">{c.name} {c.surname}</p>
-                            <p className="text-[10px] text-warn">{!c.hasPlan ? 'Sin plan' : c.highAcwr ? `⚡ Carga alta (ACWR ${c.acwrRatio})` : c.highJumpDrop ? `🦵 Caída de salto (${c.jumpDropPct}%)` : c.atRisk ? '🚩 Riesgo de abandono' : c.planEndingSoon ? `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}` : 'Sin actividad reciente'}</p>
-                          </div>
-                          <ChevronRight className="w-3 h-3 text-muted" />
-                        </button>
-                      ))}
+                  ) : (
+                    <div className="divide-y divide-border/50">
+                      {inboxTop.map(item => {
+                        const c = clients.find(cl => cl.id === item.clientId)
+                        return (
+                          <button key={item.key} onClick={() => c && onSelectClient(c)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
+                            <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{item.clientName[0]?.toUpperCase()}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate">{item.clientName}</p>
+                              <p className="text-[11px] text-muted truncate">{item.detail}</p>
+                            </div>
+                            <ChevronRight className="w-3 h-3 text-muted flex-shrink-0" />
+                          </button>
+                        )
+                      })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <AlertasWidget clients={clients} onSelectClient={onSelectClient} />
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Activity className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Actividad reciente</h3>
@@ -497,7 +536,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-ok/10 flex items-center justify-center text-xs font-bold text-ok flex-shrink-0 mt-0.5">{ev.clientName[0]}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs leading-tight"><span className="font-semibold">{ev.clientName}</span><span className="text-muted"> {ev.text}</span></p>
-                            <p className="text-[10px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
+                            <p className="text-[11px] text-muted mt-0.5">{formatLastActive(ev.date)}</p>
                           </div>
                           <CheckCircle2 className="w-3.5 h-3.5 text-ok flex-shrink-0 mt-0.5" />
                         </div>
@@ -506,7 +545,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <Zap className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Acciones rápidas</h3>
@@ -516,34 +555,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       <button key={label} onClick={action} disabled={disabled}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-xl text-center transition-all hover:opacity-80 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}>
                         <Icon className={`w-4 h-4 ${color}`} />
-                        <span className={`text-[10px] font-semibold leading-tight ${color}`}>{label}</span>
+                        <span className={`text-xs font-semibold leading-tight ${color}`}>{label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                  <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
-                    <h3 className="text-sm font-semibold">Tareas de hoy</h3>
-                  </div>
-                  <div className="p-3 space-y-1.5">
-                    {alerts.slice(0, 3).map(c => (
-                      <button key={c.id} onClick={() => onSelectClient(c)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-bg-alt/50 text-left transition-colors">
-                        <div className="w-4 h-4 rounded border-2 border-border flex-shrink-0" />
-                        <p className="text-xs text-muted">{!c.hasPlan ? `Crear plan para ${c.name}` : c.highAcwr ? `Revisar carga de ${c.name} (riesgo de lesión)` : c.highJumpDrop ? `Revisar fatiga de ${c.name} (caída de salto)` : c.atRisk ? `Contactar a ${c.name} (riesgo de abandono)` : c.planEndingSoon ? `Renovar el plan de ${c.name}` : `Revisar progreso de ${c.name}`}</p>
-                      </button>
-                    ))}
-                    {alerts.length === 0 && (
-                      <div className="px-3 py-4 text-center">
-                        <CheckCircle2 className="w-6 h-6 text-ok mx-auto mb-1 opacity-60" />
-                        <p className="text-xs text-muted">Todo al día ✓</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                   <div className="px-4 py-3 border-b border-border/50 flex items-center gap-2">
                     <StickyNote className="w-3.5 h-3.5 text-accent" />
                     <h3 className="text-sm font-semibold">Notas rápidas</h3>
@@ -562,98 +580,63 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
           {/* ── CLIENTES ── */}
           {activeTab === 'clients' && (
-            <div className="animate-fade-in space-y-5 max-w-5xl">
+            <div className="animate-fade-in space-y-5 max-w-6xl">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-3xl font-serif font-bold">Clientes</h2>
-                  <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} alumnos{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
+                  <p className="text-muted text-sm mt-1">{clients.length}{clientLimit < 999 ? `/${clientLimit}` : ''} {clientLimit >= 999 && clients.length === 1 ? 'alumno' : 'alumnos'}{limitReached && <span className="ml-2 text-warn font-semibold">· límite alcanzado</span>}</p>
                 </div>
-                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo</Button>
+                <Button className="gap-2" onClick={() => setShowAdd(true)} disabled={limitReached}><UserPlus className="w-4 h-4" /> Nuevo cliente</Button>
               </div>
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-3 flex-wrap items-center">
                 <div className="relative flex-1 min-w-40">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                  <input type="text" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
+                  <input type="text" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-card border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {([{ id: 'all', label: 'Todos' }, { id: 'active', label: '✓ Hoy' }, { id: 'no-plan', label: '⚠ Sin plan' }, { id: 'no-activity', label: '💤 Inactivos' }, { id: 'at-risk', label: '🚩 Riesgo' }, { id: 'high-acwr', label: '⚡ Carga alta' }, { id: 'jump-drop', label: '🦵 Caída de salto' }] as const).map(f => (
-                    <button key={f.id} onClick={() => setClientFilter(f.id)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-white border-border/50 text-muted hover:border-accent shadow-sm'}`}>
-                      {f.label}
+                <label className="flex items-center gap-2 text-xs font-semibold text-muted">
+                  Ordenar
+                  <select value={clientSort} onChange={e => setClientSort(e.target.value as ClientSort)}
+                    className="bg-card border border-border/50 rounded-xl px-3 py-2.5 text-sm font-medium text-ink outline-none focus:ring-2 focus:ring-accent/20 shadow-sm">
+                    <option value="attention">Atención primero</option>
+                    <option value="name">Nombre</option>
+                    <option value="last">Más tiempo sin entrenar</option>
+                    <option value="adherence">Menor adherencia</option>
+                  </select>
+                </label>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { id: 'all', label: 'Todos', n: clients.length, always: true },
+                  { id: 'active', label: 'Entrenaron hoy', n: activeToday, always: true },
+                  { id: 'no-plan', label: 'Sin plan', n: noPlan, always: true },
+                  { id: 'no-activity', label: 'Inactivos', n: noActivity7d, always: true },
+                  { id: 'at-risk', label: 'En riesgo', n: atRiskCount },
+                  { id: 'high-acwr', label: 'Carga alta', n: highAcwrCount },
+                  { id: 'jump-drop', label: 'Caída de salto', n: jumpDropCount },
+                ] as { id: ClientFilter; label: string; n: number; always?: boolean }[])
+                  .filter(f => f.always || f.n > 0 || clientFilter === f.id)
+                  .map(f => (
+                    <button key={f.id} onClick={() => setClientFilter(f.id)} aria-pressed={clientFilter === f.id}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${clientFilter === f.id ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted hover:border-accent shadow-sm'}`}>
+                      {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted'}>{f.n}</span>
                     </button>
                   ))}
-                </div>
               </div>
               {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl animate-pulse shadow-sm" />)}</div>
-              ) : filteredClients.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
+                <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
+              ) : sortedClients.length === 0 ? (
+                <div className="text-center py-20 bg-card rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredClients.map(client => {
-                    const adherencia = adherenciaMap[client.id] ?? 0
-                    const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
-                    return (
-                      <div key={client.id} className="bg-white rounded-2xl p-5 hover:shadow-md transition-all shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                        <div className="flex items-center gap-3 mb-3 cursor-pointer" onClick={() => onSelectClient(client)}>
-                          <div className="relative w-11 h-11 rounded-full bg-accent/10 flex items-center justify-center font-serif text-lg text-accent flex-shrink-0">
-                            {client.name[0]?.toUpperCase()}
-                            {client.doneToday && <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-ok rounded-full border-2 border-white" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-serif font-bold text-base truncate">{client.name} {client.surname}</p>
-                            <p className="text-[10px] text-muted mt-0.5">
-                              {client.doneToday ? <span className="text-ok font-bold">Entrenó hoy</span> : formatLastActive(client.lastActive)}
-                            </p>
-                          </div>
-                        </div>
-                        {client.hasPlan && (
-                          <div className="mb-3">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-muted">Cumplimiento semanal</span>
-                              <span className="text-[10px] font-bold" style={{ color: barColor }}>{adherencia}%</span>
-                            </div>
-                            <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
-                            </div>
-                            {!!client.weeklyDays && <p className="text-[10px] text-muted mt-1">{client.weeklyDays} sesion{client.weeklyDays !== 1 ? 'es' : ''} esta semana</p>}
-                            {client.highAcwr && <p className="text-[10px] text-warn font-semibold mt-1.5">⚡ Carga alta (ACWR {client.acwrRatio}) — riesgo de lesión</p>}
-                            {client.highJumpDrop && <p className="text-[10px] text-warn font-semibold mt-1.5">🦵 Caída de salto ({client.jumpDropPct}% en {client.jumpDropTestName}) — fatiga neuromuscular</p>}
-                            {client.atRisk && <p className="text-[10px] text-warn font-semibold mt-1.5">🚩 Riesgo de abandono — hace tiempo que no entrena</p>}
-                          </div>
-                        )}
-                        {!client.hasPlan && (
-                          <div className="mb-3 px-3 py-2.5 bg-warn/5 border border-warn/20 rounded-xl flex items-center justify-between">
-                            <p className="text-xs text-warn font-semibold">Sin plan asignado</p>
-                            <button onClick={() => onSelectClient(client)} className="text-[11px] font-bold text-white bg-warn px-2.5 py-1 rounded-lg hover:opacity-90">Asignar</button>
-                          </div>
-                        )}
-                        {deletingId === client.id ? (
-                          <div className="flex gap-2">
-                            <Button variant="danger" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); handleDelete(client.id) }}>Eliminar</Button>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setDeletingId(null) }}>Cancelar</Button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="flex-1" onClick={() => onSelectClient(client)}>Abrir</Button>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={e => { e.stopPropagation(); setLinkModal(client) }}>
-                              <MessageCircle className="w-3.5 h-3.5 mr-1" /> Enviar
-                            </Button>
-                            <Button variant="outline" size="sm" className="px-2" onClick={e => { e.stopPropagation(); setDeletingId(client.id) }}>
-                              <Trash2 className="w-3.5 h-3.5 text-warn" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
-                    className="border-2 border-dashed border-border rounded-2xl p-5 flex flex-col items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all min-h-[180px] disabled:opacity-50 disabled:cursor-not-allowed">
-                    <UserPlus className="w-6 h-6" />
-                    <span className="text-sm font-medium">{limitReached ? `Limite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
-                  </button>
-                </div>
+                <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
+                  onOpen={onSelectClient} onSend={setLinkModal} onDelete={handleDelete} />
+              )}
+              {!loading && (
+                <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
+                  className="w-full border-2 border-dashed border-border rounded-2xl py-4 flex items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  <UserPlus className="w-4 h-4" />
+                  <span className="text-sm font-medium">{limitReached ? `Límite de ${clientLimit} clientes` : 'Añadir cliente'}</span>
+                </button>
               )}
             </div>
           )}
@@ -679,12 +662,43 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
             </PlanGate>
           )}
+          {activeTab === 'mas' && (
+            <div className="animate-fade-in max-w-2xl">
+              <h2 className="text-3xl font-serif font-bold mb-1">Más</h2>
+              <p className="text-muted text-sm mb-6">Lo que usas menos a diario, todo en un mismo sitio</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {([
+                  { id: 'bandeja'    as Tab, icon: Inbox,        label: 'Bandeja',     desc: 'Sesiones y check-ins recientes' },
+                  { id: 'calendario' as Tab, icon: CalendarDays, label: 'Calendario',  desc: 'Citas y sesiones programadas' },
+                  { id: 'mensajes'   as Tab, icon: MessageCircle,label: 'Mensajes',    desc: 'Plantillas y envíos programados' },
+                  { id: 'encuestas'  as Tab, icon: ClipboardList,label: 'Encuestas',   desc: 'Cuestionarios para tus clientes' },
+                  { id: 'cohortes'   as Tab, icon: Users2,       label: 'Grupos',      desc: 'Cohortes de clientes' },
+                  { id: 'etiquetas'  as Tab, icon: TagIcon,      label: 'Etiquetas',   desc: 'Organiza tus clientes' },
+                  { id: 'insights'   as Tab, icon: BarChart2,    label: 'Insights',    desc: 'Actividad y especialidad' },
+                  { id: 'adherencia' as Tab, icon: TrendingUp,   label: 'Adherencia',  desc: 'Cumplimiento semanal' },
+                  { id: 'negocio'    as Tab, icon: TrendingUp,   label: 'Mi negocio',  desc: 'Ingresos y métricas' },
+                  { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
+                ]).map(({ id, icon: Icon, label, desc }) => (
+                  <button key={id} onClick={() => setActiveTab(id)}
+                    className="flex flex-col items-start gap-2 p-4 bg-card border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
+                    <div className="w-9 h-9 rounded-xl bg-bg-alt flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-ink" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{label}</p>
+                      <p className="text-[11px] text-muted mt-0.5 leading-snug">{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
       </main>
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente" variant="drawer">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -878,14 +892,14 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div className="px-4 py-3 flex items-center gap-3" style={{ backgroundColor: brandColor }}>
           {brandLogo ? <img src={brandLogo} className="w-9 h-9 rounded-full object-cover border-2 border-white/40 flex-shrink-0" alt="" />
             : <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{(brandName || displayName || 'T')[0]?.toUpperCase()}</div>}
-          <div><p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>{bio && <p className="text-white/60 text-[10px] truncate max-w-xs">{bio}</p>}</div>
-          <span className="ml-auto text-white/40 text-[10px]">Preview</span>
+          <div><p className="font-bold text-white text-sm">{brandName || displayName || 'Tu marca'}</p>{bio && <p className="text-white/60 text-[11px] truncate max-w-xs">{bio}</p>}</div>
+          <span className="ml-auto text-white/40 text-[11px]">Preview</span>
         </div>
         <div className="px-4 py-4 text-sm" style={{ backgroundColor: brandBgColor }}>
           <p className="text-muted/60 italic text-xs">Así se verá el panel de tus clientes</p>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Identidad</h3>
         <div className="grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label><input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
@@ -894,7 +908,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-3 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-3 shadow-sm">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Notificaciones</h3>
           <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
@@ -910,11 +924,11 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
             disabled={checkinLoading}
             className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${autoCheckin ? 'bg-accent' : 'bg-border'} ${checkinLoading ? 'opacity-50' : ''}`}
           >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform duration-200 ${autoCheckin ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Métricas activas</h3>
           <p className="text-xs text-muted mt-0.5">Desmarca las que no uses para que no aparezcan en el menú de Progreso de tus clientes. Puedes afinar cuáles ve cada cliente en concreto desde su ficha → Configuración.</p>
@@ -922,7 +936,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <div className="space-y-4">
           {GROUPS.map(g => (
             <div key={g.id}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">{g.icon} {g.label}</p>
               <div className="flex flex-wrap gap-2">
                 {g.sections.map(id => {
                   const s = SECTIONS.find(x => x.id === id)!
@@ -939,7 +953,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
@@ -950,11 +964,11 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
             <label className="flex items-center gap-2 px-4 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors w-fit">
               {brandLogo ? 'Cambiar foto' : 'Subir foto'}<input type="file" accept="image/*" className="hidden" onChange={uploadImage('logo', 2, setBrandLogo)} />
             </label>
-            <p className="text-[10px] text-muted">JPG, PNG · Máx 2MB</p>
+            <p className="text-[11px] text-muted">JPG, PNG · Máx 2MB</p>
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-5 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Tema de colores</h3>
         <div className="grid grid-cols-4 gap-2">
           {TEMAS.map(tema => (
@@ -962,36 +976,36 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
               className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 transition-all ${temaId === tema.id ? 'border-ink shadow-md scale-95' : 'border-transparent hover:border-border'}`}
               style={{ backgroundColor: tema.bg }}>
               <div className="w-8 h-8 rounded-full shadow-sm" style={{ backgroundColor: tema.color }} />
-              <span className="text-[10px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
-              {temaId === tema.id && <span className="text-[9px] font-bold text-ink">✓</span>}
+              <span className="text-[11px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
+              {temaId === tema.id && <span className="text-[11px] font-bold text-ink">✓</span>}
             </button>
           ))}
         </div>
         <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
           <div><label className="block text-xs font-semibold text-muted mb-2">Color principal</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandColor}</p><p className="text-[10px] text-muted">Header y botones</p></div></div></div>
+            <div className="flex items-center gap-3"><input type="color" value={brandColor} onChange={e => { setBrandColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandColor}</p><p className="text-[11px] text-muted">Header y botones</p></div></div></div>
           <div><label className="block text-xs font-semibold text-muted mb-2">Color de fondo</label>
-            <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[10px] text-muted">Fondo del panel</p></div></div></div>
+            <div className="flex items-center gap-3"><input type="color" value={brandBgColor} onChange={e => { setBrandBgColor(e.target.value); setTemaId('custom') }} className="w-12 h-12 rounded-xl border border-border cursor-pointer" /><div><p className="text-sm font-mono font-bold">{brandBgColor}</p><p className="text-[11px] text-muted">Fondo del panel</p></div></div></div>
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-4 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Imagen de fondo</h3>
         <div className="relative rounded-xl overflow-hidden border-2 border-dashed border-border" style={{ height: 140 }}>
-          {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-white">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
-            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[10px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
+          {brandBg ? <><img src={brandBg} className="w-full h-full object-cover" alt="" /><div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-3"><label className="px-3 py-2 bg-white/95 rounded-lg text-xs font-semibold cursor-pointer hover:bg-card">Cambiar<input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label><button onClick={() => setBrandBg('')} className="px-3 py-2 bg-warn text-white rounded-lg text-xs font-semibold">Quitar</button></div></>
+            : <label className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted cursor-pointer hover:bg-bg-alt/50 transition-colors bg-bg"><span className="text-3xl">🖼️</span><span className="text-sm font-medium">Subir imagen de fondo</span><span className="text-[11px]">Máx 3MB · JPG o PNG</span><input type="file" accept="image/*" className="hidden" onChange={uploadImage('bg', 3, setBrandBg)} /></label>}
         </div>
       </div>
-      <div className="bg-white rounded-2xl p-6 space-y-2 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 space-y-2 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Mensajes al cliente</h3>
         <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 shadow-sm">
         <PublicPageEditor userProfile={userProfile} />
       </div>
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-card rounded-2xl p-6 shadow-sm">
         <EquipoSection ownerId={realUid} />
       </div>
-      <div className="bg-white rounded-2xl p-5 shadow-sm">
+      <div className="bg-card rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Cuenta</h3>
         <p className="text-sm text-muted">Email: <span className="font-semibold text-ink">{userProfile.email}</span></p>
         <p className="text-sm text-muted mt-1">Plan: <span className="font-semibold text-ink capitalize">{userProfile.planName || 'Free'}</span></p>

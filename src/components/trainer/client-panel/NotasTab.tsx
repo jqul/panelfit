@@ -7,7 +7,7 @@ export function NotasTab({ plan, onChange }: { plan: TrainingPlan | null; onChan
     <div className="max-w-lg space-y-4">
       <div><h3 className="font-serif font-bold text-lg">Notas privadas</h3><p className="text-xs text-muted">Solo las ves tú.</p></div>
       <textarea rows={10} value={plan.coachNotes || ''} onChange={e => onChange({ ...plan, coachNotes: e.target.value })}
-        placeholder="Ej: Cuidado con la rodilla izquierda..."
+        placeholder="Ej: Cuidado con la rodilla izquierda..." aria-label="Notas privadas"
         className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
       <div className="flex flex-wrap gap-2">
         {TAGS.map(tag => (

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import {
-  X, Save, ChevronLeft, FileText, Dumbbell, Settings, Star,
-  ClipboardList, Eye, TrendingUp, StickyNote,
+  X, Save, ChevronLeft, FileText, Dumbbell,
+  ClipboardList, Eye, TrendingUp,
   ClipboardCheck, Link, MessageCircle, User
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -9,7 +9,9 @@ import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate }
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { ProgresoTab } from './ProgresoTab'
+// Carga perezosa: recharts es pesado (~500kb) y solo hace falta cuando el
+// entrenador entra de verdad en la pestaña de progreso, no con solo abrir el panel.
+const ProgresoTab = lazy(() => import('./ProgresoTab').then(m => ({ default: m.ProgresoTab })))
 import { InformePDF } from './InformePDF'
 import { PlanGate } from '../shared/PlanGate'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
@@ -19,15 +21,15 @@ import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
 import { EntrenosTab } from './client-panel/EntrenosTab'
-import { NotasTab } from './client-panel/NotasTab'
-import { ConfigTab } from './client-panel/ConfigTab'
 import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
-import { ValoracionTab } from './client-panel/ValoracionTab'
+import { PlanHistoryModal } from './client-panel/PlanHistoryModal'
 import { ActiveWorkout } from '../client/ActiveWorkout'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
+import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
+import { localDateKey } from '../../lib/dates'
 
-type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso' | 'valoracion' | 'notas' | 'config'
+type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
 
 interface Props {
   client: ClientData
@@ -39,15 +41,12 @@ interface Props {
 }
 
 const TABS: { id: Tab; icon: React.ElementType; label: string; desc: string }[] = [
-  { id: 'perfil',   icon: User,          label: 'Perfil',    desc: 'Datos y estadísticas' },
+  { id: 'perfil',   icon: User,          label: 'Resumen',   desc: 'Estado, datos y ficha' },
   { id: 'plan',     icon: Dumbbell,      label: 'Plan',      desc: 'Rutina de entrenamiento' },
   { id: 'dieta',    icon: FileText,      label: 'Dieta',     desc: 'Macros y plan nutricional' },
   { id: 'vista',    icon: Eye,           label: 'Vista',     desc: 'Lo que ve el cliente' },
   { id: 'entrenos', icon: ClipboardList, label: 'Entrenos',  desc: 'Historial de sesiones' },
   { id: 'progreso', icon: TrendingUp,    label: 'Progreso',  desc: 'Métricas y evolución' },
-  { id: 'valoracion',icon: Star,          label: 'Valoración',desc: 'Ficha de valoración' },
-  { id: 'notas',    icon: StickyNote,    label: 'Notas',     desc: 'Notas privadas' },
-  { id: 'config',   icon: Settings,      label: 'Config',    desc: 'Acceso y automatizaciones' },
 ]
 
 function useTemplates(trainerId: string) {
@@ -104,7 +103,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [showTemplates, setShowTemplates] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
-  const [wizardFechaInicio, setWizardFechaInicio] = useState(new Date().toISOString().split('T')[0])
+  const [wizardFechaInicio, setWizardFechaInicio] = useState(localDateKey())
   const [wizardAutoWelcome, setWizardAutoWelcome] = useState(true)
   const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
   const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
@@ -115,6 +114,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [liveSession, setLiveSession] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [borradorActivo, setBorradorActivo] = useState(false)
   const [borradorBusy, setBorradorBusy] = useState(false)
+  const [changeNote, setChangeNote] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
   // Los cambios de PerfilTab (ej. etiquetas) se aplicaban mutando el objeto
   // `client` directamente (Object.assign), que es un prop — React nunca se
   // enteraba y la pantalla no se refrescaba hasta que algo más forzaba un
@@ -173,13 +174,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   }
 
   // ── Borrador: el cliente no ve los cambios hasta que el entrenador publica ──
+  // (En demo no hay fila real en Supabase para el cliente — demoPlan!==undefined
+  // salta la llamada y simula el mismo cambio de estado en local, igual que
+  // savePlan ya hacía. Antes de esto, "Empezar borrador" fallaba en silencio
+  // en la demo con un error de UUID inválido.)
   const startBorrador = async () => {
     if (!plan) return
     setBorradorBusy(true)
-    const { error } = await supabase.from('planes')
-      .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, updatedAt: Date.now() }, { onConflict: 'clientId' })
+    if (demoPlan === undefined) {
+      const { error } = await supabase.from('planes')
+        .upsert({ clientId: client.id, plan_borrador: { P: plan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
+      if (error) { setBorradorBusy(false); logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
+    }
     setBorradorBusy(false)
-    if (error) { logError('startBorrador', error); toast('No se pudo iniciar el borrador', 'warn'); return }
     setBorradorActivo(true)
     toast('Borrador iniciado — el cliente sigue viendo la versión anterior', 'ok')
   }
@@ -187,24 +194,50 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const publishBorrador = async () => {
     if (!plan) return
     setBorradorBusy(true)
-    const { error } = await supabase.from('planes')
-      .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() })
-      .eq('clientId', client.id)
+    if (demoPlan === undefined) {
+      const { error } = await supabase.from('planes')
+        .update({ plan: { P: plan }, borrador_activo: false, plan_borrador: null, borrador_started_at: null, updatedAt: Date.now() })
+        .eq('clientId', client.id)
+      if (error) { setBorradorBusy(false); logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
+      // Deja constancia en el historial — si esto falla no se deshace la
+      // publicación (ya está en vivo), solo se pierde la entrada del historial.
+      await supabase.from('plan_history').insert({
+        clientId: client.id, plan: { P: plan }, note: changeNote.trim() || null, published_by: userProfile.displayName || userProfile.email,
+      })
+      sendPush({ clientId: client.id }, 'Tu plan se ha actualizado 💪', `${client.name}, tu entrenador ha publicado cambios en tu rutina`)
+    }
     setBorradorBusy(false)
-    if (error) { logError('publishBorrador', error); toast('No se pudo publicar', 'warn'); return }
     setBorradorActivo(false)
+    setChangeNote('')
     toast('Cambios publicados ✓', 'ok')
-    sendPush({ clientId: client.id }, 'Tu plan se ha actualizado 💪', `${client.name}, tu entrenador ha publicado cambios en tu rutina`)
+  }
+
+  const restoreFromHistory = async (restoredPlan: TrainingPlan) => {
+    setShowHistory(false)
+    setBorradorBusy(true)
+    const { error } = await supabase.from('planes')
+      .upsert({ clientId: client.id, plan_borrador: { P: restoredPlan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
+    setBorradorBusy(false)
+    if (error) { logError('restoreFromHistory', error); toast('No se pudo restaurar', 'warn'); return }
+    setPlan(restoredPlan)
+    setBorradorActivo(true)
+    setChangeNote('Restaurado desde el historial')
+    toast('Versión restaurada como borrador — revísala y publícala', 'ok')
   }
 
   const discardBorrador = async () => {
     setBorradorBusy(true)
-    const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
-    await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null }).eq('clientId', client.id)
+    if (demoPlan === undefined) {
+      const { data } = await supabase.from('planes').select('plan').eq('clientId', client.id).maybeSingle()
+      await supabase.from('planes').update({ borrador_activo: false, plan_borrador: null, borrador_started_at: null }).eq('clientId', client.id)
+      const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
+      setPlan(livePlan || null)
+    } else {
+      setPlan(demoPlan)
+    }
     setBorradorBusy(false)
-    const livePlan = (data as PlanRow | null)?.plan?.P as TrainingPlan | undefined
-    setPlan(livePlan || null)
     setBorradorActivo(false)
+    setChangeNote('')
     toast('Borrador descartado', 'ok')
   }
 
@@ -221,9 +254,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
   const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
     if (!plan) return
-    const inicio = new Date(fechaInicio + 'T00:00:00')
-    const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-    const semanaActual = Math.min(Math.floor(dias / 7), template.weeks.length - 1)
+    const semanaActual = weekIdxFromStart(fechaInicio, template.weeks.length)
     const weeks = JSON.parse(JSON.stringify(template.weeks))
     weeks.forEach((w: any, i: number) => { w.isCurrent = i === semanaActual })
     const newPlan: TrainingPlan = { ...plan, type: template.type, weeks, fechaInicio, autoCheckin }
@@ -282,8 +313,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm truncate">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted capitalize truncate">{plan?.type || client.objetivo || 'Sin tipo'}</p>
-              {client.phone && <p className="text-[10px] text-[#25D366] truncate">📱 {client.phone}</p>}
+              <p className="text-[11px] text-muted capitalize truncate">{plan?.type || client.objetivo || 'Sin tipo'}</p>
+              {client.phone && <p className="text-[11px] text-[#25D366] truncate">📱 {client.phone}</p>}
             </div>
           </button>
         </div>
@@ -298,7 +329,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           ].map(s => (
             <div key={s.label} className="bg-bg rounded-xl p-2 text-center">
               <p className="font-serif font-bold text-base text-ink">{s.value}</p>
-              <p className="text-[9px] text-muted uppercase tracking-wider">{s.label}</p>
+              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
         </div>
@@ -311,11 +342,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               <Icon className="w-4 h-4 flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-tight">{label}</p>
-                <p className={`text-[10px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
+                <p className={`text-[11px] leading-tight truncate ${activeTab === id ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
               </div>
               {/* Badge alertas en pestaña perfil */}
               {id === 'perfil' && pendingAlerts.length > 0 && (
-                <span className="ml-auto text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full flex-shrink-0">
+                <span className="ml-auto text-[11px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full flex-shrink-0">
                   {pendingAlerts.length}
                 </span>
               )}
@@ -346,19 +377,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         <header className="bg-card border-b border-border flex-shrink-0 h-14 flex items-center justify-between px-1 lg:px-6">
           <div className="flex items-center gap-0.5">
             {/* Mobile: back arrow + hamburger */}
-            <button onClick={onClose} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+            <button onClick={onClose} aria-label="Volver" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button onClick={() => setMobileShowSidebar(true)} className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted transition-colors flex-shrink-0" style={{ minWidth: '40px', minHeight: '44px' }}>
+            <button onClick={() => setMobileShowSidebar(true)} aria-label="Abrir menú" className="lg:hidden flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted transition-colors flex-shrink-0" style={{ minWidth: '40px', minHeight: '44px' }}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <div className="lg:hidden min-w-0">
               <p className="text-sm font-bold truncate">{client.name} {client.surname}</p>
-              <p className="text-[10px] text-muted truncate">{TABS.find(t => t.id === activeTab)?.label}</p>
+              <p className="text-[11px] text-muted truncate">{TABS.find(t => t.id === activeTab)?.label}</p>
             </div>
             <div className="hidden lg:block">
               <h2 className="text-sm font-bold">{TABS.find(t => t.id === activeTab)?.label}</h2>
-              <p className="text-[10px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
+              <p className="text-[11px] text-muted">{TABS.find(t => t.id === activeTab)?.desc}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 lg:gap-3">
@@ -387,7 +418,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <Save className="w-3.5 h-3.5" /><span className="hidden sm:inline">Guardar</span>
               </Button>
             )}
-            <button onClick={onClose} className="hidden lg:flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <button onClick={onClose} aria-label="Cerrar" className="hidden lg:flex items-center justify-center p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -396,7 +427,12 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         {!loading && plan && (
           borradorActivo ? (
             <div className="flex-shrink-0 bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-xs text-accent font-semibold">📝 Editando un borrador — {client.name} sigue viendo la versión anterior</p>
+              <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+                <p className="text-xs text-accent font-semibold flex-shrink-0">📝 Borrador —</p>
+                <input value={changeNote} onChange={e => setChangeNote(e.target.value)}
+                  placeholder="Nota de cambios para el historial (opcional)"
+                  className="flex-1 min-w-0 text-xs bg-card border border-accent/20 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
+              </div>
               <div className="flex gap-2">
                 <button onClick={discardBorrador} disabled={borradorBusy}
                   className="px-3 py-1.5 border border-accent/30 rounded-lg text-xs font-semibold text-accent hover:bg-accent/10 disabled:opacity-50">
@@ -411,12 +447,21 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           ) : (activeTab === 'plan' || activeTab === 'dieta') && (
             <div className="flex-shrink-0 bg-bg-alt border-b border-border px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-xs text-muted">¿Vas a hacer cambios grandes? Puedes trabajar en un borrador que {client.name} no verá hasta que lo publiques.</p>
-              <button onClick={startBorrador} disabled={borradorBusy}
-                className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent disabled:opacity-50 flex-shrink-0">
-                Empezar borrador
-              </button>
+              <div className="flex gap-2 flex-shrink-0">
+                <button onClick={() => setShowHistory(true)}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-ink hover:text-ink">
+                  Historial
+                </button>
+                <button onClick={startBorrador} disabled={borradorBusy}
+                  className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent disabled:opacity-50">
+                  Empezar borrador
+                </button>
+              </div>
             </div>
           )
+        )}
+        {showHistory && (
+          <PlanHistoryModal clientId={client.id} onClose={() => setShowHistory(false)} onRestore={restoreFromHistory} />
         )}
 
         <main className="flex-1 overflow-hidden flex flex-col">
@@ -440,6 +485,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     labels={labels}
                     onSaveAlerts={saveAlerts}
                     plan={plan} onPlanChange={handlePlanChange} trainerId={userProfile.uid}
+                    adherencia={adherencia}
                   />
                 </div>
               )}
@@ -456,6 +502,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     logs={logs}
                     otherClients={otherClients}
                     trainerId={userProfile.uid}
+                    borradorActivo={borradorActivo}
                   />
                 </div>
               )}
@@ -466,10 +513,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               )}
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
               {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} clientId={client.id} /></div>}
-              {activeTab === 'progreso' && <div className="flex-1 overflow-y-auto"><ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} /></div>}
-              {activeTab === 'valoracion' && <div className="flex-1 overflow-y-auto"><ValoracionTab client={client} trainerId={userProfile.uid} /></div>}
-              {activeTab === 'notas' && <div className="flex-1 overflow-y-auto"><NotasTab plan={plan} onChange={handlePlanChange} /></div>}
-              {activeTab === 'config' && <div className="flex-1 overflow-y-auto"><ConfigTab client={client} plan={plan} onChange={handlePlanChange} trainerId={userProfile.uid} /></div>}
+              {activeTab === 'progreso' && (
+                <div className="flex-1 overflow-y-auto">
+                  <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
+                    <ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} />
+                  </Suspense>
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -478,9 +528,11 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
       {/* Selector de día para sesión en vivo */}
       <Modal open={showDayPicker} onClose={() => setShowDayPicker(false)} title="¿Qué día vais a entrenar?">
         <div className="space-y-2">
-          {plan?.weeks?.map((week, wi) => (
-            <div key={wi} className={week.isCurrent ? '' : 'opacity-60'}>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{week.isCurrent ? ' · actual' : ''}</p>
+          {plan?.weeks?.map((week, wi) => {
+            const isActualWeek = wi === getEffectiveWeekIdx(plan, logs)
+            return (
+            <div key={wi} className={isActualWeek ? '' : 'opacity-60'}>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">{week.label}{isActualWeek ? ' · actual' : ''}</p>
               <div className="space-y-1.5 mb-3">
                 {week.days.map((day, di) => (
                   <button key={di} onClick={() => { setLiveSession({ weekIdx: wi, dayIdx: di }); setShowDayPicker(false) }}
@@ -491,7 +543,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 ))}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </Modal>
 
@@ -563,7 +616,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 <span className="text-xl">{a.emoji}</span>
                 <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
                 <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${a.val ? 'bg-ok' : 'bg-border'}`}>
-                  <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
+                  <div className={`w-5 h-5 bg-card rounded-full shadow transition-all ${a.val ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
               </div>
             ))}

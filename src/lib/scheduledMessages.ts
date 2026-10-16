@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './supabase'
+import { localDateKey } from './dates'
 
 export interface ScheduledMessage {
   id: string
@@ -14,7 +15,7 @@ export interface ScheduledMessage {
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10)
+  return localDateKey()
 }
 
 export function useScheduledMessages(trainerId?: string) {

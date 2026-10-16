@@ -37,8 +37,8 @@ export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
         ].map(({ label, value, diff, unit }) => (
           <div key={label} className="bg-bg rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-ink">{value}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
-            {diff !== 0 && <p className={`text-[10px] font-bold mt-1 ${diff > 0 ? 'text-ok' : 'text-warn'}`}>{diff > 0 ? '↑' : '↓'} {Math.abs(diff)}{unit} vs ant.</p>}
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
+            {diff !== 0 && <p className={`text-[11px] font-bold mt-1 ${diff > 0 ? 'text-ok' : 'text-warn'}`}>{diff > 0 ? '↑' : '↓'} {Math.abs(diff)}{unit} vs ant.</p>}
           </div>
         ))}
       </div>
@@ -47,7 +47,7 @@ export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
             <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="vol" name="Volumen" fill="#6e5438" radius={[4,4,0,0]} />
           </BarChart>

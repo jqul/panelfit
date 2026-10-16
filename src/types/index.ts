@@ -22,6 +22,7 @@ export interface ClientData {
   lesiones?: string        // limitaciones/lesiones relevantes para programar — solo lo ve el entrenador
   equipo_disponible?: string  // equipo con el que cuenta el cliente para entrenar — solo lo ve el entrenador
   metricas_cliente?: string[]  // ids de Section (lib/progresoSections) que el cliente puede ver en su propio panel
+  main_goal?: string  // objetivo principal del cliente en sus palabras — distinto de objetivo (especialidad/categoría)
 }
 
 // ── PLAN ──────────────────────────────────────────────
@@ -36,6 +37,20 @@ export interface Exercise {
   supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
   tempo?: string           // cadencia "excéntrica-pausa abajo-concéntrica-pausa arriba" en segundos, ej. "3-1-1-0" ('X' = explosivo)
   enReadaptacion?: boolean // ejercicio terapéutico/de readaptación — pide dolor EVA 0-10 durante la sesión
+  kind?: 'run'             // ejercicio de carrera/pista: se registra tiempo y distancia en vez de kg × reps (`sets` sigue siendo "NxM" para lo que lo lea)
+  run?: RunSpec
+}
+
+// Ejercicio de carrera. Por tiradas: `reps` tiradas de `distanceM` metros con
+// `recoveryM` metros andando entre ellas (0 = sin recuperación medida; una
+// tirada continua es reps 1). Con `durationSec` es un test de tiempo fijo
+// (ej. Cooper, 12 min): el cliente registra la distancia alcanzada.
+export interface RunSpec {
+  reps: number
+  distanceM: number
+  recoveryM?: number
+  intensity?: string
+  durationSec?: number
 }
 
 export interface ExerciseVideoUpload {
@@ -81,7 +96,12 @@ export interface LibraryExercise {
 }
 
 // ── REGISTROS ─────────────────────────────────────────
-export interface LogSet { weight: string; reps: string; rir?: number; velocity?: number }
+export interface LogSet {
+  weight: string; reps: string; rir?: number; velocity?: number
+  timeSec?: number    // carrera: tiempo de la tirada (o duración fija del test)
+  distanceM?: number  // carrera: metros de la tirada (o alcanzados en el test)
+  isTest?: boolean    // carrera: test de tiempo fijo (Cooper) — distanceM es el resultado
+}
 // sessionFinished: solo se usa en una entrada sintética con clave
 // `finished_${dayKey}` (sets vacío, done:false) que ActiveWorkout escribe al
 // terminar una sesión con ejercicios sin hacer — deliberadamente NO usa

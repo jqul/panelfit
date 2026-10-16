@@ -6,6 +6,7 @@ import { CustomTooltip, EmptyState } from './helpers'
 import { toast } from '../../shared/Toast'
 import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
 import { VamIntervalGenerator } from './VamIntervalGenerator'
+import { localDateKey } from '../../../lib/dates'
 
 export function PruebasChart({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const { tests, loading: loadingTests, addTest, deleteTest } = useTestCatalog(trainerId)
@@ -13,7 +14,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   const [expanded, setExpanded] = useState<string | null>(null)
   const [logging, setLogging] = useState<string | null>(null)
   const [valor, setValor] = useState('')
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [fecha, setFecha] = useState(localDateKey())
   const [notas, setNotas] = useState('')
   const [showVideoAnalyzer, setShowVideoAnalyzer] = useState(false)
   const [showVamGenerator, setShowVamGenerator] = useState<number | null>(null)
@@ -29,7 +30,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
   )
 
   const startLogging = (testId: string) => {
-    setLogging(testId); setValor(''); setFecha(new Date().toISOString().slice(0, 10)); setNotas(''); setShowVideoAnalyzer(false)
+    setLogging(testId); setValor(''); setFecha(localDateKey()); setNotas(''); setShowVideoAnalyzer(false)
   }
 
   const confirmLog = async (testId: string) => {
@@ -63,12 +64,12 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
             <button onClick={() => setExpanded(isExpanded ? null : test.id)} className="w-full flex items-center gap-3 px-4 py-3 text-left">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold">{test.nombre}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider">{test.categoria} · {test.unidad}</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider">{test.categoria} · {test.unidad}</p>
               </div>
               {latest && (
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-accent">{latest.valor} {test.unidad}</p>
-                  <p className="text-[9px] text-muted">{new Date(latest.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                  <p className="text-[11px] text-muted">{new Date(latest.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
                 </div>
               )}
               {isExpanded ? <ChevronUp className="w-4 h-4 text-muted flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted flex-shrink-0" />}
@@ -90,8 +91,8 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                        <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#8a8278' }} />
+                        <XAxis dataKey="fecha" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
                         <Tooltip content={<CustomTooltip unit={test.unidad} />} />
                         <Line type="monotone" dataKey="valor" stroke="#6e5438" strokeWidth={2} dot={{ r: 3 }} />
                       </LineChart>
@@ -119,12 +120,12 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                     )}
                     <div className="flex gap-2">
                       <input type="number" step="0.1" value={valor} onChange={e => setValor(e.target.value)} placeholder={`Valor (${test.unidad})`}
-                        className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                        className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                       <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-                        className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                        className="px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                     </div>
                     <input value={notas} onChange={e => setNotas(e.target.value)} placeholder="Notas (opcional)"
-                      className="w-full px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                      className="w-full px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
                     <div className="flex gap-2">
                       <button onClick={() => setLogging(null)} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>
                       <button onClick={() => confirmLog(test.id)} className="flex-1 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold">Guardar</button>
@@ -151,7 +152,7 @@ export function PruebasChart({ clientId, trainerId }: { clientId: string; traine
                 )}
 
                 {test.es_default === false && (
-                  <button onClick={() => deleteTest(test.id)} className="text-[10px] text-muted hover:text-warn underline">Eliminar prueba del catálogo</button>
+                  <button onClick={() => deleteTest(test.id)} className="text-[11px] text-muted hover:text-warn underline">Eliminar prueba del catálogo</button>
                 )}
               </div>
             )}

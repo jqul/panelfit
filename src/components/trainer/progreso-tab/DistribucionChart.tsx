@@ -38,7 +38,7 @@ export function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs;
           </div>
         )
       })}
-      <p className="text-[10px] text-muted pt-1">Basado en {total} series registradas</p>
+      <p className="text-[11px] text-muted pt-1">Basado en {total} series registradas</p>
     </div>
   )
 }

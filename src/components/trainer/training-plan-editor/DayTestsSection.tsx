@@ -25,7 +25,7 @@ export function DayTestsSection({ testIds, tests, onChange }: Props) {
       {assigned.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-1.5">
           {assigned.map(t => (
-            <span key={t.id} className="flex items-center gap-1 pl-2.5 pr-1 py-1 bg-accent/10 text-accent rounded-full text-[10px] font-semibold">
+            <span key={t.id} className="flex items-center gap-1 pl-2.5 pr-1 py-1 bg-accent/10 text-accent rounded-full text-[11px] font-semibold">
               <Activity className="w-3 h-3" /> {t.nombre}
               <button onClick={() => remove(t.id)} className="p-0.5 rounded-full hover:bg-accent/20"><X className="w-2.5 h-2.5" /></button>
             </span>

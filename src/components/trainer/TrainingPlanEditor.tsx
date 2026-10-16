@@ -5,8 +5,11 @@ import { BlockManager } from './training-plan-editor/BlockManager'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
 import { ConditioningModal } from './training-plan-editor/ConditioningModal'
 import { Modal } from '../shared/Modal'
+import { ActionMenu } from '../shared/ActionMenu'
 import { ExercisePicker } from './ExercisePicker'
-import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs } from '../../types'
+import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs, RunSpec } from '../../types'
+import { RunEditor } from './training-plan-editor/RunEditor'
+import { runDefaultName, runLabel } from '../../lib/run'
 import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
 import { getYTId, parseNumSets } from './training-plan-editor/utils'
@@ -18,6 +21,8 @@ import { WarmupSection } from './training-plan-editor/WarmupSection'
 import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
 import { useTestCatalog } from '../../lib/testCatalog'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { useMediaQuery } from '../../lib/useMediaQuery'
 
 export { getYTId } from './training-plan-editor/utils'
 export type { SeriesTypeDef } from './training-plan-editor/seriesTypes'
@@ -48,7 +53,15 @@ export function TrainingPlanEditor({
   plan, onChange, allClients = [], onImportFromClient,
   library = [], logs = {}, clientName = '', trainerId
 }: Props) {
-  const [activeWeek, setActiveWeek] = useState(0)
+  // Semana en la que está de verdad el cliente (por calendario, igual que en su
+  // app) — el editor abre ahí en vez de siempre en la 1. En una plantilla no
+  // hay cliente ni "semana actual", así que ahí se abre en la primera.
+  const isTemplate = plan.clientId === 'template'
+  const realWeekIdx = isTemplate ? -1 : getEffectiveWeekIdx(plan, logs)
+  // En pantallas estrechas el análisis del ejercicio no cabe como columna (dejaba el editor en
+  // ~190 px y tapaba las filas): se abre como panel lateral.
+  const wide = useMediaQuery('(min-width: 768px)')
+  const [activeWeek, setActiveWeek] = useState(() => Math.max(0, realWeekIdx))
   const [openDays, setOpenDays] = useState<Record<number, boolean>>({ 0: true })
   const [pickerFor, setPickerFor] = useState<{ dayIdx: number } | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -83,6 +96,7 @@ export function TrainingPlanEditor({
     const tally: Record<string, number> = {}
     currentWeek?.days.forEach(day => {
       day.exercises.forEach(ex => {
+        if (ex.kind === 'run') return
         const group = getMuscleGroup(ex.name, libraryMap)
         tally[group] = (tally[group] || 0) + parseNumSets(ex.sets)
       })
@@ -176,6 +190,17 @@ export function TrainingPlanEditor({
   const addExercise = (wi: number, di: number, exercise: Exercise) => {
     updateDay(wi, di, { exercises: [...(weeks[wi].days[di]?.exercises || []), exercise] })
   }
+  const addRunExercise = (wi: number, di: number) => {
+    const run: RunSpec = { reps: 6, distanceM: 200, recoveryM: 100, intensity: 'RPE 5-6' }
+    addExercise(wi, di, { name: runDefaultName(run), sets: '6x1', weight: '', isMain: false, comment: '', videoUrl: '', kind: 'run', run, hideRest: true })
+  }
+  // El nombre y las series ("NxM" que lee el resto de la app) siguen a la
+  // definición de la carrera mientras el nombre sea el automático.
+  const updateRun = (wi: number, di: number, ri: number, ex: Exercise, patch: Partial<RunSpec>) => {
+    const run: RunSpec = { ...ex.run!, ...patch }
+    const wasAuto = !ex.name || ex.name === runDefaultName(ex.run!)
+    updateExercise(wi, di, ri, { run, sets: `${run.durationSec ? 1 : run.reps}x1`, ...(wasAuto ? { name: runDefaultName(run) } : {}) })
+  }
   const copyExercise = (wi: number, di: number, ri: number) => {
     const copy: Exercise = JSON.parse(JSON.stringify(weeks[wi].days[di].exercises[ri]))
     const exs = [...weeks[wi].days[di].exercises]; exs.splice(ri + 1, 0, copy)
@@ -236,7 +261,7 @@ export function TrainingPlanEditor({
         />
       )}
 
-      <Modal open={showSeriesManager} onClose={() => setShowSeriesManager(false)} title="Gestionar tipos de serie">
+      <Modal open={showSeriesManager} onClose={() => setShowSeriesManager(false)} title="Gestionar tipos de serie" variant="drawer">
         <SeriesTypesManager
           types={seriesTypes}
           onSave={saveTypes}
@@ -281,7 +306,10 @@ export function TrainingPlanEditor({
               }`}>
               {w.label}
               {w.isDeload && <BatteryLow className="inline w-3 h-3 ml-1 -mt-0.5 text-warn" />}
-              {w.isCurrent && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ok rounded-full border-2 border-bg" />}
+              {(isTemplate ? w.isCurrent : wi === realWeekIdx) && (
+                <span title={isTemplate ? 'Semana actual' : 'Semana en la que está el cliente ahora'}
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-ok rounded-full border-2 border-bg" />
+              )}
             </button>
           ))}
           <button onClick={addWeek} className="px-3 py-1.5 rounded-lg text-sm border-2 border-dashed border-border text-muted hover:border-accent hover:text-accent transition-all">
@@ -317,16 +345,26 @@ export function TrainingPlanEditor({
                 className={`p-1.5 rounded-lg transition-colors ${currentWeek.isDeload ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn hover:bg-warn/5'}`}>
                 <BatteryLow className="w-3.5 h-3.5" />
               </button>
-              <button onClick={() => setCurrentWeek(activeWeek)}
-                className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/5'}`}>
-                <Star className="w-3.5 h-3.5" />
-              </button>
+              {!isTemplate && plan.fechaInicio ? (
+                // Con fecha de inicio la semana actual sale del calendario y no se
+                // puede fijar a mano: antes este botón guardaba un flag que la app
+                // ignoraba, y parecía que cambiaba la semana del cliente.
+                <span title={`La semana actual sale de la fecha de inicio del plan (semanas de lunes a domingo)${activeWeek === realWeekIdx ? ' — es esta' : ''}`}
+                  className={`p-1.5 rounded-lg ${activeWeek === realWeekIdx ? 'text-ok bg-ok/10' : 'text-muted/40'}`}>
+                  <Star className="w-3.5 h-3.5" />
+                </span>
+              ) : (
+                <button onClick={() => setCurrentWeek(activeWeek)} title="Marcar como semana actual"
+                  className={`p-1.5 rounded-lg transition-colors ${currentWeek.isCurrent ? 'text-ok bg-ok/10' : 'text-muted hover:text-ok hover:bg-ok/5'}`}>
+                  <Star className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button onClick={() => copyWeek(activeWeek)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Copy className="w-3.5 h-3.5" /></button>
               {confirmDeleteWeek === activeWeek ? (
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                  <span className="text-[10px] text-warn font-semibold">¿Borrar?</span>
-                  <button onClick={confirmDeleteWeekFn} className="px-2 py-1 bg-warn text-white rounded text-[10px] font-bold">Sí</button>
-                  <button onClick={() => setConfirmDeleteWeek(null)} className="px-2 py-1 border border-border rounded text-[10px] text-muted">No</button>
+                  <span className="text-[11px] text-warn font-semibold">¿Borrar?</span>
+                  <button onClick={confirmDeleteWeekFn} className="px-2 py-1 bg-warn text-white rounded text-[11px] font-bold">Sí</button>
+                  <button onClick={() => setConfirmDeleteWeek(null)} className="px-2 py-1 border border-border rounded text-[11px] text-muted">No</button>
                 </div>
               ) : (
                 <button onClick={() => deleteWeek(activeWeek)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -340,8 +378,8 @@ export function TrainingPlanEditor({
                   const color = GROUP_COLORS[group] || GROUP_COLORS['Otros']
                   return (
                     <div key={group} title={status ? `${status.label} para ${group} (referencia MEV/MAV/MRV)` : undefined}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold"
-                      style={{ backgroundColor: color + '15', color }}>
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
+                      style={{ backgroundColor: color + '15', color: `color-mix(in srgb, ${color} 55%, var(--color-ink))` }}>
                       <span>{group}</span>
                       <span className="font-bold">{sets}</span>
                       {status && <span className="opacity-70">· {status.label}</span>}
@@ -369,7 +407,7 @@ export function TrainingPlanEditor({
                       <input value={day.focus} onChange={e => updateDay(activeWeek, di, { focus: e.target.value })}
                         placeholder="foco del día..." className="text-xs text-muted bg-transparent outline-none flex-1 min-w-0" />
                     </div>
-                    <span className="text-[10px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium">{day.exercises.length}ej</span>
+                    <span className="text-[11px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium">{day.exercises.length}ej</span>
                     <button onClick={e => { e.stopPropagation(); copyDay(activeWeek, di) }} className="p-1 text-muted hover:text-accent opacity-0 group-hover/day:opacity-100 transition-all"><Copy className="w-3 h-3" /></button>
                     <button onClick={e => { e.stopPropagation(); deleteDay(activeWeek, di) }} className="p-1 text-muted hover:text-warn opacity-0 group-hover/day:opacity-100 transition-all"><Trash2 className="w-3 h-3" /></button>
                     {openDays[di] ? <ChevronUp className="w-3.5 h-3.5 text-muted flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" />}
@@ -407,10 +445,9 @@ export function TrainingPlanEditor({
 
                       {/* Cabecera tabla */}
                       {day.exercises.length > 0 && (
-                        <div className="grid gap-0 px-4 py-1.5 bg-bg-alt/30 border-b border-border/30"
-                          style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}>
-                          {['', 'EJERCICIO', 'SERIES', 'PESO / INT.', 'TIPO SERIE', 'REST', 'LOG', 'ACCIONES'].map((h, i) => (
-                            <p key={i} className="text-[9px] font-bold uppercase tracking-wider text-muted text-center first:text-left">{h}</p>
+                        <div className="plan-grid grid gap-0 px-4 py-1.5 bg-bg-alt/30 border-b border-border/30">
+                          {['', 'EJERCICIO', 'SERIES', 'PESO / INT.', 'REST', ''].map((h, i) => (
+                            <p key={i} className={`text-[11px] font-bold uppercase tracking-wider text-muted text-center first:text-left ${i === 4 ? 'hidden sm:block' : ''}`}>{h}</p>
                           ))}
                         </div>
                       )}
@@ -436,17 +473,16 @@ export function TrainingPlanEditor({
                               onDragEnd={() => setDragEx(null)}
                               className={`transition-colors ${isSelected ? 'bg-accent/4' : 'hover:bg-bg-alt/20'} ${dragEx?.di === di && dragEx?.ri === ri ? 'opacity-40' : ''} ${ex.supersetId ? 'border-l-2 border-warn' : ''}`}>
                               {ex.supersetId && (
-                                <p className="px-4 pt-1.5 text-[9px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
+                                <p className="px-4 pt-1.5 text-[11px] font-bold uppercase tracking-wider text-warn">🔗 Superserie — sin descanso entre ejercicios</p>
                               )}
-                              <div className="grid items-center gap-0 px-4 py-2 cursor-pointer"
-                                style={{ gridTemplateColumns: '20px 1fr 80px 140px 110px 90px 70px 80px' }}
+                              <div className="plan-grid grid items-center gap-0 px-4 py-2 cursor-pointer"
                                 onClick={() => setSelectedEx(isSelected ? null : { wi: activeWeek, di, ri })}>
 
                                 {/* Nº / asa de arrastre */}
                                 <div className="flex items-center justify-center cursor-grab active:cursor-grabbing" title="Arrastra para reordenar">
                                   {ex.isMain
                                     ? <span className="w-4 h-4 rounded-full bg-accent flex items-center justify-center text-white text-[8px] font-bold">{ri + 1}</span>
-                                    : <span className="text-[10px] text-muted font-bold">{ri + 1}</span>}
+                                    : <span className="text-[11px] text-muted font-bold">{ri + 1}</span>}
                                 </div>
 
                                 {/* Nombre */}
@@ -462,8 +498,23 @@ export function TrainingPlanEditor({
                                       className="flex-shrink-0 text-sm cursor-help">⚠️</span>
                                   )}
                                   {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-8 h-5 object-cover rounded flex-shrink-0" alt="" />}
+                                  {(() => {
+                                    const log = logs[`ex_w${activeWeek}_d${di}_r${ri}`]
+                                    const n = Object.keys(log?.sets || {}).length
+                                    return (<>
+                                      {n > 0 && <span className="flex-shrink-0 text-[11px] font-bold text-ok" title="Series registradas por el cliente">{n}×✓</span>}
+                                      {log?.substituteName && <span title={`Sustituido por: ${log.substituteName}`} className="flex-shrink-0 text-[11px] font-semibold text-warn">🔄</span>}
+                                    </>)
+                                  })()}
                                 </div>
 
+                                {ex.kind === 'run' && ex.run ? (
+                                  /* Carrera: un solo resumen legible en vez de series y kg (se edita en el panel) */
+                                  <div className="px-2 py-1.5 mx-1 text-xs font-bold text-accent bg-accent/5 border border-accent/20 rounded-lg text-center truncate"
+                                    style={{ gridColumn: 'span 2' }} title="Ejercicio de carrera — edítalo al desplegar">
+                                    🏃 {runLabel(ex.run)}
+                                  </div>
+                                ) : (<>
                                 {/* Series */}
                                 <input value={ex.sets}
                                   onChange={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { sets: e.target.value }) }}
@@ -480,21 +531,10 @@ export function TrainingPlanEditor({
                                   title="Puedes escribir un % (ej. 75%) y se calculará el peso real a partir del 1RM estimado del cliente"
                                   className="text-xs bg-bg border border-border rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 w-full mx-1"
                                 />
-
-                                {/* Tipo serie */}
-                                <div onClick={e => e.stopPropagation()} className="px-1">
-                                  <select value={seriesTypeId}
-                                    onChange={e => updateExercise(activeWeek, di, ri, { seriesType: e.target.value })}
-                                    className="w-full text-[10px] font-bold bg-bg border border-border rounded-lg px-1.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer"
-                                    title={seriesMeta?.desc}>
-                                    {seriesTypes.map(t => (
-                                      <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>
-                                    ))}
-                                  </select>
-                                </div>
+                                </>)}
 
                                 {/* Rest sets */}
-                                <div className="relative flex justify-center" onClick={e => e.stopPropagation()}>
+                                <div className="relative hidden sm:flex justify-center" onClick={e => e.stopPropagation()}>
                                   <button
                                     onClick={() => setRestPopup(isRestPopupOpen ? null : { wi: activeWeek, di, ri, field: 'restSets' })}
                                     className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-bold border transition-all w-full justify-center ${
@@ -510,43 +550,35 @@ export function TrainingPlanEditor({
                                   )}
                                 </div>
 
-                                {/* Log */}
-                                <div className="flex flex-col items-center justify-center gap-0.5">
-                                  {(() => {
-                                    const key = `ex_w${activeWeek}_d${di}_r${ri}`
-                                    const log = logs[key]
-                                    const sets = Object.values(log?.sets || {})
-                                    return sets.length > 0
-                                      ? <span className="text-[10px] font-bold text-ok">{sets.length}×✓</span>
-                                      : <span className="text-[10px] text-muted/40">—</span>
-                                  })()}
-                                  {logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName && (
-                                    <span title={`Sustituido por: ${logs[`ex_w${activeWeek}_d${di}_r${ri}`]?.substituteName}`}
-                                      className="text-[9px] font-semibold text-warn">🔄</span>
-                                  )}
-                                </div>
-
-                                {/* Acciones */}
-                                <div className="flex items-center justify-end gap-0.5">
-                                  <div className="flex flex-col gap-0 mr-0.5">
-                                    <button onClick={e => { e.stopPropagation(); if (ri > 0) moveExercise(di, ri, ri - 1) }} disabled={ri === 0}
-                                      className="p-0.5 text-muted hover:text-ink disabled:opacity-20 transition-colors leading-none"><ChevronUp className="w-3 h-3" /></button>
-                                    <button onClick={e => { e.stopPropagation(); if (ri < day.exercises.length - 1) moveExercise(di, ri, ri + 1) }} disabled={ri === day.exercises.length - 1}
-                                      className="p-0.5 text-muted hover:text-ink disabled:opacity-20 transition-colors leading-none"><ChevronDown className="w-3 h-3" /></button>
-                                  </div>
-                                  <button onClick={e => { e.stopPropagation(); toggleSuperset(activeWeek, di, ri) }}
-                                    title="Vincular en superserie con el siguiente ejercicio"
-                                    className={`p-1.5 rounded transition-colors ${ex.supersetId ? 'text-warn' : 'text-muted hover:text-warn'}`}>
-                                    <Link2 className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={e => { e.stopPropagation(); updateExercise(activeWeek, di, ri, { isMain: !ex.isMain }) }}
-                                    className={`p-1.5 rounded transition-colors ${ex.isMain ? 'text-accent' : 'text-muted hover:text-accent'}`}>
-                                    <Star className="w-3 h-3" />
-                                  </button>
-                                  <button onClick={e => { e.stopPropagation(); copyExercise(activeWeek, di, ri) }}
-                                    className="p-1.5 text-muted hover:text-accent rounded transition-colors"><Copy className="w-3 h-3" /></button>
-                                  <button onClick={e => { e.stopPropagation(); deleteExercise(activeWeek, di, ri) }}
-                                    className="p-1.5 text-muted hover:text-warn rounded transition-colors"><Trash2 className="w-3 h-3" /></button>
+                                {/* Acciones: lo habitual a un clic, el resto en el menú */}
+                                <div className="flex items-center justify-end" onClick={e => e.stopPropagation()}>
+                                  <ActionMenu title="Acciones del ejercicio">
+                                    <button onClick={() => { if (ri > 0) moveExercise(di, ri, ri - 1) }} disabled={ri === 0}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt disabled:opacity-30">
+                                      <ChevronUp className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Subir
+                                    </button>
+                                    <button onClick={() => { if (ri < day.exercises.length - 1) moveExercise(di, ri, ri + 1) }} disabled={ri === day.exercises.length - 1}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt disabled:opacity-30">
+                                      <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Bajar
+                                    </button>
+                                    <button onClick={() => toggleSuperset(activeWeek, di, ri)}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                                      <Link2 className={`w-3.5 h-3.5 flex-shrink-0 ${ex.supersetId ? 'text-warn' : 'text-muted'}`} /> {ex.supersetId ? 'Quitar superserie' : 'Superserie con el siguiente'}
+                                    </button>
+                                    <button onClick={() => updateExercise(activeWeek, di, ri, { isMain: !ex.isMain })}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                                      <Star className={`w-3.5 h-3.5 flex-shrink-0 ${ex.isMain ? 'text-accent' : 'text-muted'}`} /> {ex.isMain ? 'Quitar de principales' : 'Marcar como principal'}
+                                    </button>
+                                    <button onClick={() => copyExercise(activeWeek, di, ri)}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                                      <Copy className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Duplicar
+                                    </button>
+                                    <div className="h-px bg-border my-1" />
+                                    <button onClick={() => deleteExercise(activeWeek, di, ri)}
+                                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
+                                      <Trash2 className="w-3.5 h-3.5 flex-shrink-0" /> Eliminar
+                                    </button>
+                                  </ActionMenu>
                                 </div>
                               </div>
 
@@ -554,15 +586,27 @@ export function TrainingPlanEditor({
                               {isSelected && (
                                 <div className="mx-4 mb-2 rounded-xl border border-accent/20 bg-accent/3 overflow-hidden" onClick={e => e.stopPropagation()}>
 
+                                  {ex.kind === 'run' && ex.run && (
+                                    <RunEditor run={ex.run} onChange={patch => updateRun(activeWeek, di, ri, ex, patch)} />
+                                  )}
+
                                   {/* Tipo serie — info */}
-                                  <div className="px-4 py-2.5 border-b border-accent/10 bg-accent/5 flex items-center gap-3">
+                                  <div className="px-4 py-2.5 border-b border-accent/10 bg-accent/5 flex flex-wrap items-center gap-x-3 gap-y-2">
                                     <span className="text-base">{seriesMeta?.emoji}</span>
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-[140px]">
                                       <p className="text-xs font-bold text-accent">{seriesMeta?.label}</p>
-                                      <p className="text-[10px] text-muted leading-tight">{seriesMeta?.desc}</p>
+                                      <p className="text-[11px] text-muted leading-tight">{seriesMeta?.desc}</p>
                                     </div>
+                                    <select value={seriesTypeId}
+                                      onChange={e => updateExercise(activeWeek, di, ri, { seriesType: e.target.value })}
+                                      aria-label="Tipo de serie"
+                                      className="text-[11px] font-bold bg-card border border-accent/20 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer flex-shrink-0">
+                                      {seriesTypes.map(t => (
+                                        <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>
+                                      ))}
+                                    </select>
                                     <button onClick={() => setShowSeriesInfo(true)}
-                                      className="flex items-center gap-1 px-2 py-1 bg-white border border-accent/20 rounded-lg text-[10px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
+                                      className="flex items-center gap-1 px-2 py-1 bg-card border border-accent/20 rounded-lg text-[11px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
                                       <Info className="w-3 h-3" /> Saber más
                                     </button>
                                   </div>
@@ -590,13 +634,13 @@ export function TrainingPlanEditor({
                                         <div className="flex flex-wrap gap-1 pl-5">
                                           {TEMPO_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { tempo: p })}
-                                              className={`px-2 py-0.5 rounded-md text-[9px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all ${ex.tempo === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {p}
                                             </button>
                                           ))}
                                           {ex.tempo && (
                                             <button onClick={() => updateExercise(activeWeek, di, ri, { tempo: '' })}
-                                              className="px-2 py-0.5 rounded-md text-[9px] font-bold text-muted hover:text-warn">
+                                              className="px-2 py-0.5 rounded-md text-[11px] font-bold text-muted hover:text-warn">
                                               Quitar
                                             </button>
                                           )}
@@ -628,25 +672,25 @@ export function TrainingPlanEditor({
                                     <div className="p-3 space-y-3">
                                       <div className="flex items-center gap-1.5">
                                         <Timer className="w-3.5 h-3.5 text-accent" />
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Tiempos de descanso</p>
+                                        <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Tiempos de descanso</p>
                                       </div>
                                       <div className="space-y-1.5">
-                                        <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Entre series</p>
+                                        <p className="text-[11px] text-muted font-semibold uppercase tracking-wider">Entre series</p>
                                         <div className="flex flex-wrap gap-1">
                                           {REST_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { restSets: p })}
-                                              className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${restSets === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-all ${restSets === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {fmtRest(p)}
                                             </button>
                                           ))}
                                         </div>
                                       </div>
                                       <div className="space-y-1.5">
-                                        <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tras el ejercicio</p>
+                                        <p className="text-[11px] text-muted font-semibold uppercase tracking-wider">Tras el ejercicio</p>
                                         <div className="flex flex-wrap gap-1">
                                           {REST_PRESETS.map(p => (
                                             <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { restAfter: p })}
-                                              className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${restAfter === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              className={`px-2 py-1 rounded-md text-[11px] font-bold border transition-all ${restAfter === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
                                               {fmtRest(p)}
                                             </button>
                                           ))}
@@ -661,13 +705,13 @@ export function TrainingPlanEditor({
                                             : 'bg-ok/5 border-ok/20'
                                         }`}>
                                         <div>
-                                          <p className="text-[10px] font-bold text-ink">Mostrar timer al cliente</p>
-                                          <p className="text-[9px] text-muted">
+                                          <p className="text-[11px] font-bold text-ink">Mostrar timer al cliente</p>
+                                          <p className="text-[11px] text-muted">
                                             {ex.hideRest ? 'Oculto — el cliente no verá la cuenta atrás' : 'Visible — el cliente verá el descanso'}
                                           </p>
                                         </div>
                                         <div className={`w-8 h-5 rounded-full flex items-center px-0.5 transition-all flex-shrink-0 ${ex.hideRest ? 'bg-warn/40' : 'bg-ok'}`}>
-                                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${ex.hideRest ? 'translate-x-0' : 'translate-x-3'}`} />
+                                          <div className={`w-4 h-4 bg-card rounded-full shadow transition-all ${ex.hideRest ? 'translate-x-0' : 'translate-x-3'}`} />
                                         </div>
                                       </div>
                                     </div>
@@ -679,10 +723,15 @@ export function TrainingPlanEditor({
                         })}
                       </div>
 
-                      <div className="px-4 py-2">
+                      <div className="px-4 py-2 flex gap-2">
                         <button onClick={() => setPickerFor({ dayIdx: di })}
-                          className="w-full border border-dashed border-border rounded-lg py-2 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
+                          className="flex-1 border border-dashed border-border rounded-lg py-2 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
                           <Plus className="w-3.5 h-3.5" /> Añadir ejercicio
+                        </button>
+                        <button onClick={() => addRunExercise(activeWeek, di)}
+                          title="Tiradas por metros o test de tiempo, con registro de tiempo y ritmo"
+                          className="border border-dashed border-border rounded-lg py-2 px-4 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
+                          🏃 Añadir carrera
                         </button>
                       </div>
 
@@ -715,8 +764,8 @@ export function TrainingPlanEditor({
       </div>
 
       {/* Panel derecho analytics */}
-      <div className={`flex-shrink-0 transition-all duration-200 overflow-hidden ${selEx ? 'w-72' : 'w-0'}`}>
-        {selEx && selectedEx && (
+      <div className={`flex-shrink-0 transition-all duration-200 overflow-hidden ${wide && selEx ? 'w-72' : 'w-0'}`}>
+        {wide && selEx && selectedEx && (
           <ExerciseAnalyticsPanel
             ex={selEx} libEx={selLibEx} logs={logs} plan={plan}
             exName={selEx.name} clientName={clientName}
@@ -726,7 +775,18 @@ export function TrainingPlanEditor({
         )}
       </div>
 
-      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl">
+      {!wide && selEx && selectedEx && (
+        <Modal open onClose={() => setSelectedEx(null)} variant="drawer" bare ariaLabel={`Análisis de ${selEx.name}`}>
+          <ExerciseAnalyticsPanel
+            ex={selEx} libEx={selLibEx} logs={logs} plan={plan}
+            exName={selEx.name} clientName={clientName}
+            seriesTypes={seriesTypes}
+            onClose={() => setSelectedEx(null)}
+          />
+        </Modal>
+      )}
+
+      <Modal open={!!pickerFor} onClose={() => setPickerFor(null)} title="Añadir ejercicio" maxWidth="max-w-2xl" variant="drawer">
         {pickerFor && (
           <ExercisePicker library={library}
             onSelect={ex => addExercise(activeWeek, pickerFor.dayIdx, ex)}
@@ -734,7 +794,7 @@ export function TrainingPlanEditor({
         )}
       </Modal>
 
-      <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar plan de otro cliente">
+      <Modal open={showImport} onClose={() => setShowImport(false)} title="Importar plan de otro cliente" variant="drawer">
         <div className="space-y-2">
           <p className="text-sm text-muted mb-3">Copia el plan de otro cliente:</p>
           {allClients.map(c => (
@@ -747,7 +807,7 @@ export function TrainingPlanEditor({
         </div>
       </Modal>
 
-      <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización">
+      <Modal open={showBlockPicker} onClose={() => setShowBlockPicker(false)} title="Aplicar bloque de periodización" variant="drawer">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm text-muted flex-1">
@@ -771,7 +831,7 @@ export function TrainingPlanEditor({
         </div>
       </Modal>
 
-      <Modal open={showBlockManager} onClose={() => setShowBlockManager(false)} title="Gestionar bloques de periodización">
+      <Modal open={showBlockManager} onClose={() => setShowBlockManager(false)} title="Gestionar bloques de periodización" variant="drawer">
         <BlockManager blocks={periodizationBlocks} onSave={savePeriodizationBlocks} onClose={() => setShowBlockManager(false)} />
       </Modal>
 

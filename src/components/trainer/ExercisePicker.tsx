@@ -5,6 +5,7 @@ import { EXERCISE_CATEGORIES } from '../../lib/constants'
 import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 import { useLibraryMuscleMap } from './progreso-tab/helpers'
 import { usePainWarning } from '../../lib/painWarning'
+import { rankByQuery } from '../../lib/exerciseSearch'
 
 function getYTId(url: string) {
   const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
@@ -25,7 +26,7 @@ function EspBadge({ esp, small }: { esp: string; small?: boolean }) {
   const color = ESP_COLORS[esp] || { bg: 'bg-bg-alt', text: 'text-muted', border: 'border-border' }
   if (!info) return null
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${color.bg} ${color.text} ${color.border} ${small ? 'text-[9px]' : 'text-[10px]'}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 font-semibold ${color.bg} ${color.text} ${color.border} ${small ? 'text-[11px]' : 'text-[11px]'}`}>
       {info.emoji} {small ? '' : info.label}
     </span>
   )
@@ -41,7 +42,7 @@ function ExerciseAlternatives({ selected, library, onPick }: { selected: Library
 
   return (
     <div className="mt-2 p-3 bg-bg rounded-xl border border-dashed border-border flex-shrink-0">
-      <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">
+      <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">
         Alternativas · {selected.category}
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -52,7 +53,7 @@ function ExerciseAlternatives({ selected, library, onPick }: { selected: Library
           </button>
         ))}
       </div>
-      <p className="text-[9px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
+      <p className="text-[11px] text-muted mt-1.5">Útil si al cliente le falta el equipo para "{selected.name}"</p>
     </div>
   )
 }
@@ -101,9 +102,9 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
     } else if (espFilter) {
       list = list.filter(e => e.especialidades?.includes(espFilter))
     }
-    if (q) list = list.filter(e => e.name.toLowerCase().includes(q.toLowerCase()))
-    return list.slice(0, 25)
+    return rankByQuery(list, q)
   }, [library, q, catFilter, espFilter, onlyClientEsp, clientEspecialidad])
+  const visible = filtered.slice(0, 60)
 
   const handleSelect = (ex: LibraryExercise) => {
     if (selected?.id === ex.id) { setSelected(null); setSelectedVideoIdx([]); return }
@@ -191,7 +192,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           <div className="flex gap-1 flex-wrap mb-2 flex-shrink-0">
             {cats.map(cat => (
               <button key={cat} onClick={() => { setCatFilter(cat); localStorage.setItem(LAST_FILTER_KEY, cat) }}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
                   catFilter === cat ? 'bg-ink text-white border-ink' : 'bg-bg border-border text-muted hover:border-muted'
                 }`}>{cat}</button>
             ))}
@@ -200,14 +201,14 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           {!onlyClientEsp && (
             <div className="flex gap-1 flex-wrap mb-2 flex-shrink-0">
               <button onClick={() => setEspFilter('')}
-                className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border transition-all ${
+                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all ${
                   espFilter === '' ? 'bg-ink text-white border-ink' : 'border-border text-muted'
                 }`}>
                 Todas {library.length > 0 && `(${library.length})`}
               </button>
               {ESPECIALIDADES.filter(e => espCounts[e.value]).map(e => (
                 <button key={e.value} onClick={() => setEspFilter(espFilter === e.value ? '' : e.value)}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold border transition-all ${
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all ${
                     espFilter === e.value
                       ? `${ESP_COLORS[e.value]?.bg} ${ESP_COLORS[e.value]?.text} ${ESP_COLORS[e.value]?.border} border-2`
                       : 'border-border text-muted'
@@ -219,7 +220,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           )}
 
           <div className="flex-1 overflow-y-auto space-y-1 min-h-0">
-            {filtered.map(ex => {
+            {visible.map(ex => {
               const isSelected = selected?.id === ex.id
               const mainEsp = ex.especialidades?.[0]
               const color = mainEsp ? ESP_COLORS[mainEsp] : null
@@ -243,15 +244,15 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                       )}
                     </div>
                     <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                      {ex.category && <span className="text-[9px] text-muted">{ex.category}</span>}
+                      {ex.category && <span className="text-[11px] text-muted">{ex.category}</span>}
                       {(!ex.especialidades || ex.especialidades.length === 0) && (
-                        <span className="text-[9px] text-muted/60 italic">genérico</span>
+                        <span className="text-[11px] text-muted/60 italic">genérico</span>
                       )}
                       {ex.especialidades?.slice(0, 2).map(esp => <EspBadge key={esp} esp={esp} small />)}
                     </div>
                   </div>
                   {(ex.videos?.length || 0) > 0 && (
-                    <span className="text-[10px] text-accent flex items-center gap-1 flex-shrink-0">
+                    <span className="text-[11px] text-accent flex items-center gap-1 flex-shrink-0">
                       <Video className="w-3 h-3" />{ex.videos!.length}
                     </span>
                   )}
@@ -260,6 +261,11 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                 </button>
               )
             })}
+            {filtered.length > visible.length && (
+              <p className="py-2 text-center text-[11px] text-muted">
+                Mostrando {visible.length} de {filtered.length} — escribe para afinar la búsqueda
+              </p>
+            )}
             {filtered.length === 0 && (
               <div className="py-6 text-center text-muted text-sm">
                 Sin resultados.
@@ -274,11 +280,11 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
           {selected && (selected.videos?.length || 0) > 0 && (
             <div className="mt-3 p-3 bg-bg rounded-xl border border-border space-y-2 flex-shrink-0 max-h-48 overflow-y-auto">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-muted font-semibold">
+                <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">
                   Vídeos — selecciona cuáles añadir
                 </p>
                 {clientEspecialidad && (
-                  <span className="text-[9px] text-accent">
+                  <span className="text-[11px] text-accent">
                     Auto para {ESPECIALIDADES.find(e => e.value === clientEspecialidad)?.label}
                   </span>
                 )}
@@ -314,13 +320,13 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
                               const info = ESPECIALIDADES.find(e => e.value === esp)
                               const c = ESP_COLORS[esp] || { bg: 'bg-bg-alt', text: 'text-muted', border: 'border-border' }
                               return info ? (
-                                <span key={esp} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${c.bg} ${c.text} ${c.border}`}>
+                                <span key={esp} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${c.bg} ${c.text} ${c.border}`}>
                                   {info.emoji} {info.label}
                                 </span>
                               ) : null
                             })
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-bg-alt border border-border text-muted">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-bg-alt border border-border text-muted">
                               🌐 Genérico
                             </span>
                           )}
@@ -352,7 +358,7 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
 
           {selected?.description && (
             <div className="mt-2 p-3 bg-bg rounded-xl border border-border flex-shrink-0">
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-1">Descripción técnica</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-1">Descripción técnica</p>
               <p className="text-xs text-ink/70 leading-relaxed line-clamp-3">{selected.description}</p>
             </div>
           )}

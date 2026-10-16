@@ -1,17 +1,18 @@
 import { useMemo } from 'react'
 import { TrainingLogs } from '../../../types'
 import { getBadgeProgress } from '../../../lib/badges'
+import { localDateKey } from '../../../lib/dates'
 
 export function RachaStats({ logs }: { logs: TrainingLogs }) {
   const stats = useMemo(() => {
     const dates = [...new Set(Object.values(logs).filter((l: any) => l.done && l.dateDone).map((l: any) => l.dateDone as string))].sort()
     if (!dates.length) return null
     let rachaActual = 0
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = localDateKey()
     const checkDate = new Date()
     let checking = true
     while (checking) {
-      const ds = checkDate.toISOString().split('T')[0]
+      const ds = localDateKey(checkDate)
       if (dates.includes(ds)) { rachaActual++; checkDate.setDate(checkDate.getDate() - 1) }
       else if (ds === hoy) { checkDate.setDate(checkDate.getDate() - 1) }
       else checking = false
@@ -51,7 +52,7 @@ export function RachaStats({ logs }: { logs: TrainingLogs }) {
           <div key={label} className="bg-bg rounded-xl p-4 text-center">
             <p className="text-2xl mb-1">{icon}</p>
             <p className={`text-2xl font-serif font-bold ${color}`}>{value}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{label}</p>
           </div>
         ))}
       </div>

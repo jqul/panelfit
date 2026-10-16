@@ -6,6 +6,9 @@ import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from '../lib/demo-data'
+import { localDateKey } from '../lib/dates'
+import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
+import { loadProgramTemplates } from '../lib/programTemplates'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -68,10 +71,6 @@ function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number
   return days >= AT_RISK_INACTIVE_DAYS
 }
 
-function toLocalISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
   if (!fechaInicio || !weeksLen) return {}
   const start = new Date(fechaInicio + 'T00:00:00')
@@ -79,7 +78,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const daysLeft = Math.round((end.getTime() - today.getTime()) / 86400000)
   return {
-    planEndDate: toLocalISODate(end),
+    planEndDate: localDateKey(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
   }
 }
@@ -95,21 +94,6 @@ const OBJETIVO_TO_TIPO: Record<string, string> = {
   perdida_grasa: 'Pérdida de grasa',
   resistencia: 'Resistencia',
   general: 'General',
-}
-
-function programWeeksToPlanWeeks(weeks: any[]) {
-  const result = (weeks || []).map((w: any) => ({
-    label: w.label,
-    rpe: '',
-    isCurrent: false,
-    days: (w.days || []).map((d: any) => ({
-      title: d.tasks?.find((t: any) => t.type === 'workout')?.title || 'Día',
-      focus: d.tasks?.filter((t: any) => t.type !== 'workout').map((t: any) => t.title).join(', ') || '',
-      exercises: [],
-    }))
-  }))
-  if (result.length > 0) result[0].isCurrent = true
-  return result
 }
 
 interface Options {
@@ -129,7 +113,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     if (demoClients) {
       const lm = demoLogsMap || {}
       setLogsMap(lm)
-      const hoy = new Date().toISOString().split('T')[0]
+      const hoy = localDateKey()
       const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
       const jumpTestNames: Record<string, string> = {}
       DEMO_TEST_CATALOG.forEach(t => { if (isJumpTest(t.categoria, t.nombre)) jumpTestNames[t.id] = t.nombre })
@@ -176,9 +160,10 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       genero: (data || [])[i]?.genero || null,
       fechanacimiento: (data || [])[i]?.fechanacimiento || null,
       label_ids: (data || [])[i]?.label_ids || [],
+      main_goal: (data || [])[i]?.main_goal || undefined,
     }))
 
-    const hoy = new Date().toISOString().split('T')[0]
+    const hoy = localDateKey()
     const haceUnaS = new Date()
     haceUnaS.setDate(haceUnaS.getDate() - 7)
 
@@ -298,11 +283,15 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       .eq('trainer_id', trainerId).ilike('tipo', tipo).order('created_at', { ascending: false }).limit(1)
     const prog = progs?.[0]
     if (!prog) return
-    const weeks = programWeeksToPlanWeeks(prog.weeks)
+    // Cliente nuevo: no hay plan que proteger, así que si falla la lectura de los workouts se asigna
+    // igualmente la estructura del programa (días sin ejercicios) y se avisa.
+    const templates = await loadProgramTemplates(trainerId, workoutTemplateIds(prog.weeks))
+    const { weeks, missing } = programToPlanWeeks(prog.weeks, templates ?? {})
+    if (templates === null || missing.length) toast('El programa se asignó, pero algunos de sus workouts no se pudieron copiar: revisa el plan del cliente', 'warn')
     const newPlan = {
       clientId, type: prog.tipo, restMain: 180, restAcc: 90, restWarn: 30,
       weeks, programId: prog.id, programName: prog.name,
-      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaInicio: localDateKey(),
     }
     const { error: planError } = await supabase.from('planes')
       .upsert({ clientId, plan: { P: newPlan }, updatedAt: Date.now() }, { onConflict: 'clientId' })

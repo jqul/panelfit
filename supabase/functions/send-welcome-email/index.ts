@@ -1,10 +1,30 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// Evita inyección HTML si alguien registra un email/nombre con etiquetas.
+function esc(s: string): string {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
+}
 
 serve(async (req) => {
   // Supabase database webhooks send a POST with the record payload
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  // Solo el trigger notify_welcome_email puede disparar esto — el secreto
+  // vive únicamente en la base de datos (tabla internal_webhook_secrets),
+  // nunca en el código fuente.
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  const auth = req.headers.get('Authorization') || ''
+  const token = auth.replace(/^Bearer\s+/i, '')
+  const { data: secretRow } = await supabase
+    .from('internal_webhook_secrets').select('secret').eq('name', 'welcome_email').maybeSingle()
+  if (!secretRow?.secret || token !== secretRow.secret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+  }
 
   let body: any
   try {
@@ -15,8 +35,8 @@ serve(async (req) => {
 
   // Supabase webhook payload: { type: 'INSERT', record: { ... } }
   const record = body.record ?? body
-  const email: string = record.email
-  const displayName: string = record.displayName || record.email?.split('@')[0] || 'Entrenador'
+  const email: string = esc(record.email)
+  const displayName: string = esc(record.displayName || record.email?.split('@')[0] || 'Entrenador')
 
   if (!email) return new Response('No email', { status: 400 })
 

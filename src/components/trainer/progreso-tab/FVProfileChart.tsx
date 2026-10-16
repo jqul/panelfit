@@ -7,13 +7,14 @@ import { fitForceVelocityProfile, relativePower } from '../../../lib/forceVeloci
 import { EmptyState } from './helpers'
 import { JumpVideoAnalyzer } from './JumpVideoAnalyzer'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 function FVTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null
   const p = payload[0]?.payload
   if (!p) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs">
       <p className="font-bold">{p.force} N · {p.velocity} m/s</p>
       {p.loadKg !== undefined && <p className="text-muted">Carga: {p.loadKg}kg</p>}
     </div>
@@ -28,7 +29,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
   const [bodyweightKg, setBodyweightKg] = useState('')
   const [pushoffCm, setPushoffCm] = useState('40')
   const [heightCm, setHeightCm] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(localDateKey())
   const [notes, setNotes] = useState('')
 
   const byDate = useMemo(() => {
@@ -69,7 +70,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
     setLoadKg('0')
     setBodyweightKg(String(client.weight || trials[0]?.bodyweight_kg || ''))
     setPushoffCm(trials[0] ? String(Math.round(trials[0].pushoff_distance_m * 100)) : '40')
-    setHeightCm(''); setDate(new Date().toISOString().slice(0, 10)); setNotes('')
+    setHeightCm(''); setDate(localDateKey()); setNotes('')
   }
 
   const confirmAdd = async () => {
@@ -113,7 +114,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
       {currentTrials.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-card border border-border rounded-2xl p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Perfil actual ({new Date(latestDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Perfil actual ({new Date(latestDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })})</p>
             {currentProfile.F0 !== null ? (
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between"><span className="text-muted">F0 (fuerza máx.)</span><span className="font-bold">{currentProfile.F0} N</span></div>
@@ -126,7 +127,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             )}
           </div>
           <div className="bg-card border border-border rounded-2xl p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Gauge className="w-3 h-3" /> Saltos de esta sesión</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2 flex items-center gap-1"><Gauge className="w-3 h-3" /> Saltos de esta sesión</p>
             <div className="space-y-1 text-xs">
               {currentTrials.map(t => (
                 <div key={t.id} className="flex justify-between">
@@ -148,9 +149,9 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
-                <XAxis dataKey="velocity" type="number" domain={[0, Math.ceil(vMax)]} tick={{ fontSize: 9, fill: '#8a8278' }}
-                  label={{ value: 'Velocidad (m/s)', position: 'insideBottom', offset: -2, fontSize: 9, fill: '#8a8278' }} />
-                <YAxis dataKey="force" type="number" domain={[0, Math.ceil(fMax / 100) * 100]} tick={{ fontSize: 9, fill: '#8a8278' }} />
+                <XAxis dataKey="velocity" type="number" domain={[0, Math.ceil(vMax)]} tick={{ fontSize: 11, fill: '#8a8278' }}
+                  label={{ value: 'Velocidad (m/s)', position: 'insideBottom', offset: -2, fontSize: 11, fill: '#8a8278' }} />
+                <YAxis dataKey="force" type="number" domain={[0, Math.ceil(fMax / 100) * 100]} tick={{ fontSize: 11, fill: '#8a8278' }} />
                 <Tooltip content={<FVTooltip />} />
                 {linePoints.length > 0 && <Line data={linePoints} dataKey="force" stroke="#6e5438" strokeWidth={2} dot={false} isAnimationActive={false} />}
                 <Scatter data={currentPoints} dataKey="force" fill="#e07b54" />
@@ -169,8 +170,8 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={sessionTrend.map(s => ({ ...s, fecha: new Date(s.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) }))} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 9, fill: '#8a8278' }} />
-                <YAxis tick={{ fontSize: 9, fill: '#8a8278' }} />
+                <XAxis dataKey="fecha" tick={{ fontSize: 11, fill: '#8a8278' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#8a8278' }} />
                 <Tooltip formatter={(v: number) => [`${v} W/kg`, 'Pmax relativa']} />
                 <Line type="monotone" dataKey="pmaxKg" stroke="#6e5438" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
               </ComposedChart>
@@ -197,32 +198,32 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
           )}
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <span className="text-[9px] text-muted uppercase tracking-wider">Carga externa (kg)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Carga externa (kg)</span>
               <input type="number" step="0.5" value={loadKg} onChange={e => setLoadKg(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[9px] text-muted uppercase tracking-wider">Altura de salto (cm)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Altura de salto (cm)</span>
               <input type="number" step="0.1" value={heightCm} onChange={e => setHeightCm(e.target.value)} placeholder="ej. 32"
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[9px] text-muted uppercase tracking-wider">Peso corporal hoy (kg)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider">Peso corporal hoy (kg)</span>
               <input type="number" step="0.1" value={bodyweightKg} onChange={e => setBodyweightKg(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
             <label className="block">
-              <span className="text-[9px] text-muted uppercase tracking-wider" title="Distancia que las piernas se extienden durante el salto — mide desde la posición más baja de la sentadilla hasta la extensión completa">Distancia de empuje (cm)</span>
+              <span className="text-[11px] text-muted uppercase tracking-wider" title="Distancia que las piernas se extienden durante el salto — mide desde la posición más baja de la sentadilla hasta la extensión completa">Distancia de empuje (cm)</span>
               <input type="number" step="0.5" value={pushoffCm} onChange={e => setPushoffCm(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+                className="w-full mt-0.5 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             </label>
           </div>
-          <p className="text-[9px] text-muted -mt-1">Distancia de empuje: mide con cinta métrica desde la sentadilla más baja del salto hasta la extensión completa. Usa la misma en todas las cargas del día.</p>
+          <p className="text-[11px] text-muted -mt-1">Distancia de empuje: mide con cinta métrica desde la sentadilla más baja del salto hasta la extensión completa. Usa la misma en todas las cargas del día.</p>
           <div className="flex gap-2">
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+              className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
             <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notas (opcional)"
-              className="flex-1 px-2.5 py-1.5 bg-white border border-border rounded-lg text-xs outline-none" />
+              className="flex-1 px-2.5 py-1.5 bg-card border border-border rounded-lg text-xs outline-none" />
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowForm(false)} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>
@@ -238,7 +239,7 @@ export function FVProfileChart({ client, trainerId }: { client: ClientData; trai
 
       {trials.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Historial</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Historial</p>
           {trials.map(t => (
             <div key={t.id} className="flex items-center gap-2 text-xs text-muted">
               <span className="flex-1">{new Date(t.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>

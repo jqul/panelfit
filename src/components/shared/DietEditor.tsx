@@ -64,7 +64,7 @@ interface DietTemplate {
 function MacroPill({ label, value, unit, color, onChange }: { label: string; value: number; unit: string; color: string; onChange: (v: number) => void }) {
   return (
     <div className={`flex-1 bg-card border rounded-2xl p-4 ${color}`}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-2">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-widest text-muted mb-2">{label}</p>
       <div className="flex items-baseline gap-1">
         <input type="number" min={0} max={9999} value={value} onChange={e => onChange(parseInt(e.target.value) || 0)}
           className="w-full text-2xl font-serif font-bold bg-transparent outline-none border-none p-0" />
@@ -84,29 +84,29 @@ function MealCard({ meal, index, onChange, onDelete }: { meal: Meal; index: numb
         <div className="flex-1 grid grid-cols-3 gap-3 min-w-0">
           <input type="time" value={meal.time} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, time: e.target.value })}
             className="bg-transparent text-sm font-semibold outline-none border-b border-transparent focus:border-accent" />
-          <input type="text" placeholder="Nombre" value={meal.name} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, name: e.target.value })}
+          <input type="text" placeholder="Nombre" aria-label="Nombre de la comida" value={meal.name} onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, name: e.target.value })}
             className="bg-transparent text-sm font-semibold outline-none border-b border-transparent focus:border-accent" />
           <div className="flex items-center gap-1">
-            <input type="number" min={0} value={meal.kcal || ''} placeholder="0" onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, kcal: parseInt(e.target.value) || 0 })}
+            <input type="number" min={0} value={meal.kcal || ''} placeholder="0" aria-label="Calorías de la comida" onClick={e => e.stopPropagation()} onChange={e => onChange({ ...meal, kcal: parseInt(e.target.value) || 0 })}
               className="w-20 bg-transparent text-sm text-right outline-none border-b border-transparent focus:border-accent" />
             <span className="text-xs text-muted">kcal</span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button onClick={e => { e.stopPropagation(); onDelete() }} className="p-1.5 rounded-lg text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={e => { e.stopPropagation(); onDelete() }} aria-label="Eliminar comida" className="p-1.5 rounded-lg text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5" /></button>
           {open ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
         </div>
       </div>
       {open && (
         <div className="px-4 pb-4 space-y-2 border-t border-border">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-muted pt-3 mb-2">Alimentos</p>
+          <p className="text-[11px] uppercase tracking-widest font-bold text-muted pt-3 mb-2">Alimentos</p>
           {meal.items.map((item, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="text-muted text-xs w-4 flex-shrink-0">{i + 1}.</span>
-              <input type="text" placeholder="Ej: Avena 60g..." value={item} onChange={e => updateItem(i, e.target.value)}
+              <input type="text" placeholder="Ej: Avena 60g..." aria-label={`Alimento ${i + 1}`} value={item} onChange={e => updateItem(i, e.target.value)}
                 className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
               {meal.items.length > 1 && (
-                <button onClick={() => onChange({ ...meal, items: meal.items.filter((_, idx) => idx !== i) })} className="p-1.5 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => onChange({ ...meal, items: meal.items.filter((_, idx) => idx !== i) })} aria-label="Eliminar alimento" className="p-1.5 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
               )}
             </div>
           ))}
@@ -257,7 +257,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[{label:'Calorías',value:diet.kcal,unit:'kcal',color:'border-accent/20'},{label:'Proteína',value:diet.protein,unit:'g',color:'border-ok/20'},{label:'Carbos',value:diet.carbs,unit:'g',color:'border-blue-200'},{label:'Grasas',value:diet.fats,unit:'g',color:'border-amber-200'}].map(m => (
             <div key={m.label} className={`bg-card border ${m.color} rounded-2xl p-4 text-center`}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted mb-1">{m.label}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted mb-1">{m.label}</p>
               <p className="text-2xl font-serif font-bold">{m.value}</p>
               <p className="text-xs text-muted">{m.unit}</p>
             </div>
@@ -294,10 +294,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         {diet.showSupplements && (diet.supplements?.filter(s => s.visible).length ?? 0) > 0 && (
           <div className="bg-card border border-border rounded-2xl p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Suplementación recomendada</p>
-            <div className="space-y-2">{(diet.supplements || []).filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[10px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
+            <div className="space-y-2">{(diet.supplements || []).filter(s => s.visible).map((s, i) => <div key={i} className="p-2.5 bg-bg rounded-xl"><p className="text-xs font-semibold">{s.name}</p><p className="text-[11px] text-muted">{s.dosis} · {s.timing}</p></div>)}</div>
           </div>
         )}
-        {diet.advice && <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5"><p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p><p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p></div>}
+        {diet.advice && <div className="bg-accent/5 border border-accent/20 rounded-2xl p-5"><p className="text-[11px] uppercase tracking-widest font-bold text-accent mb-2">Consejo del entrenador</p><p className="text-sm text-ink leading-relaxed italic">"{diet.advice}"</p></div>}
       </div>
     )
   }
@@ -315,7 +315,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
         <div className="flex gap-2">
           <button onClick={() => setShowTemplates(!showTemplates)}
             className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-sm font-semibold transition-all ${showTemplates ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
+            📋 Plantillas {savedTemplates.length > 0 && <span className="bg-accent text-white text-[11px] rounded-full w-4 h-4 flex items-center justify-center">{savedTemplates.length}</span>}
           </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={importing}
             className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm font-semibold text-muted hover:border-accent disabled:opacity-50">
@@ -339,15 +339,15 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           {showSaveTemplate && (
             <div className="flex gap-2 items-center bg-bg border border-border rounded-xl p-3">
               <input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()} placeholder="Nombre de la plantilla..."
+                onKeyDown={e => e.key === 'Enter' && saveAsTemplate()} placeholder="Nombre de la plantilla..." aria-label="Nombre de la plantilla"
                 className="flex-1 bg-transparent text-sm outline-none" />
               <button onClick={saveAsTemplate} disabled={!templateName.trim()} className="px-3 py-1.5 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">Guardar</button>
-              <button onClick={() => setShowSaveTemplate(false)} className="text-muted hover:text-ink"><X className="w-4 h-4" /></button>
+              <button onClick={() => setShowSaveTemplate(false)} aria-label="Cancelar" className="text-muted hover:text-ink"><X className="w-4 h-4" /></button>
             </div>
           )}
           {savedTemplates.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Mis plantillas</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Mis plantillas</p>
               <div className="grid grid-cols-2 gap-2">
                 {savedTemplates.map(tpl => (
                   <div key={tpl.id} className="bg-bg border border-border rounded-xl p-3 flex items-start justify-between gap-2 hover:border-accent transition-all">
@@ -355,14 +355,14 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                       <p className="text-sm font-semibold">{tpl.name}</p>
                       <p className="text-xs text-muted">{(tpl.diet.meals || []).length} comidas · {tpl.diet.kcal || 0} kcal</p>
                     </button>
-                    <button onClick={() => deleteTemplate(tpl.id)} className="text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteTemplate(tpl.id)} aria-label="Eliminar plantilla" className="text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
               </div>
             </div>
           )}
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Plantillas base</p>
             <div className="grid grid-cols-3 gap-2">
               {DIET_TEMPLATES.map(tpl => (
                 <button key={tpl.name} onClick={() => applyTemplate({ ...tpl.diet, meals: tpl.diet.meals || [] } as Partial<DietPlan>, tpl.name)}
@@ -373,19 +373,19 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-warn">⚠️ Aplicar sobreescribirá el plan actual</p>
+          <p className="text-[11px] text-warn">⚠️ Aplicar sobreescribirá el plan actual</p>
         </div>
       )}
 
       <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-3">Objetivos diarios</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted mb-3">Objetivos diarios</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MacroPill label="Calorías" value={diet.kcal} unit="kcal" color="border-accent/20" onChange={v => updateDiet({ kcal: v })} />
           <MacroPill label="Proteína" value={diet.protein} unit="g" color="border-ok/20" onChange={v => updateDiet({ protein: v })} />
           <MacroPill label="Carbos" value={diet.carbs} unit="g" color="border-blue-200" onChange={v => updateDiet({ carbs: v })} />
           <MacroPill label="Grasas" value={diet.fats} unit="g" color="border-amber-200" onChange={v => updateDiet({ fats: v })} />
         </div>
-        {syncedMacros && <p className="text-[10px] text-muted mt-2">↕ Sincronizado con la pestaña Macros</p>}
+        {syncedMacros && <p className="text-[11px] text-muted mt-2">↕ Sincronizado con la pestaña Macros</p>}
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -405,10 +405,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
                 <input type="number" min={0} max={100} value={m.pct} onChange={e => { const d=[...dist]; d[i]={...d[i],pct:Number(e.target.value)}; updateDiet({mealDistribution:d}) }} className="w-16 text-center px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" />
                 <span className="text-xs text-muted">%</span>
                 <span className="text-xs text-muted w-16 text-right">{diet.kcal > 0 ? Math.round(diet.kcal * m.pct / 100) : 0} kcal</span>
-                <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => updateDiet({ mealDistribution: dist.filter((_, idx) => idx !== i) })} aria-label="Eliminar franja horaria" className="p-1 text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
-            <p className="text-[10px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}%</p>
+            <p className="text-[11px] text-muted">Total: {dist.reduce((a, d) => a + d.pct, 0)}%</p>
           </div>
         )}
       </div>
@@ -419,9 +419,9 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
           <div className="flex items-center gap-3">
             {openSups && <button onClick={e => { e.stopPropagation(); updateDiet({ supplements: [...sups, { name: 'Nuevo suplemento', dosis: '', timing: '', visible: true }] }) }} className="text-xs text-accent hover:underline">+ Añadir</button>}
             <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-              <span className="text-[10px] text-muted">Mostrar cliente</span>
+              <span className="text-[11px] text-muted">Mostrar cliente</span>
               <div className={`w-8 h-5 rounded-full flex items-center px-0.5 cursor-pointer transition-all ${diet.showSupplements ? 'bg-ok' : 'bg-border'}`} onClick={() => updateDiet({ showSupplements: !diet.showSupplements })}>
-                <div className={`w-4 h-4 bg-white rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
+                <div className={`w-4 h-4 bg-card rounded-full shadow transition-all ${diet.showSupplements ? 'translate-x-3' : 'translate-x-0'}`} />
               </div>
             </div>
             {openSups ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
@@ -432,13 +432,14 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
             {sups.map((s, i) => (
               <div key={i} className="flex items-center gap-2">
                 <button onClick={() => { const ss=[...sups]; ss[i]={...ss[i],visible:!ss[i].visible}; updateDiet({supplements:ss}) }}
+                  aria-label={s.visible ? 'Ocultar al cliente' : 'Mostrar al cliente'}
                   className={`p-1.5 rounded-lg flex-shrink-0 ${s.visible ? 'text-ok bg-ok/10' : 'text-muted bg-bg-alt'}`}>
                   {s.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
-                <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" />
-                <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" />
-                <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" />
-                <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+                <input value={s.name} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],name:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Nombre" aria-label="Nombre del suplemento" />
+                <input value={s.dosis} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],dosis:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Dosis" aria-label="Dosis del suplemento" />
+                <input value={s.timing} onChange={e => { const ss=[...sups]; ss[i]={...ss[i],timing:e.target.value}; updateDiet({supplements:ss}) }} className="flex-1 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none" placeholder="Timing" aria-label="Momento de toma del suplemento" />
+                <button onClick={() => updateDiet({ supplements: sups.filter((_, idx) => idx !== i) })} aria-label="Eliminar suplemento" className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
               </div>
             ))}
           </div>
@@ -446,7 +447,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
       </div>
 
       <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted">Comidas del día</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted">Comidas del día</p>
         {diet.meals.length === 0 && <div className="bg-card border-2 border-dashed border-border rounded-2xl p-10 text-center text-muted"><Utensils className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Aún no has añadido comidas.</p></div>}
         {sortedMeals.map((meal, i) => (
           <MealCard key={meal.id} meal={meal} index={i}
@@ -461,7 +462,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
       </div>
 
       <div>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted mb-2">Consejo / Nota para el cliente</p>
+        <p className="text-[11px] uppercase tracking-widest font-bold text-muted mb-2">Consejo / Nota para el cliente</p>
         <textarea rows={3} placeholder="Ej: Prioriza los carbohidratos antes del entrenamiento..." value={diet.advice}
           onChange={e => updateDiet({ advice: e.target.value })}
           className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-sm outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />

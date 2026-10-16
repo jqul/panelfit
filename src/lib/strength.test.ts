@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct, getVbtSuggestedWeightChange, getTargetRangeLabel } from './strength'
+import { estimate1RM, rpeToTargetRIR, suggestNextLoad, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, velocityLossPct, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from './strength'
 
 describe('estimate1RM', () => {
   it('returns the weight itself for a single rep', () => {
@@ -172,5 +172,14 @@ describe('getTargetRangeLabel', () => {
 
   it('returns a flat weight when the suggestion is to hold', () => {
     expect(getTargetRangeLabel('100', 2, undefined)).toBe('100kg')
+  })
+})
+
+describe('tracksVelocity', () => {
+  it('permite anotar velocidad en ejercicios de fuerza, sean principales o no', () => {
+    expect(tracksVelocity({})).toBe(true)
+  })
+  it('no en carreras', () => {
+    expect(tracksVelocity({ kind: 'run' })).toBe(false)
   })
 })

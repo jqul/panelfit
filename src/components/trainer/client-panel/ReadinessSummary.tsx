@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Moon } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { localDateKey } from '../../../lib/dates'
 
 interface ReadinessRow { date: string; sleep: number; soreness: number; stress: number; motivation: number }
 
@@ -11,7 +12,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
   useEffect(() => {
     const since = new Date(); since.setDate(since.getDate() - 7)
     supabase.from('readiness_checkins').select('date, sleep, soreness, stress, motivation')
-      .eq('clientId', clientId).gte('date', since.toISOString().split('T')[0]).order('date', { ascending: false })
+      .eq('clientId', clientId).gte('date', localDateKey(since)).order('date', { ascending: false })
       .then(({ data }) => { setRows(data || []); setLoading(false) })
   }, [clientId])
 
@@ -22,7 +23,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
   const lowReadiness = last.sleep <= 2 || last.soreness <= 2 || last.motivation <= 2
 
   return (
-    <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
       <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center gap-2">
         <Moon className="w-3.5 h-3.5 text-muted" />
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Readiness (últimos 7 días)</p>
@@ -46,7 +47,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-muted">Media sobre {rows.length} día{rows.length > 1 ? 's' : ''} (escala 1-5)</p>
+        <p className="text-[11px] text-muted">Media sobre {rows.length} día{rows.length > 1 ? 's' : ''} (escala 1-5)</p>
       </div>
     </div>
   )

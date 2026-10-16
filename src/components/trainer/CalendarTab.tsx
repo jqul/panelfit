@@ -8,6 +8,8 @@ import {
   Clock, Users, Repeat, Ban
 } from 'lucide-react'
 import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
+import { Modal } from '../shared/Modal'
+import { localDateKey } from '../../lib/dates'
 
 interface Props {
   trainerId: string
@@ -36,17 +38,20 @@ function emptyForm(dateISO: string) {
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
 function addDays(d: Date, n: number) { const x = new Date(d); x.setDate(x.getDate() + n); return x }
-function toISODate(d: Date) { return d.toISOString().split('T')[0] }
+// Fecha LOCAL (YYYY-MM-DD). Con toISOString() un día a medianoche local salía como el día anterior en UTC+1/+2:
+// la fila del lunes se llamaba domingo, 'Hoy' caía en el día siguiente y las citas se agrupaban por su fecha UTC.
+function toISODate(d: Date) { return localDateKey(d) }
 function weekDays(anchor: Date) {
   const monday = addDays(anchor, -((anchor.getDay() + 6) % 7))
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
 }
 
 const STATUS_META = {
-  pendiente: { label: 'Solicitada', color: '#e0a854', bg: '#fef9ec' },
-  confirmada: { label: 'Confirmada', color: '#22c55e', bg: '#f0fdf4' },
-  completada: { label: 'Completada', color: '#3b82f6', bg: '#eff6ff' },
-  cancelada: { label: 'Cancelada', color: '#ef4444', bg: '#fef2f2' },
+  // Con los tokens del tema (antes colores fijos: ~2,2:1 de contraste y ilegibles en oscuro)
+  pendiente: { label: 'Solicitada', cls: 'text-accent bg-accent/10' },
+  confirmada: { label: 'Confirmada', cls: 'text-ok bg-ok/10' },
+  completada: { label: 'Completada', cls: 'text-ink bg-bg-alt' },
+  cancelada: { label: 'Cancelada', cls: 'text-warn bg-warn/10' },
 }
 
 export function CalendarTab({ trainerId, clients }: Props) {
@@ -77,7 +82,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const citasByDay = useMemo(() => {
     const map: Record<string, Cita[]> = {}
     citas.forEach(c => {
-      const key = c.start_at.split('T')[0]
+      const key = localDateKey(new Date(c.start_at))
       if (!map[key]) map[key] = []
       map[key].push(c)
     })
@@ -187,9 +192,10 @@ export function CalendarTab({ trainerId, clients }: Props) {
               <div className={`px-4 py-2.5 flex items-center justify-between ${isToday ? 'bg-accent/8' : 'bg-bg-alt/40'}`}>
                 <p className="text-sm font-bold capitalize">
                   {day.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
-                  {isToday && <span className="ml-2 text-[10px] font-bold text-accent uppercase">Hoy</span>}
+                  {isToday && <span className="ml-2 text-[11px] font-bold text-accent uppercase">Hoy</span>}
                 </p>
-                <button onClick={() => openNew(key)} className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10">
+                <button onClick={() => openNew(key)} aria-label={`Añadir sesión el ${new Date(key + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}`}
+                  className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-accent/10">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -213,7 +219,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                           </p>
                           {name && <p className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{name}</p>}
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ color: meta.color, backgroundColor: meta.bg }}>
+                        <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
                           {meta.label}
                         </span>
                         {cita.status === 'pendiente' && (
@@ -246,8 +252,8 @@ export function CalendarTab({ trainerId, clients }: Props) {
 
       {/* Modal nueva sesión */}
       {showForm && (
-        <div className="fixed inset-0 z-50 bg-ink/60 flex items-end justify-center" onClick={() => setShowForm(null)}>
-          <div className="bg-card rounded-t-3xl w-full max-w-md max-h-[85vh] overflow-y-auto p-5 space-y-4" onClick={e => e.stopPropagation()}>
+        <Modal open plain onClose={() => setShowForm(null)} ariaLabel="Nueva sesión" maxWidth="max-w-md">
+          <div className="max-h-[85dvh] overflow-y-auto p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-serif font-bold text-lg">Nueva sesión</h3>
               <button onClick={() => setShowForm(null)} className="p-1.5 text-muted hover:text-ink"><X className="w-4 h-4" /></button>
@@ -305,7 +311,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
               {saving ? 'Guardando...' : 'Crear sesión'}
             </button>
           </div>
-        </div>
+</Modal>
       )}
     </div>
   )

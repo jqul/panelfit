@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Zap } from 'lucide-react'
 import { generateVamIntervals } from '../../../lib/vam'
+import { Modal } from '../../shared/Modal'
 
 interface Props {
   masInicial: number
@@ -16,9 +17,9 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
   const rows = generateVamIntervals(masNum)
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-white">
+    <Modal open plain onClose={onClose} ariaLabel="Series por %VAM" maxWidth="max-w-lg">
+      <div className="max-h-[88dvh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-card">
           <h3 className="font-bold flex items-center gap-1.5"><Zap className="w-4 h-4 text-accent" /> Series por %VAM</h3>
           <button onClick={onClose}><X className="w-5 h-5 text-muted" /></button>
         </div>
@@ -47,7 +48,7 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
                     <tr key={r.pct} className={`border-t border-border/60 ${r.pct === 100 ? 'bg-accent/5' : ''}`}>
                       <td className="py-1.5 pr-2">
                         <p className="font-semibold">{r.pct}% VAM</p>
-                        <p className="text-[10px] text-muted">{r.label}</p>
+                        <p className="text-[11px] text-muted">{r.label}</p>
                       </td>
                       <td className="py-1.5 pr-2 text-right font-semibold">{r.speedKmh}</td>
                       <td className="py-1.5 pr-2 text-right">{r.paceMinPerKm}</td>
@@ -62,11 +63,11 @@ export function VamIntervalGenerator({ masInicial, onClose }: Props) {
             <p className="text-xs text-muted">Introduce la VAM para generar la tabla de ritmos.</p>
           )}
 
-          <p className="text-[10px] text-muted leading-relaxed">
+          <p className="text-[11px] text-muted leading-relaxed">
             Tiempos por tramo asumiendo ritmo constante a esa %VAM — para series de campo, ajusta con la recuperación entre repeticiones según el objetivo (aeróbico extensivo: recuperación corta; velocidad/potencia: recuperación completa).
           </p>
         </div>
       </div>
-    </div>
+</Modal>
   )
 }

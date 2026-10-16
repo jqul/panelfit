@@ -3,6 +3,7 @@ import { ChevronLeft, Save, Plus, Edit2, Trash2, ChevronUp, ChevronDown } from '
 import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 interface Valoracion {
   id: string
@@ -30,7 +31,7 @@ function emptyValoracion(clientId: string, trainerId: string): Valoracion {
     id: `val_${Date.now()}`,
     client_id: clientId,
     trainer_id: trainerId,
-    fecha: new Date().toISOString().split('T')[0],
+    fecha: localDateKey(),
     peso: null, imc: null, grasa_corporal: null, masa_muscular: null,
     cintura: null, cadera: null, pecho: null,
     brazo_d: null, brazo_i: null, muslo_d: null, muslo_i: null,
@@ -118,7 +119,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   if (editing) return (
     <div className="max-w-xl space-y-5 animate-fade-in">
       <div className="flex items-center gap-3">
-        <button onClick={() => setEditing(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
+        <button onClick={() => setEditing(null)} aria-label="Volver" className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
         <div className="flex-1">
           <h3 className="font-serif font-bold text-lg">Ficha de valoración</h3>
           <p className="text-xs text-muted">{client.name} {client.surname}</p>
@@ -202,7 +203,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-serif font-bold text-lg">Fichas de valoración</h3>
-          <p className="text-xs text-muted mt-0.5">{valoraciones.length} valoración{valoraciones.length !== 1 ? 'es' : ''}</p>
+          <p className="text-xs text-muted mt-0.5">{valoraciones.length} {valoraciones.length === 1 ? 'valoración' : 'valoraciones'}</p>
         </div>
         <button onClick={() => setEditing(emptyValoracion(client.id, trainerId))}
           className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
@@ -241,9 +242,9 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                     )}
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => setEditing(val)} className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteValoracion(val.id)} className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => setExpanded(isExpanded ? null : val.id)} className="p-1.5 text-muted rounded-lg">
+                    <button onClick={() => setEditing(val)} aria-label="Editar valoración" className="p-1.5 text-muted hover:text-accent rounded-lg"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteValoracion(val.id)} aria-label="Eliminar valoración" className="p-1.5 text-muted hover:text-warn rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setExpanded(isExpanded ? null : val.id)} aria-label={isExpanded ? 'Contraer' : 'Expandir'} className="p-1.5 text-muted rounded-lg">
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                   </div>
@@ -256,7 +257,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                       {CAMPOS_COMPOSICION.map(c => val[c.key] ? (
                         <div key={c.key} className="bg-bg border border-border rounded-xl p-2.5 text-center">
                           <p className="text-sm font-serif font-bold">{val[c.key]}{c.unit}</p>
-                          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{c.label}</p>
+                          <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{c.label}</p>
                         </div>
                       ) : null)}
                     </div>

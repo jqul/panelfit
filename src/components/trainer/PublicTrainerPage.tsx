@@ -130,7 +130,7 @@ export function PublicTrainerPage({ slug }: Props) {
           </a>
         )}
 
-        <p className="text-center text-[10px] text-muted/60 pt-4">Página creada con PanelFit</p>
+        <p className="text-center text-[11px] text-muted/60 pt-4">Página creada con PanelFit</p>
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import { useRecentPainZonas } from './clientPain'
 // Puente entre el grupo muscular (helpers.tsx, ya usado para el volumen
 // semanal) y la zona de dolor (clientPain.ts) — aproximado a propósito: mejor
 // un aviso de más que uno de menos en algo tan sensible como una lesión.
-const GRUPO_A_ZONA: Record<string, string> = {
+export const GRUPO_A_ZONA: Record<string, string> = {
   'Piernas': 'Rodilla', 'Hombros': 'Hombro', 'Espalda': 'Espalda baja', 'Glúteos': 'Cadera',
   'Bíceps': 'Codo', 'Tríceps': 'Codo',
 }

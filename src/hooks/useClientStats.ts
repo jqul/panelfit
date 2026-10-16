@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ClientWithStats } from './useTrainerClients'
+import { localDateKey } from '../lib/dates'
 
 interface Options {
   clients: ClientWithStats[]
@@ -62,7 +63,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   const chartData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (6 - i))
-    const key = d.toISOString().split('T')[0]
+    const key = localDateKey(d)
     return {
       label: d.toLocaleDateString('es-ES', { weekday: 'short' }),
       count: clients.filter(c => c.lastActive === key).length,

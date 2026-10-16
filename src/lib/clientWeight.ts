@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { localDateKey } from './dates'
 
 // Historial de peso corporal del cliente. Antes vivía SOLO en localStorage
 // del navegador del cliente (`pf_weight_${clientId}`) — nunca llegaba al
@@ -50,7 +51,7 @@ export function useClientWeights(clientId?: string) {
 
   const addWeight = useCallback(async (weight: number, date?: string) => {
     if (!clientId) return
-    const d = date || new Date().toISOString().split('T')[0]
+    const d = date || localDateKey()
     const updated = [{ date: d, weight }, ...weights.filter(x => x.date !== d)].sort((a, b) => b.date.localeCompare(a.date))
     setWeights(updated)
     if (clientId.startsWith('demo-client-')) {

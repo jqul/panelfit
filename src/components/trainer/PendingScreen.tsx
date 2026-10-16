@@ -286,7 +286,7 @@ export function PendingScreen({ uid, email, displayName, onLogout }: Props) {
                       }`}
                       style={{ backgroundColor: tema.bg }}>
                       <div className="w-7 h-7 rounded-full" style={{ backgroundColor: tema.color }} />
-                      <span className="text-[10px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
+                      <span className="text-[11px] font-semibold" style={{ color: tema.color }}>{tema.nombre}</span>
                     </button>
                   ))}
                 </div>
@@ -308,7 +308,7 @@ export function PendingScreen({ uid, email, displayName, onLogout }: Props) {
                       </div>
                   }
                   <span className="text-white font-bold text-sm">{brandName || nombre || 'Tu marca'}</span>
-                  <span className="ml-auto text-white/50 text-[10px]">preview</span>
+                  <span className="ml-auto text-white/50 text-[11px]">preview</span>
                 </div>
                 <div className="px-4 py-2 bg-bg-alt text-xs text-muted">
                   Así verán tus clientes la cabecera de su panel 👆

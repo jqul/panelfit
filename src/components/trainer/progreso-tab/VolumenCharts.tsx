@@ -5,6 +5,7 @@ import {
 import { Activity } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap, VOLUME_LANDMARKS, getVolumeStatus } from './helpers'
+import { localDateKey } from '../../../lib/dates'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -15,7 +16,7 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const key = lunes.toISOString().split('T')[0]
+      const key = localDateKey(lunes)
       const vol = Object.values(log.sets || {}).reduce((acc, s: any) => acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
       semanas[key] = (semanas[key] || 0) + vol
     })
@@ -35,16 +36,16 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
           { label: 'Pico semanal', value: `${maxVol.toLocaleString()} kg`, color: 'text-accent' },
           { label: 'Media/semana', value: `${avg.toLocaleString()} kg`, color: 'text-ink' },
           { label: 'Tendencia', value: `${trend >= 0 ? '+' : ''}${trend.toLocaleString()} kg`, color: trend >= 0 ? 'text-ok' : 'text-warn' },
-        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
+        ].map((k, i) => <div key={i} className="bg-bg rounded-xl p-3 text-center"><p className={`text-base font-bold ${k.color}`}>{k.value}</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p></div>)}
       </div>
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={avg} stroke="#8a8278" strokeDasharray="4 2" strokeWidth={1} label={{ value: 'media', position: 'right', fontSize: 9, fill: '#8a8278' }} />
+            <ReferenceLine y={avg} stroke="#8a8278" strokeDasharray="4 2" strokeWidth={1} label={{ value: 'media', position: 'right', fontSize: 11, fill: '#8a8278' }} />
             <Bar dataKey="kg" name="Volumen" fill="#6e5438" radius={[4,4,0,0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -69,7 +70,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const weekKey = lunes.toISOString().split('T')[0]
+      const weekKey = localDateKey(lunes)
       if (!byWeek[weekKey]) byWeek[weekKey] = {}
       byWeek[weekKey][g] = (byWeek[weekKey][g] || 0) + setsDone
       groupSet.add(g)
@@ -91,7 +92,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
     <div className="space-y-3">
       {withLandmarks.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
           {withLandmarks.map(g => {
             const sets = lastWeek[g] || 0
             const status = getVolumeStatus(g, sets)!
@@ -105,7 +106,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
                   <span className="font-semibold">{g}</span>
                   <span className="flex items-center gap-1.5">
                     <span className="font-bold">{sets} series</span>
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
                   </span>
                 </div>
                 <div className="relative h-1.5 rounded-full bg-bg-alt overflow-hidden">
@@ -116,12 +117,12 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
               </div>
             )
           })}
-          <p className="text-[9px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
+          <p className="text-[11px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
         {groups.map(g => (
-          <span key={g} className="flex items-center gap-1.5 text-[10px] font-semibold text-muted">
+          <span key={g} className="flex items-center gap-1.5 text-[11px] font-semibold text-muted">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: GROUP_COLORS[g] || '#94a3b8' }} />{g}
           </span>
         ))}
@@ -130,8 +131,8 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} label={{ value: 'series', angle: -90, position: 'insideLeft', fontSize: 9, fill: '#8a8278' }} />
+            <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} label={{ value: 'series', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip unit="series" />} />
             {groups.map(g => (
               <Bar key={g} dataKey={g} name={g} stackId="vol" fill={GROUP_COLORS[g] || '#94a3b8'} radius={groups.indexOf(g) === groups.length - 1 ? [4, 4, 0, 0] : undefined} />
@@ -139,7 +140,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-[10px] text-muted">
+      <p className="text-[11px] text-muted">
         {library?.length ? 'Grupos según la biblioteca de ejercicios (con fallback por nombre).' : 'Grupos estimados por el nombre del ejercicio — configura la biblioteca para mayor precisión.'}
       </p>
     </div>

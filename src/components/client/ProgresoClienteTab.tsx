@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Flame, Calendar, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
@@ -8,12 +8,18 @@ import { useClientWeights } from '../../lib/clientWeight'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../lib/progresoSections'
 import { FuerzaChart } from '../trainer/progreso-tab/FuerzaChart'
+import { CardioChart } from '../trainer/progreso-tab/CardioChart'
 import { RMChart } from '../trainer/progreso-tab/RMChart'
 import { VolumenChart } from '../trainer/progreso-tab/VolumenCharts'
 import { AdherenciaChart } from '../trainer/progreso-tab/AdherenciaChart'
 import { RachaStats } from '../trainer/progreso-tab/RachaStats'
 import { RiesgoChart } from '../trainer/progreso-tab/RiesgoChart'
 import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
+import { SignedVideo, SignedImage } from '../shared/SignedMedia'
+import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from '../../lib/progressSummary'
+import { localDateKey } from '../../lib/dates'
+import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
+import { Modal } from '../shared/Modal'
 
 
 interface Props {
@@ -21,6 +27,7 @@ interface Props {
   trainerId: string
   logs: TrainingLogs
   plan?: TrainingPlan | null
+  onOpenCalendar?: () => void   // el calendario vive en la pestaña Entreno
 }
 
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
@@ -30,206 +37,6 @@ function getExerciseName(key: string, plan?: TrainingPlan | null): string {
   const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m || !plan) return key
   return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || key
-}
-
-function getDaySession(logs: TrainingLogs, date: string, plan?: TrainingPlan | null) {
-  const entries = Object.entries(logs).filter(([, l]) => l.dateDone === date && l.done)
-  if (!entries.length) return null
-  const exercises = entries.map(([key, log]) => ({
-    name: getExerciseName(key, plan),
-    sets: Object.values(log.sets || {}),
-    best: Math.max(0, ...Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight) || 0))
-  })).filter(e => e.name && e.name !== '')
-  const volume = exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, s: any) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0), 0)
-  return { exercises, volume: Math.round(volume) }
-}
-
-// ── Calendario ────────────────────────────────────────────
-function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  const [monthOffset, setMonthOffset] = useState(0)
-
-  const trainingDates = useMemo(() => {
-    const s = new Set<string>()
-    Object.values(logs).forEach(l => { if (l.dateDone && l.done) s.add(l.dateDone) })
-    return s
-  }, [logs])
-
-  const totalDays = trainingDates.size
-  const streakDays = useMemo(() => {
-    let streak = 0
-    const d = new Date()
-    while (true) {
-      const k = d.toISOString().split('T')[0]
-      if (trainingDates.has(k)) { streak++; d.setDate(d.getDate() - 1) }
-      else break
-    }
-    return streak
-  }, [trainingDates])
-
-  // Mes a mostrar
-  const now = new Date()
-  const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1)
-  const year = viewDate.getFullYear()
-  const month = viewDate.getMonth()
-  const monthLabel = viewDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
-
-  // Días del mes
-  const firstDay = new Date(year, month, 1).getDay() // 0=dom
-  const startOffset = firstDay === 0 ? 6 : firstDay - 1 // lunes primero
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const today = new Date().toISOString().split('T')[0]
-
-  const selectedSession = selectedDay ? getDaySession(logs, selectedDay, plan) : null
-
-  return (
-    <div className="space-y-4">
-      {/* KPIs */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { icon: <Calendar className="w-4 h-4 text-accent" />, value: totalDays, label: 'Días totales' },
-          { icon: <Flame className="w-4 h-4 text-warn" />, value: streakDays, label: 'Racha actual' },
-          { icon: <Dumbbell className="w-4 h-4 text-ok" />, value: `${Math.round(totalDays / Math.max(1, 4))}`, label: 'Días/mes media' },
-        ].map((k, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
-            <div className="flex justify-center mb-1">{k.icon}</div>
-            <p className="text-xl font-serif font-bold">{k.value}</p>
-            <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">{k.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Navegación mes */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={() => setMonthOffset(m => m - 1)}
-            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">‹</button>
-          <p className="text-sm font-semibold capitalize">{monthLabel}</p>
-          <button onClick={() => setMonthOffset(m => Math.min(0, m + 1))} disabled={monthOffset >= 0}
-            className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors disabled:opacity-30">›</button>
-        </div>
-
-        {/* Cabecera días semana */}
-        <div className="grid grid-cols-7 mb-1">
-          {['L','M','X','J','V','S','D'].map(d => (
-            <div key={d} className="text-center text-[10px] font-bold text-muted py-1">{d}</div>
-          ))}
-        </div>
-
-        {/* Días */}
-        <div className="grid grid-cols-7 gap-1">
-          {/* Espacios vacíos inicio */}
-          {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
-
-          {/* Días del mes */}
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            const trained = trainingDates.has(dateStr)
-            const isToday = dateStr === today
-            const isSelected = dateStr === selectedDay
-            const isFuture = dateStr > today
-
-            return (
-              <button key={day}
-                onClick={() => !isFuture && setSelectedDay(isSelected ? null : dateStr)}
-                disabled={isFuture}
-                className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold transition-all ${
-                  isSelected ? 'ring-2 ring-accent scale-110' :
-                  trained ? 'bg-ok text-white shadow-sm' :
-                  isToday ? 'bg-accent/20 text-accent border border-accent/40' :
-                  isFuture ? 'text-muted/30 cursor-default' :
-                  'text-muted hover:bg-bg-alt'
-                }`}
-                style={{ minHeight: '32px' }}>
-                {trained && !isSelected ? '✓' : day}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Leyenda */}
-        <div className="flex items-center gap-4 mt-3 justify-center">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-ok" /><span className="text-[10px] text-muted">Entrenó</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-accent/20 border border-accent/40" /><span className="text-[10px] text-muted">Hoy</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-bg-alt border border-border" /><span className="text-[10px] text-muted">Sin entreno</span></div>
-        </div>
-      </div>
-
-      {/* Detalle del día seleccionado */}
-      {selectedDay && (
-        <div className="bg-card border border-accent/20 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 bg-accent/5 border-b border-accent/20">
-            <p className="text-sm font-semibold">
-              {new Date(selectedDay + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            {selectedSession && (
-              <p className="text-xs text-muted mt-0.5">{selectedSession.exercises.length} ejercicios · {selectedSession.volume.toLocaleString()} kg volumen</p>
-            )}
-          </div>
-          {selectedSession ? (
-            <div className="divide-y divide-border">
-              {selectedSession.exercises.map((ex, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0">
-                    <Dumbbell className="w-3.5 h-3.5 text-muted" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{ex.name}</p>
-                    <div className="flex gap-1 mt-0.5 flex-wrap">
-                      {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
-                          {s.weight}kg×{s.reps}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  {ex.best > 0 && <span className="text-xs font-bold text-accent flex-shrink-0">{ex.best}kg</span>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-4 py-6 text-center text-muted text-sm">Sin actividad registrada este día</div>
-          )}
-        </div>
-      )}
-
-      {/* Actividad últimas 12 semanas estilo GitHub */}
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <p className="text-xs font-semibold text-muted mb-3">Últimas 12 semanas</p>
-        <div className="flex gap-1">
-          {Array.from({ length: 12 }, (_, wi) => {
-            const weekStart = new Date()
-            weekStart.setDate(weekStart.getDate() - (11 - wi) * 7 - weekStart.getDay() + 1)
-            return (
-              <div key={wi} className="flex flex-col gap-1 flex-1">
-                {Array.from({ length: 7 }, (_, di) => {
-                  const d = new Date(weekStart)
-                  d.setDate(d.getDate() + di)
-                  const dateStr = d.toISOString().split('T')[0]
-                  const trained = trainingDates.has(dateStr)
-                  const isFuture = dateStr > today
-                  return (
-                    <div key={di}
-                      className={`w-full aspect-square rounded-sm ${
-                        isFuture ? 'bg-transparent' :
-                        trained ? 'bg-ok' : 'bg-bg-alt border border-border/50'
-                      }`}
-                      title={dateStr}
-                    />
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-        <div className="flex justify-between mt-2">
-          <span className="text-[9px] text-muted">hace 12 semanas</span>
-          <span className="text-[9px] text-muted">hoy</span>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 // ── Historial de entrenos ─────────────────────────────────
@@ -268,7 +75,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
             onClick={() => setExpanded(expanded === session.date ? null : session.date)}>
             {/* Fecha */}
             <div className="bg-accent/10 rounded-xl px-2.5 py-1.5 text-center flex-shrink-0">
-              <p className="text-[10px] font-bold text-accent uppercase">
+              <p className="text-[11px] font-bold text-accent uppercase">
                 {new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { month: 'short' })}
               </p>
               <p className="text-lg font-serif font-bold text-accent leading-tight">
@@ -304,7 +111,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                     <p className="text-sm font-medium truncate">{ex.name}</p>
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
-                        <span key={si} className="text-[9px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
+                        <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {s.weight}kg×{s.reps}
                         </span>
                       ))}
@@ -313,7 +120,7 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
                   {ex.best > 0 && (
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs font-bold text-accent">{ex.best}kg</p>
-                      <p className="text-[9px] text-muted">mejor</p>
+                      <p className="text-[11px] text-muted">mejor</p>
                     </div>
                   )}
                 </div>
@@ -331,8 +138,99 @@ function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan 
   )
 }
 
+const fmtKg = (n: number) => String(n).replace('.', ',')
+const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
+
+// ── Resumen: la conclusión primero, los datos después ──────
+function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso }: {
+  logs: TrainingLogs; plan?: TrainingPlan | null
+  pesoActual?: number; pesoCambio: number | null
+  onGo: (t: 'records' | 'peso') => void
+  onOpenCalendar?: () => void
+  showRecords: boolean; showPeso: boolean
+}) {
+  const s = useMemo(() => {
+    const bests = collectSessionBests(logs, plan)
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
+    const desde = localDateKey(hace30)
+    return {
+      records: recordHistory(bests).filter(r => r.date >= desde),
+      fuerza: strengthChange(bests),
+      adh: adherence28(plan, logs),
+      racha: streakDays(logs, new Date(), false, true),
+      hayDatos: Object.values(logs).some(l => l.done),
+    }
+  }, [logs, plan])
+
+  if (!s.hayDatos) return (
+    <div className="text-center py-12 text-muted">
+      <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" />
+      <p className="text-sm">Cuando completes tu primer entrenamiento verás aquí cómo progresas.</p>
+    </div>
+  )
+
+  const fuerzaTexto = s.fuerza === null
+    ? 'Repite un ejercicio en dos sesiones y verás aquí cuánto ha subido tu fuerza.'
+    : s.fuerza.pct > 0 ? `Tu fuerza ha subido un ${s.fuerza.pct}% en las últimas 8 semanas.`
+    : s.fuerza.pct === 0 ? 'Tu fuerza se mantiene estable en las últimas 8 semanas.'
+    : `Tus pesos máximos están un ${Math.abs(s.fuerza.pct)}% por debajo de hace 8 semanas.`
+
+  return (
+    <div className="space-y-4">
+      {showRecords && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Nuevos récords</p>
+          {s.records.length === 0 ? (
+            <p className="text-sm text-muted">Sin récords nuevos este mes. Cada sesión te acerca al siguiente.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {s.records.slice(0, 3).map((r, i) => (
+                <li key={i} className="flex items-baseline gap-3">
+                  <span className="flex-1 min-w-0 text-sm font-semibold truncate">{r.name}</span>
+                  <span className="text-sm font-bold text-ok flex-shrink-0">+{fmtKg(r.delta)} kg</span>
+                  <span className="text-xs text-muted flex-shrink-0">{fmtDate(r.date)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button onClick={() => onGo('records')} className="mt-4 text-sm font-semibold text-accent hover:underline">Ver todos los récords →</button>
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">💪 Fuerza</p>
+        <p className="text-base font-serif font-bold leading-snug">{fuerzaTexto}</p>
+        {s.fuerza && <p className="text-xs text-muted mt-1.5">Calculado con {s.fuerza.exercises} {s.fuerza.exercises === 1 ? 'ejercicio' : 'ejercicios'} que has repetido.</p>}
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">🎯 Constancia</p>
+        {s.adh !== null ? (
+          <p className="text-base font-serif font-bold leading-snug">Has hecho el {s.adh}% de tus sesiones de las últimas 4 semanas.</p>
+        ) : (
+          <p className="text-sm text-muted">Cuando tengas un plan asignado verás tu constancia aquí.</p>
+        )}
+        {s.racha >= 2 && <p className="text-sm text-accent font-semibold mt-1.5">🔥 {s.racha} días seguidos entrenando</p>}
+        {onOpenCalendar && <button onClick={onOpenCalendar} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver calendario →</button>}
+      </div>
+
+      {showPeso && pesoActual !== undefined && (
+        <div className="bg-card border border-border rounded-2xl p-5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">⚖️ Peso</p>
+          <p className="text-3xl font-serif font-bold">{fmtKg(pesoActual)} kg</p>
+          {pesoCambio !== null && Math.abs(pesoCambio) >= 0.1 && (
+            <p className="text-sm text-muted mt-1">{pesoCambio < 0 ? '↓' : '↑'} {fmtKg(Math.round(Math.abs(pesoCambio) * 10) / 10)} kg desde que empezaste a registrarte</p>
+          )}
+          <button onClick={() => onGo('peso')} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver evolución →</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Récords ───────────────────────────────────────────────
 function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const ultimos = useMemo(() => recordHistory(collectSessionBests(logs, plan)).slice(0, 5), [logs, plan])
   const records = useMemo(() => {
     const r: Record<string, { best: number; date: string; reps: string }> = {}
     Object.entries(logs).forEach(([key, log]) => {
@@ -357,7 +255,21 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted px-1">{records.length} ejercicios con marca personal</p>
+      {ultimos.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-5 mb-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Últimos récords</p>
+          <ul className="space-y-2.5">
+            {ultimos.map((r, i) => (
+              <li key={i} className="flex items-baseline gap-3">
+                <span className="flex-1 min-w-0 text-sm font-semibold truncate">{r.name}</span>
+                <span className="text-sm font-bold text-ok flex-shrink-0">+{fmtKg(r.delta)} kg</span>
+                <span className="text-xs text-muted flex-shrink-0">{fmtDate(r.date)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1">Tus mejores marcas · {records.length} ejercicios</p>
       <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
         {records.map(([name, rec], i) => (
           <div key={name} className="flex items-center gap-3 px-4 py-3">
@@ -372,14 +284,14 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{name}</p>
               {rec.date && (
-                <p className="text-[10px] text-muted">
+                <p className="text-[11px] text-muted">
                   {new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               )}
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-sm font-bold text-accent">{rec.best} kg</p>
-              <p className="text-[10px] text-muted">×{rec.reps} reps</p>
+              <p className="text-[11px] text-muted">×{rec.reps} reps</p>
             </div>
           </div>
         ))}
@@ -434,9 +346,9 @@ function DolorTab({ clientId, trainerId }: { clientId: string; trainerId?: strin
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{e.zona}</p>
                   {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
-                  <p className="text-[10px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+                  <p className="text-[11px] text-muted mt-0.5">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
                 </div>
-                <button onClick={() => deleteEntry(e.id)} className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
+                <button onClick={() => deleteEntry(e.id)} aria-label="Eliminar registro" className="p-2 text-muted hover:text-warn flex-shrink-0" style={{ minWidth: '44px', minHeight: '44px' }}>
                   <Trash2 className="w-3.5 h-3.5 mx-auto" />
                 </button>
               </div>
@@ -460,6 +372,7 @@ function MetricasTab({ clientId, logs, plan, visible }: { clientId: string; logs
               <p className="text-xs text-muted mt-0.5">{meta.desc}</p>
             </div>
             {id === 'fuerza' && <FuerzaChart logs={logs} plan={plan} />}
+            {id === 'cardio' && <CardioChart logs={logs} />}
             {id === 'rm' && <RMChart logs={logs} plan={plan} />}
             {id === 'volumen' && <VolumenChart logs={logs} />}
             {id === 'adherencia' && <AdherenciaChart logs={logs} plan={plan} />}
@@ -539,8 +452,8 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center" onClick={() => !uploading && setShowModal(false)}>
-          <div className="bg-card rounded-t-3xl w-full max-w-md p-5 space-y-3" onClick={e => e.stopPropagation()}>
+        <Modal open plain onClose={() => { if (!uploading) setShowModal(false) }} ariaLabel="Subir vídeo" maxWidth="max-w-md">
+          <div className="p-5 space-y-3 overflow-y-auto">
             <p className="font-serif font-bold text-lg">Subir vídeo</p>
             <div>
               <label className="block text-xs font-bold text-muted mb-1.5">¿De qué es el vídeo?</label>
@@ -563,7 +476,7 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
             </button>
             <button onClick={() => setShowModal(false)} disabled={uploading || compressing} className="w-full py-2 text-xs text-muted">Cancelar</button>
           </div>
-        </div>
+</Modal>
       )}
     </>
   )
@@ -603,23 +516,23 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
         <div key={v.id} className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-alt/30">
             <p className="text-sm font-semibold">{v.exercise_name}</p>
-            <span className={`text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+            <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${v.status === 'pendiente' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
               {v.status === 'pendiente' ? 'Pendiente' : '✓ Comentado'}
             </span>
           </div>
           <div className="p-4 space-y-3">
-            <video src={v.video_url} controls className="w-full rounded-xl bg-black max-h-60" />
-            <p className="text-[10px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
+            <SignedVideo bucket="client-videos" src={v.video_url} className="w-full rounded-xl bg-black max-h-60" />
+            <p className="text-[11px] text-muted flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {new Date(v.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</p>
             {v.trainer_comment && (
               <div className="bg-accent/5 border border-accent/20 rounded-xl p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-accent mb-1">Comentario del entrenador</p>
                 <p className="text-sm">{v.trainer_comment}</p>
               </div>
             )}
             {v.trainer_comment_video_url && (
               <div className="space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
-                <video src={v.trainer_comment_video_url} controls className="w-full rounded-xl bg-black max-h-60" />
+                <p className="text-[11px] font-bold uppercase tracking-wider text-accent">Vídeo de respuesta</p>
+                <SignedVideo bucket="client-videos" src={v.trainer_comment_video_url} className="w-full rounded-xl bg-black max-h-60" />
               </div>
             )}
           </div>
@@ -630,8 +543,9 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
-  const [subtab, setSubtab] = useState<'calendario' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('calendario')
+export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCalendar }: Props) {
+  const lastLeafRef = useRef<Record<string, string>>({})
+  const [subtab, setSubtab] = useState<'resumen' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('resumen')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
   const [photos, setPhotos] = useState<PhotoSession[]>([])
   const [newWeight, setNewWeight] = useState('')
@@ -679,7 +593,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
 
   const createSession = async () => {
     const id = `s_${Date.now()}`
-    const date = new Date().toISOString().split('T')[0]
+    const date = localDateKey()
     const { error } = await supabase.from('foto_sessions').insert({ id, client_id: clientId, date, created_at: Date.now() })
     if (!error) { await loadPhotos(); setExpandedSession(id) }
   }
@@ -724,65 +638,87 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
   const metricaActiva = (id: Section) => !metricasActivasEntrenador || metricasActivasEntrenador.has(id)
 
   type SubtabId = typeof subtab
-  const TABS: { id: SubtabId; icon: string; label: string }[] = [
-    { id: 'calendario', icon: '📅', label: 'Calendario' },
-    { id: 'historial',  icon: '📋', label: 'Historial' },
-    ...(metricaActiva('records') ? [{ id: 'records' as SubtabId, icon: '🏆', label: 'Récords' }] : []),
-    ...(metricaActiva('peso')    ? [{ id: 'peso' as SubtabId, icon: '⚖️', label: 'Peso' }] : []),
-    ...(dolorVisible ? [{ id: 'dolor' as SubtabId, icon: '🩹', label: 'Dolor' }] : []),
-    ...(metricaActiva('fotos')   ? [{ id: 'fotos' as SubtabId, icon: '📸', label: 'Fotos' }] : []),
-    ...(metricaActiva('videos')  ? [{ id: 'feedback' as SubtabId, icon: '🎥', label: 'Feedback' }] : []),
-    ...(otrasMetricasVisibles.length > 0 ? [{ id: 'metricas' as SubtabId, icon: '📈', label: 'Métricas' }] : []),
+  // Cinco grupos arriba (Resumen, Entrenos, Fuerza, Cuerpo, Más) y, dentro del
+  // que tenga varias vistas, un segundo nivel. Las vistas son las de siempre.
+  const available: SubtabId[] = [
+    'resumen', 'historial',
+    ...(metricaActiva('records') ? ['records' as const] : []),
+    ...(metricaActiva('peso') ? ['peso' as const] : []),
+    ...(dolorVisible ? ['dolor' as const] : []),
+    ...(metricaActiva('fotos') ? ['fotos' as const] : []),
+    ...(metricaActiva('videos') ? ['feedback' as const] : []),
+    ...(otrasMetricasVisibles.length > 0 ? ['metricas' as const] : []),
   ]
+  const groups = buildGroups(available)
+  const activeGroup = groupOf(groups, subtab) ?? groups[0]
+  // Si la vista actual deja de estar disponible (p. ej. el entrenador la
+  // desactiva), se muestra el resumen en vez de una pantalla vacía.
+  const currentLeaf = (activeGroup.leaves.some(l => l.id === subtab) ? subtab : 'resumen') as SubtabId
+  lastLeafRef.current[activeGroup.id] = currentLeaf
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
       <h3 className="font-serif font-bold text-xl">Tu progreso</h3>
 
-      {/* Tabs — scroll horizontal en móvil */}
-      <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setSubtab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
-              subtab === t.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
+      {/* Nivel 1: cinco grupos */}
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${groups.length}, minmax(0, 1fr))` }} role="tablist" aria-label="Secciones de tu progreso">
+        {groups.map(g => (
+          <button key={g.id} role="tab" aria-selected={activeGroup.id === g.id}
+            onClick={() => setSubtab(leafForGroup(g, lastLeafRef.current[g.id]) as SubtabId)}
+            className={`px-0.5 py-2 rounded-xl text-xs font-semibold truncate transition-all ${
+              activeGroup.id === g.id ? 'bg-ink text-white' : 'bg-card border border-border text-muted hover:border-accent'
             }`}
             style={{ minHeight: '40px' }}>
-            {t.icon} {t.label}
+            {g.label}
           </button>
         ))}
       </div>
+      {/* Nivel 2: solo si el grupo tiene varias vistas */}
+      {activeGroup.leaves.length > 1 && (
+        <div className="flex gap-4 border-b border-border/70 -mt-1" role="tablist" aria-label={activeGroup.label}>
+          {activeGroup.leaves.map(l => (
+            <button key={l.id} role="tab" aria-selected={currentLeaf === l.id} onClick={() => setSubtab(l.id as SubtabId)}
+              className={`pb-2 -mb-px text-sm font-medium border-b-2 transition-colors ${currentLeaf === l.id ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+              {l.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {subtab === 'calendario' && <CalendarioTab logs={logs} plan={plan} />}
-      {subtab === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
-      {subtab === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
-      {subtab === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
-      {subtab === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
-      {subtab === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
+      {currentLeaf === 'resumen'    && (
+        <ResumenTab logs={logs} plan={plan} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab} onOpenCalendar={onOpenCalendar}
+          showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')} />
+      )}
+      {currentLeaf === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
+      {currentLeaf === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
+      {currentLeaf === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
+      {currentLeaf === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}
+      {currentLeaf === 'metricas'   && <MetricasTab    clientId={clientId} logs={logs} plan={plan} visible={otrasMetricasVisibles} />}
 
-      {subtab === 'peso' && (
+      {currentLeaf === 'peso' && (
         <div className="space-y-4">
           {weights.length > 0 && (
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className="text-2xl font-serif font-bold">{pesoActual}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">kg actual</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">kg actual</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className={`text-2xl font-serif font-bold ${pesoCambio === null ? 'text-muted' : pesoCambio < 0 ? 'text-ok' : pesoCambio > 0 ? 'text-warn' : 'text-muted'}`}>
                   {pesoCambio === null ? '—' : `${pesoCambio > 0 ? '+' : ''}${pesoCambio.toFixed(1)}`}
                 </p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">cambio total</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">cambio total</p>
               </div>
               <div className="bg-card border border-border rounded-2xl p-4 text-center">
                 <p className="text-2xl font-serif font-bold">{weights.length}</p>
-                <p className="text-[10px] text-muted uppercase tracking-wider mt-1">registros</p>
+                <p className="text-[11px] text-muted uppercase tracking-wider mt-1">registros</p>
               </div>
             </div>
           )}
           <div className="flex gap-2">
             <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addWeight()}
-              placeholder="Registrar peso de hoy (kg)"
+              placeholder="Registrar peso de hoy (kg)" aria-label="Registrar peso de hoy en kg"
               className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20"
               style={{ fontSize: '16px' }} />
             <button onClick={addWeight} className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90 flex-shrink-0" style={{ minHeight: '44px' }}>
@@ -823,7 +759,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                       {w.weight > weights[i-1].weight ? '+' : ''}{(w.weight - weights[i-1].weight).toFixed(1)}
                     </p>
                   )}
-                  <button onClick={() => deleteWeight(w.date)} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
+                  <button onClick={() => deleteWeight(w.date)} aria-label="Eliminar peso" className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}>
                     <Trash2 className="w-3.5 h-3.5 mx-auto" />
                   </button>
                 </div>
@@ -834,7 +770,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
         </div>
       )}
 
-      {subtab === 'fotos' && (
+      {currentLeaf === 'fotos' && (
         <div className="space-y-4">
           <button onClick={createSession} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
             <Plus className="w-4 h-4" /> Nueva sesión de fotos
@@ -849,7 +785,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                   <p className="text-sm font-semibold">{new Date(session.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <p className="text-xs text-muted">{[session.front, session.side, session.back].filter(Boolean).length}/3 fotos</p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }} className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={e => { e.stopPropagation(); deleteSession(session.id) }} aria-label="Eliminar sesión de fotos" className="p-2 text-muted hover:text-warn" style={{ minWidth: '44px', minHeight: '44px' }}><Trash2 className="w-3.5 h-3.5" /></button>
                 {expandedSession === session.id ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
               </div>
               {expandedSession === session.id && (
@@ -860,9 +796,9 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan }: Props) {
                       const url = session[type]
                       return (
                         <div key={type} className="space-y-1">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center">{labels[type]}</p>
                           <label className={`block cursor-pointer rounded-xl overflow-hidden border-2 aspect-[3/4] ${url ? 'border-border' : 'border-dashed border-border hover:border-accent'}`}>
-                            {url ? <img src={url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[10px] text-center">Toca para subir</span></div>}
+                            {url ? <SignedImage bucket="media" src={url} alt={`Foto de progreso - ${labels[type]}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted p-2"><Camera className="w-5 h-5 opacity-40" /><span className="text-[11px] text-center">Toca para subir</span></div>}
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(session.id, type, f) }} />
                           </label>
                         </div>

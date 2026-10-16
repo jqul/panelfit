@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Flame, Dumbbell, Play, CheckCircle2, MessageSquare, Scale, Clock, Zap } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
-import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
-import { useClientWeights } from '../../lib/clientWeight'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
+import { localDateKey } from '../../lib/dates'
 
 interface Props {
   plan: TrainingPlan
@@ -23,18 +25,6 @@ interface Props {
   seriesTypes?: SeriesTypeDef[]
 }
 
-function calcStreak(logs: TrainingLogs): number {
-  const dates = new Set(Object.values(logs).filter(l => l.dateDone).map(l => l.dateDone!))
-  let streak = 0
-  const d = new Date()
-  while (true) {
-    const key = d.toISOString().split('T')[0]
-    if (dates.has(key)) { streak++; d.setDate(d.getDate() - 1) }
-    else break
-  }
-  return streak
-}
-
 // Lunes=0 ... domingo=6, igual que Date.getDay() ajustado (domingo=0 -> 6).
 const WEEKDAY_NAMES = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
 function weekdayFromTitle(title: string): number | null {
@@ -44,9 +34,9 @@ function weekdayFromTitle(title: string): number | null {
 }
 
 function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
   if (!currentWeek?.days?.length) return null
-  const weekIdx = plan.weeks.findIndex(w => w === currentWeek)
   const isDayDone = (di: number) => {
     if (logs[`finished_w${weekIdx}_d${di}`]?.sessionFinished) return true
     const dayExs = currentWeek.days[di].exercises || []
@@ -87,14 +77,10 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
-  const { weights, addWeight } = useClientWeights(clientId)
-  const [showWeightInput, setShowWeightInput] = useState(false)
-  const [newWeight, setNewWeight] = useState('')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
-  const [showCalc, setShowCalc] = useState(false)
 
   useEffect(() => {
     const online = () => setIsOnline(true)
@@ -104,17 +90,15 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline) }
   }, [])
 
-  const saveWeight = () => {
-    const w = parseFloat(newWeight)
-    if (!w || w < 20 || w > 300) return
-    addWeight(w)
-    setNewWeight(''); setShowWeightInput(false)
-  }
-
-  const streak = calcStreak(logs)
+  const streak = streakDays(logs, new Date(), false, true)
   const todaySession = getTodaySession(plan, logs)
-  const totalExDone = Object.values(logs).filter(l => l.done).length
-  const pesoActual = weights[0]?.weight || null
+  // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
+  const adherencia = adherence28(plan, logs)
+  // El peso corporal vive en Progreso → Cuerpo: el inicio responde a "qué toca
+  // hoy" y a "cómo voy", no a "cuántos kilos pesas".
+  const bests = collectSessionBests(logs, plan)
+  const fuerza = strengthChange(bests)
+  const logro = latestAchievement(bests)
 
   const todayLogs = todaySession
     ? todaySession.day.exercises.map((_: Exercise, ri: number) => logs[`ex_${todaySession.dayKey}_r${ri}`])
@@ -137,7 +121,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
   const sessionOverlay = session && (
     <>
-      {!sessionMinimized && (
+      {/* En un portal: <main> de ClientView tiene z-10 y crea su propio contexto de
+          capas, así que dentro de él el entreno quedaba por debajo de la cabecera
+          de la app (z-20) y la tapaba (volver, cronómetro y Terminar). */}
+      {!sessionMinimized && createPortal(
         <ActiveWorkout
           day={session.day}
           dayKey={session.dayKey}
@@ -147,7 +134,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           onFinish={() => { setSession(null); setSessionMinimized(false) }}
           onBack={() => setSessionMinimized(true)}
           trainerId={trainerId}
-        />
+        />,
+        document.body
       )}
       {sessionMinimized && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1">
@@ -183,14 +171,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     <div className="max-w-xl mx-auto" style={{ paddingTop: brandBg ? 8 : 0 }}>
       {sessionOverlay}
 
-      {/* Calculadora de discos */}
-      {showCalc && (
-        <CalculadoraDiscos
-          pesoObjetivo={pesoActual || undefined}
-          onClose={() => setShowCalc(false)}
-        />
-      )}
-
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
           <p className="text-xs font-semibold text-warn">Sin conexión — los datos se guardarán cuando vuelvas a conectarte</p>
@@ -213,54 +193,25 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha', onClick: undefined },
-            { icon: <CheckCircle2 className="w-4 h-4 text-ok" />, value: totalExDone, label: 'Hechos', onClick: undefined },
-            {
-              icon: <Scale className="w-4 h-4 text-accent" />,
-              value: pesoActual ?? '—',
-              label: 'kg',
-              onClick: () => setShowWeightInput(v => !v)
-            },
+            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha' },
+            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia' },
+            { icon: <TrendingUp className="w-4 h-4 text-accent" />, value: fuerza ? `${fuerza.pct > 0 ? '+' : ''}${fuerza.pct}%` : '—', label: 'Fuerza' },
           ].map((s, i) => (
-            <button key={i} onClick={s.onClick}
-              className={`bg-card border border-border rounded-2xl p-3 text-center ${s.onClick ? 'hover:border-accent transition-colors' : ''}`}>
+            <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-0.5">
                 {s.icon}
                 <span className="text-xl font-serif font-bold">{s.value}</span>
               </div>
-              <p className="text-[10px] text-muted uppercase tracking-wider">{s.label}</p>
-            </button>
+              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
+            </div>
           ))}
         </div>
-
-        {/* Input peso + botón calculadora */}
-        {showWeightInput && (
-          <div className="space-y-2 animate-fade-in">
-            <div className="flex gap-2">
-              <input type="number" step="0.1" value={newWeight} onChange={e => setNewWeight(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && saveWeight()}
-                placeholder="Tu peso hoy (kg)" autoFocus
-                className="flex-1 px-4 py-3 bg-card border border-border rounded-xl text-base outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-              />
-              <button onClick={saveWeight} style={{ minHeight: '44px' }}
-                className="px-5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-                OK
-              </button>
-            </div>
-            {/* Botón calculadora de discos */}
-            <button
-              onClick={() => setShowCalc(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
-              🏋️ Calculadora de discos
-            </button>
-          </div>
-        )}
 
         {/* Card sesión de hoy */}
         {todaySession ? (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 pt-5 pb-4">
-              <p className="text-[10px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
               <h3 className="font-serif font-bold text-xl leading-tight">{todaySession.day.title}</h3>
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
 
@@ -333,8 +284,8 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
               const monday = new Date(now); monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
               return Array.from({ length: 7 }, (_, i) => {
                 const d = new Date(monday); d.setDate(monday.getDate() + i)
-                const key = d.toISOString().split('T')[0]
-                const todayKey = now.toISOString().split('T')[0]
+                const key = localDateKey(d)
+                const todayKey = localDateKey(now)
                 const count = Object.values(logs).filter(l => l.done && l.dateDone === key).length
                 const isToday = key === todayKey
                 const dayLabel = d.toLocaleDateString('es-ES', { weekday: 'narrow' })
@@ -344,7 +295,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
                       style={count > 0 ? { backgroundColor: '#e0a854' } : undefined}>
                       {count > 0 && <span className="text-white text-xs font-bold">✓</span>}
                     </div>
-                    <p className={`text-[9px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
+                    <p className={`text-[11px] font-medium ${isToday ? 'text-accent' : 'text-muted'}`}>{dayLabel}</p>
                   </div>
                 )
               })
@@ -360,7 +311,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             <div className="bg-card border border-border rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-serif font-bold text-sm">Macros de hoy</h4>
-                <span className="text-[10px] text-muted uppercase tracking-wider">objetivos diarios</span>
+                <span className="text-[11px] text-muted uppercase tracking-wider">objetivos diarios</span>
               </div>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[
@@ -371,7 +322,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
                 ].map(m => (
                   <div key={m.label} className="bg-bg border border-border rounded-xl p-2.5 text-center">
                     <p className={`font-serif font-bold text-lg ${m.color}`}>{m.value}</p>
-                    <p className="text-[10px] text-muted">{m.label}</p>
+                    <p className="text-[11px] text-muted">{m.label}</p>
                   </div>
                 ))}
               </div>
@@ -382,19 +333,20 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           )
         })()}
 
-        {/* Racha */}
-        {streak >= 3 && (
-          <div className="bg-warn/5 border border-warn/20 rounded-2xl p-4 flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
-            <div>
-              <p className="text-sm font-bold">{streak} días seguidos entrenando</p>
-              <p className="text-xs text-muted mt-0.5">
-                {restDayMsg || (
-                  streak >= 7 ? '¡Una semana completa! Increíble constancia.' :
-                  streak >= 5 ? '¡Casi una semana! Sigue así.' :
-                  '¡Buen ritmo! Mantén la racha.'
-                )}
-              </p>
+        {/* Último logro — la racha ya está arriba; aquí va lo que se ha conseguido */}
+        {(logro || restDayMsg) && (
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+            <span className="w-10 h-10 rounded-full bg-warn/10 flex items-center justify-center flex-shrink-0"><Trophy className="w-5 h-5 text-warn" /></span>
+            <div className="min-w-0">
+              {logro ? (
+                <>
+                  <p className="text-[11px] uppercase tracking-widest text-muted font-bold">Último logro</p>
+                  <p className="text-sm font-bold truncate">{logro.name} · +{String(logro.delta).replace('.', ',')} kg</p>
+                  <p className="text-xs text-muted mt-0.5">{new Date(logro.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}{restDayMsg ? ` · ${restDayMsg}` : ''}</p>
+                </>
+              ) : (
+                <p className="text-sm text-muted">{restDayMsg}</p>
+              )}
             </div>
           </div>
         )}

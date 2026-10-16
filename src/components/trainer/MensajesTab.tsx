@@ -207,7 +207,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
   )
 
   return (
-    <div className="animate-fade-in space-y-5 max-w-2xl">
+    <div className="animate-fade-in space-y-5 max-w-4xl">
       <div>
         <h2 className="text-3xl font-serif font-bold">Mensajes</h2>
         <p className="text-muted text-sm mt-1">Gestiona el contacto con tus clientes esta semana</p>
@@ -227,7 +227,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {clientsSinTelefono.map(c => (
-                  <span key={c.id} className="text-[10px] bg-warn/10 text-warn px-2 py-0.5 rounded-full font-semibold">
+                  <span key={c.id} className="text-[11px] bg-warn/10 text-warn px-2 py-0.5 rounded-full font-semibold">
                     {c.name} {c.surname}
                   </span>
                 ))}
@@ -238,7 +238,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       )}
 
       {/* ── MENSAJES PROGRAMADOS ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarClock className="w-4 h-4 text-accent" />
@@ -272,7 +272,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                       <p className="text-sm font-semibold truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
                       <p className="text-xs text-muted">Programado para el {new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
                     </div>
-                    <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                    <button onClick={() => removeScheduled(m.id)} className="text-[11px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
                     <button
                       onClick={() => sendScheduled(m.id, client, m.mensaje)}
                       disabled={!hasPhone}
@@ -310,7 +310,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
                         <p className="text-sm font-medium truncate">{client ? `${client.name} ${client.surname}` : 'Cliente eliminado'}</p>
                         <p className="text-xs text-muted truncate">{new Date(m.fechaEnvio + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · "{m.mensaje}"</p>
                       </div>
-                      <button onClick={() => removeScheduled(m.id)} className="text-[10px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
+                      <button onClick={() => removeScheduled(m.id)} className="text-[11px] text-muted hover:text-warn underline flex-shrink-0">Descartar</button>
                     </div>
                   )
                 })}
@@ -321,7 +321,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── ENCUESTAS ESTA SEMANA ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-accent" />
@@ -394,7 +394,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── ALERTAS DE INACTIVIDAD ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <button
           className="w-full px-5 py-4 border-b border-border flex items-center justify-between"
           onClick={() => setShowAlerts(!showAlerts)}>
@@ -459,7 +459,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
       </div>
 
       {/* ── TODOS LOS CLIENTES — envío rápido ── */}
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden shadow-sm" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <button
           className="w-full px-5 py-4 border-b border-border flex items-center justify-between"
           onClick={() => setShowInactivos(!showInactivos)}>

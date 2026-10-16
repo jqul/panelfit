@@ -207,6 +207,16 @@ function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number): Tra
       const totalOffsetDays = weeksAgo * 7 + dayOffsetWithinWeek + (isCurrent ? 1 : 0)
       const fecha = new Date(today.getTime() - totalOffsetDays * 86400000).toISOString().split('T')[0]
       week.days[dayIdx].exercises.forEach((ex, ri) => {
+        if (ex.kind === 'run' && ex.run) {
+          // Carrera: ritmo que mejora semana a semana y se resiente un poco en las últimas tiradas
+          const runSets: Record<number, { weight: string; reps: string; timeSec: number; distanceM: number }> = {}
+          for (let si = 0; si < ex.run.reps; si++) {
+            const paceSec = 372 + weeksAgo * 14 + si * 5
+            runSets[si] = { weight: '', reps: '1', distanceM: ex.run.distanceM, timeSec: Math.round((ex.run.distanceM / 1000) * paceSec) }
+          }
+          logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets: runSets, done: true, dateDone: fecha }
+          return
+        }
         const plannedW = parseWeightNum(ex.weight)
         const { numSets, repsText } = parseSetsStrDemo(ex.sets)
         const sets: Record<number, { weight: string; reps: string; rir: number }> = {}
@@ -490,6 +500,7 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
             { name: 'Press banca pausa', sets: '3×5', weight: '75kg', isMain: false, comment: '2 segundos en el pecho', videoUrl: '', restSets: 120, restAfter: 90 },
             { name: 'Press inclinado mancuernas', sets: '3×10', weight: '30kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
             { name: 'Fondos lastrados', sets: '3×8', weight: '+10kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
+            { name: 'Pista: 4 × 400 m · rec 100 m andando', sets: '4x1', weight: '', isMain: false, comment: 'Al final de la sesión: trote suave, ritmo de conversación (RPE 5-6).', videoUrl: '', hideRest: true, kind: 'run', run: { reps: 4, distanceM: 400, recoveryM: 100, intensity: 'RPE 5-6' } },
           ]
         },
         {

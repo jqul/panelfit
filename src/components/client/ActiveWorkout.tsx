@@ -1,23 +1,39 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  ChevronDown, Clock, Trophy, ChevronLeft,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Zap, Repeat
+  ChevronDown, Trophy,
+  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Repeat
 } from 'lucide-react'
-import { DayPlan, TrainingPlan, TrainingLogs } from '../../types'
+import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
-import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, RIR_OPTIONS, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel } from '../../lib/strength'
+import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
-import { getYTId, parseSet, NextSetInfo } from './active-workout/utils'
+import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
 import { SetRow } from './active-workout/SetRow'
+import { RunSets } from './active-workout/RunSets'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
+import { WorkoutHeader } from './active-workout/WorkoutHeader'
+import { FinishWorkoutModal } from './active-workout/FinishWorkoutModal'
+import { ExerciseEvaTracker } from './active-workout/ExerciseEvaTracker'
+import { RequiredVideoUpload } from './active-workout/RequiredVideoUpload'
+import { ExerciseSubstitution } from './active-workout/ExerciseSubstitution'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
-import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
+import { useClientPain } from '../../lib/clientPain'
+import { localDateKey } from '../../lib/dates'
+import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
+import { useTrainerMetricSettings } from '../../lib/progresoSections'
+import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
+import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
+import { rankByQuery } from '../../lib/exerciseSearch'
+import { streakDays } from '../../lib/progressSummary'
+import { latestPreviousLog } from '../../lib/previousSession'
+import { FinishedScreen } from './active-workout/FinishedScreen'
+import { FocusWorkout } from './active-workout/FocusWorkout'
 
 interface Props {
   day: DayPlan
@@ -36,9 +52,6 @@ interface Props {
   trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
 }
 
-const REACTION_EMOJIS = ['🔥', '💪', '😅', '😩', '🤕', '👍']
-const MOLESTIA_EMOJI = '🤕'
-
 export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
   const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
@@ -52,6 +65,14 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [molestiaZona, setMolestiaZona] = useState<string | null>(null)
   const { addEntry: addPainEntry } = useClientPain(plan.clientId, trainerId)
 
+  // "Pesos sugeridos" en vivo (objetivo de hoy + sugerencia VBT) — el
+  // entrenador que prefiere ajustar el peso él mismo en vez de que el
+  // cliente vea un algoritmo durante la serie puede desactivarlo en
+  // Ajustes > Métricas activas, mismo interruptor que ya usa el análisis
+  // de Progreso (lib/progresoSections.ts) — activo por defecto.
+  const metricasActivas = useTrainerMetricSettings(trainerId)
+  const showPesosSugeridos = !metricasActivas || metricasActivas.has('pesos_sugeridos')
+
   // Pruebas físicas pedidas para este día del plan (Cooper, salto, etc.) — el
   // cliente mete su resultado aquí y va directo a Progreso > Pruebas del
   // entrenador, sin que haga falta decírselo aparte.
@@ -60,7 +81,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const dayTests = (day?.testIds || [])
     .map(id => testCatalog.find(t => t.id === id))
     .filter((t): t is NonNullable<typeof t> => !!t)
-  const todayDate = new Date().toISOString().split('T')[0]
+  const todayDate = localDateKey()
   const testResultadosHoy = Object.fromEntries(
     testResultados.filter(r => r.fecha === todayDate).map(r => [r.test_id, r])
   )
@@ -69,7 +90,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     addTestResultado(trainerId, testId, valor, todayDate, '')
   }
 
-  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; timeSec?: number; distanceM?: number; isTest?: boolean }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -85,6 +106,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           done: log?.done || false,
           rir: log?.sets?.[si]?.rir,
           velocity: log?.sets?.[si]?.velocity,
+          timeSec: log?.sets?.[si]?.timeSec,
+          distanceM: log?.sets?.[si]?.distanceM,
+          isTest: log?.sets?.[si]?.isTest,
         }
       }
     })
@@ -108,6 +132,29 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   })
   const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
   const [substituteDraft, setSubstituteDraft] = useState('')
+  // Sustituir por texto libre rompía las estadísticas del entrenador (grupo
+  // muscular, récords...) al no coincidir con ningún nombre conocido — ahora
+  // se elige de la biblioteca real del entrenador; el texto libre queda como
+  // último recurso si de verdad no está en la lista.
+  const { names: libraryNames } = useTrainerExerciseNames(trainerId)
+  const substituteSuggestions = substituteDraft.trim().length >= 2
+    ? rankByQuery(libraryNames, substituteDraft).slice(0, 8)
+    : []
+  const libraryMuscleMap = useLibraryMuscleMap(libraryNames)
+
+  // Sustitución inteligente por molestia — a diferencia de "Sustitúyelo" (que
+  // es libre, por disponibilidad de material), aquí el cliente dice qué zona
+  // le duele AHORA MISMO y se le proponen ejercicios del mismo grupo muscular
+  // que no cargan esa zona, para no parar del todo la sesión ni forzar la
+  // molestia.
+  const [molestiaPickerRi, setMolestiaPickerRi] = useState<number | null>(null)
+  const [molestiaPickerZona, setMolestiaPickerZona] = useState<string | null>(null)
+  const openMolestiaPicker = (ri: number, exName: string) => {
+    setEditingSubstitute(null)
+    setMolestiaPickerRi(ri)
+    setMolestiaPickerZona(guessZonaForExercise(exName, libraryMuscleMap))
+  }
+  const closeMolestiaPicker = () => { setMolestiaPickerRi(null); setMolestiaPickerZona(null) }
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
   const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
 
@@ -120,7 +167,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     setUploadingVideoRi(ri)
     const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
     const ext = file.name.split('.').pop()
-    const path = `${dayKey}/r${ri}_${Date.now()}.${ext}`
+    // El id del cliente va primero en la ruta para que la política de Storage
+    // pueda comprobar quién es el dueño (antes la ruta no llevaba ningún id y
+    // cualquier usuario autenticado podía leer/subir aquí sin restricción).
+    const path = `${plan.clientId}/${dayKey}/r${ri}_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
     if (error) { alert('Error al subir vídeo'); setUploadingVideoRi(null); return }
     const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
@@ -148,6 +198,18 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [restTimer, setRestTimer] = useState<{ secs: number; next: NextSetInfo | null } | null>(null)
   const [elapsedSecs, setElapsedSecs] = useState(0)
   const [showFinish, setShowFinish] = useState(false)
+  const [saving, setSaving] = useState(false)    // guardando al terminar: evita el doble toque
+  const [finished, setFinished] = useState(false) // sesión ya guardada: se enseña la pantalla de cierre
+  // Vista Foco (una serie a la vez) o Lista (todos los ejercicios) — se recuerda la elección.
+  const [view, setView] = useState<'foco' | 'lista'>(() => {
+    try { return localStorage.getItem('pf_workout_view') === 'lista' ? 'lista' : 'foco' } catch { return 'foco' }
+  })
+  const [focusOverride, setFocusOverride] = useState<{ ri: number; si: number } | null>(null)
+  const toggleView = () => {
+    const next = view === 'foco' ? 'lista' : 'foco'
+    setView(next); setFocusOverride(null)
+    try { localStorage.setItem('pf_workout_view', next) } catch { /* sin almacenamiento: no se recuerda */ }
+  }
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
@@ -157,9 +219,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   useEffect(() => { setsRef.current = sets }, [sets])
 
   useEffect(() => {
+    if (finished) return // la duración se congela al guardar la sesión
     const t = setInterval(() => setElapsedSecs(Math.floor((Date.now() - startTime.current) / 1000)), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [finished])
 
   const formatElapsed = () => {
     const m = Math.floor(elapsedSecs / 60)
@@ -170,7 +233,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
     const key = `ex_${dayKey}_r${ri}`
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const currentLogs = logsRef.current
     const prevRir = currentLogs[key]?.sets?.[si]?.rir
     const prevVelocity = currentLogs[key]?.sets?.[si]?.velocity
@@ -208,7 +271,23 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...(velocity !== undefined ? { velocity } : {}) } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: velocity !== undefined ? { ...existingSet, velocity } : (({ velocity: _v, ...rest }) => rest)(existingSet) },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  // Tiempo / distancia de una tirada de carrera — mismo patrón que RIR y
+  // velocidad: se guarda al momento, sin esperar a marcar la serie como hecha.
+  const setRunData = useCallback((ri: number, si: number, patch: { timeSec?: number; distanceM?: number; isTest?: boolean }) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...(prev[ri]?.[si] ?? { weight: '', reps: '1', done: false }), ...patch } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const existingSet = currentLogs[key]?.sets?.[si] || { weight: '', reps: '1' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...(currentLogs[key] || { done: false }),
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, ...patch } },
       }
     })
   }, [dayKey, onLogsChange])
@@ -249,7 +328,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // ejercicio en vez de tener que ir a Progreso. Se excluye la fecha de hoy:
   // esto es "lo que ya hiciste antes", no lo que estás metiendo ahora mismo.
   const getExerciseHistory = useCallback((exName: string, limit = 4) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const entries: { date: string; weight: number; reps: number }[] = []
     plan.weeks.forEach((week, wi) => {
       week.days.forEach((d, di) => {
@@ -310,8 +389,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const prevSetsFor = (rowIdx: number): Record<number, { weight?: string; reps?: string; rir?: number }> => {
       const key = `ex_${dayKey}_r${rowIdx}`
       const pattern = new RegExp(`^ex_w\\d+_d${dayIdx}_r${rowIdx}$`)
-      const found = Object.entries(logsRef.current).find(([k, l]) => pattern.test(k) && k !== key && (l as any).dateDone)
-      return (found?.[1] as any)?.sets || {}
+      return latestPreviousLog(logsRef.current, pattern, key)?.sets || {}
     }
     const buildInfo = (rowIdx: number, setIdx: number, totalForRow: number, existing?: { weight?: string; reps?: string }): NextSetInfo => {
       const rowEx = day.exercises[rowIdx]
@@ -323,13 +401,19 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         totalSets: totalForRow,
         weight: existing?.weight || prevWk?.weight || '',
         reps: existing?.reps || prevWk?.reps || String(numReps),
-        targetLabel: getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe),
+        targetLabel: showPesosSugeridos ? getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe) : null,
       }
     }
 
     const { numSets: curNumSets } = parseSet(day.exercises[afterRi].sets)
     const totalCur = Math.max(curNumSets, Object.keys(updatedExSets).length)
-    if (afterSi + 1 < totalCur) return buildInfo(afterRi, afterSi + 1, totalCur, updatedExSets[afterSi + 1])
+    if (afterSi + 1 < totalCur) {
+      // La serie siguiente sin peso parte del de la que se acaba de hacer (es lo
+      // normal y lo que precarga la vista de foco), no del de la última sesión.
+      const next = updatedExSets[afterSi + 1]
+      const carried = next?.weight || updatedExSets[afterSi]?.weight
+      return buildInfo(afterRi, afterSi + 1, totalCur, { ...next, weight: carried })
+    }
 
     for (let nextRi = afterRi + 1; nextRi < day.exercises.length; nextRi++) {
       const { numSets: ns } = parseSet(day.exercises[nextRi].sets)
@@ -339,12 +423,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       if (firstUndone !== undefined) return buildInfo(nextRi, firstUndone, total, exSetsForRow[firstUndone])
     }
     return null
-  }, [day, dayKey, dayIdx, plan, weekIdx])
+  }, [day, dayKey, dayIdx, plan, weekIdx, showPesosSugeridos])
 
   const toggleSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDateKey()
     const prev = setsRef.current
     const wasDone = prev[ri]?.[si]?.done
 
@@ -353,19 +437,30 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     // setState de otros componentes (onLogsChange -> setLogs del padre) ni
     // efectos secundarios (setRestTimer) desde dentro de ella.
     const newDone = !prev[ri]?.[si]?.done
-    const updated = { ...prev, [ri]: { ...prev[ri], [si]: { weight, reps, done: newDone, rir: prev[ri]?.[si]?.rir, velocity: prev[ri]?.[si]?.velocity } } }
+    // En carrera por tiradas, la distancia de la tirada es la prescrita; en
+    // un test de tiempo fijo la escribe el cliente (setRunData).
+    const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
+    const prevSet = prev[ri]?.[si]
+    const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
     const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
     const key = `ex_${dayKey}_r${ri}`
-    const setsData: Record<number, { weight: string; reps: string; rir?: number; velocity?: number }> = {}
+    const setsData: Record<number, LogSet> = {}
     for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-      setsData[i] = { weight: updated[ri][i]?.weight || '', reps: updated[ri][i]?.reps || '', ...(updated[ri][i]?.rir !== undefined ? { rir: updated[ri][i].rir } : {}), ...(updated[ri][i]?.velocity !== undefined ? { velocity: updated[ri][i].velocity } : {}) }
+      const st = updated[ri][i]
+      setsData[i] = {
+        weight: st?.weight || '', reps: st?.reps || '',
+        ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
+        ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
+        ...(st?.isTest ? { isTest: true } : {}),
+      }
     }
 
     setSets(updated)
     onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
 
-    // Iniciar timer de descanso solo si no tiene hideRest
-    if (newDone && !ex.hideRest) {
+    // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
+    // recuperación es andando una distancia, no una cuenta atrás)
+    if (newDone && !ex.hideRest && ex.kind !== 'run') {
       const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
       setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
     }
@@ -442,8 +537,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const getPrevSets = (ri: number) => {
     const key = `ex_${dayKey}_r${ri}`
     const pattern = samePlaceInPlan(ri)
-    const prev = Object.entries(logs).find(([k, l]) => pattern.test(k) && k !== key && l.dateDone)
-    return prev?.[1]?.sets || {}
+    return latestPreviousLog(logs, pattern, key)?.sets || {}
   }
 
   // Densidad de la sesión: kg/min en vivo, más el tonelaje frente a la sesión
@@ -468,88 +562,256 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
   const allComplete = pct === 100
 
+  const streak = streakDays(logs, new Date(), true)
+
+  const incompleteExercises = day.exercises.map((ex, ri) => {
+    const { numSets } = parseSet(ex.sets)
+    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
+    return { name: ex.name, done, total: numSets }
+  }).filter(e => e.done < e.total)
+
+  const onPickReaction = (emoji: string) => {
+    setReactionEmoji(emoji)
+    setShowReactionComment(true)
+    // Con 🤕 vamos directos a la zona — el emoji ya nos dice que es molestia,
+    // no agujetas normales, así que no hace falta el clasificador que sí usa
+    // el check-in diario (ahí "agujetas" es ambiguo)
+    if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null)
+  }
+
+  const shareAchievement = () => {
+    const lines = [
+      `💪 ¡Entreno completado! — ${day.title}`,
+      '',
+      `⏱️ ${formatElapsed()}`,
+      `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
+      newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
+      sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
+      '',
+      'Hecho con PanelFit',
+    ].filter(Boolean).join('\n')
+    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
+  }
+
+  const confirmFinish = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+    if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+    if (reactionEmoji) {
+      const today = localDateKey()
+      await supabase.from('session_reactions').insert({
+        clientId: plan.clientId, dayTitle: day.title, date: today,
+        emoji: reactionEmoji, comment: reactionComment.trim() || null,
+      })
+    }
+    // 🤕 con zona elegida -> queda como registro real de dolor, no solo como
+    // reacción de la sesión — para que salga en Progreso > Dolor y en la
+    // Bandeja igual que el del check-in diario.
+    if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
+      await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
+    }
+    // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente puso
+    // un RPE global. Alimenta el ACWR de carga interna, complementario al de
+    // tonelaje (esencial para quien combina gimnasio con pista/campo).
+    if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
+      const today = localDateKey()
+      const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
+      await supabase.from('session_load').insert({
+        client_id: plan.clientId, trainer_id: trainerId, date: today,
+        duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
+      })
+    }
+    if (!allComplete) {
+      // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
+      // material estaba ocupado, etc.) — sin esto, el panel seguía
+      // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque el
+      // cliente ya la había dado por terminada. done:false a propósito — ver
+      // comentario en el tipo ExerciseLog.
+      onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
+    }
+    setShowFinish(false)
+    setFinished(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (finished) {
+    return (
+      <FinishedScreen title={day.title} trainerMode={trainerMode} clientName={clientName} elapsedLabel={formatElapsed()}
+        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish} />
+    )
+  }
+
+  // Sustituir / molestia: lo comparten la vista de lista y la de foco.
+  const renderSubstitution = (ri: number, ex: DayPlan['exercises'][number]) => (
+    <ExerciseSubstitution
+        substitutionName={substitutions[ri]}
+        isEditing={editingSubstitute === ri}
+        draft={substituteDraft}
+        onDraftChange={setSubstituteDraft}
+        suggestions={substituteSuggestions}
+        onStartEdit={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri] || ''); setEditingSubstitute(ri) }}
+        onConfirmEdit={(name) => { setSubstitute(ri, name); setEditingSubstitute(null) }}
+        onCancelEdit={() => setEditingSubstitute(null)}
+        isMolestiaOpen={molestiaPickerRi === ri}
+        onOpenMolestia={() => openMolestiaPicker(ri, ex.name)}
+        onCloseMolestia={closeMolestiaPicker}
+        molestiaZona={molestiaPickerZona}
+        onSetMolestiaZona={setMolestiaPickerZona}
+        alternatives={molestiaPickerRi === ri && molestiaPickerZona
+          ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
+          : []}
+        onPickAlternative={(altName) => {
+          setSubstitute(ri, altName)
+          addPainEntry(molestiaPickerZona!, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+          closeMolestiaPicker()
+        }}
+        onJustNotify={() => {
+          addPainEntry(molestiaPickerZona!, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
+          closeMolestiaPicker()
+        }}
+    />
+  )
+
+  // Serie que toca ahora: la primera sin hacer; si está todo hecho, la última.
+  const autoPos = (() => {
+    for (let ri = 0; ri < day.exercises.length; ri++) {
+      const exSets = sets[ri] || {}
+      const total = Math.max(parseSet(day.exercises[ri].sets).numSets, Object.keys(exSets).length)
+      for (let si = 0; si < total; si++) if (!exSets[si]?.done) return { ri, si }
+    }
+    const last = day.exercises.length - 1
+    const total = Math.max(parseSet(day.exercises[last].sets).numSets, Object.keys(sets[last] || {}).length)
+    return { ri: last, si: Math.max(0, total - 1) }
+  })()
+  const pos = focusOverride && day.exercises[focusOverride.ri] ? focusOverride : autoPos
+
+  const renderRun = (ri: number) => {
+    const ex = day.exercises[ri]
+    const exSets = sets[ri] || {}
+    return ex.run ? (
+      <RunSets run={ex.run} totalSets={Math.max(parseSet(ex.sets).numSets, Object.keys(exSets).length)} sets={exSets}
+        prevSets={getPrevSets(ri)} onSetData={(si, patch) => setRunData(ri, si, patch)} onToggle={si => toggleSet(ri, si, '', '1')} />
+    ) : null
+  }
+
+  // Lo avanzado de un ejercicio, para el "Más" de la vista de foco.
+  const renderMore = (ri: number) => {
+    const ex = day.exercises[ri]
+    const history = getExerciseHistory(ex.name)
+    const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+    const pctTarget = parsePercentWeight(ex.weight) !== null ? resolveWeightFromPercent(ex.weight, getBest1RM(ex.name)) : null
+    const vProfile = tracksVelocity(ex) ? getVelocityProfile(ex.name) : null
+    return (
+      <div className="space-y-3">
+        <div className="mx-4 bg-bg-alt/50 border border-border rounded-xl p-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+          {history.length === 0 ? <p className="text-xs text-muted">Sin historial previo para este ejercicio</p> : (
+            <div className="space-y-1.5">
+              {history.map((h, i) => {
+                const older = history[i + 1]
+                const delta = older ? Math.round((h.weight - older.weight) * 10) / 10 : null
+                return (
+                  <div key={h.date} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted w-14 flex-shrink-0">{new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                    <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                    {delta !== null && delta !== 0 && <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        {(pctTarget || vProfile?.oneRM || !(ex.hideRest || ex.kind === 'run')) && (
+          <div className="mx-4 text-xs text-muted space-y-1">
+            {pctTarget && <p className="text-accent font-semibold">{ex.weight} ≈ {pctTarget}kg (según tu 1RM estimado)</p>}
+            {vProfile?.oneRM && <p style={{ color: 'var(--color-accent)' }} className="font-semibold">⚡ 1RM real de hoy (por velocidad): ~{vProfile.oneRM}kg</p>}
+            {!(ex.hideRest || ex.kind === 'run') && <p>Descanso: {Math.floor(restSecs / 60) > 0 ? `${Math.floor(restSecs / 60)}min ` : ''}{restSecs % 60 > 0 ? `${restSecs % 60}s` : ''}</p>}
+          </div>
+        )}
+        {renderSubstitution(ri, ex)}
+        {ex.enReadaptacion && <ExerciseEvaTracker eva={logs[`ex_${dayKey}_r${ri}`]?.dolorEva} onSetEva={(v) => setExerciseEva(ri, v)} />}
+        {ex.requiresVideo && (
+          <RequiredVideoUpload trainerMode={trainerMode} videoUploaded={logs[`ex_${dayKey}_r${ri}`]?.videoEjecucion}
+            uploading={uploadingVideoRi === ri} onUpload={(f) => uploadExerciseVideo(ri, f)} />
+        )}
+        {trainerId && !trainerMode && <div className="px-4"><VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} /></div>}
+        {ex.tempo && <TempoWidget tempo={ex.tempo} />}
+      </div>
+    )
+  }
+
+  const warmupBlock = (day.warmupExercises?.length || 0) > 0 ? (
+    <div className="bg-accent/5 border-b border-accent/20 px-4 py-3">
+      <p className="text-xs font-bold text-accent uppercase tracking-wider mb-2">Calentamiento</p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {(day.warmupExercises || []).map((w, i) => (
+          <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
+            <p className="font-semibold text-gray-700">{w.name}</p>
+            {w.sets && <p className="text-muted">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null
+  const topExtras = warmupBlock || dayTests.length > 0 ? (
+    <div>{warmupBlock}<DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} /></div>
+  ) : undefined
+
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
       {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
-      {/* Header */}
-      <div className="bg-card border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-2 px-4 py-3">
-          <button onClick={() => onBack ? onBack() : setShowFinish(true)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{day.title}</div>
-            {clientName && <p className="text-[10px] text-muted truncate">Sesión de {clientName}</p>}
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted mr-2">
-            <Clock className="w-3.5 h-3.5" />
-            <span className="font-mono font-semibold tabular-nums">{formatElapsed()}</span>
-          </div>
-          <button
-            onClick={() => setShowFinish(true)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              allComplete
-                ? 'bg-ok text-white shadow-md shadow-ok/30'
-                : 'bg-accent text-white hover:opacity-90'
-            }`}>
-            {allComplete && <CheckCircle2 className="w-3.5 h-3.5" />}
-            {allComplete ? '¡Terminar!' : 'Terminar'}
-          </button>
-        </div>
-
-        {/* Stats bar */}
-        <div className="flex items-center px-4 pb-3 gap-4 text-xs">
-          <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{formatElapsed()}</p></div>
-          <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
-          <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
-          {avgRir !== null && (
-            <div><p className="text-muted">RIR medio</p><p className="font-bold" style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</p></div>
-          )}
-          <div className="flex-1 text-right">
-            <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
-            <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
-              <div className="h-full bg-ok rounded-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
-        {totalVolume > 0 && (
-          <div className="px-4 pb-3">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
-                <Flame className="w-3 h-3" /> Densidad
-              </p>
-              <p className="text-[10px] text-muted font-bold tabular-nums">
-                {densityRate > 0 && `${densityRate} kg/min · `}
-                {densityPct !== null
-                  ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`
-                  : `${(totalVolume / 1000).toFixed(1)}t movidas`}
-              </p>
-            </div>
-            {densityPct !== null && (
-              <div className="w-full h-2 bg-bg-alt rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${densityPct}%`, background: 'linear-gradient(90deg, #e07b54, #f0a868)' }} />
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {view === 'foco' ? (
+        <FocusWorkout
+          title={day.title} clientName={clientName} elapsedLabel={formatElapsed()} pct={pct}
+          exercises={day.exercises} sets={sets} prevSets={getPrevSets} weekRpe={plan.weeks?.[weekIdx]?.rpe} showTarget={showPesosSugeridos}
+          ri={pos.ri} si={pos.si} allComplete={allComplete}
+          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord}
+          onSelect={(ri, si) => setFocusOverride({ ri, si })}
+          onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
+          onCommit={commitSet}
+          onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
+          onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+          renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
+        />
+      ) : (
+      <>
+      <WorkoutHeader
+        title={day.title}
+        clientName={clientName}
+        onBack={() => onBack ? onBack() : setShowFinish(true)}
+        onFinishClick={() => setShowFinish(true)}
+        elapsedLabel={formatElapsed()}
+        allComplete={allComplete}
+        totalVolume={totalVolume}
+        totalSetsDone={totalSetsDone}
+        avgRir={avgRir}
+        doneExs={doneExs}
+        totalExs={totalExs}
+        pct={pct}
+        densityRate={densityRate}
+        densityPct={densityPct}
+        prevSessionVolume={prevSessionVolume}
+        onToggleView={toggleView}
+      />
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (
-        <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3">
-          <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+        <div className="bg-accent/5 border-b border-accent/20 px-4 py-3">
+          <p className="text-xs font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5" /> Calentamiento
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(day.warmupExercises || []).map((ex, i) => (
-              <div key={i} className="flex-shrink-0 bg-white border border-orange-100 rounded-xl px-3 py-2 text-xs">
+              <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
                 <p className="font-semibold text-gray-700">{ex.name}</p>
-                {ex.sets && <p className="text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                {ex.sets && <p className="text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
               </div>
             ))}
           </div>
@@ -569,7 +831,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           const prevSets = getPrevSets(ri)
           const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
           const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-          const hideRest = ex.hideRest || false
+          const hideRest = ex.hideRest || ex.kind === 'run'
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
 
@@ -584,18 +846,18 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               .find(si => exSets[si]?.done && exSets[si]?.velocity !== undefined && exSets[si]?.weight === weight)
             return si0 !== undefined ? exSets[si0].velocity : undefined
           }
-          const velocityProfile = ex.isMain ? getVelocityProfile(ex.name) : null
+          const velocityProfile = tracksVelocity(ex) ? getVelocityProfile(ex.name) : null
           // Autorregulación VBT: 1RM por velocidad de HOY (con lo que ya lleva
           // hecho en esta sesión) frente al mejor 1RM por velocidad de sesiones
           // anteriores — si el SNC no responde igual hoy, sugiere ajustar el
           // peso de las series que quedan en vez de forzar la carga prescrita.
-          const todayVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
-          const historicalVelocityProfile = ex.isMain ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
-          const vbtSuggestion = getVbtSuggestedWeightChange(
+          const todayVelocityProfile = tracksVelocity(ex) ? getVelocityProfileFromLogs(ex.name, logs, { only: todayDate }) : null
+          const historicalVelocityProfile = tracksVelocity(ex) ? getVelocityProfileFromLogs(ex.name, logs, { exclude: todayDate }) : null
+          const vbtSuggestion = showPesosSugeridos ? getVbtSuggestedWeightChange(
             todayVelocityProfile?.oneRM ?? null,
             historicalVelocityProfile?.oneRM ?? null,
             parseFloat(ex.weight) || undefined
-          )
+          ) : null
 
           return (
             <div key={ri} className="border-b border-border">
@@ -620,23 +882,23 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                       <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
-                  {ex.isMain && <span className="text-[9px] text-accent font-bold uppercase tracking-wider">Principal</span>}
+                  {ex.isMain && <span className="text-[11px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
                     const target = resolveWeightFromPercent(ex.weight, best1RM)
                     return target ? (
-                      <p className="text-[10px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
+                      <p className="text-[11px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
                     ) : (
-                      <p className="text-[10px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
+                      <p className="text-[11px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
                     )
                   })()}
                   {velocityProfile?.oneRM && (
-                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#6366f1' }}>
+                    <p className="text-[11px] font-semibold mt-0.5" style={{ color: 'var(--color-accent)' }}>
                       ⚡ 1RM real de hoy (por velocidad): ~{velocityProfile.oneRM}kg
                     </p>
                   )}
                   {vbtSuggestion && (
-                    <p className="text-[10px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
+                    <p className="text-[11px] font-bold mt-0.5" style={{ color: vbtSuggestion.color }} title="Compara el 1RM por velocidad de hoy con tu mejor referencia en sesiones anteriores">
                       🎯 {vbtSuggestion.label}
                     </p>
                   )}
@@ -653,7 +915,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 const history = getExerciseHistory(ex.name)
                 return (
                   <div className="mx-4 mb-3 bg-bg-alt/50 border border-border rounded-xl p-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">Últimas sesiones</p>
                     {history.length === 0 ? (
                       <p className="text-xs text-muted">Sin historial previo para este ejercicio</p>
                     ) : (
@@ -684,101 +946,28 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
 
               {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
-              <div className="px-4 mb-3">
-                {editingSubstitute === ri ? (
-                  <div className="flex items-center gap-2">
-                    <input autoFocus value={substituteDraft}
-                      onChange={e => setSubstituteDraft(e.target.value)}
-                      placeholder="¿Qué has hecho en su lugar?"
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }
-                        if (e.key === 'Escape') setEditingSubstitute(null)
-                      }}
-                      className="flex-1 px-3 py-2 bg-white border border-warn/40 rounded-xl text-sm outline-none focus:ring-2 focus:ring-warn/20" />
-                    <button onClick={() => { setSubstitute(ri, substituteDraft); setEditingSubstitute(null) }}
-                      className="p-2 bg-warn text-white rounded-xl flex-shrink-0"><CheckCircle2 className="w-4 h-4" /></button>
-                    <button onClick={() => setEditingSubstitute(null)}
-                      className="p-2 border border-border rounded-xl text-muted flex-shrink-0"><X className="w-4 h-4" /></button>
-                  </div>
-                ) : substitutions[ri] ? (
-                  <button onClick={() => { setSubstituteDraft(substitutions[ri]); setEditingSubstitute(ri) }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-warn hover:underline">
-                    <Repeat className="w-3.5 h-3.5" /> Cambiar sustitución
-                  </button>
-                ) : (
-                  <button onClick={() => { setSubstituteDraft(''); setEditingSubstitute(ri) }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-accent">
-                    <Repeat className="w-3.5 h-3.5" /> ¿Has hecho otro ejercicio? Sustitúyelo
-                  </button>
-                )}
-              </div>
+              {renderSubstitution(ri, ex)}
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
                   fisioterapia deportiva moderna no se busca "cero dolor" sino
                   dolor tolerable (≤3-4/10) que no empeore a las 24h, así que
                   el color no penaliza cualquier dolor, solo el que se sale de
                   esa ventana. */}
-              {ex.enReadaptacion && (() => {
-                const exLog = logs[`ex_${dayKey}_r${ri}`]
-                const eva = exLog?.dolorEva
-                const colorFor = (v: number) => v <= 3 ? '#4caf7d' : v <= 6 ? '#e0a854' : '#dc2626'
-                return (
-                  <div className="mx-4 mb-3 border border-warn/20 bg-warn/5 rounded-2xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">🩹</span>
-                      <div>
-                        <p className="text-sm font-semibold">Dolor durante el ejercicio (EVA)</p>
-                        <p className="text-[10px] text-muted">Tolerable hasta ~3-4/10 sin empeorar mañana — no hace falta llegar a 0</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-11 gap-1">
-                      {Array.from({ length: 11 }, (_, v) => v).map(v => (
-                        <button key={v} onClick={() => setExerciseEva(ri, v)}
-                          className="aspect-square rounded-md text-[10px] font-bold flex items-center justify-center border-2 transition-all"
-                          style={eva === v
-                            ? { backgroundColor: colorFor(v), borderColor: colorFor(v), color: '#fff' }
-                            : { borderColor: '#e2ddd4', color: '#8a8278' }}>
-                          {v}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
+              {ex.enReadaptacion && (
+                <ExerciseEvaTracker eva={logs[`ex_${dayKey}_r${ri}`]?.dolorEva} onSetEva={(v) => setExerciseEva(ri, v)} />
+              )}
 
               {/* Vídeo de ejecución requerido por el entrenador para este ejercicio —
                   se sube y queda adjunto de inmediato al registro, sin pasar por
                   el ciclo de petición/respuesta del feedback asíncrono de abajo */}
-              {ex.requiresVideo && (() => {
-                const exLog = logs[`ex_${dayKey}_r${ri}`]
-                const videoUploaded = exLog?.videoEjecucion
-                return (
-                  <div className={`mx-4 mb-3 border-2 rounded-2xl p-4 space-y-2 ${videoUploaded ? 'border-ok/30 bg-ok/5' : 'border-dashed border-warn/30 bg-warn/5'}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">📹</span>
-                      <div>
-                        <p className="text-sm font-semibold">{trainerMode ? 'Vídeo de ejecución pedido a este cliente' : 'Tu entrenador pide vídeo de este ejercicio'}</p>
-                        <p className="text-xs text-muted">Graba la ejecución y súbela aquí</p>
-                      </div>
-                    </div>
-                    {videoUploaded ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-ok text-sm font-semibold">✓ Vídeo subido</span>
-                        <video src={videoUploaded} className="h-16 rounded-lg" controls />
-                      </div>
-                    ) : (
-                      <label className="flex items-center justify-center gap-2 w-full py-3 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn cursor-pointer hover:bg-warn/20 transition-colors">
-                        {uploadingVideoRi === ri ? 'Procesando...' : '📹 Grabar / subir vídeo'}
-                        {/* Sin capture: con él el móvil abre la cámara directo y no deja
-                            elegir un vídeo ya grabado, aunque el texto diga "grabar/subir". */}
-                        <input type="file" accept="video/*" className="hidden"
-                          disabled={uploadingVideoRi !== null}
-                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadExerciseVideo(ri, f) }} />
-                      </label>
-                    )}
-                  </div>
-                )
-              })()}
+              {ex.requiresVideo && (
+                <RequiredVideoUpload
+                  trainerMode={trainerMode}
+                  videoUploaded={logs[`ex_${dayKey}_r${ri}`]?.videoEjecucion}
+                  uploading={uploadingVideoRi === ri}
+                  onUpload={(f) => uploadExerciseVideo(ri, f)}
+                />
+              )}
 
               {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
                   ejecución; no aplica cuando es el propio entrenador quien graba */}
@@ -801,14 +990,24 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
+              {ex.kind === 'run' && ex.run ? (
+                <RunSets
+                  run={ex.run}
+                  totalSets={totalExSets}
+                  sets={exSets}
+                  prevSets={prevSets}
+                  onSetData={(si, patch) => setRunData(ri, si, patch)}
+                  onToggle={si => toggleSet(ri, si, '', '1')}
+                />
+              ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
-                <p className="text-[9px] uppercase text-muted font-bold text-center">N</p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center">Anterior</p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
+                <p className="text-[11px] uppercase text-muted font-bold text-center">N</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Anterior</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
                   KG <Calculator className="w-2.5 h-2.5 opacity-50" />
                 </p>
-                <p className="text-[9px] uppercase text-muted font-bold text-center">Reps</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Reps</p>
                 <div />
               </div>
 
@@ -830,6 +1029,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     prevRir={prev?.rir}
                     weekRpe={plan.weeks?.[weekIdx]?.rpe}
                     isMain={ex.isMain}
+                    showVelocity={tracksVelocity(ex)}
+                    showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
                     onToggle={(w, r) => toggleSet(ri, si, w, r)}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
@@ -843,6 +1044,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
                 <Plus className="w-4 h-4" /> Agregar Serie
               </button>
+              </>)}
             </div>
           )
         })}
@@ -867,188 +1069,39 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         <div className="h-8" />
       </div>
 
+      </>
+      )}
+
       {/* Modal confirmación terminar */}
       {showFinish && (
-        <div className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-sm flex items-end">
-          <div className="w-full bg-card rounded-t-3xl p-6 space-y-4">
-            <div className="w-10 h-1 bg-border rounded-full mx-auto" />
-            <h3 className="font-serif font-bold text-xl text-center">
-              {allComplete ? '¡Sesión completada! 🏆' : '¿Terminar entrenamiento?'}
-            </h3>
-            {!allComplete && (
-              <>
-                <p className="text-sm text-muted text-center">
-                  Te quedan <span className="font-bold text-warn">{totalExs - doneExs} ejercicio{totalExs - doneExs !== 1 ? 's' : ''}</span> sin completar
-                </p>
-                <div className="bg-warn/5 border border-warn/20 rounded-2xl p-3 space-y-1.5">
-                  {day.exercises.map((ex, ri) => {
-                    const { numSets } = parseSet(ex.sets)
-                    const done = Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).filter(Boolean).length
-                    if (done >= numSets) return null
-                    return (
-                      <div key={ri} className="flex items-center gap-2 text-sm">
-                        <span className="text-warn text-xs">⚠</span>
-                        <span className="flex-1 truncate font-medium">{ex.name}</span>
-                        <span className="text-xs text-warn flex-shrink-0">{numSets - done} serie{numSets - done !== 1 ? 's' : ''}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { icon: <Clock className="w-4 h-4 text-accent" />, value: formatElapsed(), label: 'Duración' },
-                { icon: <Dumbbell className="w-4 h-4 text-ok" />, value: `${doneExs}/${totalExs}`, label: 'Ejercicios' },
-                { icon: <Flame className="w-4 h-4 text-warn" />, value: `${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg`, label: 'Volumen' },
-              ].map((s, i) => (
-                <div key={i} className="bg-bg rounded-2xl p-3 text-center">
-                  <div className="flex justify-center mb-1">{s.icon}</div>
-                  <p className="font-serif font-bold text-base">{s.value}</p>
-                  <p className="text-[10px] text-muted">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            {newRecords.length > 0 && (
-              <div className="bg-gradient-to-br from-warn/10 to-warn/5 border border-warn/20 rounded-2xl px-4 py-3 space-y-2">
-                <p className="text-xs font-bold text-warn uppercase tracking-wider flex items-center gap-1.5">
-                  🏆 {newRecords.length} récord{newRecords.length > 1 ? 's' : ''} batido{newRecords.length > 1 ? 's' : ''}
-                </p>
-                {newRecords.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />
-                    <p className="text-sm flex-1 truncate"><span className="font-semibold">{r.name}</span></p>
-                    <p className="text-sm font-bold text-warn">{r.best}kg</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {avgRir !== null && (
-              <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
-                <Zap className="w-4 h-4 text-accent flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs text-muted">RIR medio de la sesión</p>
-                  <p className="text-sm font-bold">{avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
-                </div>
-              </div>
-            )}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted text-center">¿Cómo de duro se sintió en general? (RPE)</p>
-              <div className="grid grid-cols-5 gap-1.5">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-                  <button key={n} onClick={() => setSessionRpe(n + (sessionRpeHalf && n < 10 ? 0.5 : 0))}
-                    className={`py-2 rounded-xl text-sm font-bold transition-all ${
-                      sessionRpe !== null && Math.floor(sessionRpe) === n ? 'bg-ink text-white' : 'bg-bg text-muted hover:bg-bg-alt'
-                    }`}>
-                    {sessionRpe !== null && Math.floor(sessionRpe) === n && sessionRpeHalf && n < 10 ? `${n}.5` : n}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setSessionRpeHalf(h => !h)}
-                className={`w-full py-1.5 rounded-xl text-xs font-semibold border transition-all ${sessionRpeHalf ? 'bg-accent/15 border-accent text-accent' : 'border-border text-muted'}`}>
-                {sessionRpeHalf ? '✓ ' : ''}+0.5 (precisión powerlifting/halterofilia)
-              </button>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted text-center">¿Cómo te ha sentado?</p>
-              <div className="flex justify-center gap-2">
-                {REACTION_EMOJIS.map(emoji => (
-                  <button key={emoji} onClick={() => { setReactionEmoji(emoji); setShowReactionComment(true); if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null) }}
-                    className={`w-11 h-11 rounded-2xl text-xl flex items-center justify-center transition-all ${reactionEmoji === emoji ? 'bg-accent/15 ring-2 ring-accent' : 'bg-bg hover:bg-bg-alt'}`}>
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-              {/* Con 🤕 vamos directos a la zona — el emoji ya nos dice que es
-                  molestia, no agujetas normales, así que no hace falta el
-                  clasificador que sí usa el check-in diario (ahí "agujetas" es ambiguo) */}
-              {reactionEmoji === MOLESTIA_EMOJI && (
-                <div className="bg-warn/5 border border-warn/20 rounded-xl p-3 space-y-2">
-                  <p className="text-xs font-semibold text-center">¿En qué zona?</p>
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    {ZONAS_DOLOR.filter(z => z !== 'Otro').map(z => (
-                      <button key={z} onClick={() => setMolestiaZona(z)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                          molestiaZona === z ? 'bg-warn text-white border-warn' : 'border-border hover:border-warn hover:bg-warn/5'
-                        }`}>
-                        {z}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {showReactionComment && (
-                <textarea value={reactionComment} onChange={e => setReactionComment(e.target.value)} rows={2}
-                  placeholder="¿Algo que comentar? (opcional)"
-                  className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
-              )}
-            </div>
-            {allComplete && (
-              <button onClick={() => {
-                  const lines = [
-                    `💪 ¡Entreno completado! — ${day.title}`,
-                    '',
-                    `⏱️ ${formatElapsed()}`,
-                    `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
-                    newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
-                    sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
-                    '',
-                    'Hecho con PanelFit',
-                  ].filter(Boolean).join('\n')
-                  window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 active:scale-[0.98] transition-all"
-                style={{ backgroundColor: '#25D366' }}>
-                📤 Compartir logro
-              </button>
-            )}
-            <button onClick={async () => {
-                if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
-                if (reactionEmoji) {
-                  const today = new Date().toISOString().split('T')[0]
-                  await supabase.from('session_reactions').insert({
-                    clientId: plan.clientId, dayTitle: day.title, date: today,
-                    emoji: reactionEmoji, comment: reactionComment.trim() || null,
-                  })
-                }
-                // 🤕 con zona elegida -> queda como registro real de dolor, no
-                // solo como reacción de la sesión — para que salga en Progreso
-                // > Dolor y en la Bandeja igual que el del check-in diario.
-                if (reactionEmoji === MOLESTIA_EMOJI && molestiaZona) {
-                  await addPainEntry(molestiaZona, 6, reactionComment.trim() || undefined, undefined, 'articular')
-                }
-                // Carga interna (sRPE de Foster: minutos × RPE) — solo si el cliente
-                // puso un RPE global. Alimenta el ACWR de carga interna, complementario
-                // al de tonelaje (esencial para quien combina gimnasio con pista/campo).
-                if (sessionRpe !== null && trainerId && !plan.clientId.startsWith('demo-client-')) {
-                  const today = new Date().toISOString().split('T')[0]
-                  const durationMin = Math.max(1, Math.round(elapsedSecs / 60))
-                  await supabase.from('session_load').insert({
-                    client_id: plan.clientId, trainer_id: trainerId, date: today,
-                    duration_min: durationMin, rpe: sessionRpe, load_au: durationMin * sessionRpe,
-                  })
-                }
-                if (!allComplete) {
-                  // El cliente decidió parar aquí a propósito (se acabó el tiempo, el
-                  // material estaba ocupado, etc.) — sin esto, el panel seguía
-                  // ofreciendo "Continuar" como si la sesión siguiera a medias, aunque
-                  // el cliente ya la había dado por terminada. done:false a propósito
-                  // — ver comentario en el tipo ExerciseLog.
-                  onLogsChange({ ...logsRef.current, [`finished_${dayKey}`]: { sets: {}, done: false, sessionFinished: true } })
-                }
-                onFinish()
-              }}
-              className={`w-full py-4 rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all ${
-                allComplete ? 'bg-ok text-white' : 'bg-ink text-white'
-              }`}>
-              {allComplete ? '✓ Guardar y terminar' : 'Terminar igual'}
-            </button>
-            <button onClick={() => setShowFinish(false)}
-              className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
-              Seguir entrenando
-            </button>
-          </div>
-        </div>
+        <FinishWorkoutModal
+          dayTitle={day.title}
+          totalSetsDone={totalSetsDone}
+          streak={streak}
+          saving={saving}
+          allComplete={allComplete}
+          totalExs={totalExs}
+          doneExs={doneExs}
+          incompleteExercises={incompleteExercises}
+          elapsedLabel={formatElapsed()}
+          totalVolume={totalVolume}
+          newRecords={newRecords}
+          avgRir={avgRir}
+          sessionRpe={sessionRpe}
+          sessionRpeHalf={sessionRpeHalf}
+          onSetSessionRpe={setSessionRpe}
+          onToggleSessionRpeHalf={() => setSessionRpeHalf(h => !h)}
+          reactionEmoji={reactionEmoji}
+          onPickReaction={onPickReaction}
+          showReactionComment={showReactionComment}
+          reactionComment={reactionComment}
+          onSetReactionComment={setReactionComment}
+          molestiaZona={molestiaZona}
+          onSetMolestiaZona={setMolestiaZona}
+          onShare={shareAchievement}
+          onConfirm={confirmFinish}
+          onClose={() => setShowFinish(false)}
+        />
       )}
     </div>
   )

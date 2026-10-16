@@ -289,8 +289,8 @@ export function PublicPageEditor({ userProfile }: Props) {
                   <p className="text-sm font-semibold">{lead.name}</p>
                   <p className="text-xs text-muted">{[lead.email, lead.phone].filter(Boolean).join(' · ') || 'Sin contacto directo'}</p>
                   {lead.message && <p className="text-xs text-ink/70 mt-1 italic">"{lead.message}"</p>}
-                  {lead.referrerName && <p className="text-[10px] text-accent font-semibold mt-1">🎁 Referido por {lead.referrerName}</p>}
-                  <p className="text-[10px] text-muted mt-1">{new Date(lead.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  {lead.referrerName && <p className="text-[11px] text-accent font-semibold mt-1">🎁 Referido por {lead.referrerName}</p>}
+                  <p className="text-[11px] text-muted mt-1">{new Date(lead.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <select value={lead.status} onChange={e => setLeadStatus(lead.id, e.target.value)}
                   className="text-[11px] font-semibold bg-card border border-border rounded-lg px-2 py-1 outline-none flex-shrink-0">

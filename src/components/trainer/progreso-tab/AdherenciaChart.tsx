@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { CustomTooltip } from './helpers'
+import { localDateKey } from '../../../lib/dates'
 
 export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const diasProgramados = plan?.weeks?.reduce((acc, w) => acc + w.days.filter(d => d.exercises.length > 0).length, 0) || 0
@@ -16,7 +17,7 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
-      const key = lunes.toISOString().split('T')[0]
+      const key = localDateKey(lunes)
       if (!byWeek[key]) byWeek[key] = new Set()
       byWeek[key].add(log.dateDone)
     })
@@ -30,19 +31,19 @@ export function AdherenciaChart({ logs, plan }: { logs: TrainingLogs; plan?: Tra
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-bg rounded-xl p-3 text-center"><p className={`text-2xl font-bold ${avgPct >= 80 ? 'text-ok' : avgPct >= 50 ? 'text-accent' : 'text-warn'}`}>{avgPct}%</p><p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Adherencia media</p></div>
-        <div className="bg-bg rounded-xl p-3 text-center"><p className="text-2xl font-bold text-ink">{diasPorSemana > 0 ? diasPorSemana.toFixed(0) : '—'}</p><p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Días/sem planificados</p></div>
+        <div className="bg-bg rounded-xl p-3 text-center"><p className={`text-2xl font-bold ${avgPct >= 80 ? 'text-ok' : avgPct >= 50 ? 'text-accent' : 'text-warn'}`}>{avgPct}%</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Adherencia media</p></div>
+        <div className="bg-bg rounded-xl p-3 text-center"><p className="text-2xl font-bold text-ink">{diasPorSemana > 0 ? diasPorSemana.toFixed(0) : '—'}</p><p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Días/sem planificados</p></div>
       </div>
       {data.length >= 2 ? (
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-              <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} unit="%" />
+              <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} unit="%" />
               <Tooltip content={<CustomTooltip unit="%" />} />
-              <ReferenceLine y={80} stroke="#4caf7d" strokeDasharray="4 2" strokeWidth={1} label={{ value: '80%', position: 'right', fontSize: 9, fill: '#4caf7d' }} />
-              <Bar dataKey="pct" name="Adherencia" radius={[4,4,0,0]} fill="#6e5438" label={{ position: 'top', fontSize: 9, fill: '#8a8278', formatter: (v: number) => v > 0 ? `${v}%` : '' }} />
+              <ReferenceLine y={80} stroke="#4caf7d" strokeDasharray="4 2" strokeWidth={1} label={{ value: '80%', position: 'right', fontSize: 11, fill: '#4caf7d' }} />
+              <Bar dataKey="pct" name="Adherencia" radius={[4,4,0,0]} fill="#6e5438" label={{ position: 'top', fontSize: 11, fill: '#8a8278', formatter: (v: number) => v > 0 ? `${v}%` : '' }} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -1,4 +1,5 @@
 import { WeekPlan, DayPlan, Exercise } from '../types'
+import { assertImportFileIsSafe } from './importFileGuard'
 
 // xlsx (SheetJS) se carga solo al importar de verdad — misma razón que en
 // exportWorkout.ts: dependencia pesada, uso ocasional. Aquí además SÍ es
@@ -130,6 +131,7 @@ function parseBlockFormat(rawRows: unknown[][]): Omit<ParsedWorkout, 'name'> | n
  *     el formato habitual al programar un bloque de olas a mano.
  */
 export async function parseWorkoutExcel(file: File): Promise<ParsedWorkout> {
+  assertImportFileIsSafe(file)
   const XLSX = await loadXLSX()
   const buffer = await file.arrayBuffer()
   const wb = XLSX.read(buffer, { type: 'array' })

@@ -69,8 +69,8 @@ export function CicloRendimientoChart({ clientId, logs }: { clientId: string; lo
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-            <XAxis dataKey="fase" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
+            <XAxis dataKey="fase" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="kg" name="Volumen medio" radius={[4, 4, 0, 0]}>
               {data.map((d, i) => <Cell key={i} fill={d.color} />)}
@@ -81,13 +81,13 @@ export function CicloRendimientoChart({ clientId, logs }: { clientId: string; lo
       <div className="grid grid-cols-4 gap-2">
         {data.map(d => (
           <div key={d.fase} className="text-center">
-            <p className="text-[9px] text-muted uppercase tracking-wider">{d.fase}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider">{d.fase}</p>
             <p className="text-xs font-bold">{d.sesiones} ses.</p>
-            <p className="text-[9px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
+            <p className="text-[11px] text-muted">{d.rir !== null ? `RIR ${d.rir}` : '—'}</p>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-muted leading-relaxed">
+      <p className="text-[11px] text-muted leading-relaxed">
         Estimación orientativa: la fase de cada sesión pasada se calcula proyectando hacia atrás desde la última regla registrada, asumiendo ciclos de duración regular — no sustituye un registro real de reglas anteriores.
       </p>
     </div>

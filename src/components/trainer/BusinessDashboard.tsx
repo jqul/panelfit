@@ -56,7 +56,7 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {KPIs.map(({ label, value, icon: Icon, color, border }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 shadow-sm overflow-hidden relative"
+          <div key={label} className="bg-card rounded-2xl p-5 shadow-sm overflow-hidden relative"
             style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: border }} />
             <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-4 mt-1"
@@ -76,7 +76,7 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
         </p>
       )}
 
-      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-4 border-b border-border/50">
           <h3 className="font-serif font-bold">Actividad por cliente (últimos 30 días)</h3>
         </div>
@@ -109,11 +109,11 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
                     <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
                     </div>
-                    <span className="text-[10px] font-bold flex-shrink-0" style={{ color: barColor }}>{sesiones} ses.</span>
+                    <span className="text-[11px] font-bold flex-shrink-0" style={{ color: barColor }}>{sesiones} ses.</span>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[10px] text-muted">Última sesión</p>
+                  <p className="text-[11px] text-muted">Última sesión</p>
                   <p className="text-xs font-semibold">
                     {ultima
                       ? new Date(ultima + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })

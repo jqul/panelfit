@@ -64,7 +64,7 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
   return (
     <>
       <button onClick={() => setShowModal(true)}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-accent/10 text-accent active:scale-95 transition-all">
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-accent/10 text-accent active:scale-95 transition-all">
         <Video className="w-3 h-3" /> Pedir feedback
       </button>
 

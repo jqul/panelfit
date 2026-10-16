@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
-import { ProgresoClienteTab } from './ProgresoClienteTab'
+// Carga perezosa: recharts es pesado (~500kb) y solo hace falta al entrar de
+// verdad en la pestaña de progreso, no con solo abrir la app.
+const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => ({ default: m.ProgresoClienteTab })))
 import { PWAInstallBanner } from './PWAInstallBanner'
 import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
+import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
@@ -23,6 +26,7 @@ import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } 
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
+import { localDateKey } from '../../lib/dates'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -38,6 +42,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [logs, setLogs] = useState<TrainingLogs>({})
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
+  const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [trainerProfile, setTrainerProfile] = useState<Record<string, any>>({})
   const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([])
@@ -154,13 +159,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (planRow?.plan?.P) {
       const p = planRow.plan.P as TrainingPlan
       if (p.fechaInicio && p.weeks?.length) {
-        const inicio = new Date(p.fechaInicio + 'T00:00:00')
-        const dias = Math.max(0, Math.floor((new Date().getTime() - inicio.getTime()) / 86400000))
-        const semActual = Math.min(Math.floor(dias / 7), p.weeks.length - 1)
+        const semActual = weekIdxFromStart(p.fechaInicio, p.weeks.length)
         p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
       setPlan(p)
       try { localStorage.setItem(PLAN_CACHE_KEY(clientData.id), JSON.stringify(p)) } catch {}
+      // Deja constancia de que el cliente ha abierto el plan — así el
+      // entrenador ve en el historial si ya vio la última versión publicada.
+      // Fire-and-forget: no debe bloquear ni romper la carga si falla.
+      supabase.rpc('mark_plan_opened', { p_token: token }).then(() => {}, () => {})
     } else {
       try {
         const cachedPlan = localStorage.getItem(PLAN_CACHE_KEY(clientData.id))
@@ -322,7 +329,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   // Series de hoy guardadas en local — para el aviso de "sin conexión" del
   // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
-  const todayKey = new Date().toISOString().split('T')[0]
+  const todayKey = localDateKey()
   const pendingSetsCount = Object.values(logs).reduce((acc, log: any) => {
     if (log?.dateDone !== todayKey) return acc
     return acc + Object.values(log.sets || {}).filter((s: any) => s?.weight).length
@@ -348,7 +355,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   return (
     <div className="h-[100dvh] overflow-hidden flex flex-col"
-      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: '#f5f0ea' }}>
+      style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: 'var(--color-bg)' }}>
 
       <header className="bg-card/95 backdrop-blur-sm border-b border-border flex-shrink-0 z-20">
         <div className="flex items-center justify-between px-4 h-14 max-w-2xl mx-auto w-full">
@@ -364,7 +371,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {!isOnline && <WifiOff className="w-4 h-4 text-warn" />}
             <div className="text-right">
               <p className="text-xs font-semibold">{clientName}</p>
-              {plan?.type && <p className="text-[10px] text-muted capitalize">{plan.type}</p>}
+              {plan?.type && <p className="text-[11px] text-muted capitalize">{plan.type}</p>}
             </div>
           </div>
         </div>
@@ -403,10 +410,16 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} />
+                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId}
+                    view={entrenoView} onViewChange={setEntrenoView} />
                 : <NoPlanView />
             )}
-            {activeTab === 'progreso' && <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} />}
+            {activeTab === 'progreso' && (
+              <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
+                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan}
+                  onOpenCalendar={() => { setEntrenoView('calendario'); setActiveTab('entreno') }} />
+              </Suspense>
+            )}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
@@ -428,7 +441,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
               style={{ minHeight: '56px' }}
               aria-label={label}>
               <Icon className={`w-5 h-5 transition-colors ${activeTab === id ? 'text-ink' : 'text-muted'}`} />
-              <span className={`text-[10px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>{label}</span>
+              <span className={`text-[11px] font-medium ${activeTab === id ? 'text-ink font-bold' : 'text-muted'}`}>{label}</span>
             </button>
           ))}
         </div>

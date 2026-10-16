@@ -4,6 +4,7 @@ import { ClientData, TrainingPlan } from '../../../types'
 import { useMessageTemplates, resolveMessage, MESSAGE_TYPE_LABEL } from '../../../lib/messageTemplates'
 import { useScheduledMessages } from '../../../lib/scheduledMessages'
 import { toast } from '../../shared/Toast'
+import { localDateKey } from '../../../lib/dates'
 
 export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
   client: ClientData; plan: TrainingPlan; onChange: (p: TrainingPlan) => void; trainerId: string
@@ -60,7 +61,7 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">{MESSAGE_TYPE_LABEL[t.tipo]} · {t.nombre}</p>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => { setEditingDefault(t.id); setDraft(t.texto) }} title="Editar plantilla general" className="p-1 text-muted hover:text-accent"><Pencil className="w-3 h-3" /></button>
-                  {t.tipo === 'custom' && <button onClick={() => deleteTemplate(t.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>}
+                  {t.tipo === 'custom' && <button onClick={() => deleteTemplate(t.id)} aria-label="Eliminar plantilla" className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>}
                 </div>
               </div>
 
@@ -89,23 +90,23 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                   <p className="text-sm italic">"{resolveMessage(effectiveText, client.name)}"</p>
                   <div className="flex items-center gap-2">
                     {override !== undefined
-                      ? <span className="text-[10px] text-accent font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Personalizado para {client.name}</span>
-                      : <button onClick={() => { setEditingClient(t.id); setDraft(t.texto) }} className="text-[10px] text-muted hover:text-accent underline">Personalizar para {client.name}</button>}
+                      ? <span className="text-[11px] text-accent font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Personalizado para {client.name}</span>
+                      : <button onClick={() => { setEditingClient(t.id); setDraft(t.texto) }} className="text-[11px] text-muted hover:text-accent underline">Personalizar para {client.name}</button>}
                     {override !== undefined && (
                       <button onClick={() => { const o = { ...overrides }; delete o[t.id]; onChange({ ...plan, customMessages: o }) }}
-                        className="text-[10px] text-muted hover:text-warn underline">Quitar personalización</button>
+                        className="text-[11px] text-muted hover:text-warn underline">Quitar personalización</button>
                     )}
                     <button onClick={() => { setScheduling(t.id); setScheduleDate('') }}
-                      className="ml-auto flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[10px] font-bold text-muted hover:text-accent hover:border-accent/40"
+                      className="ml-auto flex items-center gap-1 px-2.5 py-1 border border-border rounded-lg text-[11px] font-bold text-muted hover:text-accent hover:border-accent/40"
                       title="Programar envío para más adelante">
                       <CalendarClock className="w-3 h-3" /> Programar
                     </button>
                     <button onClick={() => sendWhatsApp(effectiveText)}
-                      className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[10px] font-bold">📱 Enviar</button>
+                      className="flex items-center gap-1 px-2.5 py-1 bg-[#25D366] text-white rounded-lg text-[11px] font-bold">📱 Enviar</button>
                   </div>
                   {scheduling === t.id && (
                     <div className="flex items-center gap-2 pt-1">
-                      <input type="date" value={scheduleDate} min={new Date().toISOString().slice(0, 10)}
+                      <input type="date" value={scheduleDate} min={localDateKey()}
                         onChange={e => setScheduleDate(e.target.value)}
                         className="flex-1 px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
                       <button onClick={() => setScheduling(null)} className="px-2.5 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>
@@ -121,9 +122,9 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
 
       {addingCustom ? (
         <div className="space-y-1.5 border border-dashed border-border rounded-xl p-3">
-          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre de la plantilla"
+          <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nombre de la plantilla" aria-label="Nombre de la plantilla"
             className="w-full px-2.5 py-1.5 bg-bg border border-border rounded-lg text-xs outline-none" />
-          <textarea value={newText} onChange={e => setNewText(e.target.value)} rows={2} placeholder="Texto del mensaje... usa {{cliente}} para el nombre"
+          <textarea value={newText} onChange={e => setNewText(e.target.value)} rows={2} placeholder="Texto del mensaje... usa {{cliente}} para el nombre" aria-label="Texto del mensaje"
             className="w-full px-2.5 py-2 bg-bg border border-border rounded-lg text-xs outline-none resize-none" />
           <div className="flex gap-2">
             <button onClick={() => { setAddingCustom(false); setNewName(''); setNewText('') }} className="flex-1 py-1.5 border border-border rounded-lg text-xs text-muted">Cancelar</button>

@@ -7,6 +7,10 @@ import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
 import { ReadinessSummary } from './ReadinessSummary'
 import { MessageTemplatesSection } from './MessageTemplatesSection'
+import { GoalsSection } from './GoalsSection'
+import { OnboardingChecklist } from './OnboardingChecklist'
+import { FichaSections } from './FichaSections'
+import { localDateKey } from '../../../lib/dates'
 
 export interface ClientAlert {
   id: string
@@ -24,7 +28,8 @@ export const ALERT_TYPES = [
   { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
 ] as const
 
-export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId }: {
+export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia }: {
+  adherencia?: number  // % de ejercicios del plan completados
   client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
   onUpdate: (updates: Record<string, any>) => Promise<void>
   labels?: TrainerLabel[]
@@ -39,7 +44,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
   const [saving, setSaving] = useState(false)
   const [showNewAlert, setShowNewAlert] = useState(false)
   const [newAlert, setNewAlert] = useState<{ type: ClientAlert['type']; note: string; date: string }>({
-    type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    type: 'llamar', note: '', date: localDateKey(new Date(Date.now() + 86400000))
   })
 
   const edad = (() => {
@@ -66,7 +71,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       date: newAlert.date, done: false, createdAt: Date.now()
     }
     await onSaveAlerts([...alerts, alert])
-    setNewAlert({ type: 'llamar', note: '', date: new Date(Date.now() + 86400000).toISOString().split('T')[0] })
+    setNewAlert({ type: 'llamar', note: '', date: localDateKey(new Date(Date.now() + 86400000)) })
     setShowNewAlert(false)
     toast('Recordatorio añadido ✓', 'ok')
   }
@@ -82,7 +87,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
   const pendingAlerts = alerts.filter(a => !a.done).sort((a, b) => a.date.localeCompare(b.date))
   const doneAlerts = alerts.filter(a => a.done)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDateKey()
 
   return (
     <div className="animate-fade-in space-y-5 max-w-xl">
@@ -105,23 +110,33 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
+          { label: 'Adherencia', value: adherencia !== undefined ? `${adherencia}%` : '—', icon: '🎯', color: adherencia !== undefined && adherencia < 40 ? 'text-warn' : 'text-ok' },
+          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ink' },
           { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
-          { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ok' },
           { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
         ].map(s => (
-          <div key={s.label} className="bg-white border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div key={s.label} className="bg-card border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <p className="text-xl mb-1">{s.icon}</p>
             <p className={`text-xl font-serif font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
+            <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
+      {alerts.filter(a => !a.done).length > 0 && (
+        <p className="flex items-center gap-2 px-4 py-2.5 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn">
+          ⚠️ {alerts.filter(a => !a.done).length} recordatorio{alerts.filter(a => !a.done).length > 1 ? 's' : ''} pendiente{alerts.filter(a => !a.done).length > 1 ? 's' : ''}
+        </p>
+      )}
+
+      <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
+
+      <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (
-        <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Etiquetas</p>
           </div>
@@ -146,22 +161,22 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                 )
               })}
             </div>
-            <p className="text-[10px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
+            <p className="text-[11px] text-muted mt-2">Las etiquetas sugieren programas al asignar un plan</p>
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-dashed border-border rounded-2xl p-4 text-center">
+        <div className="bg-card border border-dashed border-border rounded-2xl p-4 text-center">
           <p className="text-xs text-muted">Aún no tienes etiquetas creadas. Créalas desde la pestaña <span className="font-semibold">Etiquetas</span> del menú lateral para poder asignarlas aquí.</p>
         </div>
       )}
       {/* ── RECORDATORIOS / ALERTAS ── */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-warn" />
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Recordatorios</p>
             {pendingAlerts.length > 0 && (
-              <span className="text-[9px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full">{pendingAlerts.length}</span>
+              <span className="text-[11px] font-bold bg-warn text-white px-1.5 py-0.5 rounded-full">{pendingAlerts.length}</span>
             )}
           </div>
           <button onClick={() => setShowNewAlert(!showNewAlert)}
@@ -184,15 +199,15 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             </div>
             {/* Nota */}
             <input value={newAlert.note} onChange={e => setNewAlert(a => ({ ...a, note: e.target.value }))}
-              placeholder="Descripción del recordatorio..."
-              className="w-full px-3 py-2.5 bg-white border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
+              placeholder="Descripción del recordatorio..." aria-label="Descripción del recordatorio"
+              className="w-full px-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"
               onKeyDown={e => e.key === 'Enter' && addAlert()}
             />
             {/* Fecha */}
             <div className="flex gap-2 items-center">
               <Calendar className="w-3.5 h-3.5 text-muted flex-shrink-0" />
               <input type="date" value={newAlert.date} onChange={e => setNewAlert(a => ({ ...a, date: e.target.value }))}
-                className="flex-1 px-3 py-2 bg-white border border-border rounded-xl text-sm outline-none" />
+                className="flex-1 px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
               <button onClick={addAlert}
                 className="px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
                 Guardar
@@ -215,20 +230,20 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             const isToday = alert.date === today
             return (
               <div key={alert.id} className={`flex items-start gap-3 px-5 py-3.5 ${isOverdue ? 'bg-warn/5' : ''}`}>
-                <button onClick={() => toggleAlert(alert.id)}
+                <button onClick={() => toggleAlert(alert.id)} aria-label="Marcar como completado"
                   className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${meta.border} hover:bg-ok hover:border-ok`} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color} ${meta.border} border`}>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${meta.bg} ${meta.color} ${meta.border} border`}>
                       {meta.emoji} {meta.label}
                     </span>
-                    <span className={`text-[10px] font-semibold ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
+                    <span className={`text-[11px] font-semibold ${isOverdue ? 'text-warn' : isToday ? 'text-ok' : 'text-muted'}`}>
                       {isOverdue ? '⚠ ' : isToday ? '📅 Hoy · ' : ''}{new Date(alert.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
                   <p className="text-sm mt-0.5">{alert.note}</p>
                 </div>
-                <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
+                <button onClick={() => deleteAlert(alert.id)} aria-label="Eliminar recordatorio" className="p-1 text-muted hover:text-warn transition-colors flex-shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -238,7 +253,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           {/* Completados colapsados */}
           {doneAlerts.length > 0 && (
             <details className="group">
-              <summary className="px-5 py-2.5 text-[10px] text-muted uppercase tracking-wider font-semibold cursor-pointer hover:bg-bg-alt/30 flex items-center gap-2">
+              <summary className="px-5 py-2.5 text-[11px] text-muted uppercase tracking-wider font-semibold cursor-pointer hover:bg-bg-alt/30 flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
                 {doneAlerts.length} completado{doneAlerts.length > 1 ? 's' : ''}
               </summary>
@@ -246,14 +261,14 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
                 const meta = ALERT_TYPES.find(t => t.id === alert.type)!
                 return (
                   <div key={alert.id} className="flex items-center gap-3 px-5 py-2.5 opacity-50">
-                    <button onClick={() => toggleAlert(alert.id)}
+                    <button onClick={() => toggleAlert(alert.id)} aria-label="Marcar como pendiente"
                       className="w-5 h-5 rounded border-2 border-ok bg-ok flex-shrink-0 flex items-center justify-center">
                       <CheckCircle2 className="w-3 h-3 text-white" />
                     </button>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs line-through text-muted">{meta.emoji} {alert.note}</p>
                     </div>
-                    <button onClick={() => deleteAlert(alert.id)} className="p-1 text-muted hover:text-warn flex-shrink-0">
+                    <button onClick={() => deleteAlert(alert.id)} aria-label="Eliminar recordatorio" className="p-1 text-muted hover:text-warn flex-shrink-0">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
@@ -265,7 +280,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       {/* Datos personales */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Datos personales</p>
         </div>
@@ -322,7 +337,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       <HabitosSection clientId={client.id} />
 
       {/* Lesiones/limitaciones y equipo disponible — ficha rápida de referencia al programar */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">🩺 Lesiones y equipo</p>
         </div>
@@ -343,12 +358,12 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
               rows={2}
               className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
           </div>
-          <p className="text-[10px] text-muted">Solo lo ves tú — se guarda automáticamente al perder el foco</p>
+          <p className="text-[11px] text-muted">Solo lo ves tú — se guarda automáticamente al perder el foco</p>
         </div>
       </div>
 
       {/* Notas privadas */}
-      <div className="bg-white border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas</p>
         </div>
@@ -358,7 +373,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
             placeholder="Observaciones, preferencias, historial médico..."
             rows={4}
             className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
-          <p className="text-[10px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
+          <p className="text-[11px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
         </div>
       </div>
 
@@ -377,6 +392,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       {plan && onPlanChange && trainerId && (
         <MessageTemplatesSection client={client} plan={plan} onChange={onPlanChange} trainerId={trainerId} />
       )}
+
+      <FichaSections client={client} plan={plan} onPlanChange={onPlanChange} trainerId={trainerId} />
     </div>
   )
 }

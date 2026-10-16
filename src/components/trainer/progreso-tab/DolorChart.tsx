@@ -4,6 +4,7 @@ import { HeartPulse } from 'lucide-react'
 import { EmptyState } from './helpers'
 import { useClientPain } from '../../../lib/clientPain'
 import { TrainingLogs } from '../../../types'
+import { localDateKey } from '../../../lib/dates'
 
 const INTENSIDAD_COLOR = (v: number) => v >= 7 ? '#dc2626' : v >= 4 ? '#e0a854' : '#4caf7d'
 
@@ -13,13 +14,13 @@ function mondayKey(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   const lunes = new Date(d); lunes.setDate(diff)
-  return lunes.toISOString().split('T')[0]
+  return localDateKey(lunes)
 }
 
 function DolorTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
+    <div className="bg-card border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-0.5">
       <p className="text-muted mb-1">{label}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} style={{ color: p.color }} className="font-bold">
@@ -79,36 +80,36 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold" style={{ color: INTENSIDAD_COLOR(ultimo.intensidad) }}>{ultimo.intensidad}/10</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Último registro</p>
+          <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Último registro</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-ink">{media}/10</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Media</p>
+          <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Media</p>
         </div>
         <div className="bg-bg rounded-xl p-3 text-center">
           <p className="text-lg font-bold text-ink">{zonas.length}</p>
-          <p className="text-[9px] text-muted uppercase tracking-wider mt-0.5">Zona{zonas.length !== 1 ? 's' : ''}</p>
+          <p className="text-[11px] text-muted uppercase tracking-wider mt-0.5">Zona{zonas.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
       {weeklyData.length >= 2 && (
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">
             Dolor (EVA) {hasVolumen ? 'vs. volumen de entreno' : 'por semana'}
           </p>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={weeklyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#8a8278' }} />
-                <YAxis yAxisId="dolor" domain={[0, 10]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#e07b54' }} width={24} />
+                <XAxis dataKey="semana" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
+                <YAxis yAxisId="dolor" domain={[0, 10]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#e07b54' }} width={24} />
                 {hasVolumen && (
                   <YAxis yAxisId="volumen" orientation="right" axisLine={false} tickLine={false}
-                    tick={{ fontSize: 10, fill: '#8a8278' }} width={36}
+                    tick={{ fontSize: 11, fill: '#8a8278' }} width={36}
                     tickFormatter={v => v >= 1000 ? `${Math.round(v / 1000)}t` : String(v)} />
                 )}
                 <Tooltip content={<DolorTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 {hasVolumen && (
                   <Bar yAxisId="volumen" dataKey="volumen" name="Volumen" fill="#c9c2b6" radius={[4, 4, 0, 0]} barSize={18} />
                 )}
@@ -118,7 +119,7 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
             </ResponsiveContainer>
           </div>
           {hasVolumen && (
-            <p className="text-[9px] text-muted mt-1 text-center">Línea: dolor medio semanal (EVA 0-10) · Barras: volumen total de la semana</p>
+            <p className="text-[11px] text-muted mt-1 text-center">Línea: dolor medio semanal (EVA 0-10) · Barras: volumen total de la semana</p>
           )}
         </div>
       )}
@@ -133,7 +134,7 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
               <p className="text-sm font-semibold truncate">{e.zona}</p>
               {e.nota && <p className="text-xs text-muted truncate">{e.nota}</p>}
             </div>
-            <p className="text-[10px] text-muted flex-shrink-0">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+            <p className="text-[11px] text-muted flex-shrink-0">{new Date(e.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
           </div>
         ))}
       </div>

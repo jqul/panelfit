@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ActiveWorkout } from './ActiveWorkout'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { CalendarioTab } from './CalendarioTab'
+import { Modal } from '../shared/Modal'
 
 interface Props {
   plan: TrainingPlan
@@ -12,6 +16,8 @@ interface Props {
   onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
   trainerId?: string
+  view?: 'semana' | 'calendario'
+  onViewChange?: (v: 'semana' | 'calendario') => void
 }
 
 function getYTId(url: string) {
@@ -22,8 +28,8 @@ function getYTId(url: string) {
 // ── Modal info tipo de serie ──────────────────────────────
 function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[60] bg-ink/60 flex items-end justify-center p-4">
-      <div className="bg-card rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-fade-in">
+    <Modal open plain onClose={onClose} ariaLabel={`Tipo de serie: ${type.label}`} maxWidth="max-w-sm">
+      <div className="p-6 space-y-4 overflow-y-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-3xl">{type.emoji}</span>
@@ -32,7 +38,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
               <p className="text-xs text-muted">{type.desc}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted flex-shrink-0">
+          <button onClick={onClose} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-bg-alt text-muted flex-shrink-0">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -44,11 +50,11 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
           Entendido
         </button>
       </div>
-    </div>
+</Modal>
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId }: Props) {
+export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, view = 'semana', onViewChange }: Props) {
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -57,10 +63,11 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
   const allSeriesTypes = seriesTypes?.length ? seriesTypes : DEFAULT_SERIES_TYPES
 
-  const currentWeek = plan.weeks?.find(w => w.isCurrent) || plan.weeks?.[0]
-  const weekIdx = plan.weeks?.indexOf(currentWeek) ?? 0
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks?.[weekIdx]
 
-  if (activeWorkout) return (
+  // En el body, no dentro de <main> (z-10): ahí la cabecera de la app (z-20) tapaba la del entreno.
+  if (activeWorkout) return createPortal(
     <ActiveWorkout
       plan={plan}
       day={plan.weeks[activeWorkout.weekIdx].days[activeWorkout.dayIdx]}
@@ -69,7 +76,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
       onLogsChange={onLogsChange}
       onFinish={() => setActiveWorkout(null)}
       trainerId={trainerId}
-    />
+    />,
+    document.body
   )
 
   if (!currentWeek) return (
@@ -88,8 +96,26 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
         <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />
       )}
 
+      {/* Esta semana / Calendario: dónde toca entrenar y dónde se ha entrenado */}
+      {onViewChange && (
+        <div className="px-4 pt-4">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-bg-alt rounded-xl" role="tablist" aria-label="Vista de entreno">
+            {([{ id: 'semana', label: 'Esta semana' }, { id: 'calendario', label: 'Calendario' }] as const).map(v => (
+              <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => onViewChange(v.id)}
+                className={`py-2 rounded-lg text-sm font-semibold transition-all ${view === v.id ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {view === 'calendario' ? (
+        <div className="px-4 pt-4"><CalendarioTab logs={logs} plan={plan} /></div>
+      ) : (
+      <>
       <div className="px-4 pt-5 pb-3">
-        <p className="text-[10px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
+        <p className="text-[11px] uppercase tracking-widest text-muted font-bold">Semana actual</p>
         <h2 className="font-serif font-bold text-xl mt-0.5">{currentWeek.label}</h2>
         {currentWeek.rpe && <p className="text-xs text-muted mt-0.5">Intensidad objetivo: {currentWeek.rpe}</p>}
         {currentWeek.isDeload && (
@@ -125,7 +151,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                 <div className="flex-1 min-w-0" onClick={() => setOpenDays(p => ({ ...p, [dayKey]: !p[dayKey] }))}>
                   <p className="font-semibold text-sm">{day.title}</p>
                   {day.focus && <p className="text-xs text-muted truncate">{day.focus}</p>}
-                  <p className="text-[10px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>
+                  <p className="text-[11px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
@@ -156,10 +182,10 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
                   {/* CALENTAMIENTO */}
                   {(warmup || (warmupExercises && warmupExercises.length > 0)) && (
-                    <div className="bg-orange-50/60 border-b border-orange-100 px-4 py-3 space-y-2">
+                    <div className="bg-accent/5 border-b border-accent/20 px-4 py-3 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Flame className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
-                        <p className="text-xs font-bold text-orange-600 uppercase tracking-wider">Calentamiento</p>
+                        <Flame className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                        <p className="text-xs font-bold text-accent uppercase tracking-wider">Calentamiento</p>
                       </div>
 
                       {/* Ejercicios de calentamiento si los hay */}
@@ -168,18 +194,18 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                           {warmupExercises.map((ex: any, ei: number) => {
                             const ytId = ex.videoUrl ? getYTId(ex.videoUrl) : null
                             return (
-                              <div key={ei} className="flex items-center gap-2.5 bg-white/70 rounded-xl px-3 py-2.5 border border-orange-100">
-                                <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[10px] font-bold text-orange-500 flex-shrink-0">
+                              <div key={ei} className="flex items-center gap-2.5 bg-white/70 rounded-xl px-3 py-2.5 border border-accent/20">
+                                <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-[11px] font-bold text-accent flex-shrink-0">
                                   {ei + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-800 truncate">{ex.name}</p>
-                                  {ex.sets && <p className="text-xs text-orange-400">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                                  {ex.sets && <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
                                   {ex.comment && <p className="text-xs text-gray-400 italic mt-0.5">"{ex.comment}"</p>}
                                 </div>
                                 {ytId && (
                                   <button onClick={() => setVideoUrl(ex.videoUrl)}
-                                    className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-orange-200 active:scale-95 transition-transform">
+                                    className="w-12 h-8 rounded-lg overflow-hidden flex-shrink-0 border border-accent/30 active:scale-95 transition-transform">
                                     <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
                                   </button>
                                 )}
@@ -191,7 +217,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
                       {/* Texto libre de calentamiento */}
                       {warmup && (
-                        <div className="text-xs text-orange-700 leading-relaxed whitespace-pre-line bg-white/50 rounded-xl px-3 py-2 border border-orange-100">
+                        <div className="text-xs text-accent leading-relaxed whitespace-pre-line bg-white/50 rounded-xl px-3 py-2 border border-accent/20">
                           {warmup}
                         </div>
                       )}
@@ -213,7 +239,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                       return (
                         <div key={ri} className={`px-4 py-3 ${log?.done ? 'opacity-60' : ''}`}>
                           <div className="flex items-start gap-3">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5 ${
                               log?.done ? 'bg-ok text-white' : 'bg-bg border border-border text-muted'
                             }`}>
                               {log?.done ? '✓' : ri + 1}
@@ -221,12 +247,12 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <p className="text-sm font-medium">{ex.name}</p>
-                                {ex.isMain && <span className="text-[9px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
+                                {ex.isMain && <span className="text-[11px] font-bold text-accent uppercase tracking-wider bg-accent/10 px-1.5 py-0.5 rounded-full">Principal</span>}
                                 {/* Badge tipo serie con botón ℹ️ */}
                                 {showSeriesType && (
                                   <button
                                     onClick={() => setSeriesInfoModal(seriesMeta!)}
-                                    className="flex items-center gap-1 px-2 py-0.5 bg-bg border border-border rounded-full text-[10px] font-semibold text-muted hover:border-accent hover:text-accent transition-colors active:scale-95">
+                                    className="flex items-center gap-1 px-2 py-0.5 bg-bg border border-border rounded-full text-[11px] font-semibold text-muted hover:border-accent hover:text-accent transition-colors active:scale-95">
                                     <span>{seriesMeta!.emoji}</span>
                                     <span>{seriesMeta!.label}</span>
                                     <Info className="w-2.5 h-2.5" />
@@ -256,7 +282,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                               {log?.sets && Object.keys(log.sets).length > 0 && (
                                 <div className="flex gap-1.5 mt-1.5 flex-wrap">
                                   {Object.values(log.sets).map((s, si) => (
-                                    <span key={si} className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
+                                    <span key={si} className="text-[11px] bg-ok/10 text-ok px-1.5 py-0.5 rounded font-medium">{s.weight}×{s.reps}</span>
                                   ))}
                                 </div>
                               )}
@@ -280,6 +306,8 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
           )
         })}
       </div>
+      </>
+      )}
     </div>
   )
 }

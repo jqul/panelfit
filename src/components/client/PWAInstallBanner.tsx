@@ -72,7 +72,7 @@ export function PWAInstallBanner() {
           )}
         </div>
 
-        <button onClick={dismiss} className="p-1 text-white/50 hover:text-white flex-shrink-0">
+        <button onClick={dismiss} aria-label="Cerrar" className="p-1 text-white/50 hover:text-white flex-shrink-0">
           <X className="w-4 h-4" />
         </button>
       </div>

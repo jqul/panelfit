@@ -25,10 +25,10 @@ export function DayTestsCard({ tests, resultadosHoy, onSubmit }: Props) {
         const draft = drafts[t.id] || ''
         const parsed = parseFloat(draft)
         return (
-          <div key={t.id} className="flex items-center gap-2 bg-white border border-accent/20 rounded-xl px-3 py-2">
+          <div key={t.id} className="flex items-center gap-2 bg-card border border-accent/20 rounded-xl px-3 py-2">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold">{t.nombre}</p>
-              {!done && t.descripcion && <p className="text-[10px] text-muted leading-tight">{t.descripcion}</p>}
+              {!done && t.descripcion && <p className="text-[11px] text-muted leading-tight">{t.descripcion}</p>}
             </div>
             {done ? (
               <span className="flex items-center gap-1 text-xs font-bold text-ok flex-shrink-0">
@@ -39,6 +39,7 @@ export function DayTestsCard({ tests, resultadosHoy, onSubmit }: Props) {
                 <input type="number" inputMode="decimal" value={draft}
                   onChange={e => setDrafts(p => ({ ...p, [t.id]: e.target.value }))}
                   placeholder={t.unidad}
+                  aria-label={`${t.nombre} (${t.unidad})`}
                   className="w-16 px-2 py-1.5 bg-bg border border-border rounded-lg text-sm text-center outline-none focus:ring-2 focus:ring-accent/20" />
                 <button
                   onClick={() => { if (!isNaN(parsed)) { onSubmit(t.id, parsed); setDrafts(p => ({ ...p, [t.id]: '' })) } }}

@@ -77,7 +77,7 @@ export function EquipoSection({ ownerId }: { ownerId: string }) {
               <div className="w-7 h-7 rounded-full bg-accent/10 flex items-center justify-center text-xs font-bold text-accent flex-shrink-0">{m.displayName[0]?.toUpperCase()}</div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{m.displayName}</p>
-                <p className="text-[10px] text-muted truncate">{m.email}</p>
+                <p className="text-[11px] text-muted truncate">{m.email}</p>
               </div>
               <button onClick={() => removeMember(m.id)} className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
             </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 import { toast } from '../../shared/Toast'
 import { supabase } from '../../../lib/supabase'
+import { Modal } from '../../shared/Modal'
 
 // ── Tipos de serie ────────────────────────────────────────
 export interface SeriesTypeDef {
@@ -154,13 +155,13 @@ export function SeriesTypesManager({ types, onSave, onClose }: {
             {editing === t.id && (
               <div className="px-4 pb-4 space-y-3 border-t border-border/50">
                 <div className="pt-3">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Descripción corta (aparece en el selector)</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Descripción corta (aparece en el selector)</label>
                   <input value={t.desc} onChange={e => update(t.id, { desc: e.target.value })}
                     placeholder="Ej: Reduces el peso en cada serie..."
                     className="w-full text-xs bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5">Explicación detallada (para el botón ℹ️)</label>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1.5">Explicación detallada (para el botón ℹ️)</label>
                   <textarea value={t.detail} onChange={e => update(t.id, { detail: e.target.value })}
                     placeholder="Explica cómo se ejecuta, para qué sirve, ejemplos..."
                     rows={3}
@@ -196,8 +197,7 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
   onManage: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[70] bg-ink/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden" style={{ maxHeight: '85vh' }}>
+    <Modal open plain onClose={onClose} ariaLabel="Tipos de serie" maxWidth="max-w-lg">
         <div className="flex items-center justify-between p-6 pb-4 border-b border-border flex-shrink-0">
           <h3 className="font-serif font-bold text-xl">Tipos de serie</h3>
           <div className="flex items-center gap-2">
@@ -213,13 +213,12 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-lg">{t.emoji}</span>
                 <p className="font-semibold text-sm">{t.label}</p>
-                {t.custom && <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">Personalizado</span>}
+                {t.custom && <span className="text-[11px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">Personalizado</span>}
               </div>
               <p className="text-xs text-muted leading-relaxed">{t.detail}</p>
             </div>
           ))}
         </div>
-      </div>
-    </div>
+      </Modal>
   )
 }

@@ -16,6 +16,8 @@ interface SetRowProps {
   prevRir?: number
   weekRpe?: string
   isMain: boolean
+  showVelocity?: boolean  // anotar velocidad de barra (VBT); por defecto solo en ejercicios principales
+  showTarget?: boolean  // "pesos sugeridos" — el entrenador puede desactivarlo en Ajustes
   onCommit: (weight: string, reps: string) => void
   onToggle: (weight: string, reps: string) => void
   onOpenCalc: (weight: string) => void
@@ -23,7 +25,7 @@ interface SetRowProps {
   onSetVelocity: (velocity: number | undefined) => void
 }
 
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -49,13 +51,16 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
   const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
 
   // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
+  // — null si el entrenador ha desactivado "pesos sugeridos" en Ajustes.
   const prevW = parseFloat(prevWeight || '')
-  const targetRange = getTargetRangeLabel(prevWeight, prevRir, weekRpe)
+  const targetRange = showTarget ? getTargetRangeLabel(prevWeight, prevRir, weekRpe) : null
 
-  // "Rellenar con anterior": copia el objetivo sugerido (o si no hay, la serie previa tal cual)
+  // "Rellenar con anterior": con pesos sugeridos activos, copia el objetivo
+  // calculado; si no, simplemente repite el peso de la vez anterior (el
+  // entrenador prefiere ajustar él mismo la progresión, no un algoritmo).
   const fillFromPrevious = () => {
     if (!prevW) return
-    const w = suggestion?.deltaKg
+    const w = (showTarget && suggestion?.deltaKg)
       ? String(Math.max(0, suggestion.direction === 'up' ? prevW + suggestion.deltaKg : suggestion.direction === 'down' ? prevW - suggestion.deltaKg : prevW))
       : prevWeight!
     const r = prevReps || reps
@@ -90,14 +95,15 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
             </p>
             {targetRange && (
-              <p className="text-[9px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
+              <p className="text-[11px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
                 🎯 {targetRange}
               </p>
             )}
             {!done && prevWeight && (
               <button type="button" onClick={fillFromPrevious}
-                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[9px] font-semibold text-accent active:scale-95 transition-transform">
-                <CornerLeftDown className="w-2.5 h-2.5" /> Usar
+                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[11px] font-semibold text-accent active:scale-95 transition-transform py-1"
+                style={{ minHeight: '28px' }}>
+                <CornerLeftDown className="w-3 h-3" /> Usar
               </button>
             )}
           </div>
@@ -106,11 +112,11 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           <div className="flex flex-col items-stretch gap-1">
             <div className="flex gap-0.5">
               <button type="button" onClick={() => adjustWeight(5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 +5
               </button>
               <button type="button" onClick={() => adjustWeight(2.5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 +2.5
               </button>
             </div>
@@ -122,7 +128,8 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                 onChange={e => setWeight(e.target.value)}
                 onBlur={() => onCommit(weight, reps)}
                 placeholder={prevWeight || '0'}
-                className={`w-full text-center text-sm font-semibold py-1.5 pr-6 rounded-xl border outline-none ${
+                aria-label={`Peso serie ${setNum}`}
+                className={`w-full text-center text-base font-semibold py-2 pr-6 rounded-xl border outline-none ${
                   done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
                 }`}
               />
@@ -136,11 +143,11 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             </div>
             <div className="flex gap-0.5">
               <button type="button" onClick={() => adjustWeight(-2.5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 -2.5
               </button>
               <button type="button" onClick={() => adjustWeight(-5)} tabIndex={-1}
-                className="flex-1 h-6 flex items-center justify-center text-[10px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
+                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
                 -5
               </button>
             </div>
@@ -159,7 +166,8 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               onChange={e => setReps(e.target.value)}
               onBlur={() => onCommit(weight, reps)}
               placeholder={prevReps || '10'}
-              className={`w-full text-center text-sm font-semibold py-1.5 rounded-xl border outline-none ${
+              aria-label={`Repeticiones serie ${setNum}`}
+              className={`w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${
                 done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
               }`}
             />
@@ -172,6 +180,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           {/* Check */}
           <button
             onClick={() => onToggle(weight, reps)}
+            aria-label={done ? `Marcar serie ${setNum} como no hecha` : `Marcar serie ${setNum} como hecha`}
             className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
               done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
             }`}>
@@ -182,7 +191,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
         {/* Badges RIR / Velocidad (VBT) — aparecen debajo de la fila cuando la serie está marcada como hecha */}
         {done && (
           <div className="flex items-center justify-end gap-1.5 mt-1 pr-1 flex-wrap">
-            {isMain && (
+            {showVelocity && (
               editingVelocity ? (
                 <input
                   type="number" inputMode="decimal" step="0.01" autoFocus
@@ -191,15 +200,16 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                   onBlur={commitVelocity}
                   onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   placeholder="m/s"
-                  className="w-16 text-center text-[10px] font-semibold py-1 rounded-full border border-accent outline-none"
+                  aria-label="Velocidad en m/s"
+                  className="w-16 text-center text-[11px] font-semibold py-1 rounded-full border border-accent outline-none"
                 />
               ) : (
                 <button
                   onClick={() => { setVelocityInput(velocity !== undefined ? String(velocity) : ''); setEditingVelocity(true) }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
                   style={{
-                    backgroundColor: velocity !== undefined ? (lossColor ? lossColor + '15' : '#eef2ff') : '#f3f4f6',
-                    color: velocity !== undefined ? (lossColor || '#6366f1') : '#9ca3af',
+                    backgroundColor: velocity !== undefined ? (lossColor ? lossColor + '15' : 'color-mix(in srgb, var(--color-accent) 12%, transparent)') : 'var(--color-bg-alt)',
+                    color: velocity !== undefined ? (lossColor || 'var(--color-accent)') : 'var(--color-muted)',
                   }}>
                   <Gauge className="w-2.5 h-2.5" />
                   {velocity !== undefined ? `${velocity} m/s${lossPct !== null && lossPct > 0.5 ? ` (-${lossPct}%)` : ''}` : '+ Velocidad'}
@@ -207,10 +217,10 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               )
             )}
             <button onClick={() => setShowRir(true)}
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold transition-all active:scale-95"
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
               style={{
-                backgroundColor: rirMeta ? rirMeta.color + '15' : '#f3f4f6',
-                color: rirMeta ? rirMeta.color : '#9ca3af',
+                backgroundColor: rirMeta ? rirMeta.color + '15' : 'var(--color-bg-alt)',
+                color: rirMeta ? rirMeta.color : 'var(--color-muted)',
               }}>
               <Zap className="w-2.5 h-2.5" />
               {rirMeta ? `RIR ${rir} · ${rirMeta.desc}` : 'Añadir RIR'}

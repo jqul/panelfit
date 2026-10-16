@@ -149,7 +149,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
             </div>
             <div>
               <h1 className="text-base font-serif font-bold">Panel<span className="text-accent italic">Fit</span> Admin</h1>
-              <p className="text-[10px] text-muted">Superadministrador</p>
+              <p className="text-[11px] text-muted">Superadministrador</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -227,7 +227,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold truncate">{e.displayName || 'Sin nombre'}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isPending ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isPending ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>
                           {isPending ? '⏳ En modo demo' : '✓ Activo'}
                         </span>
                       </div>
@@ -290,7 +290,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
                   ) : (
                     /* Para activos: selector de plan normal */
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] text-muted uppercase tracking-wider font-semibold mr-1">Plan:</span>
+                      <span className="text-[11px] text-muted uppercase tracking-wider font-semibold mr-1">Plan:</span>
                       {PLANES.map(({ plan, limit, days, label, title, active, inactive }) => {
                         const isActive = currentPlan === plan
                         return (
@@ -311,7 +311,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
                   )}
                   {!isPending && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] text-muted uppercase tracking-wider font-semibold mr-1">Nivel:</span>
+                      <span className="text-[11px] text-muted uppercase tracking-wider font-semibold mr-1">Nivel:</span>
                       {TIERS.map(({ tier, active, inactive }) => {
                         const isActive = (e.profile?.tier || 'alto_rendimiento') === tier
                         return (

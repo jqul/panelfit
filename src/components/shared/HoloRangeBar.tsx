@@ -76,7 +76,7 @@ export function HoloRangeBar({
         <div>
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm text-ink">{name}</h4>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
               isOptimal ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                 : isLow ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                 : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
@@ -113,7 +113,7 @@ export function HoloRangeBar({
         }`} style={{ left: `${currentPos}%` }} />
       </div>
 
-      <div className="flex items-center justify-between text-[10px] text-muted">
+      <div className="flex items-center justify-between text-[11px] text-muted">
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500/60" /> &lt; {minNormal}</span>
         <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Óptimo: {minNormal} – {maxNormal}

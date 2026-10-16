@@ -1,10 +1,11 @@
 import { Eye } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
+import { getEffectiveWeekIdx } from '../../../lib/planWeek'
 
 export function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: TrainingLogs }) {
   if (!plan?.weeks?.length) return <div className="text-center py-16 text-muted"><Eye className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin plan asignado</p></div>
-  const currentWeek = plan.weeks.find(w => w.isCurrent) || plan.weeks[0]
-  const weekIdx = plan.weeks.indexOf(currentWeek)
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const currentWeek = plan.weeks[weekIdx]
   return (
     <div className="max-w-2xl space-y-4">
       <div><h3 className="font-serif font-bold text-lg">Vista del cliente</h3><p className="text-xs text-muted mt-0.5">Semana activa: <span className="font-semibold text-ink">{currentWeek.label}</span></p></div>
@@ -25,7 +26,7 @@ export function VistaTab({ plan, logs }: { plan: TrainingPlan | null; logs: Trai
                 const log = logs[`ex_${dayKey}_r${ri}`]
                 return (
                   <div key={ri} className={`flex items-center gap-3 px-4 py-2.5 ${log?.done ? 'opacity-50' : ''}`}>
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>{log?.done ? '✓' : ri + 1}</div>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${log?.done ? 'bg-ok text-white' : 'bg-bg-alt text-muted'}`}>{log?.done ? '✓' : ri + 1}</div>
                     <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{ex.name}</p><p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p></div>
                   </div>
                 )

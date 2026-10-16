@@ -4,6 +4,8 @@ import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
+import { SignedVideo } from '../../shared/SignedMedia'
+import { Modal } from '../../shared/Modal'
 
 interface VideoFeedbackRow {
   id: string
@@ -114,21 +116,20 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
 
       {/* Modal de revisión */}
       {activeVideo && (
-        <div className="fixed inset-0 z-[60] bg-ink/70 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setActiveVideo(null)}>
-          <div className="bg-card rounded-t-3xl sm:rounded-3xl w-full max-w-md flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+        <Modal open plain onClose={() => setActiveVideo(null)} ariaLabel="Revisión de vídeo" maxWidth="max-w-md">
             <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
               <div>
                 <p className="font-serif font-bold text-lg">{activeVideo.exercise_name}</p>
-                <p className="text-[10px] text-muted">{new Date(activeVideo.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="text-[11px] text-muted">{new Date(activeVideo.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</p>
               </div>
               <button onClick={() => setActiveVideo(null)} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 pt-4 space-y-4 overflow-y-auto flex-1 min-h-0">
-              <video src={activeVideo.video_url} controls className="w-full rounded-2xl bg-black max-h-80" />
+              <SignedVideo bucket="client-videos" src={activeVideo.video_url} className="w-full rounded-2xl bg-black max-h-80" />
 
               {activeVideo.client_note && (
                 <div className="bg-bg rounded-xl p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Nota del cliente</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-1">Nota del cliente</p>
                   <p className="text-sm">{activeVideo.client_note}</p>
                 </div>
               )}
@@ -148,7 +149,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">O responde con vídeo</p>
                 {activeVideo.trainer_comment_video_url && (
-                  <video src={activeVideo.trainer_comment_video_url} controls className="w-full rounded-2xl bg-black max-h-60" />
+                  <SignedVideo bucket="client-videos" src={activeVideo.trainer_comment_video_url} className="w-full rounded-2xl bg-black max-h-60" />
                 )}
                 <input ref={replyFileRef} type="file" accept="video/*" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadReplyVideo(activeVideo.id, f) }} />
@@ -158,8 +159,7 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
     </div>
   )
@@ -179,14 +179,14 @@ function VideoFeedbackCard({ video, onOpen }: { video: VideoFeedbackRow; onOpen:
         <p className="text-sm font-semibold truncate">{video.exercise_name}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <Clock className="w-2.5 h-2.5 text-muted" />
-          <p className="text-[10px] text-muted">{new Date(video.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+          <p className="text-[11px] text-muted">{new Date(video.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
           {video.client_note && <MessageCircle className="w-2.5 h-2.5 text-accent ml-1" />}
         </div>
       </div>
       {isPending ? (
-        <span className="text-[9px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full flex-shrink-0">Pendiente</span>
+        <span className="text-[11px] font-bold text-warn bg-warn/10 px-2 py-1 rounded-full flex-shrink-0">Pendiente</span>
       ) : (
-        <span className="text-[9px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full flex-shrink-0">✓ Comentado</span>
+        <span className="text-[11px] font-bold text-ok bg-ok/10 px-2 py-1 rounded-full flex-shrink-0">✓ Comentado</span>
       )}
     </button>
   )

@@ -3,14 +3,20 @@ import { X, Check } from 'lucide-react'
 import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs } from '../../../types'
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
 import { toast } from '../../shared/Toast'
+import { Modal } from '../../shared/Modal'
+import { localDateKey } from '../../../lib/dates'
+import { saveHistoryCopy } from '../../../lib/planSnapshot'
+import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan'
+import { loadProgramTemplates } from '../../../lib/programTemplates'
+import { DEMO_TRAINER_ID } from '../../../lib/demo-data'
 
-interface ProgramTask { id: string; type: string; title: string }
+interface ProgramTask { id: string; type: string; title: string; data?: Record<string, any> }
 interface ProgramDay { tasks: ProgramTask[] }
 interface ProgramWeek { label: string; days: ProgramDay[] }
 interface Program { id: string; name: string; tipo: string; label_ids?: string[]; weeks: ProgramWeek[] }
 interface Label { id: string; name: string; emoji: string; color: string }
 
-export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId }: {
+export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo }: {
   client: ClientData
   plan: TrainingPlan
   programs: Program[]
@@ -21,6 +27,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   logs: TrainingLogs
   otherClients: ClientData[]
   trainerId: string
+  borradorActivo: boolean
 }) {
   const [showProgramSelector, setShowProgramSelector] = useState(false)
   const [filterTipo, setFilterTipo] = useState<string | null>(null)
@@ -48,19 +55,15 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
 
   const assignProgram = async (prog: Program) => {
     setAssigning(true)
-    // Convertir programa a TrainingPlan
-    const weeks = (prog.weeks || []).map(w => ({
-      label: w.label,
-      rpe: '',
-      isCurrent: false,
-      days: (w.days || []).map(d => ({
-        title: d.tasks?.find(t => t.type === 'workout')?.title || 'Día',
-        focus: d.tasks?.filter(t => t.type !== 'workout').map(t => t.title).join(', ') || '',
-        exercises: [],
-      }))
-    }))
-    // Marcar semana 1 como actual
-    if (weeks.length > 0) weeks[0].isCurrent = true
+    // Convertir programa a TrainingPlan copiando los ejercicios de los workouts que usa. Sin poder
+    // leerlos se asignaría un plan de días vacíos, así que en ese caso no se toca nada.
+    const templates = trainerId === DEMO_TRAINER_ID ? {} : await loadProgramTemplates(trainerId, workoutTemplateIds(prog.weeks))
+    if (templates === null) {
+      setAssigning(false)
+      toast('No se pudieron leer los workouts del programa: no se ha asignado nada', 'warn')
+      return
+    }
+    const { weeks, missing } = programToPlanWeeks(prog.weeks, templates)
 
     const newPlan: TrainingPlan = {
       ...plan,
@@ -68,13 +71,22 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       weeks,
       programId: prog.id,
       programName: prog.name,
-      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaInicio: localDateKey(),
     }
+
+    // Con el plan vivo (sin borrador) el cambio llega al cliente en cuanto se autoguarda: antes se deja
+    // copia en el historial. Con borrador solo se toca el borrador y basta con poder deshacer.
+    const previous = plan
+    if (!borradorActivo && trainerId !== DEMO_TRAINER_ID) await saveHistoryCopy(client.id, { P: previous }, prog.name)
 
     onPlanChange(newPlan)
     setShowProgramSelector(false)
     setAssigning(false)
-    toast(`Programa "${prog.name}" asignado ✓`, 'ok')
+    if (missing.length) toast(`${missing.length === 1 ? 'Un workout del programa ya no existe' : `${missing.length} workouts del programa ya no existen`} (${missing.join(', ')}): esos días quedan sin ejercicios`, 'warn')
+    toast(`Programa "${prog.name}" asignado ✓`, 'ok', {
+      label: 'Deshacer',
+      onClick: () => { onPlanChange(previous); toast('Plan anterior restaurado ✓', 'ok') },
+    })
   }
 
   // Bloque terminando/terminado — calculado en local a partir de inicio + nº semanas
@@ -91,7 +103,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   const generateNextBlock = () => {
     const weeks = JSON.parse(JSON.stringify(plan.weeks)) as typeof plan.weeks
     weeks.forEach((w, i) => { w.isCurrent = i === 0 })
-    const newPlan: TrainingPlan = { ...plan, weeks, fechaInicio: new Date().toISOString().split('T')[0] }
+    const newPlan: TrainingPlan = { ...plan, weeks, fechaInicio: localDateKey() }
     onPlanChange(newPlan)
     toast('Nuevo bloque generado — mismos ejercicios, ajusta cargas si hace falta', 'ok')
   }
@@ -148,15 +160,14 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
 
       {/* Modal selector de programa */}
       {showProgramSelector && (
-        <div className="fixed inset-0 z-50 bg-ink/50 flex items-center justify-center p-4">
-          <div className="bg-card rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh]">
+        <Modal open plain onClose={() => setShowProgramSelector(false)} ariaLabel="Asignar programa" maxWidth="max-w-2xl">
             <div className="px-6 py-5 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-serif font-bold text-xl">Asignar programa</h3>
                   <p className="text-sm text-muted mt-0.5">{client.name} {client.surname}</p>
                 </div>
-                <button onClick={() => setShowProgramSelector(false)} className="p-2 rounded-xl hover:bg-bg-alt text-muted">
+                <button onClick={() => setShowProgramSelector(false)} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-bg-alt text-muted">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -222,13 +233,13 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-sm truncate">{prog.name}</p>
-                          {isSuggested && <span className="text-[9px] bg-ok/10 text-ok px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">✓ Sugerido</span>}
+                          {isSuggested && <span className="text-[11px] bg-ok/10 text-ok px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">✓ Sugerido</span>}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
-                          <span className="text-[10px] text-muted">{(prog.weeks || []).length} sem · {totalTasks} tareas</span>
+                          <span className="text-[11px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-semibold">{prog.tipo}</span>
+                          <span className="text-[11px] text-muted">{(prog.weeks || []).length} sem · {totalTasks} tareas</span>
                           {progLabels.map(l => (
-                            <span key={l.id} className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold border"
+                            <span key={l.id} className="text-[11px] px-1.5 py-0.5 rounded-full font-semibold border"
                               style={{ backgroundColor: l.color + '15', borderColor: l.color + '40', color: l.color }}>
                               {l.emoji} {l.name}
                             </span>
@@ -244,8 +255,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
                 })
               )}
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
 
       {/* Editor del plan */}

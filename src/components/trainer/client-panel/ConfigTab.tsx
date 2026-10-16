@@ -61,7 +61,7 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
             <span className="text-lg">{a.emoji}</span>
             <div className="flex-1"><p className="text-sm font-semibold">{a.label}</p><p className="text-xs text-muted">{a.desc}</p></div>
             <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-all ${plan[a.key] ? 'bg-ok' : 'bg-border'}`}>
-              <div className={`w-5 h-5 bg-white rounded-full shadow transition-all ${plan[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
+              <div className={`w-5 h-5 bg-card rounded-full shadow transition-all ${plan[a.key] ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
           </div>
         ))}
