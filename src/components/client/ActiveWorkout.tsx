@@ -429,38 +429,41 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const ex = day.exercises[ri]
     const { numSets } = parseSet(ex.sets)
     const today = localDateKey()
-    const wasDone = setsRef.current[ri]?.[si]?.done
+    const prev = setsRef.current
+    const wasDone = prev[ri]?.[si]?.done
 
-    setSets(prev => {
-      const newDone = !prev[ri]?.[si]?.done
-      // En carrera por tiradas, la distancia de la tirada es la prescrita; en
-      // un test de tiempo fijo la escribe el cliente (setRunData).
-      const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
-      const prevSet = prev[ri]?.[si]
-      const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
-      const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
-      const key = `ex_${dayKey}_r${ri}`
-      const setsData: Record<number, LogSet> = {}
-      for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
-        const st = updated[ri][i]
-        setsData[i] = {
-          weight: st?.weight || '', reps: st?.reps || '',
-          ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
-          ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
-          ...(st?.isTest ? { isTest: true } : {}),
-        }
+    // Se computa fuera de la función actualizadora de setSets: React puede
+    // invocar esa función durante el render, así que no debe disparar
+    // setState de otros componentes (onLogsChange -> setLogs del padre) ni
+    // efectos secundarios (setRestTimer) desde dentro de ella.
+    const newDone = !prev[ri]?.[si]?.done
+    // En carrera por tiradas, la distancia de la tirada es la prescrita; en
+    // un test de tiempo fijo la escribe el cliente (setRunData).
+    const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
+    const prevSet = prev[ri]?.[si]
+    const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
+    const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
+    const key = `ex_${dayKey}_r${ri}`
+    const setsData: Record<number, LogSet> = {}
+    for (let i = 0; i < Math.max(numSets, Object.keys(updated[ri]).length); i++) {
+      const st = updated[ri][i]
+      setsData[i] = {
+        weight: st?.weight || '', reps: st?.reps || '',
+        ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
+        ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
+        ...(st?.isTest ? { isTest: true } : {}),
       }
-      onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
+    }
 
-      // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
-      // recuperación es andando una distancia, no una cuenta atrás)
-      if (newDone && !ex.hideRest && ex.kind !== 'run') {
-        const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-        setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
-      }
+    setSets(updated)
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
 
-      return updated
-    })
+    // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
+    // recuperación es andando una distancia, no una cuenta atrás)
+    if (newDone && !ex.hideRest && ex.kind !== 'run') {
+      const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
+      setRestTimer({ secs: restSecs, next: getNextSetInfo(ri, si, updated[ri], prev) })
+    }
 
     // Detección de récord en tiempo real (1RM estimado) — solo al marcar
     // la serie como hecha, no al desmarcarla.
