@@ -166,6 +166,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const uploadExerciseVideo = useCallback(async (ri: number, rawFile: File) => {
     if (rawFile.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
     setUploadingVideoRi(ri)
+    if (isDemoClientId(plan.clientId)) {
+      const demoKey = `ex_${dayKey}_r${ri}`
+      onLogsChange({ ...logsRef.current, [demoKey]: { ...logsRef.current[demoKey], videoEjecucion: URL.createObjectURL(rawFile) } })
+      setUploadingVideoRi(null)
+      return
+    }
     const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
     const ext = file.name.split('.').pop()
     // El id del cliente va primero en la ruta para que la política de Storage

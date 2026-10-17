@@ -231,6 +231,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
   useEffect(() => {
     fetchClients()
+    if (trainerId.startsWith('demo-trainer-')) return
     const channel = supabase.channel('clientes-rt')
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'clientes',

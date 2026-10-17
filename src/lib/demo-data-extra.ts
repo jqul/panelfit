@@ -1,12 +1,13 @@
 // Datos demo adicionales — todo lo que el modo demo no enseñaba todavía.
 // Vive aparte de demo-data.ts para no seguir engordándolo; importa de él los
 // ids y los clientes para que nada se desincronice.
-import { DEMO_TRAINER_ID, DEMO_CLIENTS, DEMO_LOGS_MAP } from './demo-data'
+import { DEMO_TRAINER_ID, DEMO_CLIENTS, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './demo-data'
+import { localDateKey } from './dates'
 
 export const isDemoClientId = (id?: string | null): boolean => !!id && id.startsWith('demo-client-')
 export const isDemoTrainerId = (id?: string | null): boolean => id === DEMO_TRAINER_ID
 
-const dayStr = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400000).toISOString().split('T')[0]
+const dayStr = (daysAgo: number) => localDateKey(new Date(Date.now() - daysAgo * 86400000))
 
 // ── DIETAS ──────────────────────────────────────────────
 // Misma forma que DietPlan (components/shared/DietEditor.tsx). Los macros
@@ -144,7 +145,7 @@ export function buildDemoNotificaciones() {
     n(1, 'demo-client-007', 'alerta_vencida', 'Molestia articular reportada', 'Lucas — Rodilla (6/10): "Duele al aterrizar en los saltos con carga"', ago(35 * MIN)),
     n(2, 'demo-client-001', 'sesion_completada', 'Sesión completada 💪', 'María terminó DÍA C — Pierna con 3 récords personales', ago(2 * HOUR)),
     n(3, 'demo-client-004', 'sesion_completada', 'Sesión completada 💪', 'Diego terminó DÍA B — Banca y accesorios', ago(5 * HOUR)),
-    n(4, 'demo-client-002', 'inactividad', 'Cliente sin actividad', 'Carlos lleva 6 días sin entrenar y su motivación va a la baja', ago(9 * HOUR)),
+    n(4, 'demo-client-002', 'inactividad', 'Cliente sin actividad', 'Carlos lleva 9 días sin entrenar y su motivación va a la baja', ago(9 * HOUR)),
     n(5, 'demo-client-006', 'mensaje', 'Mensaje de Beatriz', '"¿Puedo cambiar la sentadilla goblet por prensa? Me molestan las muñecas"', ago(1 * DAY + 2 * HOUR), true),
     n(6, 'demo-client-005', 'nueva_rutina', 'Plan visto por la cliente', 'Marta abrió la nueva fase de readaptación de rodilla', ago(1 * DAY + 6 * HOUR), true),
     n(7, 'demo-client-003', 'alerta_vencida', 'Recordatorio vencido', 'Laura — "Revisar medidas del mes" venció hace 2 días', ago(2 * DAY), true),
@@ -184,7 +185,7 @@ const al = (id: string, type: DemoAlert['type'], note: string, offsetDays: numbe
   ({ id: `demo-alert-${id}`, type, note, date: dayStr(-offsetDays), done, createdAt: Date.now() - 12 * DAY })
 export const DEMO_ALERTS_MAP: Record<string, DemoAlert[]> = {
   'demo-client-001': [al('1a', 'revision', 'Revisar progresión de sentadilla antes de subir carga', 2), al('1b', 'otro', 'Enviar guía de nutrición para fase lútea', -3, true)],
-  'demo-client-002': [al('2a', 'llamar', 'Llamar: motivación baja y 6 días sin entrenar', -1), al('2b', 'revision', 'Ajustar peso de apertura para el pico', 4)],
+  'demo-client-002': [al('2a', 'llamar', 'Llamar: motivación baja y 9 días sin entrenar', -1), al('2b', 'revision', 'Ajustar peso de apertura para el pico', 4)],
   'demo-client-003': [al('3a', 'valoracion', 'Revisar medidas del mes', -2)],
   'demo-client-004': [al('4a', 'revision', 'Revisar técnica de peso muerto en vídeo', 3), al('4b', 'otro', 'Inscripción a competición: fecha límite', 14)],
   'demo-client-005': [al('5a', 'llamar', 'Coordinar con el fisio la autorización de impacto', 1), al('5b', 'revision', 'Reevaluar dolor EVA tras la última fase', 6)],
@@ -302,7 +303,7 @@ function photoSvg(kind: 'front' | 'side' | 'back', hue: number, slim: number): s
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice">
     <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue} 22% 88%)"/><stop offset="1" stop-color="hsl(${hue} 22% 74%)"/></linearGradient></defs>
     <rect width="300" height="400" fill="url(#g)"/>
-    <g transform="translate(0 -20) scale(1 .9)">
+    <g transform="translate(39 -26) scale(.74)">
       <circle cx="150" cy="96" r="34" fill="hsl(${hue} 18% 36%)"/>
       ${body}
     </g>
@@ -416,4 +417,26 @@ export function buildDemoLeads() {
     l(4, 'Sergio Blanco', 'sergio.blanco@example.com', null, '¿Precios de seguimiento mensual?', 'contactado', 120),
     l(5, 'Irene Castro', null, '+34 644 77 88 99', null, 'descartado', 240),
   ]
+}
+
+// ── BIBLIOTECA DE EJERCICIOS (vídeos, etiquetas, especialidades) ──
+// La biblioteca de serie viene sin vídeos ni etiquetas; en demo se enriquecen
+// los ejercicios que de verdad usan los planes (mismos vídeos, mismo tipo de plan).
+export function buildDemoLibraryEnrichment() {
+  const out: Record<string, { videos: { url: string; label?: string; especialidades?: string[] }[]; especialidades: string[]; tags: string[] }> = {}
+  Object.values(DEMO_PLAN_MAP).forEach(plan => {
+    plan.weeks.forEach(week => week.days.forEach(day => day.exercises.forEach(ex => {
+      const e = out[ex.name] || (out[ex.name] = { videos: [], especialidades: [], tags: [] })
+      if (plan.type && !e.especialidades.includes(plan.type)) e.especialidades.push(plan.type)
+      const urls = [ex.videoUrl, ...(ex.videoUrls || [])].filter(Boolean) as string[]
+      urls.forEach(url => { if (!e.videos.some(v => v.url === url)) e.videos.push({ url, label: 'Técnica', especialidades: [plan.type] }) })
+      const add = (t: string) => { if (!e.tags.includes(t)) e.tags.push(t) }
+      if (ex.isMain) add('básico')
+      if (ex.enReadaptacion) add('readaptación')
+      if (/salto|sprint|pliom/i.test(ex.name)) add('potencia')
+      if (ex.tempo) add('tempo')
+      if (ex.requiresVideo) add('pide vídeo')
+    })))
+  })
+  return out
 }

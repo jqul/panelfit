@@ -406,6 +406,16 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
   const handleFile = async (rawFile: File) => {
     if (!trainerId) return
     setError('')
+    if (isDemoClientId(clientId)) {
+      DEMO_VIDEO_FEEDBACK_MAP[clientId] = [{
+        id: `demo-vf-${Date.now()}`, trainer_id: trainerId, client_id: clientId, exercise_name: label.trim() || 'Vídeo',
+        video_url: URL.createObjectURL(rawFile), client_note: null, trainer_comment: null,
+        trainer_comment_video_url: null, status: 'pendiente', created_at: Date.now(), commented_at: null,
+      }, ...(DEMO_VIDEO_FEEDBACK_MAP[clientId] || [])]
+      setShowModal(false); setLabel('Salto vertical'); setSkipCompression(false)
+      onUploaded()
+      return
+    }
     try {
       // Compresión más suave que en el resto de la app (más fps, más resolución):
       // este botón también se usa para vídeos que luego se analizan fotograma a

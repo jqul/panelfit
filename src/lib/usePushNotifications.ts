@@ -70,6 +70,9 @@ export function usePushNotifications(owner: Owner) {
 
 /** Dispara un push real vía la Edge Function send-push. Falla en silencio si no hay suscripciones. */
 export async function sendPush(target: Owner, title: string, body: string, url?: string) {
+  // Modo demo: los ids son ficticios, no hay nadie suscrito — no se llama a la
+  // Edge Function de producción desde una demo.
+  if (target.trainerId?.startsWith('demo-trainer-') || target.clientId?.startsWith('demo-client-')) return
   try {
     await supabase.functions.invoke('send-push', { body: { ...target, title, body, url } })
   } catch {

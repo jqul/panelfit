@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { Video, Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { compressVideo } from '../../../lib/videoCompress'
+import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
+import { isDemoClientId } from '../../../lib/demo-data-extra'
 
 // ── Subida de vídeo de feedback (inspirado en TrueCoach) ──
 export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exerciseName: string; clientId: string; trainerId: string }) {
@@ -16,6 +18,16 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
   const handleFile = async (rawFile: File) => {
     if (!rawFile) return
     setError('')
+    if (isDemoClientId(clientId)) {
+      DEMO_VIDEO_FEEDBACK_MAP[clientId] = [{
+        id: `demo-vf-${Date.now()}`, trainer_id: trainerId, client_id: clientId, exercise_name: exerciseName,
+        video_url: URL.createObjectURL(rawFile), client_note: note.trim() || null, trainer_comment: null,
+        trainer_comment_video_url: null, status: 'pendiente', created_at: Date.now(), commented_at: null,
+      }, ...(DEMO_VIDEO_FEEDBACK_MAP[clientId] || [])]
+      setSent(true)
+      setTimeout(() => { setShowModal(false); setSent(false); setNote('') }, 1800)
+      return
+    }
     setCompressing(true)
     try {
       // Solo revisión visual de técnica — no necesita fotogramas exactos, así que

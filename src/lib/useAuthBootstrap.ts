@@ -5,8 +5,7 @@ import {
   DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID,
   DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA,
   DEMO_WEIGHTS_DIEGO, DEMO_WEIGHTS_MARTA, DEMO_WEIGHTS_BEATRIZ, DEMO_WEIGHTS_LUCAS,
-  DEMO_DOLOR_MARTA, DEMO_DOLOR_LUCAS,
-  DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES
+  DEMO_DOLOR_MAP,
 } from './demo-data'
 
 export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
@@ -25,12 +24,11 @@ export function hydrateDemoStorage() {
   localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
   localStorage.setItem(`pf_weight_demo-client-004`, JSON.stringify(DEMO_WEIGHTS_DIEGO))
   localStorage.setItem(`pf_weight_demo-client-005`, JSON.stringify(DEMO_WEIGHTS_MARTA))
-  localStorage.setItem(`pf_dolor_demo-client-005`, JSON.stringify(DEMO_DOLOR_MARTA))
   localStorage.setItem(`pf_weight_demo-client-006`, JSON.stringify(DEMO_WEIGHTS_BEATRIZ))
   localStorage.setItem(`pf_weight_demo-client-007`, JSON.stringify(DEMO_WEIGHTS_LUCAS))
-  localStorage.setItem(`pf_dolor_demo-client-007`, JSON.stringify(DEMO_DOLOR_LUCAS))
-  localStorage.setItem(`pf_demo_survey_template`, JSON.stringify(DEMO_SURVEY_TEMPLATE))
-  localStorage.setItem(`pf_demo_survey_responses`, JSON.stringify(DEMO_SURVEY_RESPONSES))
+  Object.entries(DEMO_DOLOR_MAP).forEach(([clientId, rows]) => {
+    localStorage.setItem(`pf_dolor_${clientId}`, JSON.stringify(rows))
+  })
 }
 
 export function useAuthBootstrap() {
