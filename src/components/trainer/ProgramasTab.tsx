@@ -12,7 +12,7 @@ import { matchesQuery, plural } from '../../lib/workoutList'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
 import type { ClientData, TrainingPlan } from '../../types'
-import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES } from '../../lib/demo-data'
+import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES, DEMO_COHORTE_CLIENTES, DEMO_PLAN_MAP } from '../../lib/demo-data'
 import { localDateKey } from '../../lib/dates'
 import { snapshotBeforeAssign, restoreSnapshots } from '../../lib/planSnapshot'
 import { programToPlanWeeks, workoutTemplateIds } from '../../lib/programPlan'
@@ -492,8 +492,12 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     let targetIds: string[] = []
     if (mode === 'group') {
       if (!selectedCohorte) { toast('Elige un grupo', 'warn'); return }
-      const { data } = await supabase.from('cohorte_clientes').select('client_id').eq('cohorte_id', selectedCohorte)
-      targetIds = (data || []).map(r => r.client_id)
+      if (trainerId === DEMO_TRAINER_ID) {
+        targetIds = DEMO_COHORTE_CLIENTES.filter(r => r.cohorte_id === selectedCohorte).map(r => r.client_id)
+      } else {
+        const { data } = await supabase.from('cohorte_clientes').select('client_id').eq('cohorte_id', selectedCohorte)
+        targetIds = (data || []).map(r => r.client_id)
+      }
     } else {
       targetIds = [...selectedIds]
     }
@@ -503,7 +507,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     // Los ejercicios de cada día vienen de los workouts que usa el programa: sin leerlos se asignaría
     // un plan de días vacíos, así que si falla no se asigna nada.
     const isDemo = trainerId === DEMO_TRAINER_ID
-    const templates = isDemo ? {} : await loadProgramTemplates(trainerId, workoutTemplateIds(program.weeks))
+    const templates = isDemo ? Object.fromEntries(DEMO_PLAN_TEMPLATES.map(t => [t.id, t])) : await loadProgramTemplates(trainerId, workoutTemplateIds(program.weeks))
     if (templates === null) {
       setAssigning(false)
       toast('No se pudieron leer los workouts del programa: no se ha asignado nada', 'warn')
@@ -525,6 +529,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
         programId: program.id, programName: program.name,
         fechaInicio: localDateKey(),
       }
+      if (isDemo) { DEMO_PLAN_MAP[clientId] = newPlan; return true }
       const { error } = await supabase.from('planes').upsert(
         { clientId, plan: { P: newPlan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() },
         { onConflict: 'clientId' }

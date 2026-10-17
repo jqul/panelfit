@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, Check, CheckCheck, X, Dumbbell, AlertTriangle, Calendar, MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { isDemoTrainerId, buildDemoNotificaciones } from '../../lib/demo-data-extra'
 
 interface Notificacion {
   id: string
@@ -35,7 +36,10 @@ export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
   // instancias de este componente pueden coexistir y no pueden compartir canal.
   const channelName = useRef(`notificaciones_${Math.random().toString(36).slice(2)}`).current
 
+  const isDemo = isDemoTrainerId(trainerId)
+
   useEffect(() => {
+    if (isDemo) { setNotifs(buildDemoNotificaciones() as Notificacion[]); return }
     loadNotifs()
     // Realtime subscription
     const channel = supabase.channel(channelName)
@@ -68,17 +72,17 @@ export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
   }
 
   const markRead = async (id: string) => {
-    await supabase.from('notificaciones').update({ leida: true }).eq('id', id)
+    if (!isDemo) await supabase.from('notificaciones').update({ leida: true }).eq('id', id)
     setNotifs(n => n.map(x => x.id === id ? { ...x, leida: true } : x))
   }
 
   const markAllRead = async () => {
-    await supabase.from('notificaciones').update({ leida: true }).eq('trainer_id', trainerId).eq('leida', false)
+    if (!isDemo) await supabase.from('notificaciones').update({ leida: true }).eq('trainer_id', trainerId).eq('leida', false)
     setNotifs(n => n.map(x => ({ ...x, leida: true })))
   }
 
   const deleteNotif = async (id: string) => {
-    await supabase.from('notificaciones').delete().eq('id', id)
+    if (!isDemo) await supabase.from('notificaciones').delete().eq('id', id)
     setNotifs(n => n.filter(x => x.id !== id))
   }
 

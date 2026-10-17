@@ -4,6 +4,7 @@ import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { toast } from '../../shared/Toast'
 import { localDateKey } from '../../../lib/dates'
+import { DEMO_VALORACIONES_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
 
 interface Valoracion {
   id: string
@@ -70,6 +71,11 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
 
   const loadValoraciones = async () => {
     setLoading(true)
+    if (isDemoClientId(client.id)) {
+      setValoraciones([...(DEMO_VALORACIONES_MAP[client.id] || [])] as Valoracion[])
+      setLoading(false)
+      return
+    }
     const { data } = await supabase
       .from('valoraciones')
       .select('*')
@@ -82,7 +88,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   const saveValoracion = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = await supabase.from('valoraciones').upsert(editing, { onConflict: 'id' })
+    const { error } = isDemoClientId(client.id) ? { error: null } : await supabase.from('valoraciones').upsert(editing, { onConflict: 'id' })
     if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
     setValoraciones(vs => vs.find(v => v.id === editing.id)
       ? vs.map(v => v.id === editing.id ? editing : v)
@@ -93,7 +99,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   }
 
   const deleteValoracion = async (id: string) => {
-    await supabase.from('valoraciones').delete().eq('id', id)
+    if (!isDemoClientId(client.id)) await supabase.from('valoraciones').delete().eq('id', id)
     setValoraciones(vs => vs.filter(v => v.id !== id))
     toast('Eliminada', 'ok')
   }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, CheckSquare } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { toast } from '../../shared/Toast'
+import { DEMO_HABITOS_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
 
 interface Habito { id: string; clientId: string; text: string; sub?: string; order: number }
 
@@ -15,6 +16,7 @@ export function HabitosSection({ clientId }: { clientId: string }) {
 
   const loadHabitos = async () => {
     setLoading(true)
+    if (isDemoClientId(clientId)) { setHabitos([...(DEMO_HABITOS_MAP[clientId] || [])]); setLoading(false); return }
     const { data } = await supabase.from('habitos').select('*').eq('clientId', clientId).order('order')
     setHabitos(data || [])
     setLoading(false)
@@ -24,7 +26,8 @@ export function HabitosSection({ clientId }: { clientId: string }) {
     if (!newText.trim()) return
     setAdding(true)
     const habito = { id: crypto.randomUUID().replace(/-/g, ''), clientId, text: newText.trim(), sub: '', order: habitos.length }
-    const { error } = await supabase.from('habitos').insert(habito)
+    const { error } = isDemoClientId(clientId) ? { error: null } : await supabase.from('habitos').insert(habito)
+    if (!error && isDemoClientId(clientId)) DEMO_HABITOS_MAP[clientId] = [...(DEMO_HABITOS_MAP[clientId] || []), habito]
     if (error) { toast('Error al añadir hábito', 'warn'); setAdding(false); return }
     setHabitos(h => [...h, habito])
     setNewText('')
@@ -32,7 +35,8 @@ export function HabitosSection({ clientId }: { clientId: string }) {
   }
 
   const deleteHabito = async (id: string) => {
-    await supabase.from('habitos').delete().eq('id', id)
+    if (isDemoClientId(clientId)) DEMO_HABITOS_MAP[clientId] = (DEMO_HABITOS_MAP[clientId] || []).filter(x => x.id !== id)
+    else await supabase.from('habitos').delete().eq('id', id)
     setHabitos(h => h.filter(x => x.id !== id))
   }
 

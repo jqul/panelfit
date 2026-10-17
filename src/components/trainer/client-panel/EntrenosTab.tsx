@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ClipboardList, CheckCircle2, Dumbbell, TrendingUp, X } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../../types'
 import { supabase } from '../../../lib/supabase'
+import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
 
 function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: number }[]; color?: string }) {
   if (data.length < 2) return <p className="text-xs text-muted text-center py-2">Solo 1 sesión — necesitas al menos 2 para ver la gráfica</p>
@@ -48,6 +49,12 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
 
   useEffect(() => {
     if (!clientId) return
+    if (isDemoClientId(clientId)) {
+      const byDate: Record<string, SessionReaction> = {}
+      ;(DEMO_REACTIONS_MAP[clientId] || []).forEach(r => { byDate[r.date] = r as SessionReaction })
+      setReactions(byDate)
+      return
+    }
     supabase.from('session_reactions').select('date, emoji, comment').eq('clientId', clientId)
       .then(({ data }) => {
         const byDate: Record<string, SessionReaction> = {}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { DEMO_SURVEY_RESPONSES, DEMO_SURVEY_TEMPLATE } from '../../lib/demo-data'
 import { fetchClientWeights, WeightEntry } from '../../lib/clientWeight'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
@@ -20,6 +21,11 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
 
   useEffect(() => {
     fetchClientWeights(client.id).then(setWeights)
+    if (client.id.startsWith('demo-client-')) {
+      setResponses(DEMO_SURVEY_RESPONSES.filter(r => r.client_id === client.id))
+      setTemplates([DEMO_SURVEY_TEMPLATE])
+      return
+    }
     // Cargar últimas respuestas de encuestas
     Promise.all([
       supabase.from('survey_responses').select('*').eq('client_id', client.id).order('completed_at', { ascending: false }).limit(4),

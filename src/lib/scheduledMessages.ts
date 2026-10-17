@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './supabase'
 import { localDateKey } from './dates'
+import { isDemoTrainerId, buildDemoScheduledMessages } from './demo-data-extra'
 
 export interface ScheduledMessage {
   id: string
@@ -24,6 +25,7 @@ export function useScheduledMessages(trainerId?: string) {
 
   const load = useCallback(async () => {
     if (!trainerId) { setLoading(false); return }
+    if (isDemoTrainerId(trainerId)) { setMessages(buildDemoScheduledMessages() as ScheduledMessage[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase
       .from('programacion_mensajes')
@@ -44,25 +46,28 @@ export function useScheduledMessages(trainerId?: string) {
       trainerId, clientId, tipo, mensaje, fechaEnvio,
       enviado: false, pushEnviado: false, createdAt: Date.now(),
     }
-    const { error } = await supabase.from('programacion_mensajes').insert(row)
+    const { error } = isDemoTrainerId(trainerId) ? { error: null } : await supabase.from('programacion_mensajes').insert(row)
     if (!error) setMessages(prev => [...prev, row as ScheduledMessage].sort((a, b) => a.fechaEnvio.localeCompare(b.fechaEnvio)))
     return !error
   }, [trainerId])
 
   const markPushSent = useCallback(async (id: string) => {
     setMessages(prev => prev.map(m => m.id === id ? { ...m, pushEnviado: true } : m))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('programacion_mensajes').update({ pushEnviado: true }).eq('id', id)
-  }, [])
+  }, [trainerId])
 
   const markSent = useCallback(async (id: string) => {
     setMessages(prev => prev.filter(m => m.id !== id))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('programacion_mensajes').update({ enviado: true }).eq('id', id)
-  }, [])
+  }, [trainerId])
 
   const remove = useCallback(async (id: string) => {
     setMessages(prev => prev.filter(m => m.id !== id))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('programacion_mensajes').delete().eq('id', id)
-  }, [])
+  }, [trainerId])
 
   const due = useMemo(() => {
     const today = todayISO()

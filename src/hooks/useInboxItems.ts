@@ -4,6 +4,7 @@ import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDB
 import { PainEntry } from '../lib/clientPain'
 import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
+import { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP } from '../lib/demo-data-extra'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
@@ -71,8 +72,10 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       setReadiness(DEMO_READINESS_FLAT)
       setDolor(DEMO_DOLOR_FLAT)
       setVideos(Object.values(DEMO_VIDEO_FEEDBACK_MAP).flat() as VideoRow[])
-      setBorradores([])
-      setLastReviews({})
+      setBorradores(DEMO_BORRADOR_CLIENT_IDS.map(clientId => ({ clientId, borrador_activo: true, borrador_started_at: new Date(Date.now() - 2 * 86400000).toISOString() })))
+      const latest: Record<string, string> = {}
+      Object.entries(DEMO_WEEKLY_REVIEWS_MAP).forEach(([id, rows]) => { if (rows[0]) latest[id] = rows[0].week_start })
+      setLastReviews(latest)
       setLoading(false)
       return
     }

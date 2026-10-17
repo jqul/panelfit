@@ -3,6 +3,8 @@ import { History, RotateCcw, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { Modal } from '../../shared/Modal'
 import { TrainingPlan } from '../../../types'
+import { DEMO_PLAN_MAP } from '../../../lib/demo-data'
+import { isDemoClientId, buildDemoPlanHistory, DEMO_PLAN_LAST_OPENED } from '../../../lib/demo-data-extra'
 
 interface HistoryRow { id: string; plan: { P: TrainingPlan }; note: string | null; published_by: string | null; published_at: string }
 
@@ -18,6 +20,12 @@ export function PlanHistoryModal({ clientId, onClose, onRestore }: {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (isDemoClientId(clientId)) {
+      setRows(buildDemoPlanHistory(clientId, DEMO_PLAN_MAP[clientId]))
+      setLastOpened(DEMO_PLAN_LAST_OPENED(clientId))
+      setLoading(false)
+      return
+    }
     Promise.all([
       supabase.from('plan_history').select('id, plan, note, published_by, published_at').eq('clientId', clientId).order('published_at', { ascending: false }).limit(30),
       supabase.from('clientes').select('plan_last_opened_at').eq('id', clientId).maybeSingle(),

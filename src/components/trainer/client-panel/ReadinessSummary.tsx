@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Moon } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { localDateKey } from '../../../lib/dates'
+import { DEMO_READINESS_MAP } from '../../../lib/demo-data'
 
 interface ReadinessRow { date: string; sleep: number; soreness: number; stress: number; motivation: number }
 
@@ -10,6 +11,7 @@ export function ReadinessSummary({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (clientId.startsWith('demo-client-')) { setRows([...(DEMO_READINESS_MAP[clientId] || [])].sort((a, b) => b.date.localeCompare(a.date))); setLoading(false); return }
     const since = new Date(); since.setDate(since.getDate() - 7)
     supabase.from('readiness_checkins').select('date, sleep, soreness, stress, motivation')
       .eq('clientId', clientId).gte('date', localDateKey(since)).order('date', { ascending: false })

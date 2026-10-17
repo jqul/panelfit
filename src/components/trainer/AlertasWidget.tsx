@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { localDateKey } from '../../lib/dates'
+import { DEMO_ALERTS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 
 interface ClientAlert {
   id: string
@@ -29,6 +30,11 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
   useEffect(() => {
     if (!clients.length) { setLoading(false); return }
     const fetchAlerts = async () => {
+      if (clients.every(c => isDemoClientId(c.id))) {
+        setAlertsMap({ ...DEMO_ALERTS_MAP } as Record<string, ClientAlert[]>)
+        setLoading(false)
+        return
+      }
       const ids = clients.map(c => c.id)
       const { data } = await supabase.from('clientes').select('id, alerts').in('id', ids)
       const map: Record<string, ClientAlert[]> = {}

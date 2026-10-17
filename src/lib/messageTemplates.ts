@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { isDemoTrainerId, buildDemoMessageTemplates } from './demo-data-extra'
 
 export type MessageType = 'nueva_rutina' | 'racha' | 'descanso' | 'custom'
 
@@ -28,6 +29,7 @@ export function useMessageTemplates(trainerId?: string) {
 
   const load = useCallback(async () => {
     if (!trainerId) { setLoading(false); return }
+    if (isDemoTrainerId(trainerId)) { setTemplates(buildDemoMessageTemplates() as MessageTemplate[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('plantillas_mensajes').select('*').eq('trainerId', trainerId).order('createdAt')
     let rows = data || []
@@ -44,20 +46,23 @@ export function useMessageTemplates(trainerId?: string) {
 
   const saveTemplate = useCallback(async (id: string, updates: Partial<MessageTemplate>) => {
     setTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('plantillas_mensajes').update(updates).eq('id', id)
-  }, [])
+  }, [trainerId])
 
   const addTemplate = useCallback(async (nombre: string, texto: string) => {
     if (!trainerId) return
     const t: MessageTemplate = { id: `msg_${Date.now()}`, trainerId, tipo: 'custom', nombre, texto, createdAt: Date.now() }
     setTemplates(prev => [...prev, t])
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('plantillas_mensajes').insert(t)
   }, [trainerId])
 
   const deleteTemplate = useCallback(async (id: string) => {
     setTemplates(prev => prev.filter(t => t.id !== id))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('plantillas_mensajes').delete().eq('id', id)
-  }, [])
+  }, [trainerId])
 
   return { templates, loading, saveTemplate, addTemplate, deleteTemplate, reload: load }
 }

@@ -24,6 +24,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'María', surname: 'García',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-maria-001',
+    genero: 'm', altura: 165, fechanacimiento: '1994-03-12',
+    main_goal: 'Ganar masa muscular en glúteo y espalda sin perder definición',
+    equipo_disponible: 'Gimnasio completo',
+    notas_privadas: 'Muy constante; le motiva ver números. Evitar mensajes los domingos.',
     phone: '+34 611 22 33 01',
     objetivo: 'hipertrofia',
     weight: 62, fatPercentage: 22, muscleMass: 45, totalLifted: 0,
@@ -38,6 +42,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Carlos', surname: 'López',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-carlos-002',
+    genero: 'h', altura: 180, fechanacimiento: '1990-07-21',
+    main_goal: 'Sacar 200 kg en sentadilla en la próxima competición',
+    equipo_disponible: 'Gimnasio con plataforma de powerlifting',
+    notas_privadas: 'Se desmotiva cuando no ve progreso en banca. Valorar cambiar el estímulo.',
     phone: '+34 611 22 33 02',
     objetivo: 'fuerza',
     weight: 85, fatPercentage: 18, muscleMass: 68, totalLifted: 0,
@@ -52,6 +60,11 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Laura', surname: 'Martín',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-laura-003',
+    genero: 'm', altura: 168, fechanacimiento: '1991-11-02',
+    main_goal: 'Perder 8 kg antes de su boda en primavera',
+    equipo_disponible: 'Mancuernas en casa + gimnasio low-cost',
+    notas_privadas: 'Muy sensible a la báscula: enfocar en medidas y fotos.',
+    precio_mensual: 75,
     phone: '+34 611 22 33 03',
     objetivo: 'perdida_grasa',
     weight: 70, fatPercentage: 28, muscleMass: 47, totalLifted: 0,
@@ -65,6 +78,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Diego', surname: 'Fernández',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-diego-004',
+    genero: 'h', altura: 183, fechanacimiento: '1988-05-30',
+    main_goal: 'Total de 600 kg (sentadilla + banca + peso muerto) en competición',
+    equipo_disponible: 'Gimnasio con plataforma de powerlifting',
+    notas_privadas: 'Compite en 3 meses. Mantener el volumen sin perder técnica.',
     phone: '+34 611 22 33 04',
     objetivo: 'fuerza',
     weight: 90, fatPercentage: 20, muscleMass: 70, totalLifted: 0,
@@ -79,6 +96,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Marta', surname: 'Ruiz',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-marta-005',
+    genero: 'm', altura: 167, fechanacimiento: '1985-09-14',
+    main_goal: 'Volver a correr sin dolor de rodilla',
+    equipo_disponible: 'Gimnasio + bandas elásticas',
+    notas_privadas: 'Fisio: Dra. Ortega. Autorización de impacto pendiente.',
     phone: '+34 611 22 33 05',
     objetivo: 'rehabilitacion',
     weight: 64, fatPercentage: 26, muscleMass: 42, totalLifted: 0,
@@ -94,6 +115,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Beatriz', surname: 'Soto',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-beatriz-006',
+    genero: 'm', altura: 163, fechanacimiento: '1979-01-25',
+    main_goal: 'Perder 20 kg y sentirme con más energía',
+    equipo_disponible: 'Gimnasio básico',
+    notas_privadas: 'Primera vez en un gimnasio, le da vergüenza. Ir despacio y reforzar cada logro.',
     phone: '+34 611 22 33 06',
     objetivo: 'perdida_grasa',
     weight: 96.5, fatPercentage: 38, muscleMass: 55, totalLifted: 0,
@@ -108,6 +133,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Lucas', surname: 'Vega',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-lucas-007',
+    genero: 'h', altura: 178, fechanacimiento: '2001-06-18',
+    main_goal: 'Bajar de 10,8 s en los 100 m',
+    equipo_disponible: 'Pista de atletismo + gimnasio',
+    notas_privadas: 'Compite en 3 semanas. Vigilar la carga: ACWR alto y molestia de rodilla.',
     phone: '+34 611 22 33 07',
     objetivo: 'rendimiento',
     weight: 72, fatPercentage: 10, muscleMass: 62, totalLifted: 0,
@@ -128,7 +157,7 @@ export const DEMO_LABELS = [
   { id: DEMO_LABEL_IDS.rehab, trainer_id: DEMO_TRAINER_ID, name: 'Rehabilitación', color: '#06b6d4', emoji: '🩹', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 4 },
   { id: DEMO_LABEL_IDS.primeriza, trainer_id: DEMO_TRAINER_ID, name: 'Primeriza', color: '#8b5cf6', emoji: '🌱', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 5 },
   { id: DEMO_LABEL_IDS.altoRendimiento, trainer_id: DEMO_TRAINER_ID, name: 'Alto rendimiento', color: '#ec4899', emoji: '🔥', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 6 },
-  { id: DEMO_LABEL_IDS.riesgoAbandono, trainer_id: DEMO_TRAINER_ID, name: 'Riesgo de abandono', color: '#ef4444', emoji: '🚩', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 7 },
+  { id: DEMO_LABEL_IDS.riesgoAbandono, trainer_id: DEMO_TRAINER_ID, name: 'Riesgo de abandono', color: '#ef4444', emoji: '🚩', survey_template_id: 'demo-tmpl-001', created_at: Date.now() - 80 * 86400000 + 7 },
   { id: DEMO_LABEL_IDS.ciclo, trainer_id: DEMO_TRAINER_ID, name: 'Ciclo menstrual', color: '#f97316', emoji: '🌙', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 8 },
   { id: DEMO_LABEL_IDS.atletismo, trainer_id: DEMO_TRAINER_ID, name: 'Atletismo', color: '#64748b', emoji: '🏃', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 9 },
 ]
@@ -903,11 +932,46 @@ export const DEMO_READINESS_BEATRIZ: DemoReadinessRow[] = genReadiness([
   { sleep: 4, soreness: 3, stress: 2, motivation: 5 },
   { sleep: 4, soreness: 3, stress: 2, motivation: 4 },
 ])
+// Laura: se mantiene bien pero el sueño cae justo cuando baja la adherencia
+export const DEMO_READINESS_LAURA: DemoReadinessRow[] = genReadiness([
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 4, motivation: 3 },
+  { sleep: 3, soreness: 4, stress: 4, motivation: 3 },
+  { sleep: 3, soreness: 3, stress: 4, motivation: 3 },
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+])
+// Marta: el dolor de rodilla condiciona el sueño y las agujetas
+export const DEMO_READINESS_MARTA: DemoReadinessRow[] = genReadiness([
+  { sleep: 2, soreness: 2, stress: 3, motivation: 3 },
+  { sleep: 3, soreness: 2, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 2, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 2, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 5 },
+  { sleep: 4, soreness: 4, stress: 2, motivation: 5 },
+])
+// Lucas: el cuestionario subjetivo todavía NO lo refleja (se siente bien) pese
+// a que el ACWR y el salto sí — a propósito, para enseñar por qué hace falta
+// medir además de preguntar.
+export const DEMO_READINESS_LUCAS: DemoReadinessRow[] = genReadiness([
+  { sleep: 5, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 5, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 2, stress: 3, motivation: 4 },
+])
 export const DEMO_READINESS_MAP: Record<string, DemoReadinessRow[]> = {
   'demo-client-001': DEMO_READINESS_MARIA,
   'demo-client-002': DEMO_READINESS_CARLOS,
+  'demo-client-003': DEMO_READINESS_LAURA,
   'demo-client-004': DEMO_READINESS_DIEGO,
+  'demo-client-005': DEMO_READINESS_MARTA,
   'demo-client-006': DEMO_READINESS_BEATRIZ,
+  'demo-client-007': DEMO_READINESS_LUCAS,
 }
 // Igual que DEMO_READINESS_MAP pero aplanado con clientId en cada fila — lo
 // que necesita la Bandeja para mostrar check-ins de TODOS los clientes juntos.
@@ -1094,7 +1158,7 @@ export const DEMO_PROGRAMS = [
       label: `Semana ${wi + 1}`,
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 2, 4].includes(di)) tasks.push({ id: `t_${wi}_${di}_w`, type: 'workout', title: 'Full body + HIIT', data: { objective: 'Definición 3 días' } })
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t_${wi}_${di}_w`, type: 'workout', title: 'Full body + HIIT', data: { objective: 'Definición 3 días', templateId: 'demo-tmpl-definicion', templateName: 'Definición 3 días' } })
         if (di === 1) tasks.push({ id: `t_${wi}_${di}_c`, type: 'cardio', title: 'Cardio suave 30min', data: { objective: 'Caminar a paso ligero' } })
         if (di === 6 && wi === 0) tasks.push({ id: `t_${wi}_${di}_e`, type: 'evolucion', title: 'Fotos + peso', data: { objective: 'Registro quincenal' } })
         if (di === 0) tasks.push({ id: `t_${wi}_${di}_m`, type: 'mensaje', title: 'Recordatorio motivacional', data: { text: '¡Vamos con todo esta semana! 💪' } })
@@ -1109,7 +1173,7 @@ export const DEMO_PROGRAMS = [
       label: wi < 3 ? `Semana ${wi + 1} — ciclo de intensidad` : 'Semana 4 — descarga',
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 2, 4].includes(di)) tasks.push({ id: `t531_${wi}_${di}_w`, type: 'workout', title: wi < 3 ? 'Sentadilla/banca/peso muerto 5/3/1' : 'Descarga — técnica ligera', data: { objective: wi < 3 ? `Semana ${wi + 1} de intensidad` : 'Semana de descarga' } })
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t531_${wi}_${di}_w`, type: 'workout', title: wi < 3 ? 'Sentadilla/banca/peso muerto 5/3/1' : 'Descarga — técnica ligera', data: { objective: wi < 3 ? `Semana ${wi + 1} de intensidad` : 'Semana de descarga', templateId: 'demo-tmpl-fuerza', templateName: 'Fuerza 5×3 — Powerlifting' } })
         if (di === 5) tasks.push({ id: `t531_${wi}_${di}_v`, type: 'video', title: 'Vídeo de ejecución sentadilla', data: { objective: 'Revisar profundidad y técnica' } })
         return { tasks }
       }),
@@ -1122,7 +1186,7 @@ export const DEMO_PROGRAMS = [
       label: `Fase ${wi + 1}`,
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 3].includes(di)) tasks.push({ id: `trh_${wi}_${di}_w`, type: 'workout', title: 'Readaptación de rodilla', data: { objective: 'Sin sentadilla profunda ni impacto' } })
+        if ([0, 3].includes(di)) tasks.push({ id: `trh_${wi}_${di}_w`, type: 'workout', title: 'Readaptación de rodilla', data: { objective: 'Sin sentadilla profunda ni impacto', templateId: 'demo-tmpl-rehab-rodilla', templateName: 'Readaptación de rodilla (post-quirúrgico)' } })
         if (di === 5) tasks.push({ id: `trh_${wi}_${di}_f`, type: 'formulario', title: 'Cuestionario de dolor', data: { objective: 'Escala de dolor 0-10' } })
         return { tasks }
       }),

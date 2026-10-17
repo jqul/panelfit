@@ -18,6 +18,7 @@ import { MonthlyRecap } from '../trainer/progreso-tab/MonthlyRecap'
 import { SignedVideo, SignedImage } from '../shared/SignedMedia'
 import { collectSessionBests, recordHistory, strengthChange, adherence28, streakDays } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
+import { DEMO_FOTO_SESSIONS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 import { Modal } from '../shared/Modal'
 
@@ -576,6 +577,11 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
 
   const loadPhotos = async () => {
     setLoadingPhotos(true)
+    if (isDemoClientId(clientId)) {
+      setPhotos((DEMO_FOTO_SESSIONS_MAP[clientId] || []).map(r => ({ id: r.id, date: r.date, front: r.front_url, side: r.side_url, back: r.back_url, note: r.note })))
+      setLoadingPhotos(false)
+      return
+    }
     const { data, error } = await supabase
       .from('foto_sessions')
       .select('*')
@@ -594,17 +600,23 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
   const createSession = async () => {
     const id = `s_${Date.now()}`
     const date = localDateKey()
+    if (isDemoClientId(clientId)) {
+      setPhotos(p => [{ id, date, note: '' }, ...p])
+      setExpandedSession(id)
+      return
+    }
     const { error } = await supabase.from('foto_sessions').insert({ id, client_id: clientId, date, created_at: Date.now() })
     if (!error) { await loadPhotos(); setExpandedSession(id) }
   }
 
   const deleteSession = async (id: string) => {
-    await supabase.from('foto_sessions').delete().eq('id', id)
+    if (!isDemoClientId(clientId)) await supabase.from('foto_sessions').delete().eq('id', id)
     setPhotos(p => p.filter(s => s.id !== id))
   }
 
   const updateNote = async (sessionId: string, note: string) => {
     setPhotos(p => p.map(s => s.id === sessionId ? { ...s, note } : s))
+    if (isDemoClientId(clientId)) return
     await supabase.from('foto_sessions').update({ note }).eq('id', sessionId)
   }
 
@@ -617,6 +629,11 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
 
   const uploadPhoto = async (sessionId: string, type: 'front' | 'side' | 'back', file: File) => {
     if (file.size > 10 * 1024 * 1024) return
+    if (isDemoClientId(clientId)) {
+      const url = URL.createObjectURL(file)
+      setPhotos(p => p.map(s => s.id === sessionId ? { ...s, [type]: url } : s))
+      return
+    }
     setUploading(true)
     const path = `fotos/${clientId}/${sessionId}/${type}_${Date.now()}.${file.name.split('.').pop()}`
     const { error } = await supabase.storage.from('media').upload(path, file, { upsert: true })
