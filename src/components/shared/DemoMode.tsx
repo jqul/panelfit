@@ -35,10 +35,10 @@ export function DemoMode({ onEnterDemo }: Props) {
 
           <div className="space-y-2">
             {[
-              { icon: <Users className="w-4 h-4 text-accent" />, text: '3 clientes con perfiles distintos' },
-              { icon: <Dumbbell className="w-4 h-4 text-ok" />, text: 'Planes de entrenamiento con vídeos' },
-              { icon: <BarChart2 className="w-4 h-4 text-accent" />, text: 'Adherencia, insights y métricas reales' },
-              { icon: <MessageCircle className="w-4 h-4 text-[#25D366]" />, text: 'Recordatorios y check-ins configurados' },
+              { icon: <Users className="w-4 h-4 text-accent" />, text: '7 clientes con perfiles y objetivos distintos' },
+              { icon: <Dumbbell className="w-4 h-4 text-ok" />, text: 'Planes con vídeos, dieta, fotos y valoraciones' },
+              { icon: <BarChart2 className="w-4 h-4 text-accent" />, text: 'Adherencia, carga, dolor, pruebas y alertas reales' },
+              { icon: <MessageCircle className="w-4 h-4 text-[#25D366]" />, text: 'Mensajes, recordatorios y check-ins configurados' },
               { icon: <Star className="w-4 h-4 text-warn" />, text: 'White-label con tu marca activado' },
             ].map((f, i) => (
               <div key={i} className="flex items-center gap-3">

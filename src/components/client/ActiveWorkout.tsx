@@ -25,6 +25,7 @@ import { ExerciseSubstitution } from './active-workout/ExerciseSubstitution'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 import { useClientPain } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
+import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
@@ -165,6 +166,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const uploadExerciseVideo = useCallback(async (ri: number, rawFile: File) => {
     if (rawFile.size > 100 * 1024 * 1024) { alert('Máximo 100MB'); return }
     setUploadingVideoRi(ri)
+    if (isDemoClientId(plan.clientId)) {
+      const demoKey = `ex_${dayKey}_r${ri}`
+      onLogsChange({ ...logsRef.current, [demoKey]: { ...logsRef.current[demoKey], videoEjecucion: URL.createObjectURL(rawFile) } })
+      setUploadingVideoRi(null)
+      return
+    }
     const file = await compressVideo(rawFile) // solo revisión visual de técnica, sí se puede comprimir
     const ext = file.name.split('.').pop()
     // El id del cliente va primero en la ruta para que la política de Storage
@@ -600,10 +607,17 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
     if (reactionEmoji) {
       const today = localDateKey()
-      await supabase.from('session_reactions').insert({
-        clientId: plan.clientId, dayTitle: day.title, date: today,
-        emoji: reactionEmoji, comment: reactionComment.trim() || null,
-      })
+      if (isDemoClientId(plan.clientId)) {
+        DEMO_REACTIONS_MAP[plan.clientId] = [
+          { date: today, emoji: reactionEmoji, comment: reactionComment.trim() || null },
+          ...(DEMO_REACTIONS_MAP[plan.clientId] || []).filter(r => r.date !== today),
+        ]
+      } else {
+        await supabase.from('session_reactions').insert({
+          clientId: plan.clientId, dayTitle: day.title, date: today,
+          emoji: reactionEmoji, comment: reactionComment.trim() || null,
+        })
+      }
     }
     // 🤕 con zona elegida -> queda como registro real de dolor, no solo como
     // reacción de la sesión — para que salga en Progreso > Dolor y en la

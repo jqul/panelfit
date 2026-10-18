@@ -20,6 +20,7 @@ import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
+import { buildDemoMessageTemplates } from '../../lib/demo-data-extra'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
@@ -99,6 +100,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       setPlan(DEMO_PLAN_MAP[demoClient.id] || null)
       setLogs(DEMO_LOGS_MAP[demoClient.id] || {})
       setTrainerProfile(DEMO_TRAINER_PROFILE)
+      setMessageTemplates(buildDemoMessageTemplates() as MessageTemplate[])
       setAuthState('authenticated')
       setLoading(false)
       return

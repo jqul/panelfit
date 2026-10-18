@@ -3,6 +3,7 @@ import { Camera, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { EmptyState } from './helpers'
 import { SignedImage } from '../../shared/SignedMedia'
+import { DEMO_FOTO_SESSIONS_MAP } from '../../../lib/demo-data-extra'
 
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
 
@@ -15,6 +16,7 @@ export function FotosTab({ clientId }: { clientId: string }) {
   const [compareB, setCompareB] = useState<string | null>(null)
   useEffect(() => {
     setLoading(true)
+    if (clientId.startsWith('demo-client-')) { setPhotos((DEMO_FOTO_SESSIONS_MAP[clientId] || []).map(r => ({ id: r.id, date: r.date, front: r.front_url, side: r.side_url, back: r.back_url, note: r.note }))); setLoading(false); return }
     supabase.from('foto_sessions').select('*').eq('client_id', clientId).order('date', { ascending: false })
       .then(({ data }) => { if (data) setPhotos(data.map((r: any) => ({ id: r.id, date: r.date, front: r.front_url, side: r.side_url, back: r.back_url, note: r.note || '' }))); setLoading(false) })
   }, [clientId])

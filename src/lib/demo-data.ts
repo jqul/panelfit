@@ -24,6 +24,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'María', surname: 'García',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-maria-001',
+    genero: 'm', altura: 165, fechanacimiento: '1994-03-12',
+    main_goal: 'Ganar masa muscular en glúteo y espalda sin perder definición',
+    equipo_disponible: 'Gimnasio completo',
+    notas_privadas: 'Muy constante; le motiva ver números. Evitar mensajes los domingos.',
     phone: '+34 611 22 33 01',
     objetivo: 'hipertrofia',
     weight: 62, fatPercentage: 22, muscleMass: 45, totalLifted: 0,
@@ -38,6 +42,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Carlos', surname: 'López',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-carlos-002',
+    genero: 'h', altura: 180, fechanacimiento: '1990-07-21',
+    main_goal: 'Sacar 200 kg en sentadilla en la próxima competición',
+    equipo_disponible: 'Gimnasio con plataforma de powerlifting',
+    notas_privadas: 'Se desmotiva cuando no ve progreso en banca. Valorar cambiar el estímulo.',
     phone: '+34 611 22 33 02',
     objetivo: 'fuerza',
     weight: 85, fatPercentage: 18, muscleMass: 68, totalLifted: 0,
@@ -52,6 +60,11 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Laura', surname: 'Martín',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-laura-003',
+    genero: 'm', altura: 168, fechanacimiento: '1991-11-02',
+    main_goal: 'Perder 8 kg antes de su boda en primavera',
+    equipo_disponible: 'Mancuernas en casa + gimnasio low-cost',
+    notas_privadas: 'Muy sensible a la báscula: enfocar en medidas y fotos.',
+    precio_mensual: 75,
     phone: '+34 611 22 33 03',
     objetivo: 'perdida_grasa',
     weight: 70, fatPercentage: 28, muscleMass: 47, totalLifted: 0,
@@ -65,6 +78,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Diego', surname: 'Fernández',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-diego-004',
+    genero: 'h', altura: 183, fechanacimiento: '1988-05-30',
+    main_goal: 'Total de 600 kg (sentadilla + banca + peso muerto) en competición',
+    equipo_disponible: 'Gimnasio con plataforma de powerlifting',
+    notas_privadas: 'Compite en 3 meses. Mantener el volumen sin perder técnica.',
     phone: '+34 611 22 33 04',
     objetivo: 'fuerza',
     weight: 90, fatPercentage: 20, muscleMass: 70, totalLifted: 0,
@@ -79,6 +96,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Marta', surname: 'Ruiz',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-marta-005',
+    genero: 'm', altura: 167, fechanacimiento: '1985-09-14',
+    main_goal: 'Volver a correr sin dolor de rodilla',
+    equipo_disponible: 'Gimnasio + bandas elásticas',
+    notas_privadas: 'Fisio: Dra. Ortega. Autorización de impacto pendiente.',
     phone: '+34 611 22 33 05',
     objetivo: 'rehabilitacion',
     weight: 64, fatPercentage: 26, muscleMass: 42, totalLifted: 0,
@@ -94,6 +115,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Beatriz', surname: 'Soto',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-beatriz-006',
+    genero: 'm', altura: 163, fechanacimiento: '1979-01-25',
+    main_goal: 'Perder 20 kg y sentirme con más energía',
+    equipo_disponible: 'Gimnasio básico',
+    notas_privadas: 'Primera vez en un gimnasio, le da vergüenza. Ir despacio y reforzar cada logro.',
     phone: '+34 611 22 33 06',
     objetivo: 'perdida_grasa',
     weight: 96.5, fatPercentage: 38, muscleMass: 55, totalLifted: 0,
@@ -108,6 +133,10 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Lucas', surname: 'Vega',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-lucas-007',
+    genero: 'h', altura: 178, fechanacimiento: '2001-06-18',
+    main_goal: 'Bajar de 10,8 s en los 100 m',
+    equipo_disponible: 'Pista de atletismo + gimnasio',
+    notas_privadas: 'Compite en 3 semanas. Vigilar la carga: ACWR alto y molestia de rodilla.',
     phone: '+34 611 22 33 07',
     objetivo: 'rendimiento',
     weight: 72, fatPercentage: 10, muscleMass: 62, totalLifted: 0,
@@ -128,7 +157,7 @@ export const DEMO_LABELS = [
   { id: DEMO_LABEL_IDS.rehab, trainer_id: DEMO_TRAINER_ID, name: 'Rehabilitación', color: '#06b6d4', emoji: '🩹', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 4 },
   { id: DEMO_LABEL_IDS.primeriza, trainer_id: DEMO_TRAINER_ID, name: 'Primeriza', color: '#8b5cf6', emoji: '🌱', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 5 },
   { id: DEMO_LABEL_IDS.altoRendimiento, trainer_id: DEMO_TRAINER_ID, name: 'Alto rendimiento', color: '#ec4899', emoji: '🔥', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 6 },
-  { id: DEMO_LABEL_IDS.riesgoAbandono, trainer_id: DEMO_TRAINER_ID, name: 'Riesgo de abandono', color: '#ef4444', emoji: '🚩', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 7 },
+  { id: DEMO_LABEL_IDS.riesgoAbandono, trainer_id: DEMO_TRAINER_ID, name: 'Riesgo de abandono', color: '#ef4444', emoji: '🚩', survey_template_id: 'demo-tmpl-001', created_at: Date.now() - 80 * 86400000 + 7 },
   { id: DEMO_LABEL_IDS.ciclo, trainer_id: DEMO_TRAINER_ID, name: 'Ciclo menstrual', color: '#f97316', emoji: '🌙', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 8 },
   { id: DEMO_LABEL_IDS.atletismo, trainer_id: DEMO_TRAINER_ID, name: 'Atletismo', color: '#64748b', emoji: '🏃', survey_template_id: null, created_at: Date.now() - 80 * 86400000 + 9 },
 ]
@@ -180,7 +209,9 @@ function expandToWeeks(currentWeek: WeekPlan, numWeeks: number, labelPrefix = 'S
     // La semana actual conserva su etiqueta original tal cual (ej. "Semana 6 —
     // Fortalecimiento inicial") — las anteriores se numeran de forma simple.
     const label = i === numWeeks - 1 ? currentWeek.label : `${labelPrefix} ${i + 1}`
-    return bumpWeek(currentWeek, weeksForward, label, i === numWeeks - 1)
+    const wk = bumpWeek(currentWeek, weeksForward, label, i === numWeeks - 1)
+    // Cada 4ª semana de un plan largo es de descarga (se ve en el editor y en el calendario)
+    return numWeeks >= 5 && (i + 1) % 4 === 0 && i !== numWeeks - 1 ? { ...wk, isDeload: true, label: `${label} — Descarga`, rpe: "@6" } : wk
   })
 }
 /**
@@ -190,7 +221,7 @@ function expandToWeeks(currentWeek: WeekPlan, numWeeks: number, labelPrefix = 'S
  * `doneInLastWeek` días hechos de los que tiene, el resto sin empezar,
  * igual que un cliente real a mitad de semana.
  */
-function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number): TrainingLogs {
+function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number, lastSessionDaysAgo = 1): TrainingLogs {
   const logs: TrainingLogs = {}
   const numWeeks = plan.weeks.length
   const today = new Date()
@@ -204,7 +235,13 @@ function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number): Tra
     const baseRir = weeksAgo === 0 ? 1 : weeksAgo === 1 ? 2 : 3
     for (let dayIdx = 0; dayIdx < doneCount; dayIdx++) {
       const dayOffsetWithinWeek = Math.round((numDays - 1 - dayIdx) * (7 / numDays))
-      const totalOffsetDays = weeksAgo * 7 + dayOffsetWithinWeek + (isCurrent ? 1 : 0)
+      // La semana en curso son días consecutivos que acaban hace `lastSessionDaysAgo`
+      // días (0 = entrenó hoy, 6 = lleva casi una semana parado); el resto del
+      // historial se desplaza lo mismo para no solaparse con ella. Así la demo
+      // tiene a alguien entrenando hoy, a alguien inactivo y rachas reales.
+      const totalOffsetDays = isCurrent
+        ? (doneCount - 1 - dayIdx) + lastSessionDaysAgo
+        : weeksAgo * 7 + dayOffsetWithinWeek + (lastSessionDaysAgo - 1)
       const fecha = new Date(today.getTime() - totalOffsetDays * 86400000).toISOString().split('T')[0]
       week.days[dayIdx].exercises.forEach((ex, ri) => {
         if (ex.kind === 'run' && ex.run) {
@@ -328,8 +365,9 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
         },
         {
           title: 'DÍA C — Pierna', focus: 'Cuádriceps +2.5kg',
+          testIds: ['demo-test-salto'],
           exercises: [
-            { name: 'Sentadilla barra', sets: '4×8', weight: '82.5kg', isMain: true, comment: '', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 180, restAfter: 120 },
+            { name: 'Sentadilla barra', sets: '4×8', weight: '82.5kg', isMain: true, comment: 'Grábate la última serie: quiero revisar la profundidad', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 180, restAfter: 120, requiresVideo: true, tempo: '3-1-1-0' },
             { name: 'Prensa 45°', sets: '4×12', weight: '145kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 90 },
             { name: 'Curl femoral tumbado', sets: '3×12', weight: '37.5kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 90 },
             { name: 'Elevación de talones', sets: '4×15', weight: '62.5kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
@@ -337,10 +375,15 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
         },
         {
           title: 'DÍA D — Hombro + Core', focus: 'Empuje vertical',
+          warmupExercises: [
+            { name: 'Movilidad de hombro con banda', sets: '2×15', weight: '-', isMain: false, comment: 'Círculos lentos, sin dolor', videoUrl: '' },
+            { name: 'Rotación externa con banda', sets: '2×12', weight: '-', isMain: false, comment: '', videoUrl: '' },
+            { name: 'Press militar con barra vacía', sets: '2×10', weight: '20kg', isMain: false, comment: 'Activar antes de la primera serie pesada', videoUrl: '' },
+          ],
           exercises: [
             { name: 'Press militar barra', sets: '4×8', weight: '52.5kg', isMain: true, comment: '', videoUrl: '', restSets: 180, restAfter: 120 },
-            { name: 'Elevaciones laterales', sets: '4×15', weight: '11kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
-            { name: 'Facepull', sets: '3×15', weight: '27.5kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Elevaciones laterales', sets: '4×15', weight: '11kg', isMain: false, comment: 'Superserie con facepull: sin descanso entre los dos', videoUrl: '', restSets: 60, restAfter: 60, supersetId: 'ss-hombro', seriesType: 'superserie' },
+            { name: 'Facepull', sets: '3×15', weight: '27.5kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60, supersetId: 'ss-hombro', seriesType: 'superserie' },
             { name: 'Rueda abdominal', sets: '3×10', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
           ]
         },
@@ -362,6 +405,7 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 42 * 86400000).toISOString().split('T')[0],
   autoCheckin: true,
   diasSemana: 3,
+  diasElegidos: [0, 2, 4],
   coachNotes: 'Carlos está en fase pico. No tocar técnica ahora — solo progresión de carga. Competición en 3 semanas.',
   macros: { kcal: 3200, protein: 200, carbs: 380, fats: 90, notaMacros: 'Surplus calórico moderado. Come bien antes y después de entrenar.' },
   weeks: expandToWeeks({
@@ -404,7 +448,7 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
 // (2 series de aproximación + 3 al peso top, fatigadas) — el resto del
 // historial se deriva genéricamente del propio plan de cada semana.
 export const DEMO_LOGS_CARLOS: TrainingLogs = (() => {
-  const base = buildDemoLogsFromPlan(DEMO_PLAN_CARLOS, 2) // día 3 (peso muerto) de esta semana aún sin hacer
+  const base = buildDemoLogsFromPlan(DEMO_PLAN_CARLOS, 2, 9) // día 3 (peso muerto) de esta semana aún sin hacer
   const lastWeekIdx = DEMO_PLAN_CARLOS.weeks.length - 1
   const benchKey = `ex_w${lastWeekIdx}_d1_r0`
   const benchDate = base[benchKey]?.dateDone
@@ -428,6 +472,7 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0],
   autoCheckin: true, autoInactividad: true,
   diasSemana: 3,
+  diasElegidos: [1, 3, 5],
   coachNotes: 'Laura empieza muy motivada. Vigilar que no baje demasiado las calorías por su cuenta.',
   macros: { kcal: 1700, protein: 140, carbs: 160, fats: 55, notaMacros: 'Déficit moderado. No pases hambre — si tienes hambre, añade proteína o verduras.' },
   weeks: expandToWeeks({
@@ -460,6 +505,7 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
             { name: 'Press hombro mancuernas', sets: '3×12', weight: '12kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
             { name: 'Curl bíceps', sets: '3×12', weight: '12kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
             { name: 'HIIT bici 15min', sets: '1×15min', weight: '-', isMain: false, comment: '30s sprint / 30s descanso', videoUrl: '', restSets: 0, restAfter: 0 },
+            { name: 'EMOM 12 — Kettlebell y core', sets: 'EMOM 12 min', weight: '-', isMain: false, comment: 'Min impar: 12 swings + 8 burpees · Min par: 10 reps de rueda abdominal y descanso (bloque de acondicionamiento del entrenador)', videoUrl: '', restSets: 0, restAfter: 0, hideRest: true },
           ]
         },
       ]
@@ -467,7 +513,7 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
 }
 
 // ── LOGS LAURA — 3 semanas de historial ────────────────
-export const DEMO_LOGS_LAURA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_LAURA, 2)
+export const DEMO_LOGS_LAURA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_LAURA, 2, 2)
 
 // ── PLAN DIEGO (Powerlifting — fase de volumen, a 3 meses de competir) ──
 export const DEMO_PLAN_DIEGO: TrainingPlan = {
@@ -478,6 +524,7 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 50 * 86400000).toISOString().split('T')[0],
   autoCheckin: true,
   diasSemana: 4,
+  diasElegidos: [0, 1, 3, 4],
   coachNotes: 'A 3 meses de su competición. Fase de acumulación de volumen — no buscamos RPE 9 todavía, prioriza técnica y consistencia. La bajada de intensidad y el pico llegarán en el último mes.',
   macros: { kcal: 3000, protein: 190, carbs: 350, fats: 85, notaMacros: 'Ligero superávit para sostener el volumen de esta fase. Ajustaremos según cómo evolucione el peso.' },
   weeks: expandToWeeks({
@@ -505,8 +552,9 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
         },
         {
           title: 'DÍA 3 — Peso muerto (volumen)', focus: 'Cadena posterior',
+          testIds: ['demo-test-plancha'],
           exercises: [
-            { name: 'Peso muerto convencional', sets: '4×5', weight: '130kg', isMain: true, comment: 'RPE 7-8, espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q', restSets: 180, restAfter: 120 },
+            { name: 'Peso muerto convencional', sets: '4×5', weight: '130kg', isMain: true, comment: 'RPE 7-8, espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q', restSets: 180, restAfter: 120, requiresVideo: true },
             { name: 'Peso muerto déficit', sets: '3×5', weight: '110kg', isMain: false, comment: 'Déficit de 2.5cm', videoUrl: '', restSets: 150, restAfter: 90 },
             { name: 'Remo Pendlay', sets: '4×8', weight: '80kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
             { name: 'Buenos días', sets: '3×10', weight: '50kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
@@ -526,7 +574,7 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
 }
 
 // ── LOGS DIEGO — 4 semanas de historial ────────────────
-export const DEMO_LOGS_DIEGO: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_DIEGO, 3)
+export const DEMO_LOGS_DIEGO: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_DIEGO, 3, 0)
 
 // ── PLAN MARTA (Rehabilitación de rodilla) ────────────────
 export const DEMO_PLAN_MARTA: TrainingPlan = {
@@ -537,6 +585,7 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0],
   autoCheckin: true,
   diasSemana: 3,
+  diasElegidos: [0, 3, 5],
   coachNotes: 'Semana 6 post-cirugía de menisco. Progresar rango de movimiento de forma gradual. Ante cualquier dolor agudo (no simple molestia), parar el ejercicio y avisar — nada de "aguantar".',
   macros: { kcal: 1900, protein: 130, carbs: 190, fats: 60, notaMacros: 'Mantenimiento — ahora el objetivo es recuperar movilidad y fuerza, no cambiar composición corporal.' },
   weeks: expandToWeeks({
@@ -586,6 +635,7 @@ export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 25 * 86400000).toISOString().split('T')[0],
   autoCheckin: true, autoInactividad: true,
   diasSemana: 3,
+  diasElegidos: [0, 2, 4],
   coachNotes: 'Primera vez en el gimnasio. Foco 100% en aprender la técnica y crear el hábito — nada de buscar peso máximo todavía. Ánimo en cada sesión: cuesta arrancar, pero ya lleva 4 semanas seguidas sin fallar.',
   macros: { kcal: 1900, protein: 140, carbs: 170, fats: 60, notaMacros: 'Déficit sostenible — prioriza proteína y saciedad, nunca pases hambre.' },
   weeks: expandToWeeks({
@@ -624,7 +674,7 @@ export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
 }
 
 // ── LOGS BEATRIZ — 4 semanas de historial ──────────────
-export const DEMO_LOGS_BEATRIZ: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_BEATRIZ, 2)
+export const DEMO_LOGS_BEATRIZ: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_BEATRIZ, 2, 3)
 
 // ── PLAN LUCAS (Atletismo — velocidad y potencia) ─────────
 export const DEMO_PLAN_LUCAS: TrainingPlan = {
@@ -635,6 +685,7 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 45 * 86400000).toISOString().split('T')[0],
   autoCheckin: true,
   diasSemana: 4,
+  diasElegidos: [0, 1, 3, 4],
   coachNotes: 'Pretemporada — bloque de fuerza-potencia en el gimnasio antes de afinar la técnica de carrera con el entrenador de pista. Vigilar isquiotibiales, tiene historial de sobrecarga.',
   macros: { kcal: 3100, protein: 180, carbs: 400, fats: 80, notaMacros: 'Carga alta de carbohidratos para las sesiones de velocidad — no entrenar en ayunas los días de sprints.' },
   weeks: expandToWeeks({
@@ -652,6 +703,7 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
         },
         {
           title: 'DÍA 2 — Potencia y pliometría', focus: 'Transferencia a la pista',
+          testIds: ['demo-test-salto', 'demo-test-vam'],
           exercises: [
             { name: 'Cargada de potencia (power clean)', sets: '5×3', weight: '60kg', isMain: true, comment: 'Técnica antes que peso', videoUrl: '', restSets: 180, restAfter: 120 },
             { name: 'Salto al cajón', sets: '4×5', weight: '-', isMain: false, comment: 'Aterrizaje suave y controlado', videoUrl: '', restSets: 120, restAfter: 90 },
@@ -734,7 +786,7 @@ export const DEMO_WEIGHTS_MARTA = [
 // todavía activa (8->4, no resuelta del todo) — a propósito, para que además
 // de enseñar la curva de progreso (DolorChart) siga disparando el aviso de
 // incompatibilidad del editor de plan (última semana con intensidad >= 4).
-type DemoDolorEntry = { id: string; date: string; zona: string; intensidad: number; nota?: string; tipo?: 'articular' }
+type DemoDolorEntry = { id: string; date: string; zona: string; intensidad: number; nota?: string; tipo?: 'articular' | 'doms' }
 
 export const DEMO_DOLOR_MARTA: DemoDolorEntry[] = [
   { id: 'demo-dolor-1', date: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 8, nota: 'Molesta al bajar escaleras — empezamos el protocolo de rehab', tipo: 'articular' },
@@ -759,8 +811,36 @@ export const DEMO_DOLOR_LUCAS: DemoDolorEntry[] = [
 
 // Igual que DEMO_READINESS_MAP/FLAT — para la Bandeja del entrenador, que
 // necesita todos los registros de dolor de todos sus clientes en una lista.
+// Más clientes con dolor registrado — agujetas normales (doms) y alguna molestia
+// articular leve, para que Progreso > Dolor y la Bandeja no solo cuenten rehab.
+export const DEMO_DOLOR_MARIA: DemoDolorEntry[] = [
+  { id: 'demo-dolor-maria-1', date: new Date(Date.now() - 9 * 86400000).toISOString().split('T')[0], zona: 'Espalda baja', intensidad: 3, nota: 'Agujetas tras el peso muerto rumano', tipo: 'doms' },
+  { id: 'demo-dolor-maria-2', date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], zona: 'Cadera', intensidad: 2, tipo: 'doms' },
+]
+export const DEMO_DOLOR_CARLOS: DemoDolorEntry[] = [
+  { id: 'demo-dolor-carlos-1', date: new Date(Date.now() - 16 * 86400000).toISOString().split('T')[0], zona: 'Hombro', intensidad: 3, nota: 'Molestia al bajar la barra en el press banca', tipo: 'articular' },
+  { id: 'demo-dolor-carlos-2', date: new Date(Date.now() - 8 * 86400000).toISOString().split('T')[0], zona: 'Hombro', intensidad: 4, nota: 'Va a más cuando aumenta la intensidad del pico', tipo: 'articular' },
+  { id: 'demo-dolor-carlos-3', date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], zona: 'Hombro', intensidad: 4, nota: 'Con calentamiento específico mejora algo', tipo: 'articular' },
+]
+export const DEMO_DOLOR_LAURA: DemoDolorEntry[] = [
+  { id: 'demo-dolor-laura-1', date: new Date(Date.now() - 5 * 86400000).toISOString().split('T')[0], zona: 'Rodilla', intensidad: 2, nota: 'Agujetas tras las zancadas', tipo: 'doms' },
+]
+export const DEMO_DOLOR_DIEGO: DemoDolorEntry[] = [
+  { id: 'demo-dolor-diego-1', date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0], zona: 'Codo', intensidad: 3, nota: 'Epicondilitis leve con banca de agarre cerrado', tipo: 'articular' },
+  { id: 'demo-dolor-diego-2', date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0], zona: 'Codo', intensidad: 2, nota: 'Mejor tras cambiar el agarre', tipo: 'articular' },
+]
+export const DEMO_DOLOR_BEATRIZ: DemoDolorEntry[] = [
+  { id: 'demo-dolor-beatriz-1', date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0], zona: 'Muñeca', intensidad: 4, nota: 'Me molestan las muñecas en las flexiones', tipo: 'articular' },
+  { id: 'demo-dolor-beatriz-2', date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], zona: 'Muñeca', intensidad: 3, nota: 'Mejor con las flexiones en banco inclinado', tipo: 'articular' },
+]
+
 export const DEMO_DOLOR_MAP: Record<string, DemoDolorEntry[]> = {
+  'demo-client-001': DEMO_DOLOR_MARIA,
+  'demo-client-002': DEMO_DOLOR_CARLOS,
+  'demo-client-003': DEMO_DOLOR_LAURA,
+  'demo-client-004': DEMO_DOLOR_DIEGO,
   'demo-client-005': DEMO_DOLOR_MARTA,
+  'demo-client-006': DEMO_DOLOR_BEATRIZ,
   'demo-client-007': DEMO_DOLOR_LUCAS,
 }
 export const DEMO_DOLOR_FLAT: ({ clientId: string } & DemoDolorEntry)[] =
@@ -808,6 +888,36 @@ export const DEMO_SURVEY_RESPONSES = [
     trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
     completed_at: Date.now() - 1*86400000,
     answers: { q1: 7, q2: 6, q3: 5, q4: true, q5: '' }
+  },
+  {
+    id: 'demo-resp-005', client_id: 'demo-client-004',
+    trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
+    completed_at: Date.now() - 2*86400000,
+    answers: { q1: 8, q2: 8, q3: 4, q4: true, q5: 'Semana de volumen dura pero me recupero bien. El codo mejor.' }
+  },
+  {
+    id: 'demo-resp-006', client_id: 'demo-client-005',
+    trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
+    completed_at: Date.now() - 3*86400000,
+    answers: { q1: 6, q2: 5, q3: 6, q4: true, q5: 'La rodilla sigue molestando al bajar escaleras, pero menos que al principio.' }
+  },
+  {
+    id: 'demo-resp-007', client_id: 'demo-client-006',
+    trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
+    completed_at: Date.now() - 4*86400000,
+    answers: { q1: 9, q2: 7, q3: 3, q4: true, q5: '¡Ya me quedan mejor los pantalones! Gracias por la paciencia 😊' }
+  },
+  {
+    id: 'demo-resp-008', client_id: 'demo-client-007',
+    trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
+    completed_at: Date.now() - 2*86400000,
+    answers: { q1: 7, q2: 6, q3: 6, q4: true, q5: 'Piernas pesadas tras la semana de sprints, pero me siento rápido.' }
+  },
+  {
+    id: 'demo-resp-009', client_id: 'demo-client-002',
+    trainer_id: DEMO_TRAINER_ID, template_id: 'demo-tmpl-001',
+    completed_at: Date.now() - 10*86400000,
+    answers: { q1: 5, q2: 4, q3: 8, q4: false, q5: 'Mucho trabajo, no llego a todo. Estoy pensando en parar un tiempo.' }
   },
 ]
 
@@ -903,11 +1013,46 @@ export const DEMO_READINESS_BEATRIZ: DemoReadinessRow[] = genReadiness([
   { sleep: 4, soreness: 3, stress: 2, motivation: 5 },
   { sleep: 4, soreness: 3, stress: 2, motivation: 4 },
 ])
+// Laura: se mantiene bien pero el sueño cae justo cuando baja la adherencia
+export const DEMO_READINESS_LAURA: DemoReadinessRow[] = genReadiness([
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 4, motivation: 3 },
+  { sleep: 3, soreness: 4, stress: 4, motivation: 3 },
+  { sleep: 3, soreness: 3, stress: 4, motivation: 3 },
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 4, stress: 3, motivation: 4 },
+])
+// Marta: el dolor de rodilla condiciona el sueño y las agujetas
+export const DEMO_READINESS_MARTA: DemoReadinessRow[] = genReadiness([
+  { sleep: 2, soreness: 2, stress: 3, motivation: 3 },
+  { sleep: 3, soreness: 2, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 3, soreness: 3, stress: 2, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 2, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 5 },
+  { sleep: 4, soreness: 4, stress: 2, motivation: 5 },
+])
+// Lucas: el cuestionario subjetivo todavía NO lo refleja (se siente bien) pese
+// a que el ACWR y el salto sí — a propósito, para enseñar por qué hace falta
+// medir además de preguntar.
+export const DEMO_READINESS_LUCAS: DemoReadinessRow[] = genReadiness([
+  { sleep: 5, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 5, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 4, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 4, motivation: 5 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 3, stress: 3, motivation: 4 },
+  { sleep: 4, soreness: 2, stress: 3, motivation: 4 },
+])
 export const DEMO_READINESS_MAP: Record<string, DemoReadinessRow[]> = {
   'demo-client-001': DEMO_READINESS_MARIA,
   'demo-client-002': DEMO_READINESS_CARLOS,
+  'demo-client-003': DEMO_READINESS_LAURA,
   'demo-client-004': DEMO_READINESS_DIEGO,
+  'demo-client-005': DEMO_READINESS_MARTA,
   'demo-client-006': DEMO_READINESS_BEATRIZ,
+  'demo-client-007': DEMO_READINESS_LUCAS,
 }
 // Igual que DEMO_READINESS_MAP pero aplanado con clientId en cada fila — lo
 // que necesita la Bandeja para mostrar check-ins de TODOS los clientes juntos.
@@ -945,8 +1090,37 @@ export const DEMO_TEST_RESULTS_LUCAS = [
   { id: 'demo-res-lucas-vam-1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-vam', valor: 15.5, fecha: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], notas: '1000m lanzado', created_at: 0 },
   { id: 'demo-res-lucas-vam-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', test_id: 'demo-test-vam', valor: 16.2, fecha: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0], notas: 'Course Navette, palier 16', created_at: 0 },
 ]
+// Resto de clientes: una prueba o dos acordes a su objetivo (nada de caídas de
+// salto, que ya dispara Lucas a propósito).
+const testRow = (id: string, clientId: string, testId: string, valor: number, daysAgo: number, notas = '') =>
+  ({ id, trainer_id: DEMO_TRAINER_ID, client_id: clientId, test_id: testId, valor, fecha: new Date(Date.now() - daysAgo * 86400000).toISOString().split('T')[0], notas, created_at: 0 })
+export const DEMO_TEST_RESULTS_CARLOS = [
+  testRow('demo-res-carlos-1', 'demo-client-002', 'demo-test-salto', 34, 40), testRow('demo-res-carlos-2', 'demo-client-002', 'demo-test-salto', 35, 12, 'Estable en pleno pico'),
+  testRow('demo-res-carlos-3', 'demo-client-002', 'demo-test-plancha', 95, 12),
+]
+export const DEMO_TEST_RESULTS_LAURA = [
+  testRow('demo-res-laura-1', 'demo-client-003', 'demo-test-cooper', 2100, 28, 'Primer test, caminando los últimos 2 min'),
+  testRow('demo-res-laura-2', 'demo-client-003', 'demo-test-cooper', 2320, 4, 'Mucho mejor: corrió casi todo seguido'),
+  testRow('demo-res-laura-3', 'demo-client-003', 'demo-test-plancha', 40, 28), testRow('demo-res-laura-4', 'demo-client-003', 'demo-test-plancha', 58, 4),
+]
+export const DEMO_TEST_RESULTS_DIEGO = [
+  testRow('demo-res-diego-1', 'demo-client-004', 'demo-test-salto', 38, 30), testRow('demo-res-diego-2', 'demo-client-004', 'demo-test-salto', 39, 8),
+  testRow('demo-res-diego-3', 'demo-client-004', 'demo-test-plancha', 110, 8),
+]
+export const DEMO_TEST_RESULTS_MARTA = [
+  testRow('demo-res-marta-1', 'demo-client-005', 'demo-test-plancha', 25, 30, 'Limitada por el dolor de rodilla en apoyo'), testRow('demo-res-marta-2', 'demo-client-005', 'demo-test-plancha', 48, 6),
+]
+export const DEMO_TEST_RESULTS_BEATRIZ = [
+  testRow('demo-res-beatriz-1', 'demo-client-006', 'demo-test-plancha', 18, 22, 'Línea base'), testRow('demo-res-beatriz-2', 'demo-client-006', 'demo-test-plancha', 31, 3, 'Casi el doble en 3 semanas'),
+  testRow('demo-res-beatriz-3', 'demo-client-006', 'demo-test-cooper', 1450, 22, 'Alternando caminar y trotar'),
+]
 export const DEMO_TEST_RESULTS_MAP: Record<string, typeof DEMO_TEST_RESULTS_MARIA> = {
   'demo-client-001': DEMO_TEST_RESULTS_MARIA,
+  'demo-client-002': DEMO_TEST_RESULTS_CARLOS,
+  'demo-client-003': DEMO_TEST_RESULTS_LAURA,
+  'demo-client-004': DEMO_TEST_RESULTS_DIEGO,
+  'demo-client-005': DEMO_TEST_RESULTS_MARTA,
+  'demo-client-006': DEMO_TEST_RESULTS_BEATRIZ,
   'demo-client-007': DEMO_TEST_RESULTS_LUCAS,
 }
 
@@ -980,7 +1154,17 @@ export const DEMO_SESSION_LOAD_LUCAS: DemoSessionLoadRow[] = LUCAS_SESSIONS.map(
   date: new Date(Date.now() - s.offset * 86400000).toISOString().split('T')[0],
   duration_min: s.duration, rpe: s.rpe,
 }))
+// Los demás: carga interna razonable (ACWR en zona óptima 0.8-1.3), salvo Carlos,
+// que cae en picado porque lleva días sin entrenar (ACWR bajo = desentrenamiento).
+const loadRows = (sessions: [number, number, number][]): DemoSessionLoadRow[] =>
+  sessions.map(([offset, duration, rpe]) => ({ date: new Date(Date.now() - offset * 86400000).toISOString().split('T')[0], duration_min: duration, rpe }))
+export const DEMO_SESSION_LOAD_MARIA = loadRows([[1, 65, 7], [3, 60, 7], [5, 70, 8], [8, 60, 7], [10, 65, 7], [12, 60, 7], [15, 65, 7], [17, 60, 6], [19, 70, 7], [22, 60, 7], [24, 65, 7], [26, 60, 6], [29, 65, 7], [31, 60, 7]])
+export const DEMO_SESSION_LOAD_DIEGO = loadRows([[0, 85, 8], [1, 80, 8], [3, 90, 8], [5, 80, 7], [7, 85, 8], [8, 85, 8], [10, 90, 8], [12, 80, 7], [14, 85, 8], [15, 85, 8], [17, 90, 8], [19, 80, 7], [21, 85, 8], [22, 80, 8], [24, 90, 8], [26, 80, 7], [28, 85, 8]])
+export const DEMO_SESSION_LOAD_CARLOS = loadRows([[9, 70, 6], [12, 85, 8], [11, 90, 9], [13, 85, 8], [16, 90, 9], [18, 85, 8], [20, 90, 9], [23, 85, 8], [25, 90, 9], [27, 85, 8], [30, 90, 9], [32, 85, 8]])
 export const DEMO_SESSION_LOAD_MAP: Record<string, DemoSessionLoadRow[]> = {
+  'demo-client-001': DEMO_SESSION_LOAD_MARIA,
+  'demo-client-002': DEMO_SESSION_LOAD_CARLOS,
+  'demo-client-004': DEMO_SESSION_LOAD_DIEGO,
   'demo-client-007': DEMO_SESSION_LOAD_LUCAS,
 }
 
@@ -994,7 +1178,14 @@ export const DEMO_FV_PROFILE_TRIALS_LUCAS = [
   { id: 'demo-fv-2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', date: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], load_kg: 20, bodyweight_kg: 72, pushoff_distance_m: 0.40, jump_height_m: 0.24, notes: 'Chaleco lastrado +20kg', created_at: Date.now() - 20 * 86400000 + 1 },
   { id: 'demo-fv-3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-007', date: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], load_kg: 40, bodyweight_kg: 72, pushoff_distance_m: 0.40, jump_height_m: 0.14, notes: 'Barra hexagonal +40kg', created_at: Date.now() - 20 * 86400000 + 2 },
 ]
+// María — mismo test, perfil más orientado a fuerza que a velocidad (altura de salto cae rápido con la carga)
+export const DEMO_FV_PROFILE_TRIALS_MARIA = [
+  { id: 'demo-fv-m1', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0], load_kg: 0, bodyweight_kg: 62, pushoff_distance_m: 0.36, jump_height_m: 0.31, notes: 'Salto libre', created_at: Date.now() - 12 * 86400000 },
+  { id: 'demo-fv-m2', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0], load_kg: 15, bodyweight_kg: 62, pushoff_distance_m: 0.36, jump_height_m: 0.22, notes: 'Chaleco +15 kg', created_at: Date.now() - 12 * 86400000 + 1 },
+  { id: 'demo-fv-m3', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0], load_kg: 30, bodyweight_kg: 62, pushoff_distance_m: 0.36, jump_height_m: 0.15, notes: 'Barra +30 kg', created_at: Date.now() - 12 * 86400000 + 2 },
+]
 export const DEMO_FV_PROFILE_TRIALS_MAP: Record<string, typeof DEMO_FV_PROFILE_TRIALS_LUCAS> = {
+  'demo-client-001': DEMO_FV_PROFILE_TRIALS_MARIA,
   'demo-client-007': DEMO_FV_PROFILE_TRIALS_LUCAS,
 }
 
@@ -1009,8 +1200,17 @@ export const DEMO_CICLO_MARIA = {
   duracion_ciclo: 28,
   updated_at: 0,
 }
+// Laura — otra clienta con ciclo activado, en otra fase (folicular temprana) que María
+export const DEMO_CICLO_LAURA = {
+  client_id: 'demo-client-003', trainer_id: DEMO_TRAINER_ID,
+  activo: true,
+  ultima_regla: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
+  duracion_ciclo: 30,
+  updated_at: 0,
+}
 export const DEMO_CICLO_MAP: Record<string, typeof DEMO_CICLO_MARIA> = {
   'demo-client-001': DEMO_CICLO_MARIA,
+  'demo-client-003': DEMO_CICLO_LAURA,
 }
 
 // ── VÍDEOS ENVIADOS POR EL CLIENTE (demo) ──────────────
@@ -1030,8 +1230,24 @@ export const DEMO_VIDEO_FEEDBACK_MARIA = [
     trainer_comment_video_url: null, status: 'comentado' as const, created_at: Date.now() - 8 * 86400000, commented_at: Date.now() - 7 * 86400000,
   },
 ]
-export const DEMO_VIDEO_FEEDBACK_MAP: Record<string, typeof DEMO_VIDEO_FEEDBACK_MARIA> = {
+const vf = (id: string, clientId: string, exercise: string, url: string, note: string | null, comment: string | null, status: 'pendiente' | 'comentado', daysAgo: number) => ({
+  id, trainer_id: DEMO_TRAINER_ID, client_id: clientId, exercise_name: exercise, video_url: url,
+  client_note: note, trainer_comment: comment, trainer_comment_video_url: null as string | null,
+  status, created_at: Date.now() - daysAgo * 86400000, commented_at: comment ? Date.now() - (daysAgo - 1) * 86400000 : null,
+})
+const SAMPLE_VID_A = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
+const SAMPLE_VID_B = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
+const SAMPLE_VID_C = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4'
+interface DemoVideoFeedbackRow {
+  id: string; trainer_id: string; client_id: string; exercise_name: string; video_url: string
+  client_note: string | null; trainer_comment: string | null; trainer_comment_video_url: string | null
+  status: 'pendiente' | 'comentado'; created_at: number; commented_at: number | null
+}
+export const DEMO_VIDEO_FEEDBACK_MAP: Record<string, DemoVideoFeedbackRow[]> = {
   'demo-client-001': DEMO_VIDEO_FEEDBACK_MARIA,
+  'demo-client-004': [vf('demo-vf-d1', 'demo-client-004', 'Peso muerto', SAMPLE_VID_A, 'Se me va la barra hacia delante al despegar, ¿qué hago?', null, 'pendiente', 1)],
+  'demo-client-006': [vf('demo-vf-b1', 'demo-client-006', 'Sentadilla goblet', SAMPLE_VID_B, '¿Voy bien de profundidad?', 'Muy bien, mantén el pecho alto y las rodillas abiertas. ¡Sube 2 kg la semana que viene!', 'comentado', 6)],
+  'demo-client-007': [vf('demo-vf-l1', 'demo-client-007', 'Salto vertical (CMJ)', SAMPLE_VID_C, 'Grabado con el móvil a 60 fps, de frente', null, 'pendiente', 1)],
 }
 
 // ── PLANTILLAS DE WORKOUT (demo) ────────────────────────
@@ -1094,7 +1310,7 @@ export const DEMO_PROGRAMS = [
       label: `Semana ${wi + 1}`,
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 2, 4].includes(di)) tasks.push({ id: `t_${wi}_${di}_w`, type: 'workout', title: 'Full body + HIIT', data: { objective: 'Definición 3 días' } })
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t_${wi}_${di}_w`, type: 'workout', title: 'Full body + HIIT', data: { objective: 'Definición 3 días', templateId: 'demo-tmpl-definicion', templateName: 'Definición 3 días' } })
         if (di === 1) tasks.push({ id: `t_${wi}_${di}_c`, type: 'cardio', title: 'Cardio suave 30min', data: { objective: 'Caminar a paso ligero' } })
         if (di === 6 && wi === 0) tasks.push({ id: `t_${wi}_${di}_e`, type: 'evolucion', title: 'Fotos + peso', data: { objective: 'Registro quincenal' } })
         if (di === 0) tasks.push({ id: `t_${wi}_${di}_m`, type: 'mensaje', title: 'Recordatorio motivacional', data: { text: '¡Vamos con todo esta semana! 💪' } })
@@ -1109,7 +1325,7 @@ export const DEMO_PROGRAMS = [
       label: wi < 3 ? `Semana ${wi + 1} — ciclo de intensidad` : 'Semana 4 — descarga',
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 2, 4].includes(di)) tasks.push({ id: `t531_${wi}_${di}_w`, type: 'workout', title: wi < 3 ? 'Sentadilla/banca/peso muerto 5/3/1' : 'Descarga — técnica ligera', data: { objective: wi < 3 ? `Semana ${wi + 1} de intensidad` : 'Semana de descarga' } })
+        if ([0, 2, 4].includes(di)) tasks.push({ id: `t531_${wi}_${di}_w`, type: 'workout', title: wi < 3 ? 'Sentadilla/banca/peso muerto 5/3/1' : 'Descarga — técnica ligera', data: { objective: wi < 3 ? `Semana ${wi + 1} de intensidad` : 'Semana de descarga', templateId: 'demo-tmpl-fuerza', templateName: 'Fuerza 5×3 — Powerlifting' } })
         if (di === 5) tasks.push({ id: `t531_${wi}_${di}_v`, type: 'video', title: 'Vídeo de ejecución sentadilla', data: { objective: 'Revisar profundidad y técnica' } })
         return { tasks }
       }),
@@ -1122,7 +1338,7 @@ export const DEMO_PROGRAMS = [
       label: `Fase ${wi + 1}`,
       days: Array.from({ length: 7 }, (_, di) => {
         const tasks = []
-        if ([0, 3].includes(di)) tasks.push({ id: `trh_${wi}_${di}_w`, type: 'workout', title: 'Readaptación de rodilla', data: { objective: 'Sin sentadilla profunda ni impacto' } })
+        if ([0, 3].includes(di)) tasks.push({ id: `trh_${wi}_${di}_w`, type: 'workout', title: 'Readaptación de rodilla', data: { objective: 'Sin sentadilla profunda ni impacto', templateId: 'demo-tmpl-rehab-rodilla', templateName: 'Readaptación de rodilla (post-quirúrgico)' } })
         if (di === 5) tasks.push({ id: `trh_${wi}_${di}_f`, type: 'formulario', title: 'Cuestionario de dolor', data: { objective: 'Escala de dolor 0-10' } })
         return { tasks }
       }),
@@ -1134,9 +1350,12 @@ export const DEMO_PROGRAMS = [
 export const DEMO_COHORTES = [
   { id: 'demo-coh-fuerza', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Fuerza Otoño', descripcion: 'Grupo de powerlifting rumbo a competición — puntos por sesión completada.', color: '#6e5438', fecha_inicio: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], activa: true, created_at: Date.now() - 30 * 86400000, puntos_por_sesion: 10 },
   { id: 'demo-coh-grasa', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Recomposición 8 semanas', descripcion: 'Clientes en fase de pérdida de grasa, seguimiento conjunto.', color: '#22c55e', fecha_inicio: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() + 36 * 86400000).toISOString().split('T')[0], activa: true, created_at: Date.now() - 20 * 86400000, puntos_por_sesion: 10 },
+  { id: 'demo-coh-rodilla', trainer_id: DEMO_TRAINER_ID, nombre: 'Grupo Rodillas Sanas', descripcion: 'Clientes con molestia o readaptación de rodilla: protocolo común de isométricos y control de carga.', color: '#06b6d4', fecha_inicio: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() + 42 * 86400000).toISOString().split('T')[0], activa: true, created_at: Date.now() - 14 * 86400000, puntos_por_sesion: 10 },
   { id: 'demo-coh-verano', trainer_id: DEMO_TRAINER_ID, nombre: 'Reto Verano (cerrado)', descripcion: 'Reto de verano ya finalizado — se mantiene como historial.', color: '#f59e0b', fecha_inicio: new Date(Date.now() - 120 * 86400000).toISOString().split('T')[0], fecha_fin: new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0], activa: false, created_at: Date.now() - 120 * 86400000, puntos_por_sesion: 5 },
 ]
 export const DEMO_COHORTE_CLIENTES = [
+  { id: 'demo-cc-6', cohorte_id: 'demo-coh-rodilla', client_id: 'demo-client-005', joined_at: Date.now() - 14 * 86400000 },
+  { id: 'demo-cc-7', cohorte_id: 'demo-coh-rodilla', client_id: 'demo-client-007', joined_at: Date.now() - 14 * 86400000 },
   { id: 'demo-cc-1', cohorte_id: 'demo-coh-fuerza', client_id: 'demo-client-002', joined_at: Date.now() - 30 * 86400000 },
   { id: 'demo-cc-2', cohorte_id: 'demo-coh-fuerza', client_id: 'demo-client-004', joined_at: Date.now() - 30 * 86400000 },
   { id: 'demo-cc-3', cohorte_id: 'demo-coh-grasa', client_id: 'demo-client-003', joined_at: Date.now() - 20 * 86400000 },

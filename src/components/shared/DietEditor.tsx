@@ -3,6 +3,7 @@ import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp, Eye, Ey
 import { supabase } from '../../lib/supabase'
 import { parseDietExcel } from '../../lib/importDiet'
 import { toast } from './Toast'
+import { DEMO_DIETS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 
 export interface Meal {
   id: string; time: string; name: string; kcal: number; items: string[]
@@ -157,7 +158,10 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
 
   const loadDiet = async () => {
     setLoading(true)
-    const { data } = await supabase.from('dietas').select('datos').eq('cliente_id', clientId).maybeSingle()
+    const demoDiet = isDemoClientId(clientId) ? DEMO_DIETS_MAP[clientId] : undefined
+    const { data } = isDemoClientId(clientId)
+      ? { data: demoDiet ? { datos: demoDiet } : null }
+      : await supabase.from('dietas').select('datos').eq('cliente_id', clientId).maybeSingle()
     if (data?.datos) {
       const loaded = data.datos as DietPlan
       if (syncedMacros && (syncedMacros.kcal > 0 || syncedMacros.protein > 0)) {
@@ -230,6 +234,11 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
     if (!diet) return
     setSaving(true)
     const toSave = { ...diet, updatedAt: new Date().toISOString() }
+    if (isDemoClientId(clientId)) {
+      DEMO_DIETS_MAP[clientId] = toSave
+      setDiet(toSave); toast('Dieta guardada ✓ (demo: solo en esta sesión)', 'ok'); setSaving(false)
+      return
+    }
     const { error: updateError } = await supabase.from('dietas').update({ datos: toSave }).eq('cliente_id', clientId)
     if (updateError) {
       const { error: insertError } = await supabase.from('dietas').insert({ cliente_id: clientId, datos: toSave })

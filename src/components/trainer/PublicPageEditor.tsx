@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { UserProfile } from '../../types'
 import { toast } from '../shared/Toast'
 import { Globe, Copy, Eye, Save, Inbox } from 'lucide-react'
+import { isDemoTrainerId, buildDemoLeads, DEMO_PUBLIC_PAGE, DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
 
 interface Props {
   userProfile: UserProfile
@@ -53,6 +54,7 @@ export function PublicPageEditor({ userProfile }: Props) {
   }, [userProfile.uid])
 
   const loadLeads = async () => {
+    if (isDemoTrainerId(userProfile.uid)) { setLeads(buildDemoLeads() as Lead[]); return }
     const { data: rows } = await supabase.from('leads').select('*').eq('trainer_id', userProfile.uid).order('created_at', { ascending: false })
     if (!rows) return
     const referrerIds = [...new Set(rows.map(r => r.referred_by_client_id).filter(Boolean))]
@@ -66,10 +68,16 @@ export function PublicPageEditor({ userProfile }: Props) {
 
   const setLeadStatus = async (id: string, status: string) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
+    if (isDemoTrainerId(userProfile.uid)) return
     await supabase.from('leads').update({ status }).eq('id', id)
   }
 
   const loadData = async () => {
+    if (isDemoTrainerId(userProfile.uid)) {
+      setData({ ...DEFAULT_PAGE, ...DEMO_PUBLIC_PAGE })
+      setSlug(DEMO_PUBLIC_SLUG); setSlugInput(DEMO_PUBLIC_SLUG)
+      return
+    }
     const { data: row } = await supabase
       .from('entrenadores')
       .select('slug, public_page')
@@ -102,6 +110,7 @@ export function PublicPageEditor({ userProfile }: Props) {
   }
 
   const handleSave = async () => {
+    if (isDemoTrainerId(userProfile.uid)) { toast('Página guardada ✓ (demo: solo en esta sesión)', 'ok'); return }
     setSaving(true)
     const updates: any = { public_page: data }
     if (slugInput && slugInput !== slug && slugAvailable !== false) {

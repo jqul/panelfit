@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
+import { isDemoTrainerId, buildDemoConditioningBlocks } from './demo-data-extra'
 
 export type ConditioningType = 'emom' | 'amrap' | 'for_time' | 'tabata' | 'circuito'
 
@@ -63,6 +64,7 @@ export function useConditioningBlocks(trainerId?: string) {
 
   const load = useCallback(async () => {
     if (!trainerId) { setLoading(false); return }
+    if (isDemoTrainerId(trainerId)) { setBlocks(buildDemoConditioningBlocks() as ConditioningBlock[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('conditioning_blocks').select('*').eq('trainer_id', trainerId).order('name')
     setBlocks((data || []).map(dbToLocal))
@@ -75,13 +77,15 @@ export function useConditioningBlocks(trainerId?: string) {
     if (!trainerId) return
     const block: ConditioningBlock = { ...b, id: `cb_${Date.now()}`, trainerId, createdAt: Date.now() }
     setBlocks(prev => [...prev, block].sort((a, c) => a.name.localeCompare(c.name)))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('conditioning_blocks').insert(localToDB(block))
   }, [trainerId])
 
   const deleteBlock = useCallback(async (id: string) => {
     setBlocks(prev => prev.filter(b => b.id !== id))
+    if (isDemoTrainerId(trainerId)) return
     await supabase.from('conditioning_blocks').delete().eq('id', id)
-  }, [])
+  }, [trainerId])
 
   return { blocks, loading, addBlock, deleteBlock, reload: load }
 }

@@ -25,7 +25,8 @@ import { DietaTabEntrenador } from './client-panel/DietaTabEntrenador'
 import { PlanTab } from './client-panel/PlanTab'
 import { PlanHistoryModal } from './client-panel/PlanHistoryModal'
 import { ActiveWorkout } from '../client/ActiveWorkout'
-import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES } from '../../lib/demo-data'
+import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS, DEMO_PROGRAMS } from '../../lib/demo-data'
+import { DEMO_ALERTS_MAP, DEMO_BORRADOR_CLIENT_IDS } from '../../lib/demo-data-extra'
 import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
 import { localDateKey } from '../../lib/dates'
 
@@ -133,7 +134,13 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
   const loadData = async () => {
     setLoading(true)
-    if (demoPlan) { setPlan(demoPlan); if (demoLogs) setLogs(demoLogs); setLoading(false); return }
+    if (demoPlan) {
+      setPlan(demoPlan); if (demoLogs) setLogs(demoLogs)
+      setLabels(DEMO_LABELS); setPrograms(DEMO_PROGRAMS)
+      setAlerts((DEMO_ALERTS_MAP[client.id] || []) as ClientAlert[])
+      setBorradorActivo(DEMO_BORRADOR_CLIENT_IDS.includes(client.id))
+      setLoading(false); return
+    }
     const { data: planData } = await supabase.from('planes').select('plan,plan_borrador,borrador_activo').eq('clientId', client.id).maybeSingle()
     const planRow = planData as PlanRow | null
     const isDraft = !!planRow?.borrador_activo && !!planRow?.plan_borrador?.P
@@ -215,7 +222,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const restoreFromHistory = async (restoredPlan: TrainingPlan) => {
     setShowHistory(false)
     setBorradorBusy(true)
-    const { error } = await supabase.from('planes')
+    const { error } = demoPlan !== undefined ? { error: null } : await supabase.from('planes')
       .upsert({ clientId: client.id, plan_borrador: { P: restoredPlan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
     setBorradorBusy(false)
     if (error) { logError('restoreFromHistory', error); toast('No se pudo restaurar', 'warn'); return }
@@ -249,6 +256,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
 
   const saveAlerts = async (newAlerts: ClientAlert[]) => {
     setAlerts(newAlerts)
+    if (demoPlan !== undefined) { DEMO_ALERTS_MAP[client.id] = newAlerts as any; return }
     await supabase.from('clientes').update({ alerts: newAlerts }).eq('id', client.id)
   }
 

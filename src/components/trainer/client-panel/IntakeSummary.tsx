@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ClipboardList, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { DEMO_INTAKE_MAP } from '../../../lib/demo-data-extra'
 
 interface CheckinRespuesta { pregunta: string; respuesta: string }
 
@@ -9,6 +10,7 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (clientId.startsWith('demo-client-')) { setRespuestas(DEMO_INTAKE_MAP[clientId] || null); setLoading(false); return }
     supabase.from('checkins').select('respuestas').eq('clientId', clientId).eq('tipo', 'intake')
       .order('createdAt', { ascending: false }).limit(1).maybeSingle()
       .then(({ data }) => { setRespuestas(data?.respuestas || null); setLoading(false) })

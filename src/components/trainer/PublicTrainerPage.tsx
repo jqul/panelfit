@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
+import { DEMO_PUBLIC_PAGE, DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
 import { NotFound } from '../shared/NotFound'
 import { Check } from 'lucide-react'
 
@@ -27,6 +29,7 @@ export function PublicTrainerPage({ slug }: Props) {
   const [sent, setSent] = useState(false)
 
   useEffect(() => {
+    if (slug === DEMO_PUBLIC_SLUG) { setDisplayName(DEMO_TRAINER_PROFILE.displayName); setData(DEMO_PUBLIC_PAGE as PublicPageData); setLoading(false); return }
     supabase.rpc('get_public_trainer_page', { p_slug: slug }).then(({ data: rows }) => {
       const row = rows?.[0]
       if (row) { setDisplayName(row.displayName); setData(row.public_page) }
@@ -47,6 +50,7 @@ export function PublicTrainerPage({ slug }: Props) {
   const sendLead = async () => {
     if (!leadName.trim()) return
     setSending(true)
+    if (slug === DEMO_PUBLIC_SLUG) { setSending(false); setSent(true); return }
     const { error } = await supabase.rpc('submit_lead', {
       p_slug: slug, p_name: leadName.trim(), p_email: leadContact.includes('@') ? leadContact.trim() : null,
       p_phone: !leadContact.includes('@') ? leadContact.trim() || null : null, p_message: leadMessage.trim() || null,

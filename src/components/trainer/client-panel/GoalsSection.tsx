@@ -3,6 +3,7 @@ import { Target, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { ClientData } from '../../../types'
 import { localDateKey } from '../../../lib/dates'
+import { DEMO_WEEKLY_REVIEWS_MAP } from '../../../lib/demo-data-extra'
 
 interface WeeklyReview {
   id: string
@@ -48,7 +49,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
   useEffect(() => { setGoalDraft(client.main_goal || '') }, [client.id])
 
   useEffect(() => {
-    if (client.id.startsWith('demo-client-')) { setReviews([]); setLoading(false); return }
+    if (client.id.startsWith('demo-client-')) { setReviews((DEMO_WEEKLY_REVIEWS_MAP[client.id] || []) as WeeklyReview[]); setLoading(false); return }
     supabase.from('weekly_reviews').select('*').eq('clientId', client.id).order('week_start', { ascending: false }).limit(12)
       .then(({ data }) => { setReviews((data as WeeklyReview[]) || []); setLoading(false) })
   }, [client.id])
@@ -72,6 +73,7 @@ export function GoalsSection({ client, trainerId, onUpdate }: {
     let saved: WeeklyReview
     if (client.id.startsWith('demo-client-')) {
       saved = { id: crypto.randomUUID(), created_at: new Date().toISOString(), ...row }
+      DEMO_WEEKLY_REVIEWS_MAP[client.id] = [saved as any, ...(DEMO_WEEKLY_REVIEWS_MAP[client.id] || [])]
     } else {
       const { data, error } = await supabase.from('weekly_reviews').insert(row).select().single()
       if (error || !data) { setSaving(false); return }

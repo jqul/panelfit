@@ -4,6 +4,7 @@ import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
 import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
 import { DEMO_TRAINER_ID } from '../lib/demo-data'
+import { buildDemoLibraryEnrichment } from '../lib/demo-data-extra'
 import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
 import { fetchAllPages } from '../lib/fetchAllPages'
 
@@ -86,9 +87,10 @@ export function useExerciseLibrary(trainerId: string) {
     // Modo demo: biblioteca de serie directamente en memoria, sin tocar
     // Supabase (el trainer_id falso no es un UUID real).
     if (trainerId === DEMO_TRAINER_ID) {
+      const enrich = buildDemoLibraryEnrichment()
       const demo: LibraryExercise[] = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
         id: `ex_demo_${i}`, trainerId, name: e.name, description: '', category: e.category,
-        especialidades: [], videos: [], tags: [], createdAt: Date.now(),
+        especialidades: enrich[e.name]?.especialidades || [], videos: enrich[e.name]?.videos || [], tags: enrich[e.name]?.tags || [], createdAt: Date.now(),
       }))
       setExercises(demo)
       setLoading(false)

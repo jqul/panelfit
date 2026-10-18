@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { DEMO_SURVEY_SCHEDULES, DEMO_SURVEY_TEMPLATE } from '../../lib/demo-data'
+import { isDemoTrainerId } from '../../lib/demo-data-extra'
 import { UserProfile } from '../../types'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { toast } from '../shared/Toast'
@@ -91,6 +93,12 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
   const loadData = async () => {
     setLoading(true)
+    if (isDemoTrainerId(userProfile.uid)) {
+      setSchedules(DEMO_SURVEY_SCHEDULES as any)
+      setTemplates([DEMO_SURVEY_TEMPLATE] as any)
+      setLoading(false)
+      return
+    }
     const [schedRes, tmplRes] = await Promise.all([
       supabase.from('survey_schedules').select('*').eq('trainer_id', userProfile.uid),
       supabase.from('survey_templates').select('*').eq('trainer_id', userProfile.uid),
@@ -145,9 +153,11 @@ export function MensajesTab({ userProfile, clients }: Props) {
     window.open(buildWAUrl(phone, msg), '_blank')
 
     // Marcar como enviado
-    await supabase.from('survey_schedules')
-      .update({ last_sent_at: Date.now() })
-      .eq('id', sched.id)
+    if (!isDemoTrainerId(userProfile.uid)) {
+      await supabase.from('survey_schedules')
+        .update({ last_sent_at: Date.now() })
+        .eq('id', sched.id)
+    }
 
     setSchedules(prev => prev.map(s => s.id === sched.id ? { ...s, last_sent_at: Date.now() } : s))
     setSending(null)

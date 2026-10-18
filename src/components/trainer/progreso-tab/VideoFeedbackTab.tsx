@@ -47,9 +47,11 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
   const sendComment = async (videoId: string) => {
     if (!comment.trim()) return
     setSending(true)
-    const { error } = await supabase.from('video_feedback')
-      .update({ trainer_comment: comment.trim(), status: 'comentado', commented_at: Date.now() })
-      .eq('id', videoId)
+    const { error } = client.id.startsWith('demo-client-')
+      ? { error: null }
+      : await supabase.from('video_feedback')
+        .update({ trainer_comment: comment.trim(), status: 'comentado', commented_at: Date.now() })
+        .eq('id', videoId)
     setSending(false)
     if (error) return
     setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment: comment.trim(), status: 'comentado', commented_at: Date.now() } : vid))
@@ -59,6 +61,13 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
 
   const uploadReplyVideo = async (videoId: string, file: File) => {
     setUploadingReply(true)
+    if (client.id.startsWith('demo-client-')) {
+      const url = URL.createObjectURL(file)
+      setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment_video_url: url, status: 'comentado', commented_at: Date.now() } : vid))
+      setActiveVideo(v => v && v.id === videoId ? { ...v, trainer_comment_video_url: url, status: 'comentado' } : v)
+      setUploadingReply(false)
+      return
+    }
     try {
       const ext = file.name.split('.').pop() || 'mp4'
       const path = `reply/${videoId}_${Date.now()}.${ext}`
