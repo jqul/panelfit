@@ -6,11 +6,12 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 
 | Ruta | Contenido |
 | --- | --- |
-| `migrations/20261018000001_baseline_tables.sql` | 47 tablas, claves, índices y RLS activado |
+| `migrations/20261018000001_baseline_tables.sql` | 46 tablas, claves, índices y RLS activado |
 | `migrations/20261018000002_baseline_functions_triggers.sql` | Funciones (RPCs y helpers de RLS), triggers y el cron semanal |
 | `migrations/20261018000003_baseline_rls_policies.sql` | Todas las políticas RLS de `public` |
 | `migrations/20261018000004_baseline_storage.sql` | Buckets y políticas de `storage.objects` |
 | `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones, sin aplicar |
+| `hardening/tests/` | Prueba del bloque 1 y su runner local (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
 Los cuatro ficheros de `migrations/` son una **foto** de producción a 2026-10-18, reconstruida desde el catálogo de Postgres. No reproducen las 69 migraciones históricas que ya están aplicadas (no hay forma de recuperar su SQL original) y **no deben ejecutarse sobre producción**: sirven para crear entornos nuevos y para detectar desvíos con `supabase db diff`.
@@ -21,6 +22,17 @@ Para alinear el historial del CLI con producción, marca el baseline como ya apl
 ```bash
 supabase migration repair --status applied 20261018000001 20261018000002 20261018000003 20261018000004
 ```
+
+## Cómo probar el bloque 1 sin pagar un branch
+
+El runner carga el baseline en un Postgres en memoria (PGlite), ejecuta la prueba antes y después de aplicar el bloque 1 y compara las huellas del esquema con las de producción. No toca ninguna base de datos real.
+
+```bash
+npm i --no-save @electric-sql/pglite
+node supabase/hardening/tests/run-pglite.mjs
+```
+
+Resultado esperado: antes del bloque 1, los casos `A1` a `A4` salen en FALLO (el ataque funciona); después, todos en OK. PGlite usa Postgres 18 y producción el 17, por eso las restricciones `NOT NULL` (que PG18 lista aparte) no se comparan. Es una simulación de Supabase (roles, `auth.uid()`, privilegios por defecto), no sustituye una prueba en un branch real con la app delante.
 
 ## Hallazgos
 
@@ -44,7 +56,7 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 
 ## Lo que ya está bien
 
-- RLS activado en las 47 tablas; `internal_webhook_secrets` sin políticas, a propósito.
+- RLS activado en las 46 tablas; `internal_webhook_secrets` sin políticas, a propósito.
 - `client-videos`, `exercise-videos` y `media` son privados, con política por cliente y entrenador.
 - `send-push` valida la sesión y solo deja notificar a uno mismo o a su contraparte real.
 - `send-welcome-email` y `weekly-checkin-digest` exigen un secreto guardado en base de datos y escapan el HTML.
