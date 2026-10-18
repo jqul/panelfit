@@ -38,7 +38,7 @@ const policies = read('migrations/20261018000003_baseline_rls_policies.sql')
 
 for (const [name, sql] of [['tablas', tables], ['funciones y triggers', funcs], ['políticas RLS', policies]]) {
   try { await db.exec(sql); console.log(`baseline ${name}: OK`) }
-  catch (e) { console.error(`baseline ${name}: ERROR -> ${e.message}`); process.exit(1) }
+  catch (e) { console.error(`baseline ${name}: ERROR -> ${e.message}`); await db.close(); process.exitCode = 1; throw e }
 }
 await db.exec(`
   grant all on all tables in schema public to anon, authenticated;
@@ -89,4 +89,6 @@ const despues = await correr('DESPUÉS de aplicar el bloque 1 (se esperan todos 
 const todoOk = despues.every(x => x.resultado === 'OK')
 console.log(todoOk ? 'después: todo OK' : 'después: HAY FALLOS')
 
-process.exit(fallos === 0 && esperadoAntes && todoOk ? 0 : 1)
+// Cerrar la base antes de salir: process.exit() directo tras PGlite provoca un fallo de libuv en Windows.
+await db.close()
+process.exitCode = fallos === 0 && esperadoAntes && todoOk ? 0 : 1
