@@ -24,6 +24,7 @@ import { buildDemoMessageTemplates } from '../../lib/demo-data-extra'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
+import { cacheGet, cacheSet, hasPendingLogs, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
@@ -51,6 +52,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const loggingOutRef = useRef(false)
   const authStateRef = useRef(authState)
   authStateRef.current = authState
+  const clientRef = useRef<ClienteRow | null>(null)
+  clientRef.current = client
 
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
@@ -63,6 +66,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       if (loggingOutRef.current) {
         if (event === 'SIGNED_OUT') loggingOutRef.current = false
         return
+      }
+      // Sesión cerrada sin que el cliente lo pidiera (caducó, o se cerró en otra pestaña):
+      // se borra la copia local de salud, salvo los entrenos que aún no se han subido.
+      const c = clientRef.current
+      if (event === 'SIGNED_OUT' && c && !c.id.startsWith('demo-client-')) {
+        clearClientDeviceData(c.id, token, { keepPending: true })
       }
       if (session?.user && authStateRef.current === 'needs_login') {
         loadData()
@@ -79,6 +88,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [token])
 
   const checkAuth = async () => {
+    sweepExpiredCaches()
     // Enlace de uno de nuestros 3 clientes de demostración fijos — entra directo,
     // sin registro ni login, igual que el modo demo del entrenador. Importante:
     // solo si el token coincide EXACTO con uno de los 3 — un cliente real cuyo
@@ -114,14 +124,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       // Probable fallo de red (sin conexión) en vez de token inválido — si ya se
       // entró antes con este enlace, sigue con la última copia local en vez de
       // mostrar "enlace no válido" a un cliente legítimo sin cobertura.
-      try {
-        const cached = JSON.parse(localStorage.getItem(CLIENT_CACHE_KEY(token)) || 'null')
-        if (cached) clientData = cached
-      } catch {}
+      const cached = cacheGet<ClienteRow>(CLIENT_CACHE_KEY(token))
+      if (cached) clientData = cached
     }
     if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
     setClient(clientData)
-    try { localStorage.setItem(CLIENT_CACHE_KEY(token), JSON.stringify(clientData)) } catch {}
+    cacheSet(CLIENT_CACHE_KEY(token), clientData)
 
     // 2. ¿El cliente tiene cuenta creada?
     if (!clientData.auth_user_id) {
@@ -149,9 +157,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (!clientData) { setLoading(false); return }
 
     // Cargar logs desde localStorage (offline-first)
-    const localLogs = localStorage.getItem(`pf_logs_${clientData.id}`)
-    const hasPendingLocal = !!localStorage.getItem(PENDING_LOGS_KEY(clientData.id))
-    if (localLogs) { try { setLogs(JSON.parse(localLogs)) } catch {} }
+    const hasPendingLocal = hasPendingLogs(clientData.id)
+    const localLogs = cacheGet<TrainingLogs>(deviceKeys.logs(clientData.id), { ignoreTtl: hasPendingLocal })
+    if (localLogs) setLogs(localLogs)
 
     // Plan — se guarda una copia en local para poder seguir viendo el entreno de
     // hoy sin conexión (ej. sótano de gimnasio), en vez de quedarse sin plan.
@@ -165,16 +173,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         p.weeks = p.weeks.map((w, i) => ({ ...w, isCurrent: i === semActual }))
       }
       setPlan(p)
-      try { localStorage.setItem(PLAN_CACHE_KEY(clientData.id), JSON.stringify(p)) } catch {}
+      cacheSet(PLAN_CACHE_KEY(clientData.id), p)
       // Deja constancia de que el cliente ha abierto el plan — así el
       // entrenador ve en el historial si ya vio la última versión publicada.
       // Fire-and-forget: no debe bloquear ni romper la carga si falla.
       supabase.rpc('mark_plan_opened', { p_token: token }).then(() => {}, () => {})
     } else {
-      try {
-        const cachedPlan = localStorage.getItem(PLAN_CACHE_KEY(clientData.id))
-        if (cachedPlan) setPlan(JSON.parse(cachedPlan))
-      } catch {}
+      const cachedPlan = cacheGet<TrainingPlan>(PLAN_CACHE_KEY(clientData.id))
+      if (cachedPlan) setPlan(cachedPlan)
     }
 
     // Registros — si hay cambios locales aún sin sincronizar, no los pisamos con
@@ -222,16 +228,19 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     if (client?.id.startsWith('demo-client-')) { setSyncState('saved'); setTimeout(() => setSyncState('idle'), 2000); return }
     if (!client?.id) return
     setSyncState('saving')
-    localStorage.setItem(`pf_logs_${client.id}`, JSON.stringify(newLogs))
+    // Si el cliente desactivó la copia local no queda nada en el dispositivo: sin
+    // conexión (o si falla la subida) el entreno no se puede conservar.
+    const guardadoLocal = cacheSet(deviceKeys.logs(client.id), newLogs)
     if (!navigator.onLine) {
       // Queda marcado como pendiente — se reintenta solo en cuanto vuelva la conexión,
       // en vez de perderse si el cliente cierra la pestaña o limpia la caché antes.
+      if (!guardadoLocal) { setSyncState('error'); return }
       localStorage.setItem(PENDING_LOGS_KEY(client.id), '1')
       setSyncState('offline')
       return
     }
     const ok = await pushLogsToServer(client.id, newLogs)
-    if (!ok) { localStorage.setItem(PENDING_LOGS_KEY(client.id), '1'); setSyncState('error'); return }
+    if (!ok) { if (guardadoLocal) localStorage.setItem(PENDING_LOGS_KEY(client.id), '1'); setSyncState('error'); return }
     localStorage.removeItem(PENDING_LOGS_KEY(client.id))
     setSyncState('saved')
     setTimeout(() => setSyncState('idle'), 2000)
@@ -240,11 +249,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   // Reintenta subir logs que quedaron guardados solo en local (sin conexión, o un
   // fallo de red puntual) — al recuperar el cliente.id y cada vez que vuelve la conexión.
   const trySyncPendingLogs = useCallback(async (clientId: string) => {
-    if (!navigator.onLine || !localStorage.getItem(PENDING_LOGS_KEY(clientId))) return
-    const raw = localStorage.getItem(`pf_logs_${clientId}`)
-    if (!raw) { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
-    let pendingLogs: TrainingLogs
-    try { pendingLogs = JSON.parse(raw) } catch { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    if (!navigator.onLine || !hasPendingLogs(clientId)) return
+    // Los entrenos pendientes nunca caducan: aún no están en el servidor.
+    const pendingLogs = cacheGet<TrainingLogs>(deviceKeys.logs(clientId), { ignoreTtl: true })
+    if (!pendingLogs) { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
     setSyncState('saving')
     const ok = await pushLogsToServer(clientId, pendingLogs)
     if (!ok) { setSyncState('error'); return }
@@ -425,6 +433,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
             {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
+              if (!client.id.startsWith('demo-client-')) {
+                // Antes de borrar nada, sube lo pendiente; si no se puede, avisa: esos
+                // entrenos solo existen en este dispositivo y se perderían.
+                await trySyncPendingLogs(client.id)
+                if (hasPendingLogs(client.id) && !window.confirm('Tienes entrenos que todavía no se han subido al servidor. Si cierras sesión ahora se perderán. ¿Cerrar sesión de todos modos?')) return
+                clearClientDeviceData(client.id, token)
+              }
               loggingOutRef.current = true
               setAuthState('needs_login')
               setTimeout(() => { loggingOutRef.current = false }, 5000)

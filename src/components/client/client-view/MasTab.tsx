@@ -1,6 +1,8 @@
-import { MessageSquare } from 'lucide-react'
+import { useState } from 'react'
+import { MessageSquare, ShieldCheck } from 'lucide-react'
 import { TrainingPlan } from '../../../types'
 import { ClienteRow } from '../../../lib/supabase-types'
+import { isDeviceCacheEnabled, setDeviceCacheEnabled, clearClientDeviceData, hasPendingLogs } from '../../../lib/deviceStorage'
 import { ThemeToggle } from '../../shared/ThemeToggle'
 import { PushToggle } from '../../shared/PushToggle'
 import { CicloWidget } from '../CicloWidget'
@@ -72,11 +74,70 @@ export function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: T
       {/* Programa de referidos */}
       <ReferralWidget trainerId={client.trainerId} token={client.token} />
 
+      <DevicePrivacyCard client={client} />
+
       {/* Cerrar sesión */}
       <button onClick={onLogout}
         className="w-full py-3 border border-border rounded-2xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
         Cerrar sesión
       </button>
+    </div>
+  )
+}
+
+// Qué se guarda en este dispositivo y cómo quitarlo: para móviles compartidos o
+// prestados, donde no se quiere dejar el plan ni los entrenos tras usarlo.
+function DevicePrivacyCard({ client }: { client: ClienteRow }) {
+  const isDemo = client.id.startsWith('demo-client-')
+  const [enabled, setEnabled] = useState(isDeviceCacheEnabled())
+  const [msg, setMsg] = useState('')
+
+  const toggle = () => {
+    const next = !enabled
+    if (!next && hasPendingLogs(client.id) &&
+      !window.confirm('Tienes entrenos que todavía no se han subido. Si dejas de guardar datos en este dispositivo se borrarán. ¿Continuar?')) return
+    setDeviceCacheEnabled(next)
+    if (!next) clearClientDeviceData(client.id, client.token)
+    setEnabled(next)
+    setMsg(next ? '' : 'Dejamos de guardar tu plan y tus entrenos en este dispositivo.')
+  }
+
+  const clearNow = () => {
+    if (hasPendingLogs(client.id) &&
+      !window.confirm('Tienes entrenos que todavía no se han subido. Si borras los datos de este dispositivo se perderán. ¿Borrar de todos modos?')) return
+    clearClientDeviceData(client.id, client.token)
+    setMsg('Datos borrados de este dispositivo.')
+  }
+
+  if (isDemo) return null
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+      <div className="flex items-start gap-3">
+        <ShieldCheck className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">Privacidad en este dispositivo</p>
+          <p className="text-xs text-muted mt-0.5">
+            Para que puedas entrenar sin conexión, guardamos una copia de tu plan y tus entrenos en este dispositivo.
+            Caduca a los 30 días y se borra al cerrar sesión.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Guardar datos en este dispositivo</p>
+          {!enabled && <p className="text-xs text-warn">Sin esta copia no podrás entrenar sin conexión.</p>}
+        </div>
+        <button type="button" role="switch" aria-checked={enabled} aria-label="Guardar datos en este dispositivo" onClick={toggle}
+          className={`relative w-11 h-6 rounded-full flex-shrink-0 transition-colors ${enabled ? 'bg-ink' : 'bg-border'}`}>
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+        </button>
+      </div>
+      <button type="button" onClick={clearNow}
+        className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-muted hover:bg-bg-alt transition-colors">
+        Borrar los datos de este dispositivo ahora
+      </button>
+      {msg && <p role="status" className="text-xs text-ok font-medium">{msg}</p>}
     </div>
   )
 }

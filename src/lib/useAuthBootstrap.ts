@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
+import { clearTrainerDeviceData } from './deviceStorage'
 import {
   DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID,
   DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA,
@@ -73,6 +74,7 @@ export function useAuthBootstrap() {
     // Evita que un refresco de token ya en curso reautentique al usuario justo
     // después de cerrar sesión (el evento llega igualmente al listener de abajo).
     loggingOutRef.current = true
+    clearTrainerDeviceData()
     setView('auth')
     setUserProfile(null)
     setPendingUser(null)
