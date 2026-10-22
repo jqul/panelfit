@@ -180,9 +180,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const path = `${plan.clientId}/${dayKey}/r${ri}_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('exercise-videos').upload(path, file, { upsert: true })
     if (error) { alert('Error al subir vídeo'); setUploadingVideoRi(null); return }
-    const { data } = supabase.storage.from('exercise-videos').getPublicUrl(path)
     const key = `ex_${dayKey}_r${ri}`
-    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], videoEjecucion: data.publicUrl } })
+    // Solo la ruta: el bucket es privado y SignedVideo firma una URL temporal al mostrarla.
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], videoEjecucion: path } })
     setUploadingVideoRi(null)
   }, [dayKey, onLogsChange])
 

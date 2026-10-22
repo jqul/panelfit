@@ -42,14 +42,14 @@ export function VideoFeedbackButton({ exerciseName, clientId, trainerId }: { exe
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
       if (uploadErr) throw uploadErr
-      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
 
+      // Se guarda solo la ruta: el bucket es privado y la vista firma una URL temporal.
       const row = {
         id: `vf_${Date.now()}`,
         trainer_id: trainerId,
         client_id: clientId,
         exercise_name: exerciseName,
-        video_url: urlData.publicUrl,
+        video_url: path,
         client_note: note.trim() || null,
         status: 'pendiente',
         created_at: Date.now(),
