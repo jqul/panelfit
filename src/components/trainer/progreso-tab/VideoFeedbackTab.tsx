@@ -70,16 +70,19 @@ export function VideoFeedbackTab({ client }: { client: ClientData }) {
     }
     try {
       const ext = file.name.split('.').pop() || 'mp4'
-      const path = `reply/${videoId}_${Date.now()}.${ext}`
+      // El id del cliente va primero: la política de Storage de client-videos
+      // comprueba que la primera carpeta sea un cliente del entrenador (con
+      // `reply/…` la subida se rechazaba siempre). Se guarda solo la ruta; la
+      // vista firma una URL temporal al reproducir.
+      const path = `${client.id}/reply/${videoId}_${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
       if (uploadErr) throw uploadErr
-      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
       const { error } = await supabase.from('video_feedback')
-        .update({ trainer_comment_video_url: urlData.publicUrl, status: 'comentado', commented_at: Date.now() })
+        .update({ trainer_comment_video_url: path, status: 'comentado', commented_at: Date.now() })
         .eq('id', videoId)
       if (error) throw error
-      setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment_video_url: urlData.publicUrl, status: 'comentado', commented_at: Date.now() } : vid))
-      setActiveVideo(v => v && v.id === videoId ? { ...v, trainer_comment_video_url: urlData.publicUrl, status: 'comentado' } : v)
+      setVideos(v => v.map(vid => vid.id === videoId ? { ...vid, trainer_comment_video_url: path, status: 'comentado', commented_at: Date.now() } : vid))
+      setActiveVideo(v => v && v.id === videoId ? { ...v, trainer_comment_video_url: path, status: 'comentado' } : v)
     } catch {
       // silencioso: el botón vuelve a estar disponible para reintentar
     } finally {

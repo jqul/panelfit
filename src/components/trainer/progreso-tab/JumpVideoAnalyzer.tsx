@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Play, Pause, ChevronLeft, ChevronRight, Video, X, Inbox } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../../lib/demo-data'
+import { getSignedUrl } from '../../../lib/signedMedia'
 
 const G = 9.81 // m/s²
 const FPS_OPTIONS = [24, 25, 30, 60, 120, 240]
@@ -52,8 +53,12 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
     setContact(null); setTakeoff(null); setLanding(null)
   }
 
-  const pickLibraryVideo = (v: LibraryVideo) => {
-    setVideoUrl(v.video_url)
+  // client-videos es privado: la URL guardada (ruta o URL pública antigua) no se puede
+  // abrir directamente, hay que pedir una firmada.
+  const pickLibraryVideo = async (v: LibraryVideo) => {
+    const url = await getSignedUrl('client-videos', v.video_url)
+    if (!url) return
+    setVideoUrl(url)
     setContact(null); setTakeoff(null); setLanding(null)
   }
 

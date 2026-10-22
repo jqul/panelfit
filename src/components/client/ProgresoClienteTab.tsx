@@ -434,10 +434,9 @@ function UploadVideoButton({ clientId, trainerId, onUploaded }: { clientId: stri
       const path = `${clientId}/${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('client-videos').upload(path, file)
       if (uploadErr) throw uploadErr
-      const { data: urlData } = supabase.storage.from('client-videos').getPublicUrl(path)
       const { error: insertErr } = await supabase.from('video_feedback').insert({
         id: `vf_${Date.now()}`, trainer_id: trainerId, client_id: clientId,
-        exercise_name: label.trim() || 'Vídeo', video_url: urlData.publicUrl,
+        exercise_name: label.trim() || 'Vídeo', video_url: path,
         status: 'pendiente', created_at: Date.now(),
       })
       if (insertErr) throw insertErr
@@ -648,8 +647,8 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
     const path = `fotos/${clientId}/${sessionId}/${type}_${Date.now()}.${file.name.split('.').pop()}`
     const { error } = await supabase.storage.from('media').upload(path, file, { upsert: true })
     if (!error) {
-      const { data } = supabase.storage.from('media').getPublicUrl(path)
-      const url = data.publicUrl
+      // Solo la ruta: el bucket es privado y SignedImage firma una URL temporal al mostrarla.
+      const url = path
       const col = type === 'front' ? 'front_url' : type === 'side' ? 'side_url' : 'back_url'
       await supabase.from('foto_sessions').update({ [col]: url }).eq('id', sessionId)
       setPhotos(p => p.map(s => s.id === sessionId ? { ...s, [type]: url } : s))

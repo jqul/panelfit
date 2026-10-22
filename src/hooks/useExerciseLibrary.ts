@@ -446,8 +446,8 @@ export async function uploadVideoToStorage(trainerId: string, file: File): Promi
   const path = `videos/${trainerId}/${Date.now()}.${ext}`
   const { error } = await supabase.storage.from('media').upload(path, file, { upsert: true })
   if (error) { console.error('Upload error:', error); return null }
-  const { data } = supabase.storage.from('media').getPublicUrl(path)
-  return data.publicUrl
+  // El bucket media es privado: se devuelve la ruta, no una URL pública (se firma al reproducir).
+  return path
 }
 
 // Hook de métricas — para usar en InsightsTab
