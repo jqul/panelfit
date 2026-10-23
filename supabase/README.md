@@ -11,7 +11,7 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261018000003_baseline_rls_policies.sql` | Todas las políticas RLS de `public` |
 | `migrations/20261018000004_baseline_storage.sql` | Buckets y políticas de `storage.objects` |
 | `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones, sin aplicar |
-| `hardening/tests/` | Prueba del bloque 1 y su runner local (ver más abajo) |
+| `hardening/tests/` | Pruebas de los bloques 1, 7 y 8 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
 Los cuatro ficheros de `migrations/` son una **foto** de producción a 2026-10-18, reconstruida desde el catálogo de Postgres. No reproducen las 69 migraciones históricas que ya están aplicadas (no hay forma de recuperar su SQL original) y **no deben ejecutarse sobre producción**: sirven para crear entornos nuevos y para detectar desvíos con `supabase db diff`.
@@ -31,6 +31,8 @@ El runner carga el baseline en un Postgres en memoria (PGlite), ejecuta la prueb
 npm i --no-save @electric-sql/pglite
 node supabase/hardening/tests/run-pglite.mjs
 ```
+
+Los bloques 7 y 8 (enlaces de cliente) tienen su propio runner, `node supabase/hardening/tests/run-pglite-enlaces.mjs`: el 7 se prueba antes y después (`R1` y `R2` salen en FALLO antes) y el 8 solo después, porque antes la columna `token_expires_at` no existe.
 
 Resultado esperado: antes del bloque 1, los casos `A1` a `A4` salen en FALLO (el ataque funciona); después, todos en OK. PGlite usa Postgres 18 y producción el 17, por eso las restricciones `NOT NULL` (que PG18 lista aparte) no se comparan. Es una simulación de Supabase (roles, `auth.uid()`, privilegios por defecto), no sustituye una prueba en un branch real con la app delante.
 
@@ -52,7 +54,8 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 | 10 | Bajo | Casi todas las políticas son `TO public` (incluye `anon`); basta `authenticated`. Además `plan_history` y `weekly_reviews` usan `auth.uid()` sin envolver en `select`, lo que penaliza el rendimiento. | seguimiento |
 | 11 | Bajo | `trainer-videos` y `trainer-assets` son buckets públicos; cualquier usuario con sesión ve todos los vídeos de `trainer-videos`. | seguimiento |
 | 12 | Bajo | Protección contra contraseñas filtradas desactivada en Auth (se activa en el panel, no por SQL). | panel de Supabase |
-| 13 | Bajo | Los tokens de cliente no caducan ni se pueden regenerar; `claim_client_by_token` reclama cualquier fila sin dueño. | seguimiento |
+| 13 | Medio | Los tokens de cliente no caducan (sí se pueden regenerar desde Cliente > Configuración); `claim_client_by_token` reclama cualquier fila sin dueño mientras el token sea válido. | 8 (caducidad opcional) |
+| 14 | Alto | El enlace "Invita a un amigo" compartía `?ref=<token>`: el mismo token que abre el panel del cliente. Quien recibía el enlace podía entrar a su plan y sus entrenos. El front ya manda un código derivado (`src/lib/referral.ts`); falta aplicar el bloque 7 para que `submit_lead` lo entienda y deje de aceptar el token en bruto. | 7 |
 
 ## Lo que ya está bien
 

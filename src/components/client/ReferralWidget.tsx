@@ -2,19 +2,23 @@ import { useState, useEffect } from 'react'
 import { Gift, Copy, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
+import { referralCode } from '../../lib/referral'
 
 export function ReferralWidget({ trainerId, token }: { trainerId: string; token: string }) {
   const [slug, setSlug] = useState<string | null | 'loading'>('loading')
   const [copied, setCopied] = useState(false)
+  const [code, setCode] = useState<string | null>(null)
 
   useEffect(() => {
     if (trainerId.startsWith('demo-trainer-')) { setSlug(DEMO_PUBLIC_SLUG); return }
     supabase.rpc('get_trainer_referral_slug', { p_trainer_id: trainerId }).then(({ data }) => setSlug(data || null))
   }, [trainerId])
 
-  if (slug === 'loading' || !slug) return null
+  useEffect(() => { referralCode(token).then(setCode) }, [token])
 
-  const link = `${window.location.origin}/p/${slug}?ref=${token}`
+  if (slug === 'loading' || !slug || !code) return null
+
+  const link = `${window.location.origin}/p/${slug}?ref=${code}`
   const waText = encodeURIComponent(`¡Hola! Te recomiendo a mi entrenador/a, a mí me está yendo genial. Échale un vistazo:\n\n${link}`)
 
   const copyLink = async () => {
