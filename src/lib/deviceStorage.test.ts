@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import {
-  cacheSet, cacheGet, isDeviceCacheEnabled, setDeviceCacheEnabled, hasPendingLogs,
+  cacheSet, cacheGet, isDeviceCacheEnabled, setDeviceCacheEnabled, hasPendingLogs, getPendingKeys, addPendingKeys, clearPendingKeys,
   clearClientDeviceData, sweepExpiredCaches, clearTrainerDeviceData, deviceKeys, CACHE_TTL_MS,
 } from './deviceStorage'
 
@@ -115,5 +115,52 @@ describe('deviceStorage', () => {
     store.set('pf_quick_note', 'María: rodilla'); store.set('pf_dark_mode', '1')
     clearTrainerDeviceData()
     expect([...store.keys()]).toEqual(['pf_dark_mode'])
+  })
+})
+
+describe('entrenos pendientes por ejercicio', () => {
+  let store: Map<string, string>
+  beforeEach(() => { store = installLocalStorage() })
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('acumula las claves cambiadas sin duplicarlas', () => {
+    expect(getPendingKeys('c1')).toBeNull()
+    addPendingKeys('c1', ['ex_w0_d0_r0'])
+    addPendingKeys('c1', ['ex_w0_d0_r1', 'ex_w0_d0_r0'])
+    expect(getPendingKeys('c1')).toEqual(['ex_w0_d0_r0', 'ex_w0_d0_r1'])
+    expect(hasPendingLogs('c1')).toBe(true)
+  })
+
+  it('no crea un pendiente vacío', () => {
+    addPendingKeys('c1', [])
+    expect(hasPendingLogs('c1')).toBe(false)
+  })
+
+  it('al subir solo se quitan las claves subidas; lo añadido entretanto sigue pendiente', () => {
+    addPendingKeys('c1', ['a', 'b'])
+    addPendingKeys('c1', ['c']) // se marcó mientras se subían a y b
+    clearPendingKeys('c1', ['a', 'b'])
+    expect(getPendingKeys('c1')).toEqual(['c'])
+    clearPendingKeys('c1', ['c'])
+    expect(getPendingKeys('c1')).toBeNull()
+    expect(hasPendingLogs('c1')).toBe(false)
+  })
+
+  it('el formato antiguo ("1") se trata como "todo" y se limpia al subir', () => {
+    store.set(deviceKeys.pending('c1'), '1')
+    expect(getPendingKeys('c1')).toBe('all')
+    addPendingKeys('c1', ['a']) // sigue siendo "todo"
+    expect(getPendingKeys('c1')).toBe('all')
+    clearPendingKeys('c1', ['a'])
+    expect(hasPendingLogs('c1')).toBe(false)
+  })
+
+  it('cerrar sesión con keepPending conserva las claves pendientes', () => {
+    cacheSet(deviceKeys.logs('c1'), { a: 1 })
+    addPendingKeys('c1', ['a'])
+    clearClientDeviceData('c1', undefined, { keepPending: true })
+    expect(getPendingKeys('c1')).toEqual(['a'])
+    clearClientDeviceData('c1', undefined)
+    expect(getPendingKeys('c1')).toBeNull()
   })
 })

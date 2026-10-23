@@ -12,21 +12,26 @@ export function NoPlanView() {
   )
 }
 
-export function SyncIndicator({ syncState, pendingCount = 0 }: { syncState: SyncState; pendingCount?: number }) {
-  if (syncState === 'idle') return null
+// Estado del guardado de los entrenos. Se queda visible mientras haya ejercicios sin subir al
+// servidor (aunque ya haya vuelto la conexión) y deja reintentar a mano.
+export function SyncIndicator({ syncState, pendingCount = 0, onRetry }: { syncState: SyncState; pendingCount?: number; onRetry?: () => void }) {
+  if (syncState === 'idle' && pendingCount === 0) return null
+  const sinSubir = `${pendingCount} ejercicio${pendingCount !== 1 ? 's' : ''} sin subir`
+  const tone = syncState === 'saving' ? 'bg-accent/10 text-accent' : syncState === 'saved' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
   return (
-    <div className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${
-      syncState === 'saving' ? 'bg-accent/10 text-accent' :
-      syncState === 'saved' ? 'bg-ok/10 text-ok' : 'bg-warn/10 text-warn'
-    }`}>
+    <div role="status" className={`fixed top-14 left-0 right-0 z-20 flex items-center justify-center gap-2 py-1.5 text-xs font-semibold ${tone}`}>
       {syncState === 'saving' && <><span className="w-2 h-2 bg-accent rounded-full animate-pulse" />Guardando...</>}
       {syncState === 'saved' && <><CheckCircle2 className="w-3.5 h-3.5" />Guardado</>}
       {syncState === 'offline' && <><WifiOff className="w-3.5 h-3.5" />
-        {pendingCount > 0
-          ? `${pendingCount} serie${pendingCount !== 1 ? 's' : ''} guardada${pendingCount !== 1 ? 's' : ''} localmente — se sincronizarán al recuperar señal`
-          : 'Sin conexión — guardado localmente'}
+        {pendingCount > 0 ? `Sin conexión · ${sinSubir}: se subirán al recuperar señal` : 'Sin conexión — guardado en este dispositivo'}
       </>}
-      {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />Error al guardar</>}
+      {syncState === 'error' && <><AlertCircle className="w-3.5 h-3.5" />
+        {pendingCount > 0 ? `No se pudo guardar · ${sinSubir}` : 'Error al guardar'}
+      </>}
+      {syncState === 'idle' && <><AlertCircle className="w-3.5 h-3.5" />{sinSubir}</>}
+      {pendingCount > 0 && onRetry && syncState !== 'saving' && syncState !== 'offline' && (
+        <button onClick={onRetry} className="ml-1 px-2 py-0.5 rounded-md border border-current underline-offset-2">Reintentar</button>
+      )}
     </div>
   )
 }

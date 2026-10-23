@@ -9,6 +9,7 @@ import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate }
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
+import { diffKeys, adoptRemote, saveLogsMerged } from '../../lib/serverSync'
 // Carga perezosa: recharts es pesado (~500kb) y solo hace falta cuando el
 // entrenador entra de verdad en la pestaña de progreso, no con solo abrir el panel.
 const ProgresoTab = lazy(() => import('./ProgresoTab').then(m => ({ default: m.ProgresoTab })))
@@ -248,10 +249,16 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     toast('Borrador descartado', 'ok')
   }
 
+  // Solo se suben los ejercicios que el entrenador ha cambiado, fusionados con lo que haya en el
+  // servidor: antes se escribía el objeto entero cargado al abrir la ficha y pisaba lo que el
+  // cliente hubiera registrado desde entonces.
   const saveLogs = async (newLogs: TrainingLogs) => {
+    const prev = logs
     setLogs(newLogs)
     if (demoPlan !== undefined) return
-    await supabase.from('registros').upsert({ clientId: client.id, logs: newLogs }, { onConflict: 'clientId' })
+    const res = await saveLogsMerged(client.id, newLogs, diffKeys(prev, newLogs))
+    if (!res.ok) { toast('No se pudieron guardar los cambios en los entrenos', 'warn'); return }
+    setLogs(cur => adoptRemote(cur, newLogs, res.merged))
   }
 
   const saveAlerts = async (newAlerts: ClientAlert[]) => {

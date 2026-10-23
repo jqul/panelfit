@@ -61,6 +61,43 @@ export const hasPendingLogs = (clientId: string): boolean => {
   try { return !!localStorage.getItem(keys.pending(clientId)) } catch { return false }
 }
 
+// Qué ejercicios (claves de los entrenos) cambiaron en este dispositivo y aún no están en el
+// servidor. Solo esas claves se suben (lib/serverSync.ts): así no se pisa lo que haya escrito
+// otro dispositivo o el entrenador. El formato antiguo guardaba solo "1": se desconoce qué
+// cambió y se trata como "todo".
+export type PendingKeys = string[] | 'all'
+
+export function getPendingKeys(clientId: string): PendingKeys | null {
+  let raw: string | null = null
+  try { raw = localStorage.getItem(keys.pending(clientId)) } catch { return null }
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return parsed.filter((k): k is string => typeof k === 'string')
+  } catch {}
+  return 'all'
+}
+
+export function addPendingKeys(clientId: string, add: string[]): void {
+  const cur = getPendingKeys(clientId)
+  if (cur === 'all') return
+  const next = [...new Set([...(cur ?? []), ...add])]
+  if (next.length === 0) return
+  try { localStorage.setItem(keys.pending(clientId), JSON.stringify(next)) } catch {}
+}
+
+/** Quita lo ya subido (`synced`); lo que se haya añadido mientras tanto sigue pendiente. */
+export function clearPendingKeys(clientId: string, synced?: string[]): void {
+  const cur = getPendingKeys(clientId)
+  if (cur === null) return
+  try {
+    if (cur === 'all' || !synced) { localStorage.removeItem(keys.pending(clientId)); return }
+    const rest = cur.filter(k => !synced.includes(k))
+    if (rest.length) localStorage.setItem(keys.pending(clientId), JSON.stringify(rest))
+    else localStorage.removeItem(keys.pending(clientId))
+  } catch {}
+}
+
 /**
  * Borra de este dispositivo lo guardado de un cliente: ficha, plan y entrenos.
  * Con `keepPending` conserva los entrenos que aún no se han subido (los borraría
