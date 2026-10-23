@@ -23,12 +23,12 @@ import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { buildDemoMessageTemplates } from '../../lib/demo-data-extra'
 import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
-import { PENDING_LOGS_KEY, CLIENT_CACHE_KEY, PLAN_CACHE_KEY, pushLogsToServer } from './client-view/helpers'
-import { cacheGet, cacheSet, hasPendingLogs, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
+import { CLIENT_CACHE_KEY, PLAN_CACHE_KEY } from './client-view/helpers'
+import { cacheGet, cacheSet, hasPendingLogs, getPendingKeys, addPendingKeys, clearPendingKeys, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
+import { diffKeys, mergeLogs, adoptRemote, saveLogsMerged, savePlanDiasMerged } from '../../lib/serverSync'
 import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
-import { localDateKey } from '../../lib/dates'
 import { useConsent } from '../../lib/consent'
 import { ConsentGate } from './ConsentGate'
 
@@ -44,6 +44,17 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
+  const logsRef = useRef<TrainingLogs>({})
+  logsRef.current = logs
+  // Ejercicios cambiados en este dispositivo que aún no están en el servidor, y cuándo se
+  // sincronizó por última vez: siempre visibles en la cabecera.
+  const [pendingCount, setPendingCount] = useState(0)
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
+  const syncingRef = useRef(0) // subidas en curso
+  const refreshPendingCount = useCallback((clientId: string) => {
+    const p = getPendingKeys(clientId)
+    setPendingCount(p === null ? 0 : p === 'all' ? Math.max(1, Object.keys(logsRef.current).length) : p.length)
+  }, [])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
@@ -186,13 +197,21 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       if (cachedPlan) setPlan(cachedPlan)
     }
 
-    // Registros — si hay cambios locales aún sin sincronizar, no los pisamos con
-    // la versión (más vieja) del servidor. El efecto de trySyncPendingLogs se
-    // encarga de subirlos en cuanto haya conexión.
+    // Registros — el servidor manda salvo en los ejercicios que se cambiaron aquí sin
+    // conexión (siguen siendo los de este dispositivo hasta que se suban). El efecto de
+    // trySyncPendingLogs se encarga de subirlos en cuanto haya conexión.
     const { data: regData } = await supabase
       .from('registros').select('logs').eq('clientId', clientData.id).maybeSingle()
     const regRow = regData as RegistroRow | null
-    if (regRow?.logs && !hasPendingLocal) setLogs(regRow.logs as TrainingLogs)
+    if (regRow?.logs) {
+      const server = regRow.logs as TrainingLogs
+      const pending = hasPendingLocal ? getPendingKeys(clientData.id) : null
+      if (pending === null) setLogs(server)
+      else if (pending === 'all') setLogs(localLogs ?? server) // formato antiguo: se desconoce qué cambió
+      else setLogs(mergeLogs(server, localLogs ?? {}, pending))
+      setLastSyncedAt(Date.now())
+    }
+    refreshPendingCount(clientData.id)
 
     // Perfil del entrenador
     if (clientData.trainerId) {
@@ -226,43 +245,87 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     }
   }
 
+  // Sube los ejercicios `keys` de `local` al servidor fusionando con lo que haya (sin pisar lo que
+  // otro dispositivo o el entrenador haya escrito en otros ejercicios) y deja en pantalla lo
+  // que ya había allí en los ejercicios que no se han tocado entretanto.
+  const syncKeys = useCallback(async (clientId: string, local: TrainingLogs, keys: string[]): Promise<boolean> => {
+    const res = await saveLogsMerged(clientId, local, keys)
+    if (!res.ok) return false
+    clearPendingKeys(clientId, keys)
+    refreshPendingCount(clientId)
+    setLastSyncedAt(Date.now())
+    setLogs(cur => {
+      const next = adoptRemote(cur, local, res.merged)
+      if (next !== cur) cacheSet(deviceKeys.logs(clientId), next)
+      return next
+    })
+    return true
+  }, [refreshPendingCount])
+
   const handleLogsChange = useCallback(async (newLogs: TrainingLogs) => {
+    const prev = logsRef.current
+    logsRef.current = newLogs
     setLogs(newLogs)
     if (client?.id.startsWith('demo-client-')) { setSyncState('saved'); setTimeout(() => setSyncState('idle'), 2000); return }
     if (!client?.id) return
+    const changed = diffKeys(prev, newLogs)
     setSyncState('saving')
     // Si el cliente desactivó la copia local no queda nada en el dispositivo: sin
     // conexión (o si falla la subida) el entreno no se puede conservar.
     const guardadoLocal = cacheSet(deviceKeys.logs(client.id), newLogs)
-    if (!navigator.onLine) {
-      // Queda marcado como pendiente — se reintenta solo en cuanto vuelva la conexión,
-      // en vez de perderse si el cliente cierra la pestaña o limpia la caché antes.
-      if (!guardadoLocal) { setSyncState('error'); return }
-      localStorage.setItem(PENDING_LOGS_KEY(client.id), '1')
-      setSyncState('offline')
-      return
-    }
-    const ok = await pushLogsToServer(client.id, newLogs)
-    if (!ok) { if (guardadoLocal) localStorage.setItem(PENDING_LOGS_KEY(client.id), '1'); setSyncState('error'); return }
-    localStorage.removeItem(PENDING_LOGS_KEY(client.id))
+    // Queda marcado como pendiente ANTES de subirlo: si se cierra la pestaña o se corta la
+    // conexión a mitad, se reintenta solo en cuanto sea posible en vez de perderse.
+    if (guardadoLocal) { addPendingKeys(client.id, changed); refreshPendingCount(client.id) }
+    if (!navigator.onLine) { setSyncState(guardadoLocal ? 'offline' : 'error'); return }
+    // Además de lo que acaba de cambiar, lo que ya estaba pendiente de antes.
+    const pending = getPendingKeys(client.id)
+    const keys = pending === 'all' ? Object.keys(newLogs) : [...new Set([...(pending ?? []), ...changed])]
+    syncingRef.current++
+    const ok = await syncKeys(client.id, newLogs, keys)
+    syncingRef.current--
+    if (!ok) { setSyncState('error'); return }
     setSyncState('saved')
     setTimeout(() => setSyncState('idle'), 2000)
-  }, [client?.id])
+  }, [client?.id, syncKeys, refreshPendingCount])
 
   // Reintenta subir logs que quedaron guardados solo en local (sin conexión, o un
-  // fallo de red puntual) — al recuperar el cliente.id y cada vez que vuelve la conexión.
+  // fallo de red puntual) — al recuperar el cliente.id, cada vez que vuelve la conexión
+  // y cuando el cliente pulsa "Reintentar".
   const trySyncPendingLogs = useCallback(async (clientId: string) => {
-    if (!navigator.onLine || !hasPendingLogs(clientId)) return
+    if (!navigator.onLine || syncingRef.current > 0) return
+    const pending = getPendingKeys(clientId)
+    if (pending === null) return
     // Los entrenos pendientes nunca caducan: aún no están en el servidor.
     const pendingLogs = cacheGet<TrainingLogs>(deviceKeys.logs(clientId), { ignoreTtl: true })
-    if (!pendingLogs) { localStorage.removeItem(PENDING_LOGS_KEY(clientId)); return }
+    if (!pendingLogs) { clearPendingKeys(clientId); refreshPendingCount(clientId); return }
     setSyncState('saving')
-    const ok = await pushLogsToServer(clientId, pendingLogs)
+    syncingRef.current++
+    const ok = await syncKeys(clientId, pendingLogs, pending === 'all' ? Object.keys(pendingLogs) : pending)
+    syncingRef.current--
     if (!ok) { setSyncState('error'); return }
-    localStorage.removeItem(PENDING_LOGS_KEY(clientId))
     setSyncState('saved')
     setTimeout(() => setSyncState('idle'), 2000)
-  }, [])
+  }, [syncKeys, refreshPendingCount])
+
+  // Al volver a la app (otra pestaña, otra app) se leen los entrenos del servidor por si el
+  // entrenador o este mismo cliente en otro dispositivo han añadido algo. Solo si no hay nada
+  // subiéndose ni pendiente, para no pisar cambios que aún no han llegado al servidor.
+  useEffect(() => {
+    if (!client?.id || client.id.startsWith('demo-client-') || authState !== 'authenticated') return
+    const clientId = client.id
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine || syncingRef.current > 0 || hasPendingLogs(clientId)) return
+      const { data } = await supabase.from('registros').select('logs').eq('clientId', clientId).maybeSingle()
+      if (!data?.logs || syncingRef.current > 0 || hasPendingLogs(clientId)) return
+      const server = data.logs as TrainingLogs
+      if (diffKeys(logsRef.current, server).length === 0) return
+      cacheSet(deviceKeys.logs(clientId), server)
+      setLogs(server)
+      setLastSyncedAt(Date.now())
+    }
+    document.addEventListener('visibilitychange', refresh)
+    return () => document.removeEventListener('visibilitychange', refresh)
+  }, [client?.id, authState])
 
   useEffect(() => {
     if (!client?.id || client.id.startsWith('demo-client-')) return
@@ -277,7 +340,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const newPlan = { ...plan, diasElegidos: dias }
     setPlan(newPlan)
     if (client.id.startsWith('demo-client-')) return
-    await supabase.from('planes').update({ plan: { P: newPlan }, updatedAt: Date.now() }).eq('clientId', client.id)
+    // Solo cambia diasElegidos sobre el plan que haya AHORA en el servidor: antes se escribía
+    // el plan entero que el cliente tenía en pantalla y podía pisar lo que el entrenador
+    // hubiera publicado desde que el cliente abrió la app.
+    const res = await savePlanDiasMerged(client.id, dias)
+    if (!res.ok) setSyncState('error')
   }, [plan, client?.id])
 
   // ── Pantalla de carga inicial ──
@@ -363,13 +430,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     )
   }
 
-  // Series de hoy guardadas en local — para el aviso de "sin conexión" del
-  // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
-  const todayKey = localDateKey()
-  const pendingSetsCount = Object.values(logs).reduce((acc, log: any) => {
-    if (log?.dateDone !== todayKey) return acc
-    return acc + Object.values(log.sets || {}).filter((s: any) => s?.weight).length
-  }, 0)
+  // Estado del guardado para la cabecera: lo pendiente de subir manda sobre la última hora de sincronización.
+  const hora = (t: number) => new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  const estadoGuardado = pendingCount > 0
+    ? { text: `${pendingCount} sin subir`, warn: true }
+    : lastSyncedAt ? { text: `Guardado ${hora(lastSyncedAt)}`, warn: false } : null
 
   const resolveTemplate = (tipo: 'nueva_rutina' | 'descanso' | 'racha') => {
     const tmpl = messageTemplates.find(t => t.tipo === tipo)
@@ -408,12 +473,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             <div className="text-right">
               <p className="text-xs font-semibold">{clientName}</p>
               {plan?.type && <p className="text-[11px] text-muted capitalize">{plan.type}</p>}
+              {estadoGuardado && <p className={`text-[11px] ${estadoGuardado.warn ? 'text-warn font-semibold' : 'text-muted'}`}>{estadoGuardado.text}</p>}
             </div>
           </div>
         </div>
       </header>
 
-      <SyncIndicator syncState={syncState} pendingCount={pendingSetsCount} />
+      <SyncIndicator syncState={syncState} pendingCount={pendingCount} onRetry={() => trySyncPendingLogs(client.id)} />
       <PWAInstallBanner />
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
