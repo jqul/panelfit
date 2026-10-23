@@ -10,7 +10,9 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261018000002_baseline_functions_triggers.sql` | Funciones (RPCs y helpers de RLS), triggers y el cron semanal |
 | `migrations/20261018000003_baseline_rls_policies.sql` | Todas las políticas RLS de `public` |
 | `migrations/20261018000004_baseline_storage.sql` | Buckets y políticas de `storage.objects` |
-| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones, sin aplicar |
+| `migrations/20261023000001_proteger_columnas_entrenadores.sql` | Bloque 1 de la propuesta, **aplicado el 2026-10-23** |
+| `migrations/20261023000002_get_client_by_token_minimo.sql` | Bloque 2 de la propuesta, **aplicado el 2026-10-23** |
+| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 y 2 ya están aplicados; el resto, sin aplicar |
 | `hardening/tests/` | Pruebas de los bloques 1, 7 y 8 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
@@ -42,8 +44,8 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 
 | # | Gravedad | Hallazgo | Bloque |
 | --- | --- | --- | --- |
-| 1 | Crítico | `trainer_owns_entrenadores` permite a cada usuario modificar su propia fila sin restringir columnas: puede ponerse `approved = true`, `rol = 'super_admin'` o cambiar `profile.clientLimit`/`planName`. Se deduce de la política y de que solo existe un trigger `AFTER INSERT`; no se ha probado contra producción. | 1 |
-| 2 | Alto | `get_client_by_token` hace `select *`: quien tenga el enlace, sin sesión, recibe `notas_privadas`, `lesiones`, `precio_mensual`, `alerts` y `equipo_disponible`. La app del cliente no usa ninguna. | 2 |
+| 1 | Crítico | `trainer_owns_entrenadores` permite a cada usuario modificar su propia fila sin restringir columnas: puede ponerse `approved = true`, `rol = 'super_admin'` o cambiar `profile.clientLimit`/`planName`. Se deduce de la política y de que solo existe un trigger `AFTER INSERT`; no se ha probado contra producción. | 1 (aplicado 23-oct) |
+| 2 | Alto | `get_client_by_token` hace `select *`: quien tenga el enlace, sin sesión, recibe `notas_privadas`, `lesiones`, `precio_mensual`, `alerts` y `equipo_disponible`. La app del cliente no usa ninguna. | 2 (aplicado 23-oct) |
 | 3 | Alto | Un cliente con sesión lee su propia fila de `clientes` completa por la API directa, también `notas_privadas`. Las RLS no filtran columnas; hace falta separar esas columnas en una tabla solo del entrenador. | seguimiento |
 | 4 | Medio | `trainer_or_client_owns_clientes` es `FOR ALL`: el cliente puede borrar su fila (el `WITH CHECK` no aplica a `DELETE`). | 3 |
 | 5 | Medio | Funciones de trigger (`handle_new_user`, `notify_welcome_email`) y `find_trainer_by_email` ejecutables sin sesión como RPC. | 4 |
