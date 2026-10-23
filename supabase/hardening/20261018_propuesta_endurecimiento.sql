@@ -137,6 +137,7 @@ create policy media_owner_delete on storage.objects for delete to authenticated
 -- ═════════════════════════════════════════════════════════
 -- 7 · ALTO — El enlace de recomendación publica el token de acceso del cliente
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000003_submit_lead_codigo_recomendacion.sql).
 -- ReferralWidget compartía /p/<slug>?ref=<token>, y ese token es el que abre el
 -- panel del cliente (?c=<token>): quien reciba el enlace de "Invita a un amigo"
 -- puede entrar a su plan y sus entrenos. El front ahora manda un código derivado
