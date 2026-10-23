@@ -12,7 +12,8 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261018000004_baseline_storage.sql` | Buckets y políticas de `storage.objects` |
 | `migrations/20261023000001_proteger_columnas_entrenadores.sql` | Bloque 1 de la propuesta, **aplicado el 2026-10-23** |
 | `migrations/20261023000002_get_client_by_token_minimo.sql` | Bloque 2 de la propuesta, **aplicado el 2026-10-23** |
-| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 y 2 ya están aplicados; el resto, sin aplicar |
+| `migrations/20261023000003_submit_lead_codigo_recomendacion.sql` | Bloque 7 de la propuesta, **aplicado el 2026-10-23** |
+| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1, 2 y 7 ya están aplicados; el resto, sin aplicar |
 | `hardening/tests/` | Pruebas de los bloques 1, 7 y 8 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
@@ -57,7 +58,7 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 | 11 | Bajo | `trainer-videos` y `trainer-assets` son buckets públicos; cualquier usuario con sesión ve todos los vídeos de `trainer-videos`. | seguimiento |
 | 12 | Bajo | Protección contra contraseñas filtradas desactivada en Auth (se activa en el panel, no por SQL). | panel de Supabase |
 | 13 | Medio | Los tokens de cliente no caducan (sí se pueden regenerar desde Cliente > Configuración); `claim_client_by_token` reclama cualquier fila sin dueño mientras el token sea válido. | 8 (caducidad opcional) |
-| 14 | Alto | El enlace "Invita a un amigo" compartía `?ref=<token>`: el mismo token que abre el panel del cliente. Quien recibía el enlace podía entrar a su plan y sus entrenos. El front ya manda un código derivado (`src/lib/referral.ts`); falta aplicar el bloque 7 para que `submit_lead` lo entienda y deje de aceptar el token en bruto. | 7 |
+| 14 | Alto | El enlace "Invita a un amigo" compartía `?ref=<token>`: el mismo token que abre el panel del cliente. Quien recibía el enlace podía entrar a su plan y sus entrenos. El front ya manda un código derivado (`src/lib/referral.ts`); el bloque 7 (aplicado el 2026-10-23) hace que `submit_lead` lo entienda y deje de aceptar el token en bruto. | 7 (aplicado 23-oct) |
 
 ## Lo que ya está bien
 
