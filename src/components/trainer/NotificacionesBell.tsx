@@ -7,7 +7,7 @@ interface Notificacion {
   id: string
   trainer_id: string
   client_id?: string
-  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina'
+  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina' | 'solicitud_borrado'
   titulo: string
   mensaje?: string
   leida: boolean
@@ -20,6 +20,7 @@ const TIPO_META: Record<string, { icon: any; color: string; bg: string }> = {
   alerta_vencida:    { icon: Calendar,       color: '#ef4444', bg: '#fef2f2' },
   mensaje:           { icon: MessageCircle,  color: '#3b82f6', bg: '#eff6ff' },
   nueva_rutina:      { icon: Dumbbell,       color: '#8b5cf6', bg: '#f5f3ff' },
+  solicitud_borrado: { icon: AlertTriangle,  color: '#ef4444', bg: '#fef2f2' },
 }
 
 interface Props {

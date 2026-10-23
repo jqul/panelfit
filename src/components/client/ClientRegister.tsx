@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION } from '../../lib/intakeQuestions'
+import { recordConsent } from '../../lib/consent'
+import { ConsentFields } from './ConsentFields'
 
 interface Props {
   token: string
@@ -30,6 +32,8 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   const [waiverAccepted, setWaiverAccepted] = useState(false)
   const [waiverExpanded, setWaiverExpanded] = useState(false)
   const [signedName, setSignedName] = useState('')
+  const [consentSalud, setConsentSalud] = useState(false)
+  const [consentFotos, setConsentFotos] = useState(false)
 
   const firstName = clientName.split(' ')[0]
 
@@ -113,7 +117,10 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   }
 
   const finishIntake = async () => {
+    if (!consentSalud) return
     setLoading(true)
+    // Primero el consentimiento: el cuestionario de salud no se guarda sin él.
+    await recordConsent(clientId, true, consentFotos)
     const respuestas = [
       ...PARQ_QUESTIONS.map((pregunta, i) => ({
         pregunta, respuesta: parqAnswers[i] === true ? 'Sí' : parqAnswers[i] === false ? 'No' : 'Sin responder'
@@ -194,6 +201,8 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
           <p className="text-sm text-muted mt-1.5">Unas preguntas rápidas de salud para que tu entrenador adapte tu plan con seguridad.</p>
         </div>
         <div className="flex-1 px-6 space-y-5 max-w-sm mx-auto w-full pb-8">
+          <ConsentFields salud={consentSalud} fotos={consentFotos} onSalud={setConsentSalud} onFotos={setConsentFotos} />
+
           <div className="space-y-3">
             {PARQ_QUESTIONS.map((q, i) => (
               <div key={i} className="bg-card border border-border rounded-2xl p-3.5">
@@ -239,7 +248,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
             )}
           </div>
 
-          <button onClick={finishIntake} disabled={loading || !waiverAccepted || !signedName.trim()}
+          <button onClick={finishIntake} disabled={loading || !consentSalud || !waiverAccepted || !signedName.trim()}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold text-base disabled:opacity-50 transition-opacity active:scale-[0.98]"
             style={{ backgroundColor: brandColor, minHeight: '56px' }}>
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Continuar <ArrowRight className="w-4 h-4" /></>}

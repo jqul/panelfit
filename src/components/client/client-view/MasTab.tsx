@@ -7,8 +7,12 @@ import { ThemeToggle } from '../../shared/ThemeToggle'
 import { PushToggle } from '../../shared/PushToggle'
 import { CicloWidget } from '../CicloWidget'
 import { ReferralWidget } from '../ReferralWidget'
+import { MisDatosCard } from './MisDatosCard'
 
-export function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void }) {
+export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange }: {
+  client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void
+  fotosConsent: boolean; onConsentChange: (salud: boolean, fotos: boolean) => Promise<boolean>
+}) {
   const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
   const waUrl = trainerPhone
     ? `https://wa.me/${trainerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, soy ${client.name}. Te escribo desde mi panel de PanelFit.`)}`
@@ -74,6 +78,7 @@ export function MasTab({ client, plan, onLogout }: { client: ClienteRow; plan: T
       {/* Programa de referidos */}
       <ReferralWidget trainerId={client.trainerId} token={client.token} />
 
+      <MisDatosCard client={client} fotosConsent={fotosConsent} onConsentChange={onConsentChange} />
       <DevicePrivacyCard client={client} />
 
       {/* Cerrar sesión */}

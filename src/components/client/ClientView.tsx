@@ -29,6 +29,8 @@ import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { localDateKey } from '../../lib/dates'
+import { useConsent } from '../../lib/consent'
+import { ConsentGate } from './ConsentGate'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -54,6 +56,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   authStateRef.current = authState
   const clientRef = useRef<ClienteRow | null>(null)
   clientRef.current = client
+  const consent = useConsent(client?.id, authState === 'authenticated')
 
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
@@ -337,6 +340,29 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const brandColor = trainerProfile.brandColor || '#6e5438'
   const brandBg = trainerProfile.brandBg || ''
 
+  const logoutClient = async () => {
+    if (!client.id.startsWith('demo-client-')) {
+      // Antes de borrar nada, sube lo pendiente; si no se puede, avisa: esos
+      // entrenos solo existen en este dispositivo y se perderían.
+      await trySyncPendingLogs(client.id)
+      if (hasPendingLogs(client.id) && !window.confirm('Tienes entrenos que todavía no se han subido al servidor. Si cierras sesión ahora se perderán. ¿Cerrar sesión de todos modos?')) return
+      clearClientDeviceData(client.id, token)
+    }
+    loggingOutRef.current = true
+    setAuthState('needs_login')
+    setTimeout(() => { loggingOutRef.current = false }, 5000)
+    await supabase.auth.signOut()
+  }
+
+  // Sin consentimiento vigente para datos de salud no se enseña ni se guarda nada.
+  if (consent.status === 'needed' || consent.status === 'withdrawn') {
+    return (
+      <ConsentGate withdrawn={consent.status === 'withdrawn'}
+        trainerName={trainerProfile.brandName || trainerProfile.displayName || 'Tu entrenador'}
+        brandColor={brandColor} onGrant={consent.grant} onLogout={logoutClient} />
+    )
+  }
+
   // Series de hoy guardadas en local — para el aviso de "sin conexión" del
   // indicador de sincronización (cuánto hay pendiente de subir, no solo que hay algo).
   const todayKey = localDateKey()
@@ -392,7 +418,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
         style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', WebkitOverflowScrolling: 'touch' }}>
-        {loading ? (
+        {loading || consent.status === 'loading' ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
           </div>
@@ -427,24 +453,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'progreso' && (
               <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
                 <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan}
+                  fotosConsent={consent.fotos} onGrantFotos={() => consent.grant(true, true)}
                   onOpenCalendar={() => { setEntrenoView('calendario'); setActiveTab('entreno') }} />
               </Suspense>
             )}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
             {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
-            {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={async () => {
-              if (!client.id.startsWith('demo-client-')) {
-                // Antes de borrar nada, sube lo pendiente; si no se puede, avisa: esos
-                // entrenos solo existen en este dispositivo y se perderían.
-                await trySyncPendingLogs(client.id)
-                if (hasPendingLogs(client.id) && !window.confirm('Tienes entrenos que todavía no se han subido al servidor. Si cierras sesión ahora se perderán. ¿Cerrar sesión de todos modos?')) return
-                clearClientDeviceData(client.id, token)
-              }
-              loggingOutRef.current = true
-              setAuthState('needs_login')
-              setTimeout(() => { loggingOutRef.current = false }, 5000)
-              await supabase.auth.signOut()
-            }} />}
+            {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={logoutClient}
+              fotosConsent={consent.fotos} onConsentChange={consent.grant} />}
           </>
         )}
       </main>

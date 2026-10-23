@@ -22,6 +22,8 @@ export async function crearBase() {
              (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')), '')::uuid
     $$;
     grant usage on schema auth, public to anon, authenticated;
+    -- Supabase concede estos privilegios por defecto a lo que se cree después en public.
+    alter default privileges in schema public grant all on tables to anon, authenticated;
   `)
   const tables = read('migrations/20261018000001_baseline_tables.sql').replace(/^create extension .*$/gm, '')
   let funcs = read('migrations/20261018000002_baseline_functions_triggers.sql')
