@@ -29,6 +29,9 @@ interface Props {
   logs: TrainingLogs
   plan?: TrainingPlan | null
   onOpenCalendar?: () => void   // el calendario vive en la pestaña Entreno
+  // Consentimiento específico para fotos (RGPD art. 9). Si no se pasa, se asume concedido.
+  fotosConsent?: boolean
+  onGrantFotos?: () => Promise<boolean>
 }
 
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
@@ -553,7 +556,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCalendar }: Props) {
+export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCalendar, fotosConsent = true, onGrantFotos }: Props) {
   const lastLeafRef = useRef<Record<string, string>>({})
   const [subtab, setSubtab] = useState<'resumen' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('resumen')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
@@ -607,6 +610,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
   }
 
   const createSession = async () => {
+    if (!fotosConsent) return
     const id = `s_${Date.now()}`
     const date = localDateKey()
     if (isDemoClientId(clientId)) {
@@ -637,7 +641,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
   }
 
   const uploadPhoto = async (sessionId: string, type: 'front' | 'side' | 'back', file: File) => {
-    if (file.size > 10 * 1024 * 1024) return
+    if (file.size > 10 * 1024 * 1024 || !fotosConsent) return
     if (isDemoClientId(clientId)) {
       const url = URL.createObjectURL(file)
       setPhotos(p => p.map(s => s.id === sessionId ? { ...s, [type]: url } : s))
@@ -798,9 +802,21 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
 
       {currentLeaf === 'fotos' && (
         <div className="space-y-4">
-          <button onClick={createSession} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
-            <Plus className="w-4 h-4" /> Nueva sesión de fotos
-          </button>
+          {fotosConsent ? (
+            <button onClick={createSession} className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-border rounded-2xl text-muted hover:border-accent hover:text-accent transition-all text-sm font-semibold" style={{ minHeight: '44px' }}>
+              <Plus className="w-4 h-4" /> Nueva sesión de fotos
+            </button>
+          ) : (
+            <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+              <p className="text-sm font-semibold">Las fotos necesitan tu permiso</p>
+              <p className="text-xs text-muted leading-relaxed">Las fotos de progreso son datos sensibles. Solo las verá tu entrenador, se guardan en un espacio privado y puedes borrarlas cuando quieras. Es opcional: el resto de la app funciona igual.</p>
+              {onGrantFotos && (
+                <button onClick={() => { onGrantFotos() }} className="w-full py-3 bg-ink text-white rounded-xl text-sm font-semibold" style={{ minHeight: '44px' }}>
+                  Permitir que se guarden mis fotos
+                </button>
+              )}
+            </div>
+          )}
           {loadingPhotos && <div className="text-center py-6 text-muted text-sm">Cargando fotos...</div>}
           {!loadingPhotos && photos.length === 0 && <div className="text-center py-10 text-muted"><Camera className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">Sin fotos aún.</p></div>}
           {photos.map(session => (

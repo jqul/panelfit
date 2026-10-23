@@ -3,6 +3,7 @@ import { ClientData, TrainingPlan } from '../../../types'
 import { supabase } from '../../../lib/supabase'
 import { Button } from '../../shared/Button'
 import { toast } from '../../shared/Toast'
+import { DatosPersonalesSection } from './DatosPersonalesSection'
 import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../../lib/progresoSections'
 
 const AUTOMATIONS = [
@@ -106,6 +107,7 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
             </div>
         }
       </div>
+      <DatosPersonalesSection client={client} />
     </div>
   )
 }

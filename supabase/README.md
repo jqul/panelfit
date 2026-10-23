@@ -16,8 +16,12 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261023000004_separar_politica_clientes.sql` | Bloque 3, **aplicado el 2026-10-23** |
 | `migrations/20261023000005_revocar_ejecucion_funciones_trigger.sql` | Bloque 4, **aplicado el 2026-10-23** |
 | `migrations/20261023000006_media_borrado_fotos_progreso.sql` | Bloque 5, **aplicado el 2026-10-23** |
+| `migrations/20261023000007_rgpd_consentimientos.sql` | Bloque 9 (RGPD), **aplicado el 2026-10-23** |
+| `migrations/20261023000008_rgpd_exportar_datos_cliente.sql` | Bloque 10 (RGPD), **aplicado el 2026-10-23** |
+| `migrations/20261023000009_rgpd_borrado_completo_cliente.sql` | Bloque 11 (RGPD), **aplicado el 2026-10-23** |
+| `hardening/20261023_rgpd.sql` | Origen de los bloques 9 a 11 (consentimientos, exportación y borrado completo de un cliente), ya aplicados. Ver `docs/rgpd.md` |
 | `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; el 6 (opcional) y el 8, sin aplicar |
-| `hardening/tests/` | Pruebas de los bloques 1, 7 y 8 y sus runners locales (ver más abajo) |
+| `hardening/tests/` | Pruebas de los bloques 1, 7, 8 y 9 a 11 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
 Los cuatro ficheros de `migrations/` son una **foto** de producción a 2026-10-18, reconstruida desde el catálogo de Postgres. No reproducen las 69 migraciones históricas que ya están aplicadas (no hay forma de recuperar su SQL original) y **no deben ejecutarse sobre producción**: sirven para crear entornos nuevos y para detectar desvíos con `supabase db diff`.
@@ -37,6 +41,8 @@ El runner carga el baseline en un Postgres en memoria (PGlite), ejecuta la prueb
 npm i --no-save @electric-sql/pglite
 node supabase/hardening/tests/run-pglite.mjs
 ```
+
+Los bloques 9 a 11 (RGPD) se prueban con `node supabase/hardening/tests/run-pglite-rgpd.mjs`: antes de aplicarlos demuestra que borrar solo la fila de `clientes` deja huérfanos los datos de salud con id `text`, y después ejecuta 19 casos (consentimientos, exportación, borrado, permisos, y que la exportación cubra todas las tablas con datos de cliente).
 
 Los bloques 7 y 8 (enlaces de cliente) tienen su propio runner, `node supabase/hardening/tests/run-pglite-enlaces.mjs`: el 7 se prueba antes y después (`R1` y `R2` salen en FALLO antes) y el 8 solo después, porque antes la columna `token_expires_at` no existe.
 
@@ -62,6 +68,7 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 | 12 | Bajo | Protección contra contraseñas filtradas desactivada en Auth (se activa en el panel, no por SQL). | panel de Supabase |
 | 13 | Medio | Los tokens de cliente no caducan (sí se pueden regenerar desde Cliente > Configuración); `claim_client_by_token` reclama cualquier fila sin dueño mientras el token sea válido. | 8 (caducidad opcional) |
 | 14 | Alto | El enlace "Invita a un amigo" compartía `?ref=<token>`: el mismo token que abre el panel del cliente. Quien recibía el enlace podía entrar a su plan y sus entrenos. El front ya manda un código derivado (`src/lib/referral.ts`); el bloque 7 (aplicado el 2026-10-23) hace que `submit_lead` lo entienda y deje de aceptar el token en bruto. | 7 (aplicado 23-oct) |
+| 15 | Alto | No hay consentimiento explícito para los datos de salud (solo un descargo de responsabilidad), no se pueden exportar los datos de un cliente y el borrado de un cliente deja huérfanos sus datos de salud (tablas con id `text` sin clave foránea), sus ficheros de Storage y su cuenta de acceso. | 9, 10 y 11 (aplicados 23-oct) |
 
 ## Lo que ya está bien
 

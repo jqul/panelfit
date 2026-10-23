@@ -9,6 +9,7 @@ import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from 
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
+import { eraseClient } from '../lib/clientData'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -299,11 +300,14 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     if (!planError) toast(`Programa "${prog.name}" asignado automáticamente ✓`, 'ok')
   }
 
+  // Borrado completo (art. 17 RGPD): ficheros de Storage, todas las tablas con datos del cliente y su
+  // cuenta de acceso. Antes solo se borraba la fila de `clientes` y el resto quedaba huérfano.
   const deleteClient = async (id: string) => {
-    const { error } = await supabase.from('clientes').delete().eq('id', id)
-    if (error) { toast('Error al eliminar el cliente', 'warn'); return false }
+    if (demoClients) { toast('En la demostración no se borra nada', 'ok'); return false }
+    const res = await eraseClient(id)
+    if (!res.ok) { toast(res.error, 'warn'); return false }
     await fetchClients()
-    toast('Cliente eliminado', 'ok')
+    toast(`Cliente eliminado con todos sus datos (${res.archivos} ficheros)`, 'ok')
     return true
   }
 
