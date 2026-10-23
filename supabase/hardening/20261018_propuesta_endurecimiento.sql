@@ -7,6 +7,7 @@
 -- ═════════════════════════════════════════════════════════
 -- 1 · CRÍTICO — Un entrenador puede aprobarse a sí mismo y cambiarse de plan
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000001_proteger_columnas_entrenadores.sql).
 -- La política trainer_owns_entrenadores deja a cada usuario hacer UPDATE (e
 -- INSERT) de su propia fila sin restringir columnas, así que desde la API
 -- puede poner approved=true, rol='super_admin' o profile.clientLimit/planName.
@@ -54,6 +55,7 @@ create trigger protect_entrenadores_privileged_columns
 -- ═════════════════════════════════════════════════════════
 -- 2 · ALTO — get_client_by_token devuelve las notas privadas del entrenador
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000002_get_client_by_token_minimo.sql).
 -- Hoy hace `select *`: cualquiera con el enlace (sin sesión) recibe
 -- notas_privadas, lesiones, precio_mensual, alerts y equipo_disponible. La app
 -- del cliente no usa ninguna de esas columnas. Se mantiene el tipo de retorno
