@@ -5,8 +5,9 @@ import './index.css'
 import App from './App'
 import { ErrorBoundary } from './components/shared/ErrorBoundary'
 import { reloadOnceForNewVersion } from './lib/staleChunk'
+import { sinParametrosSensibles } from './lib/analyticsUrl'
 
-inject()
+inject({ beforeSend: event => ({ ...event, url: sinParametrosSensibles(event.url) }) })
 
 // Vite lanza este evento cuando falla la precarga de un chunk (típico tras un
 // despliegue con la pestaña abierta): recargamos para traer la versión nueva.

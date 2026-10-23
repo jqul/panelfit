@@ -131,3 +131,89 @@ create policy media_owner_delete on storage.objects for delete to authenticated
 -- revoke all on all tables in schema public from anon;
 -- grant select on public.plan_templates to anon;   -- política anyone_reads_public_plan_templates
 -- alter default privileges in schema public revoke all on tables from anon;
+
+-- ═════════════════════════════════════════════════════════
+-- 7 · ALTO — El enlace de recomendación publica el token de acceso del cliente
+-- ═════════════════════════════════════════════════════════
+-- ReferralWidget compartía /p/<slug>?ref=<token>, y ese token es el que abre el
+-- panel del cliente (?c=<token>): quien reciba el enlace de "Invita a un amigo"
+-- puede entrar a su plan y sus entrenos. El front ahora manda un código derivado
+-- (primeros 16 hex de sha256(token), src/lib/referral.ts); submit_lead calcula lo
+-- mismo para atribuir el lead. Ya NO acepta el token en bruto (no había ningún
+-- lead con recomendación en producción el 2026-10-22, así que no se rompe nada).
+-- Aplicar ANTES de que haya recomendaciones reales: con el front nuevo y la
+-- función antigua el lead se guarda, pero sin atribución.
+create or replace function public.submit_lead(p_slug text, p_name text, p_email text, p_phone text, p_message text, p_ref text default null)
+ returns void language plpgsql security definer
+ set search_path to 'public'
+as $$
+declare
+  v_trainer_id uuid;
+  v_ref_client_id uuid;
+begin
+  select uid into v_trainer_id from entrenadores where slug = p_slug and (public_page->>'activa')::boolean = true;
+  if v_trainer_id is null then
+    raise exception 'Página no encontrada o inactiva';
+  end if;
+
+  if p_ref is not null then
+    select id into v_ref_client_id from clientes
+    where left(encode(sha256(convert_to(token, 'UTF8')), 'hex'), 16) = p_ref and "trainerId" = v_trainer_id;
+  end if;
+
+  insert into leads (trainer_id, name, email, phone, message, created_at, referred_by_client_id)
+  values (v_trainer_id, p_name, p_email, p_phone, p_message, extract(epoch from now()) * 1000, v_ref_client_id);
+end;
+$$;
+
+-- ═════════════════════════════════════════════════════════
+-- 8 · MEDIO — Los enlaces de cliente no caducan nunca
+-- ═════════════════════════════════════════════════════════
+-- Añade una caducidad opcional por cliente (NULL = no caduca, como hoy). Las tres
+-- RPCs que reciben el token la respetan. Depende del bloque 2: esta versión de
+-- get_client_by_token ya incluye el recorte de columnas privadas (si no aplicas
+-- el 2, quita las líneas null::... y devuelve c.* en su lugar). Pendiente en el
+-- front: selector de caducidad en Cliente > Configuración y mensaje de "enlace
+-- caducado" (hoy un token no válido muestra el mismo error que uno inexistente).
+alter table public.clientes add column if not exists token_expires_at timestamptz;
+
+create or replace function public.get_client_by_token(p_token text)
+ returns setof clientes language sql security definer
+ set search_path to 'public'
+as $$
+  select c.id, c."trainerId", c.name, c.surname, c.weight, c."fatPercentage", c."muscleMass",
+         c."totalLifted", c."planDescription", c.token, c."createdAt", c.objetivo, c.phone,
+         c.altura, c.genero, c.fechanacimiento,
+         null::text        as notas_privadas,
+         '[]'::jsonb       as alerts,
+         c.auth_user_id,
+         '[]'::jsonb       as label_ids,
+         c.notif_email, c.notif_prefs,
+         null::numeric     as precio_mensual,
+         null::text        as lesiones,
+         null::text        as equipo_disponible,
+         c.metricas_cliente, c.plan_last_opened_at, c.main_goal,
+         c.token_expires_at
+  from public.clientes c
+  where c.token = p_token
+    and (c.token_expires_at is null or c.token_expires_at > now())
+  limit 1;
+$$;
+
+create or replace function public.claim_client_by_token(p_token text)
+ returns void language sql security definer
+ set search_path to 'public'
+as $$
+  update public.clientes
+  set auth_user_id = auth.uid()
+  where token = p_token and auth_user_id is null
+    and (token_expires_at is null or token_expires_at > now());
+$$;
+
+create or replace function public.mark_plan_opened(p_token text)
+ returns void language sql security definer
+ set search_path to 'public'
+as $$
+  update public.clientes set plan_last_opened_at = now()
+  where token = p_token and (token_expires_at is null or token_expires_at > now());
+$$;
