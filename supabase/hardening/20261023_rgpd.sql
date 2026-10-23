@@ -1,4 +1,4 @@
--- PROPUESTA — NO está aplicada en producción (RGPD, art. 9 / 15 / 17 / 20).
+-- RGPD, art. 9 / 15 / 17 / 20. Los bloques 9, 10 y 11 están APLICADOS en producción desde el 2026-10-23.
 -- Igual que 20261018_propuesta_endurecimiento.sql: se aplica por bloques y lo
 -- aceptado se mueve a migrations/. Pruebas locales: tests/run-pglite-rgpd.mjs.
 -- Detalle legal y de producto: docs/rgpd.md.
@@ -6,6 +6,7 @@
 -- ═════════════════════════════════════════════════════════
 -- 9 · Consentimiento explícito para datos de salud y fotos (art. 9.2.a)
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000007_rgpd_consentimientos.sql).
 -- Hoy solo existe `waivers` (descargo de responsabilidad), que no es un
 -- consentimiento al tratamiento de datos de salud. Esta tabla es un historial
 -- de solo añadir: aceptar, ampliar (fotos) o retirar es una fila nueva; la
@@ -37,6 +38,7 @@ create policy client_or_trainer_reads_consent on public.consentimientos for sele
 -- ═════════════════════════════════════════════════════════
 -- 10 · Exportar todos los datos de un cliente (art. 15 y 20)
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000008_rgpd_exportar_datos_cliente.sql).
 -- Lista única de tablas con datos de un cliente. Varias guardan el id como
 -- text sin clave foránea, por eso el borrado y la exportación son explícitos.
 -- Si se añade una tabla con datos de cliente hay que añadirla aquí: el test
@@ -109,6 +111,7 @@ grant execute on function public.export_client_data(uuid), public.can_manage_cli
 -- ═════════════════════════════════════════════════════════
 -- 11 · Borrado completo de un cliente (art. 17)
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000009_rgpd_borrado_completo_cliente.sql).
 -- Hoy `deleteClient` solo hace DELETE de la fila de `clientes`: dejan huérfanos
 -- sus datos en las tablas con id como text, sus ficheros de Storage y su
 -- cuenta de acceso. Esta función borra todas las filas y la cuenta de acceso
