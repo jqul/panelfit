@@ -84,6 +84,7 @@ $$;
 -- ═════════════════════════════════════════════════════════
 -- 3 · MEDIO — Un cliente puede borrar su propia fila de `clientes`
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000004_separar_politica_clientes.sql).
 -- La política es FOR ALL con USING que incluye al cliente; el WITH CHECK solo
 -- frena los UPDATE, no los DELETE. Se separa: entrenador/equipo = todo; cliente
 -- = solo lectura de su fila.
@@ -99,6 +100,7 @@ create policy client_reads_own_cliente on public.clientes for select to authenti
 -- ═════════════════════════════════════════════════════════
 -- 4 · MEDIO — Funciones de trigger y búsqueda por email expuestas como RPC
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000005_revocar_ejecucion_funciones_trigger.sql).
 -- handle_new_user y notify_welcome_email solo las dispara un trigger (no hace
 -- falta EXECUTE para eso). find_trainer_by_email solo la usa EquipoSection con
 -- sesión iniciada; sin sesión permitía comprobar qué emails son entrenadores.
@@ -109,6 +111,7 @@ revoke execute on function public.find_trainer_by_email(text) from public, anon;
 -- ═════════════════════════════════════════════════════════
 -- 5 · MEDIO — Las fotos de progreso no se pueden borrar de Storage
 -- ═════════════════════════════════════════════════════════
+-- APLICADO en producción el 2026-10-23 (migrations/20261023000006_media_borrado_fotos_progreso.sql).
 -- delete_own compara la 2ª carpeta con auth.uid(): vale para videos/<uid>/...
 -- pero en fotos/<clientId>/... esa carpeta es el id del cliente, no el uid.
 -- Se reutiliza la misma regla que ya tiene el SELECT. Necesario para el

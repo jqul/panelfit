@@ -13,7 +13,10 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261023000001_proteger_columnas_entrenadores.sql` | Bloque 1 de la propuesta, **aplicado el 2026-10-23** |
 | `migrations/20261023000002_get_client_by_token_minimo.sql` | Bloque 2 de la propuesta, **aplicado el 2026-10-23** |
 | `migrations/20261023000003_submit_lead_codigo_recomendacion.sql` | Bloque 7 de la propuesta, **aplicado el 2026-10-23** |
-| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1, 2 y 7 ya están aplicados; el resto, sin aplicar |
+| `migrations/20261023000004_separar_politica_clientes.sql` | Bloque 3, **aplicado el 2026-10-23** |
+| `migrations/20261023000005_revocar_ejecucion_funciones_trigger.sql` | Bloque 4, **aplicado el 2026-10-23** |
+| `migrations/20261023000006_media_borrado_fotos_progreso.sql` | Bloque 5, **aplicado el 2026-10-23** |
+| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; el 6 (opcional) y el 8, sin aplicar |
 | `hardening/tests/` | Pruebas de los bloques 1, 7 y 8 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
@@ -48,9 +51,9 @@ Orden de prioridad. El bloque indicado es el de `hardening/20261018_propuesta_en
 | 1 | Crítico | `trainer_owns_entrenadores` permite a cada usuario modificar su propia fila sin restringir columnas: puede ponerse `approved = true`, `rol = 'super_admin'` o cambiar `profile.clientLimit`/`planName`. Se deduce de la política y de que solo existe un trigger `AFTER INSERT`; no se ha probado contra producción. | 1 (aplicado 23-oct) |
 | 2 | Alto | `get_client_by_token` hace `select *`: quien tenga el enlace, sin sesión, recibe `notas_privadas`, `lesiones`, `precio_mensual`, `alerts` y `equipo_disponible`. La app del cliente no usa ninguna. | 2 (aplicado 23-oct) |
 | 3 | Alto | Un cliente con sesión lee su propia fila de `clientes` completa por la API directa, también `notas_privadas`. Las RLS no filtran columnas; hace falta separar esas columnas en una tabla solo del entrenador. | seguimiento |
-| 4 | Medio | `trainer_or_client_owns_clientes` es `FOR ALL`: el cliente puede borrar su fila (el `WITH CHECK` no aplica a `DELETE`). | 3 |
-| 5 | Medio | Funciones de trigger (`handle_new_user`, `notify_welcome_email`) y `find_trainer_by_email` ejecutables sin sesión como RPC. | 4 |
-| 6 | Medio | Las fotos de progreso no se pueden borrar de Storage (`delete_own` compara con `auth.uid()` la carpeta del cliente). | 5 |
+| 4 | Medio | `trainer_or_client_owns_clientes` es `FOR ALL`: el cliente puede borrar su fila (el `WITH CHECK` no aplica a `DELETE`). | 3 (aplicado 23-oct) |
+| 5 | Medio | Funciones de trigger (`handle_new_user`, `notify_welcome_email`) y `find_trainer_by_email` ejecutables sin sesión como RPC. | 4 (aplicado 23-oct) |
+| 6 | Medio | Las fotos de progreso no se pueden borrar de Storage (`delete_own` compara con `auth.uid()` la carpeta del cliente). | 5 (aplicado 23-oct) |
 | 7 | Medio | El cliente tiene escritura completa (`FOR ALL`) sobre `planes`, `dietas`, `waivers`, `valoraciones`, `test_resultados`, `notificaciones` y sobre los comentarios del entrenador en `video_feedback`. Hoy la app solo necesita que el cliente escriba `diasElegidos` y sus propios registros. | seguimiento |
 | 8 | Medio | Varias tablas guardan `client_id`/`clientId` como `text` sin clave foránea (`foto_sessions`, `dietas`, `ciclo_tracking`, `notificaciones`, `survey_*`, `valoraciones`, `video_feedback`, `test_resultados`, `registros_dolor`...) y `citas`, `push_subscriptions` y `readiness_checkins` referencian a `clientes` sin `ON DELETE CASCADE`. Borrar un cliente falla o deja huérfanos sus datos de salud (relevante para el derecho de supresión). | seguimiento |
 | 9 | Bajo | `anon` tiene todos los privilegios de tabla (por defecto de Supabase); solo RLS lo frena. | 6 (opcional) |
