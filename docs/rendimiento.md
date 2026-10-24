@@ -23,7 +23,7 @@ tiempo de ejecución del JS, que en un Android de gama baja pesa tanto como la d
 
 ## Qué se hizo
 
-- **Tipografías:** estaban en un `@import` del CSS, que bloquea el pintado hasta bajar otra hoja de otro dominio. Ahora van con `preconnect` y una hoja que no bloquea (`media="print"` + `onload`), con `font-display: swap`.
+- **Tipografías alojadas en el propio dominio** (`public/fonts/`, 3 ficheros `.woff2` latinos, 81 kB en total, de Google Fonts con licencia SIL OFL): estaban en un `@import` del CSS que bloquea el pintado hasta bajar otra hoja de otro dominio, y cada visita enviaba la IP del visitante a Google. Ahora no hay ninguna conexión externa, las dos de la primera pantalla se precargan y el service worker las guarda (caché primero), así que también salen sin conexión. `font-display: swap`. Si se sustituye un fichero hay que cambiarle el nombre.
 - **Entreno en vivo** (`ActiveWorkout`, 37 kB): se carga al abrir una sesión y se precarga cuando el navegador está libre (no sin conexión ni con el ahorro de datos), así sigue estando en la caché del service worker para entrenar sin conexión.
 - **Gráfica del panel del entrenador:** `recharts` (105 kB) se descargaba al abrir el panel por una sola gráfica; ahora va aparte y bajo demanda.
 - **El cliente cargaba el editor de planes del entrenador entero** solo para leer una constante (`DEFAULT_SERIES_TYPES`), con la biblioteca de ejercicios de 130 kB dentro. Ahora importa solo el módulo pequeño.
@@ -36,7 +36,7 @@ tiempo de ejecución del JS, que en un Android de gama baja pesa tanto como la d
 1. **Entrada: 109 kB**. Más de la mitad es el cliente de Supabase (auth, realtime, storage...), que no se puede recortar sin cambiar de librería; el resto es React. Es el suelo actual de cualquier página.
 2. **Panel del entrenador: ~25 kB de datos de ejemplo** (`demo-data` y `demo-data-extra`) que siguen cargándose porque ~25 componentes los importan de forma estática. Pasarlos a importación bajo demanda, como se hizo con el cliente, lo dejaría cerca de 255 kB.
 3. **`testCatalog` y `PlanGate`** (17 y 27 kB) también están en el recorrido del entrenador.
-4. Las tipografías vienen de Google Fonts: alojarlas en el propio dominio quitaría una conexión a otro origen (y que Google reciba la IP de cada visitante, que es un asunto de RGPD). Pendiente de decidir porque implica añadir los ficheros `.woff2` al repositorio.
+4. Solo está el subconjunto latino de las tipografías (cubre español, inglés y las lenguas de Europa occidental); un carácter fuera de ese rango se pinta con la tipografía del sistema.
 
 ## Cómo medirlo en un móvil de verdad
 
