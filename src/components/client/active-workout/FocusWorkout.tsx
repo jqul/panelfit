@@ -1,8 +1,9 @@
-import { useState, useEffect, ReactNode } from 'react'
+import { useState, useEffect, useRef, ReactNode } from 'react'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
 import { FinishButton } from './FinishButton'
+import { useSwipe } from '../../../lib/swipe'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
@@ -38,6 +39,7 @@ interface Props {
   allComplete: boolean
 }
 
+const SWIPE_HINT_KEY = 'pf_swipe_hint_done'
 const round1 = (n: number) => Math.round(n * 10) / 10
 const fmt = (s: string) => s.replace('.', ',')
 
@@ -148,6 +150,20 @@ export function FocusWorkout(p: Props) {
     if (next >= 0 && next < p.exercises.length) select(next, firstUndone(next))
   }
 
+  // La pista de "desliza" se enseña hasta que se desliza por primera vez.
+  const [hintGone, setHintGone] = useState(() => { try { return localStorage.getItem(SWIPE_HINT_KEY) === '1' } catch { return true } })
+  const dismissHint = () => { if (hintGone) return; setHintGone(true); try { localStorage.setItem(SWIPE_HINT_KEY, '1') } catch {} }
+
+  // Deslizar con el dedo para cambiar de ejercicio: hacia la izquierda, el siguiente; hacia la derecha, el anterior.
+  const swipeProps = useSwipe(
+    () => { if (p.ri < p.exercises.length - 1) { goEx(1); dismissHint(); navigator.vibrate?.(8) } },
+    () => { if (p.ri > 0) { goEx(-1); dismissHint(); navigator.vibrate?.(8) } },
+  )
+  // El contenido entra desde el lado hacia el que se ha ido (también al saltar con los puntos).
+  const lastRi = useRef(p.ri)
+  const slide = p.ri === lastRi.current ? '' : p.ri > lastRi.current ? 'pf-slide-next' : 'pf-slide-prev'
+  useEffect(() => { lastRi.current = p.ri }, [p.ri])
+
   const sub = p.substitutionName(p.ri)
 
   return (
@@ -178,7 +194,8 @@ export function FocusWorkout(p: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', touchAction: 'pan-y' }} {...swipeProps}>
+        <div key={p.ri} className={slide}>
         {p.topExtras && (
           <div className="px-4 pt-3">
             <button onClick={() => setShowExtras(s => !s)}
@@ -192,8 +209,8 @@ export function FocusWorkout(p: Props) {
 
         {/* Ejercicio actual */}
         <div className="flex items-center gap-2 px-4 pt-5">
-          <button onClick={() => goEx(-1)} disabled={p.ri === 0} aria-label="Ejercicio anterior"
-            className="p-2 rounded-xl text-muted disabled:opacity-20 hover:bg-bg-alt"><ChevronLeft className="w-5 h-5" /></button>
+          {/* Se cambia de ejercicio deslizando; estos botones solo quedan para lectores de pantalla y teclado. */}
+          <button onClick={() => goEx(-1)} disabled={p.ri === 0} className="sr-only">Ejercicio anterior</button>
           <div className="flex-1 min-w-0 text-center">
             <div className="flex items-center justify-center gap-2">
               <h2 className={`font-serif font-bold text-2xl leading-tight ${sub ? 'line-through text-muted text-lg' : ''}`}>{ex.name}</h2>
@@ -205,9 +222,13 @@ export function FocusWorkout(p: Props) {
               {ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}
             </p>
           </div>
-          <button onClick={() => goEx(1)} disabled={p.ri === p.exercises.length - 1} aria-label="Ejercicio siguiente"
-            className="p-2 rounded-xl text-muted disabled:opacity-20 hover:bg-bg-alt"><ChevronRight className="w-5 h-5" /></button>
+          <button onClick={() => goEx(1)} disabled={p.ri === p.exercises.length - 1} className="sr-only">Ejercicio siguiente</button>
         </div>
+        {!hintGone && p.exercises.length > 1 && (
+          <p className="mt-1 text-center text-[11px] text-muted/80" aria-hidden="true">
+            {p.ri > 0 ? '‹ ' : ''}desliza para cambiar de ejercicio{p.ri < p.exercises.length - 1 ? ' ›' : ''}
+          </p>
+        )}
         {ex.comment && <p className="px-6 mt-2 text-center text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
 
         {isRun ? (
@@ -352,6 +373,7 @@ export function FocusWorkout(p: Props) {
             <MoreHorizontal className="w-4 h-4" /> {showMore ? 'Ocultar opciones' : 'Más: historial, cambiar ejercicio, molestias, vídeo'}
           </button>
           {showMore && <div className="mt-3 -mx-4">{p.renderMore(p.ri)}</div>}
+        </div>
         </div>
       </div>
     </div>
