@@ -46,7 +46,16 @@ Es una simulación, así que **no prueba**:
 - La barra de estado del guardado quedaba **tapada por la pantalla del entreno**: justo donde hay que saber qué falta por subir. Ahora hay una pastilla dentro del entreno ("1 sin subir", se toca para reintentar).
 - Si el entreno no estaba descargado y no había conexión, el error de descarga llegaba al límite de errores de toda la app. Ahora avisa y deja volver o reintentar.
 
-## Sin integración continua
+## Integración continua
 
-Las pruebas no se ejecutan solas: Vercel solo construye. Para ejecutarlas en cada PR haría falta un flujo de GitHub
-Actions (`npm ci && npx playwright test`; los ejecutores de GitHub ya traen Chrome). No se ha añadido.
+`.github/workflows/ci.yml` ejecuta, en cada pull request y en cada cambio a `main`:
+
+| Trabajo | Qué hace |
+| --- | --- |
+| Tipos, pruebas y tamaño | `tsc` (app y pruebas e2e), `npm test` (pruebas unitarias) y `npm run size` (construye y falla si algún recorrido supera su presupuesto de peso) |
+| Pruebas end-to-end | `npx playwright test` con el Chrome que ya traen los ejecutores de GitHub; si algo falla, sube los rastros de Playwright como artefacto `rastros-e2e` (7 días) |
+
+Vercel sigue construyendo y desplegando por su lado: esto es lo que dice si el cambio rompe algo. Para que un PR
+**no se pueda fusionar** con las pruebas en rojo hay que marcar los dos trabajos como "requeridos" en GitHub
+(Settings → Branches → regla para `main` → "Require status checks to pass"); es un ajuste del repositorio,
+no está hecho.

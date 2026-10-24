@@ -1,0 +1,61 @@
+name: Pruebas
+
+# En cada pull request y en cada cambio a main: tipos, pruebas unitarias, presupuesto de tamaño del JS y las
+# pruebas end-to-end. Vercel solo construye y despliega; esto es lo que dice si el cambio rompe algo.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Si se sube otro commit a la misma rama, se cancela la ejecución anterior.
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Tipos, pruebas y tamaño
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Tipos de la app
+        run: npx tsc --noEmit
+      - name: Tipos de las pruebas end-to-end
+        run: npm run typecheck:e2e
+      - name: Pruebas unitarias
+        run: npm test
+      - name: Presupuesto de tamaño del JS (construye la app)
+        run: npm run size
+
+  e2e:
+    name: Pruebas end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Usa el Google Chrome que ya traen los ejecutores de GitHub (playwright.config.ts: channel 'chrome'):
+      # no se descarga ningún navegador.
+      - name: Pruebas end-to-end
+        run: npx playwright test
+      - name: Rastros de las pruebas que fallan
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rastros-e2e
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
