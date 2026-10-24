@@ -5,6 +5,7 @@ import { Button } from '../../shared/Button'
 import { toast } from '../../shared/Toast'
 import { DatosPersonalesSection } from './DatosPersonalesSection'
 import { Section, SECTIONS, CLIENT_SHAREABLE_SECTIONS, useTrainerMetricSettings } from '../../../lib/progresoSections'
+import { CADUCIDADES, caducaEn, estadoEnlace, describirEstado, opcionActual } from '../../../lib/enlaceCliente'
 
 const AUTOMATIONS = [
   { key: 'autoWelcome', label: 'Mensaje de bienvenida', desc: 'WhatsApp al asignar un plan nuevo', emoji: '👋' },
@@ -16,6 +17,8 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
   const [revoking, setRevoking] = useState(false)
   const [newToken, setNewToken] = useState(client.token)
   const [showRevoke, setShowRevoke] = useState(false)
+  const [expiresAt, setExpiresAt] = useState<string | null>(client.token_expires_at ?? null)
+  const [savingExpiry, setSavingExpiry] = useState(false)
   const isDemo = client.id.startsWith('demo-client-')
   const metricasActivas = useTrainerMetricSettings(trainerId) // null = todas activas para el entrenador
   // En demo el cliente no es una fila real de Supabase — mostramos ya todo
@@ -48,6 +51,20 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
     setRevoking(false)
   }
 
+  const changeExpiry = async (id: string) => {
+    const dias = CADUCIDADES.find(c => c.id === id)?.dias ?? null
+    const next = caducaEn(dias)
+    const previous = expiresAt
+    setExpiresAt(next)
+    if (isDemo) return // sin fila real en Supabase
+    setSavingExpiry(true)
+    const { error } = await supabase.from('clientes').update({ token_expires_at: next }).eq('id', client.id)
+    if (error) { toast('No se pudo cambiar la caducidad', 'warn'); setExpiresAt(previous) }
+    else toast(next ? 'Caducidad guardada ✓' : 'El enlace ya no caduca ✓', 'ok')
+    setSavingExpiry(false)
+  }
+  const estado = estadoEnlace(expiresAt)
+
   const currentUrl = `${window.location.origin}?c=${newToken}`
   if (!plan) return null
 
@@ -75,6 +92,15 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
         </div>
         <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\n${currentUrl}\n\n💪`)}`, '_blank')}
           className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">📱 Enviar por WhatsApp</button>
+        <div className="space-y-1.5">
+          <label htmlFor="caducidad-enlace" className="text-xs font-semibold">Caducidad del enlace</label>
+          <select id="caducidad-enlace" value={opcionActual(expiresAt)} disabled={savingExpiry || isDemo} onChange={e => changeExpiry(e.target.value)}
+            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none disabled:opacity-50">
+            {estado.estado === 'caducado' && <option value="" disabled>Caducado</option>}
+            {CADUCIDADES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          </select>
+          <p role="status" className={`text-xs ${estado.estado === 'caducado' ? 'text-warn font-medium' : 'text-muted'}`}>{describirEstado(estado)}</p>
+        </div>
         {!showRevoke
           ? <button onClick={() => setShowRevoke(true)} className="w-full py-2.5 border border-warn/30 text-warn rounded-xl text-sm font-semibold hover:bg-warn/5">🔒 Regenerar enlace</button>
           : <div className="bg-warn/5 border border-warn/20 rounded-xl p-4 space-y-3">

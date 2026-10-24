@@ -62,6 +62,17 @@ insert into resultados select 'X7 renovado vuelve a registrar apertura y reclama
   coalesce(plan_last_opened_at::text, 'null') || ' / ' || coalesce(auth_user_id::text, 'null')
   from public.clientes where token = 'tok-uno';
 
+-- ── Estado del enlace (para el mensaje "ha caducado") ──
+update public.clientes set token_expires_at = null where token = 'tok-uno';
+set local role anon;
+insert into resultados select 'X8 estado: sin caducidad es ok', public.get_client_link_status('tok-uno') = 'ok', coalesce(public.get_client_link_status('tok-uno'), 'null');
+reset role;
+update public.clientes set token_expires_at = now() - interval '1 hour' where token = 'tok-uno';
+set local role anon;
+insert into resultados select 'X9 estado: caducado se distingue', public.get_client_link_status('tok-uno') = 'expired', coalesce(public.get_client_link_status('tok-uno'), 'null');
+insert into resultados select 'X10 estado: un token que no existe no devuelve nada', public.get_client_link_status('no-existe') is null, coalesce(public.get_client_link_status('no-existe'), 'null');
+reset role;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;

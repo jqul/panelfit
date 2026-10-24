@@ -43,6 +43,8 @@ const CORS = {
 const json = (route: Route, status: number, body: unknown, extra: Record<string, string> = {}) =>
   route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json', ...extra }, body: JSON.stringify(body) })
 const empty = (route: Route, status = 204) => route.fulfill({ status, headers: CORS })
+/** Igual que `token_expires_at is null or token_expires_at > now()` de las funciones reales. */
+const vigente = (c: Row) => !c.token_expires_at || new Date(String(c.token_expires_at)).getTime() > Date.now()
 
 export interface AuthUser { id: string; email: string; password: string }
 
@@ -214,17 +216,21 @@ export class FakeSupabase {
     switch (fn) {
       case 'get_client_by_token': {
         // Igual que la función real: sin las columnas privadas del entrenador.
-        const rows = this.rows('clientes').filter(c => c.token === args.p_token).slice(0, 1)
+        const rows = this.rows('clientes').filter(c => c.token === args.p_token && vigente(c)).slice(0, 1)
           .map(c => ({ ...c, notas_privadas: null, alerts: [], label_ids: [], precio_mensual: null, lesiones: null, equipo_disponible: null }))
         return json(route, 200, rows)
       }
+      case 'get_client_link_status': {
+        const c = this.rows('clientes').find(x => x.token === args.p_token)
+        return json(route, 200, c ? (vigente(c) ? 'ok' : 'expired') : null)
+      }
       case 'claim_client_by_token': {
-        const c = this.rows('clientes').find(x => x.token === args.p_token && !x.auth_user_id)
+        const c = this.rows('clientes').find(x => x.token === args.p_token && !x.auth_user_id && vigente(x))
         if (c && me) c.auth_user_id = me
         return empty(route)
       }
       case 'mark_plan_opened': {
-        const c = this.rows('clientes').find(x => x.token === args.p_token)
+        const c = this.rows('clientes').find(x => x.token === args.p_token && vigente(x))
         if (c) c.plan_last_opened_at = new Date().toISOString()
         return empty(route)
       }

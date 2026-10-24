@@ -1,4 +1,5 @@
-export function NotFound() {
+/** `caducado`: el enlace existía pero su entrenador le puso fecha límite y ya pasó. */
+export function NotFound({ caducado = false }: { caducado?: boolean }) {
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
       <div className="max-w-sm space-y-6">
@@ -9,9 +10,11 @@ export function NotFound() {
           </h1>
         </div>
         <div>
-          <p className="text-lg font-semibold text-ink">Enlace no encontrado</p>
+          <p className="text-lg font-semibold text-ink">{caducado ? 'Este enlace ha caducado' : 'Enlace no encontrado'}</p>
           <p className="text-sm text-muted mt-2 leading-relaxed">
-            Este enlace no existe o ha caducado. Si eres cliente, pide a tu entrenador que te envíe el enlace correcto.
+            {caducado
+              ? 'Por seguridad, tu entrenador le puso fecha límite y ya ha pasado. Pídele un enlace nuevo: tus datos y tu cuenta siguen donde estaban.'
+              : 'Este enlace no existe o ha caducado. Si eres cliente, pide a tu entrenador que te envíe el enlace correcto.'}
           </p>
         </div>
         <div className="flex flex-col gap-2">

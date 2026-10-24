@@ -19,8 +19,9 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261023000007_rgpd_consentimientos.sql` | Bloque 9 (RGPD), **aplicado el 2026-10-23** |
 | `migrations/20261023000008_rgpd_exportar_datos_cliente.sql` | Bloque 10 (RGPD), **aplicado el 2026-10-23** |
 | `migrations/20261023000009_rgpd_borrado_completo_cliente.sql` | Bloque 11 (RGPD), **aplicado el 2026-10-23** |
+| `migrations/20261024000001_enlace_caducidad.sql` | Bloque 8: caducidad opcional del enlace del cliente y `get_client_link_status`, **aplicado el 2026-10-24** |
 | `hardening/20261023_rgpd.sql` | Origen de los bloques 9 a 11 (consentimientos, exportación y borrado completo de un cliente), ya aplicados. Ver `docs/rgpd.md` |
-| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; el 6 (opcional) y el 8, sin aplicar |
+| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; el 8 (caducidad del enlace) se aplicó el 2026-10-24; solo queda el 6, opcional |
 | `hardening/tests/` | Pruebas de los bloques 1, 7, 8 y 9 a 11 y sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 

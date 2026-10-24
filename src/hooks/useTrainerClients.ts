@@ -162,6 +162,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       fechanacimiento: (data || [])[i]?.fechanacimiento || null,
       label_ids: (data || [])[i]?.label_ids || [],
       main_goal: (data || [])[i]?.main_goal || undefined,
+      token_expires_at: (data || [])[i]?.token_expires_at ?? null,
     }))
 
     const hoy = localDateKey()

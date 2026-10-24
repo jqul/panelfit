@@ -14,6 +14,7 @@ import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
+import { pantallaDeEnlace } from '../../lib/enlaceCliente'
 import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
 import { BadgesWidget } from './BadgesWidget'
@@ -40,6 +41,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [linkExpired, setLinkExpired] = useState(false)
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
@@ -144,7 +146,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       const cached = cacheGet<ClienteRow>(CLIENT_CACHE_KEY(token))
       if (cached) clientData = cached
     }
-    if (!clientData) { setError('Enlace no válido o expirado.'); setLoading(false); return }
+    if (!clientData) {
+      // Sin cliente y sin fallo de red: o el enlace caducó o no existe. El servidor lo distingue sin
+      // devolver ningún dato, para decirle al cliente qué hacer (pedir uno nuevo) en vez de "404".
+      if (!cErr) {
+        const { data: estado } = await supabase.rpc('get_client_link_status', { p_token: token })
+        if (pantallaDeEnlace(estado) === 'caducado') setLinkExpired(true)
+      }
+      setError('Enlace no válido o expirado.'); setLoading(false); return
+    }
     setClient(clientData)
     cacheSet(CLIENT_CACHE_KEY(token), clientData)
 
@@ -364,7 +374,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     </div>
   )
 
-  if (error) return <NotFound />
+  if (error) return <NotFound caducado={linkExpired} />
 
   // ── Registro / Login ──
   if (authState === 'needs_register' && client) {

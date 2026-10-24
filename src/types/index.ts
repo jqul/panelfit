@@ -13,6 +13,7 @@ export interface ClientData {
   id: string; name: string; surname: string; weight: number; fatPercentage: number
   muscleMass: number; totalLifted: number; planDescription: string
   trainerId: string; token: string; createdAt: number; isActive?: boolean
+  token_expires_at?: string | null  // el enlace de acceso deja de funcionar a partir de esta fecha (null = no caduca)
   phone?: string  // WhatsApp del cliente
   objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
   altura?: number; genero?: string; fechanacimiento?: string
