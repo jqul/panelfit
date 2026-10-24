@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
-import { ActiveWorkout } from './ActiveWorkout'
-import { SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
@@ -78,6 +78,7 @@ function estimateMinutes(exercises: any[]): number {
 }
 
 export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+  usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)

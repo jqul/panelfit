@@ -3,7 +3,7 @@
 //
 // Qué se guarda en el dispositivo:
 //   - el esqueleto de la app (index.html), con UNA sola clave, nunca la URL visitada
-//   - los ficheros con hash de Vite (/assets/*): son inmutables, así que se sirven de la caché
+//   - los ficheros con hash de Vite (/assets/*) y las tipografías (/fonts/*): no cambian, así que se sirven de la caché
 //   - unos pocos ficheros estáticos conocidos (iconos, manifest, descripciones de ejercicios)
 // Qué NO se guarda nunca: cualquier otra ruta del mismo origen, ni peticiones a Supabase
 // (otro origen), ni nada que no sea GET. Antes se guardaba cualquier GET del mismo origen y
@@ -25,7 +25,7 @@ const isCacheable = res => res.ok && res.type === 'basic'
 function classify(request, url) {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return 'bypass'
   if (request.mode === 'navigate') return 'shell'
-  if (url.pathname.startsWith('/assets/')) return 'asset'
+  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/fonts/')) return 'asset'
   if (isStaticFile(url.pathname)) return 'static'
   return 'bypass'
 }

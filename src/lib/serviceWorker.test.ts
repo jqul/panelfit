@@ -112,6 +112,15 @@ describe('service worker', () => {
     expect(sw.calls.length).toBe(antes) // no volvió a la red
   })
 
+  it('las tipografías del propio dominio se guardan y se sirven de la caché', async () => {
+    const sw = setup({ '/fonts/outfit-latin-variable.woff2': () => new Response('fuente', { headers: { 'content-type': 'font/woff2' } }) })
+    await sw.fetchEvent({ url: '/fonts/outfit-latin-variable.woff2' })
+    const antes = sw.calls.length
+    const r = await sw.fetchEvent({ url: '/fonts/outfit-latin-variable.woff2' })
+    expect(await r.response!.text()).toBe('fuente')
+    expect(sw.calls.length).toBe(antes)
+  })
+
   it('un fichero con hash que da 404 no se guarda', async () => {
     const sw = setup({})
     const r = await sw.fetchEvent({ url: '/assets/viejo-xyz.js' })

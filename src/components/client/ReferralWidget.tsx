@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Gift, Copy, Check } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
+import { DEMO_PUBLIC_SLUG } from '../../lib/demoIds'
 import { referralCode } from '../../lib/referral'
 
 export function ReferralWidget({ trainerId, token }: { trainerId: string; token: string }) {

@@ -1,5 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
+
+/* Tipografías alojadas en el propio dominio (antes venían de Google Fonts): una conexión menos, funcionan
+   sin conexión (las guarda el service worker) y no se envía la IP de cada visitante a Google. Solo el
+   subconjunto latino, que cubre el español. Fuente: Google Fonts (licencia SIL OFL). Si se cambia un
+   fichero, cambia también su nombre: el service worker los guarda con caché primero. */
+@font-face {
+  font-family: "DM Serif Display"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/fonts/dm-serif-display-latin-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "DM Serif Display"; font-style: italic; font-weight: 400; font-display: swap;
+  src: url("/fonts/dm-serif-display-latin-400-italic.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Outfit"; font-style: normal; font-weight: 300 700; font-display: swap;
+  src: url("/fonts/outfit-latin-variable.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 @theme {
   --font-serif: "DM Serif Display", Georgia, serif;

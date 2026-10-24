@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { CheckSquare, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { localDateKey } from '../../lib/dates'
-import { DEMO_HABITOS_MAP } from '../../lib/demo-data-extra'
 
 interface Habito { id: string; text: string; sub?: string; order: number }
 
@@ -13,7 +12,10 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
   const today = localDateKey()
 
   useEffect(() => {
-    if (clientId.startsWith('demo-client-')) { setHabitos((DEMO_HABITOS_MAP[clientId] || []).map(h => ({ id: h.id, text: h.text, sub: h.sub, order: h.order }))); setLoading(false); return }
+    if (clientId.startsWith('demo-client-')) {
+      import('../../lib/demo-data-extra').then(({ DEMO_HABITOS_MAP }) => { setHabitos((DEMO_HABITOS_MAP[clientId] || []).map(h => ({ id: h.id, text: h.text, sub: h.sub, order: h.order }))); setLoading(false) })
+      return
+    }
     setLoading(true)
     Promise.all([
       supabase.from('habitos').select('id, text, sub, order').eq('clientId', clientId).order('order'),

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { DEFAULT_EXERCISE_LIBRARY } from './defaultExerciseLibrary'
-import { DEMO_TRAINER_ID } from './demo-data'
+import { DEMO_TRAINER_ID } from './demoIds'
 import { fetchAllPages } from './fetchAllPages'
 
 // Lectura ligera (solo nombre + categoría) de la biblioteca del entrenador,

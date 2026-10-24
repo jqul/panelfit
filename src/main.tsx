@@ -1,13 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { inject } from '@vercel/analytics'
 import './index.css'
 import App from './App'
 import { ErrorBoundary } from './components/shared/ErrorBoundary'
 import { reloadOnceForNewVersion } from './lib/staleChunk'
-import { sinParametrosSensibles } from './lib/analyticsUrl'
+import { loadAnalyticsWhenIdle } from './lib/analytics'
 
-inject({ beforeSend: event => ({ ...event, url: sinParametrosSensibles(event.url) }) })
+// La analítica no hace falta para pintar: se carga cuando el navegador está libre.
+loadAnalyticsWhenIdle()
 
 // Vite lanza este evento cuando falla la precarga de un chunk (típico tras un
 // despliegue con la pestaña abierta): recargamos para traer la versión nueva.
