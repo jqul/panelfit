@@ -43,6 +43,8 @@ import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 
 // recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
+// La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
+const GlobalSearch = lazy(() => import('./GlobalSearch').then(m => ({ default: m.GlobalSearch })))
 
 type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
 
@@ -101,6 +103,20 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const library = useExerciseLibrary(userProfile.uid)
   const [myTeams, setMyTeams] = useState<{ uid: string; displayName: string }[]>([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchEverOpened, setSearchEverOpened] = useState(false)
+  // Texto con el que la búsqueda global abre Ejercicios / Workouts / Programas; el nonce remonta la pestaña
+  // aunque ya estuvieras en ella.
+  const [seed, setSeed] = useState<{ tab: Tab | null; text: string; nonce: number }>({ tab: null, text: '', nonce: 0 })
+  const openSearch = () => { setSearchEverOpened(true); setSearchOpen(true); setSidebarOpen(false) }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     if (demoClients) return
@@ -166,6 +182,29 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'mensajes',  icon: MessageCircle,   label: 'Mensajes' },
     { id: 'mas',       icon: MoreHorizontal,  label: 'Más' },
   ]
+  const verTab = (tab: Tab) => () => handleTabChange(tab)
+  const SEARCH_ACTIONS = [
+    ...(limitReached ? [] : [{ id: 'nuevo-cliente', title: 'Nuevo cliente', keywords: 'añadir crear alta', run: () => setShowAdd(true) }]),
+    { id: 'ir-bandeja', title: 'Ir a la Bandeja', keywords: 'cola avisos pendientes urgente hoy', run: verTab('bandeja') },
+    { id: 'ir-clientes', title: 'Ir a Clientes', keywords: 'lista alumnos', run: verTab('clients') },
+    { id: 'ir-hoy', title: 'Ir a Hoy', keywords: 'resumen inicio dashboard', run: verTab('dashboard') },
+    { id: 'ir-workouts', title: 'Ir a Workouts', keywords: 'plantillas rutinas planificar', run: verTab('templates') },
+    { id: 'ir-ejercicios', title: 'Ir a Ejercicios', keywords: 'biblioteca', run: verTab('exercises') },
+    { id: 'ir-programas', title: 'Ir a Programas', keywords: 'planificar', run: verTab('programas') },
+    { id: 'ir-mensajes', title: 'Ir a Mensajes', keywords: 'chat whatsapp', run: verTab('mensajes') },
+    { id: 'ir-calendario', title: 'Ir al Calendario', keywords: 'agenda citas', run: verTab('calendario') },
+    { id: 'ir-etiquetas', title: 'Ir a Etiquetas', keywords: 'labels', run: verTab('etiquetas') },
+    { id: 'ir-encuestas', title: 'Ir a Encuestas', keywords: 'formularios checkin', run: verTab('encuestas') },
+    { id: 'ir-adherencia', title: 'Ir a Adherencia', keywords: 'cumplimiento', run: verTab('adherencia') },
+    { id: 'ir-insights', title: 'Ir a Insights', keywords: 'estadisticas analisis', run: verTab('insights') },
+    { id: 'ir-cohortes', title: 'Ir a Grupos', keywords: 'cohortes', run: verTab('cohortes') },
+    { id: 'ir-negocio', title: 'Ir a Mi negocio', keywords: 'ingresos facturacion', run: verTab('negocio') },
+    { id: 'ir-ajustes', title: 'Ir a Ajustes', keywords: 'configuracion cuenta perfil settings', run: verTab('settings') },
+  ]
+  const abrirConTexto = (tab: Tab) => (text: string) => { setSeed(s => ({ tab, text, nonce: s.nonce + 1 })); handleTabChange(tab) }
+  // El texto solo vale para la pestaña a la que se saltó; si luego se navega a otra, se olvida.
+  useEffect(() => { if (seed.tab && seed.tab !== activeTab) setSeed(s => ({ ...s, tab: null, text: '' })) }, [activeTab, seed.tab])
+  const seedFor = (tab: Tab) => (seed.tab === tab ? seed.text : '')
   const isTopNavActive = (item: Tab) => {
     if (item === 'templates') return PLANIFICAR_TABS.includes(activeTab)
     if (item === 'mas') return activeTab === 'mas' || MAS_TABS.includes(activeTab)
@@ -208,6 +247,14 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             <p className="text-[11px] text-muted truncate">{userProfile.email}</p>
           </div>
         </div>
+      </div>
+      <div className="px-3 pt-3">
+        <button onClick={openSearch} aria-label="Buscar en todo el panel"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-bg-alt/40 text-muted text-xs hover:border-ink hover:text-ink transition-colors">
+          <Search className="w-3.5 h-3.5" />
+          <span className="flex-1 text-left">Buscar…</span>
+          <kbd className="text-[11px] font-semibold border border-border rounded px-1 py-0.5 bg-card">Ctrl K</kbd>
+        </button>
       </div>
       <div className="px-3 py-3 border-b border-border">
         <p className="text-[11px] font-semibold text-muted px-2 mb-2 tracking-wider">Accesos rápidos</p>
@@ -271,7 +318,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
           <button onClick={() => setSidebarOpen(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
-          <button onClick={() => !limitReached && setShowAdd(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><UserPlus className="w-5 h-5" /></button>
+          <div className="flex items-center">
+            <button onClick={openSearch} aria-label="Buscar" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Search className="w-5 h-5" /></button>
+            <button onClick={() => !limitReached && setShowAdd(true)} aria-label="Nuevo cliente" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><UserPlus className="w-5 h-5" /></button>
+          </div>
         </div>
 
         <div className="p-4 lg:p-6">
@@ -638,12 +688,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           )}
 
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
-          {activeTab === 'exercises'  && <ExercisesTab exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
-          {activeTab === 'templates'  && <TemplatesTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
+          {activeTab === 'exercises'  && <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'templates'  && <TemplatesTab key={`tp-${seed.nonce}`} initialSearch={seedFor('templates')} trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
           {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas'  && <ProgramasTab trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
+          {activeTab === 'programas'  && <ProgramasTab key={`pg-${seed.nonce}`} initialSearch={seedFor('programas')} trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
           {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
@@ -692,6 +742,14 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
         </div>
       </main>
+
+      {searchEverOpened && (
+        <Suspense fallback={null}>
+          <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)}
+            trainerId={userProfile.uid} isDemo={!!demoClients} clients={clients} exercises={library.exercises} actions={SEARCH_ACTIONS}
+            onClient={onSelectClient} onExercise={abrirConTexto('exercises')} onTemplate={abrirConTexto('templates')} onProgram={abrirConTexto('programas')} />
+        </Suspense>
+      )}
 
       {/* Modal nuevo cliente */}
       <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente" variant="drawer">

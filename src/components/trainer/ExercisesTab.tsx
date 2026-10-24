@@ -445,14 +445,16 @@ function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
 interface Props {
   exercises: LibraryExercise[]
   trainerId: string
+  /** Texto con el que abre el buscador (viene de la búsqueda global). */
+  initialSearch?: string
   onAdd: (name:string,desc:string,cat:string,videos:LibraryVideo[],esps:string[],tags:string[])=>void
   onUpdate: (id:string,updates:Partial<LibraryExercise>)=>void
   onDelete: (id:string)=>void
 }
 
 // ── ExercisesTab ───────────────────────────────────────────
-export function ExercisesTab({ exercises, trainerId, onAdd, onUpdate, onDelete }: Props) {
-  const [search, setSearch]         = useState('')
+export function ExercisesTab({ exercises, trainerId, initialSearch = '', onAdd, onUpdate, onDelete }: Props) {
+  const [search, setSearch]         = useState(initialSearch)
   const [filterCat, setFilterCat]   = useState('')
   const [filterEsp, setFilterEsp]   = useState('')
   const [filterTag, setFilterTag]   = useState('')
