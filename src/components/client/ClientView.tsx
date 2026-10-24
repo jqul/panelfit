@@ -28,6 +28,7 @@ import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
+import { SyncStatusContext } from './client-view/SyncStatus'
 import { ConsentGate } from './ConsentGate'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
@@ -457,6 +458,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   ]
 
   return (
+    <SyncStatusContext.Provider value={{ state: syncState, pendingCount, retry: () => { trySyncPendingLogs(client.id) } }}>
     <div className="h-[100dvh] overflow-hidden flex flex-col"
       style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: 'var(--color-bg)' }}>
 
@@ -548,5 +550,6 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </nav>
     </div>
+    </SyncStatusContext.Provider>
   )
 }

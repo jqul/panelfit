@@ -4,6 +4,7 @@ import { Exercise } from '../../../types'
 import { parseSet } from './utils'
 import { FinishButton } from './FinishButton'
 import { useSwipe } from '../../../lib/swipe'
+import { SyncBadge } from '../client-view/SyncStatus'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
@@ -176,6 +177,7 @@ export function FocusWorkout(p: Props) {
             <p className="font-semibold text-sm truncate">{p.title}</p>
             <p className="text-[11px] text-muted truncate">{p.clientName ? `Sesión de ${p.clientName} · ` : ''}Ejercicio {p.ri + 1} de {p.exercises.length}</p>
           </div>
+          <SyncBadge />
           <div className="flex items-center gap-1 text-xs text-muted">
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono font-semibold tabular-nums">{p.elapsedLabel}</span>
