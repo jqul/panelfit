@@ -119,8 +119,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   // borradores sin publicar y clientes en riesgo — una sola lista en vez de
   // "Requieren atención" + "Tareas de hoy" + Bandeja calculando cada una lo
   // suyo por separado.
-  const { visibleItems: inboxVisibleItems, pendingCount: inboxPendingCount, loading: inboxLoading } = useInboxItems(userProfile.uid, clients, logsMap)
-  const inboxTop = inboxVisibleItems(true).slice(0, 5)
+  const { queue: inboxQueue, loading: inboxLoading } = useInboxItems(userProfile.uid, clients, logsMap)
+  const inboxPendingCount = inboxQueue.badge // clientes por atender (urgente + hoy), no avisos sueltos
+  const inboxTop = inboxQueue.pending.slice(0, 5)
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
@@ -498,15 +499,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </div>
                   ) : (
                     <div className="divide-y divide-border/50">
-                      {inboxTop.map(item => {
-                        const c = clients.find(cl => cl.id === item.clientId)
+                      {inboxTop.map(row => {
+                        const c = clients.find(cl => cl.id === row.clientId)
                         return (
-                          <button key={item.key} onClick={() => c && onSelectClient(c)}
+                          <button key={row.clientId} onClick={() => c && onSelectClient(c)}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
-                            <div className="w-7 h-7 rounded-full bg-warn/10 flex items-center justify-center text-xs font-bold text-warn flex-shrink-0">{item.clientName[0]?.toUpperCase()}</div>
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${row.tier === 'urgente' ? 'bg-warn/20 text-warn' : 'bg-warn/10 text-warn'}`}>{row.clientName[0]?.toUpperCase()}</div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold truncate">{item.clientName}</p>
-                              <p className="text-[11px] text-muted truncate">{item.detail}</p>
+                              <p className="text-xs font-semibold truncate">{row.clientName}</p>
+                              <p className="text-[11px] text-muted truncate">{row.reasons[0].detail}{row.reasons.length > 1 ? ` · +${row.reasons.length - 1}` : ''}</p>
                             </div>
                             <ChevronRight className="w-3 h-3 text-muted flex-shrink-0" />
                           </button>

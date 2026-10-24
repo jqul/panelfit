@@ -5,23 +5,17 @@ import { PainEntry } from '../lib/clientPain'
 import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
 import { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP } from '../lib/demo-data-extra'
+import { buildQueue, isSnoozed, type QueueItem, type QueueKind, type QueueTier } from '../lib/dailyQueue'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
 interface BorradorRow { clientId: string; borrador_activo: boolean; borrador_started_at: string | null }
 interface ReviewRow { clientId: string; week_start: string }
 
-export type InboxKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo' | 'revision'
+export type InboxKind = QueueKind
 
-export interface InboxItem {
-  key: string
-  clientId: string
-  clientName: string
-  date: string
-  kind: InboxKind
-  detail: string
-  warn?: boolean
-}
+// Un aviso con su prioridad (nivel y puntuación): de ahí sale la cola diaria (lib/dailyQueue.ts).
+export type InboxItem = QueueItem & { warn?: boolean }
 
 // Umbral para que una molestia articular aparezca — por debajo de esto es
 // más ruido que señal (ver DolorChart: >=7 alto, >=4 moderado).
@@ -32,12 +26,12 @@ const DAYS_BACK = 14
 // con ACWR alto, por ejemplo) — se muestra solo el más urgente de todos, en
 // este orden, en vez de generar un ítem por cada uno (serían 4-5 líneas
 // repetidas del mismo cliente en la bandeja).
-function riskDetail(c: ClientWithStats): string | null {
-  if (!c.hasPlan) return 'Sin plan asignado'
-  if (c.highAcwr) return `⚡ Carga alta (ACWR ${c.acwrRatio})`
-  if (c.highJumpDrop) return `🦵 Caída de salto (${c.jumpDropPct}%)`
-  if (c.atRisk) return '🚩 Riesgo de abandono'
-  if (c.planEndingSoon) return `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}`
+function riskInfo(c: ClientWithStats): { detail: string; tier: QueueTier; score: number } | null {
+  if (!c.hasPlan) return { detail: 'Sin plan asignado', tier: 'hoy', score: 70 }
+  if (c.highAcwr) return { detail: `⚡ Carga alta (ACWR ${c.acwrRatio})`, tier: 'urgente', score: 90 }
+  if (c.highJumpDrop) return { detail: `🦵 Caída de salto (${c.jumpDropPct}%)`, tier: 'urgente', score: 85 }
+  if (c.atRisk) return { detail: '🚩 Riesgo de abandono', tier: 'hoy', score: 60 }
+  if (c.planEndingSoon) return { detail: `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}`, tier: 'hoy', score: 40 }
   return null
 }
 
@@ -63,6 +57,15 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
   const [loading, setLoading] = useState(true)
   const [reviewed, setReviewed] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(`pf_bandeja_revisados_${trainerId}`) || '[]')) } catch { return new Set() }
+  })
+
+  // Clientes pospuestos: { clienteId: fecha en la que vuelven }. Se descartan los que ya han vuelto.
+  const [snoozed, setSnoozed] = useState<Record<string, string>>(() => {
+    try {
+      const hoy = localDateKey()
+      const guardado = JSON.parse(localStorage.getItem(`pf_bandeja_pospuestos_${trainerId}`) || '{}') as Record<string, string>
+      return Object.fromEntries(Object.entries(guardado).filter(([, hasta]) => isSnoozed(hasta, hoy)))
+    } catch { return {} }
   })
 
   useEffect(() => {
@@ -121,7 +124,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       })
       Object.entries(dateCounts).forEach(([date, count]) => {
         list.push({ key: `sesion:${c.id}:${date}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date, kind: 'sesion',
-          detail: `Completó una sesión (${count} ejercicio${count !== 1 ? 's' : ''})` })
+          detail: `Completó una sesión (${count} ejercicio${count !== 1 ? 's' : ''})`, tier: 'actividad', score: 0 })
       })
     })
 
@@ -129,34 +132,40 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       const name = nameOf(r.clientId); if (!name) return
       const warn = r.sleep <= 2 || r.soreness <= 2 || r.motivation <= 2
       list.push({ key: `readiness:${r.clientId}:${r.date}`, clientId: r.clientId, clientName: name, date: r.date, kind: 'readiness',
-        detail: `Check-in de forma — sueño ${r.sleep}/5, dolor ${r.soreness}/5, motivación ${r.motivation}/5`, warn })
+        detail: `Check-in de forma — sueño ${r.sleep}/5, dolor ${r.soreness}/5, motivación ${r.motivation}/5`, warn,
+        tier: warn ? 'hoy' : 'luego', score: warn ? 55 : 10 })
     })
 
     dolor.forEach(d => {
       const name = nameOf(d.clientId); if (!name || d.intensidad < DOLOR_ALERTA_MIN) return
       const esArticular = d.tipo === 'articular'
+      const urgente = d.intensidad >= 7 || (esArticular && d.intensidad >= 6)
       list.push({ key: `dolor:${d.id}`, clientId: d.clientId, clientName: name, date: d.date, kind: 'dolor',
         detail: `${esArticular ? 'Molestia articular' : 'Dolor'} en ${d.zona} (${d.intensidad}/10)${d.nota ? ` — "${d.nota}"` : ''}`,
-        warn: esArticular || d.intensidad >= 7 })
+        warn: esArticular || d.intensidad >= 7,
+        // Un dolor fuerte (≥7) o una molestia articular ya notable (≥6) no puede esperar; el resto se mira hoy.
+        tier: urgente ? 'urgente' : 'hoy', score: (urgente ? 100 : 50) + d.intensidad })
     })
 
     videos.forEach(v => {
       const name = nameOf(v.client_id); if (!name) return
       list.push({ key: `video:${v.id}`, clientId: v.client_id, clientName: name, date: localDateKey(new Date(v.created_at)), kind: 'video',
-        detail: `🎥 Pide feedback de "${v.exercise_name}"`, warn: true })
+        detail: `🎥 Pide feedback de "${v.exercise_name}"`, warn: true, tier: 'urgente', score: 80 })
     })
 
     borradores.forEach(b => {
       const name = nameOf(b.clientId); if (!name) return
       const date = b.borrador_started_at ? localDateKey(new Date(b.borrador_started_at)) : hoy
+      // Cuanto más antiguo, más sube (hasta 10 días): un borrador olvidado es un cliente sin su plan nuevo.
+      const dias = Math.max(0, Math.round((Date.now() - new Date(date + 'T00:00:00').getTime()) / 86400000))
       list.push({ key: `borrador:${b.clientId}`, clientId: b.clientId, clientName: name, date, kind: 'borrador',
-        detail: '📝 Borrador del plan sin publicar', warn: true })
+        detail: '📝 Borrador del plan sin publicar', warn: true, tier: 'hoy', score: 45 + Math.min(10, dias) })
     })
 
     clients.forEach(c => {
-      const detail = riskDetail(c)
-      if (!detail) return
-      list.push({ key: `riesgo:${c.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'riesgo', detail, warn: true })
+      const risk = riskInfo(c)
+      if (!risk) return
+      list.push({ key: `riesgo:${c.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'riesgo', detail: risk.detail, warn: true, tier: risk.tier, score: risk.score })
     })
 
     // Solo para clientes con objetivo principal puesto (el entrenador optó
@@ -175,24 +184,29 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       const last = lastReviews[c.id]
       if (last && last >= hace7Key) return
       list.push({ key: `revision:${c.id}:${weekKey}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'revision',
-        detail: '🎯 Toca revisión semanal del objetivo', warn: true })
+        detail: '🎯 Toca revisión semanal del objetivo', warn: true, tier: 'hoy', score: 35 })
     })
 
     // Lo urgente (warn) siempre arriba; dentro de cada bloque, lo más reciente primero.
     return list.sort((a, b) => (Number(!!b.warn) - Number(!!a.warn)) || b.date.localeCompare(a.date))
   }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews])
 
-  const visibleItems = (onlyPending: boolean) => onlyPending ? items.filter(i => !reviewed.has(i.key)) : items
-  const pendingCount = items.filter(i => !reviewed.has(i.key)).length
+  const persistReviewed = (next: Set<string>) => { try { localStorage.setItem(`pf_bandeja_revisados_${trainerId}`, JSON.stringify([...next])) } catch {} }
+  const persistSnoozed = (next: Record<string, string>) => { try { localStorage.setItem(`pf_bandeja_pospuestos_${trainerId}`, JSON.stringify(next)) } catch {} }
 
-  const toggleReviewed = (key: string) => {
+  /** Marca como hechos (o devuelve a pendientes) un conjunto de avisos de una vez. */
+  const setDone = (keys: string[], done: boolean) => {
     setReviewed(prev => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
-      try { localStorage.setItem(`pf_bandeja_revisados_${trainerId}`, JSON.stringify([...next])) } catch {}
+      keys.forEach(k => (done ? next.add(k) : next.delete(k)))
+      persistReviewed(next)
       return next
     })
   }
+  const snooze = (clientId: string, until: string) => setSnoozed(prev => { const next = { ...prev, [clientId]: until }; persistSnoozed(next); return next })
+  const unsnooze = (clientId: string) => setSnoozed(prev => { const { [clientId]: _quitado, ...next } = prev; persistSnoozed(next); return next })
 
-  return { items, visibleItems, pendingCount, reviewed, toggleReviewed, loading }
+  const queue = useMemo(() => buildQueue(items, { reviewed, snoozed, today: localDateKey() }), [items, reviewed, snoozed])
+
+  return { items, queue, setDone, snooze, unsnooze, loading }
 }
