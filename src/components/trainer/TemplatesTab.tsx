@@ -17,9 +17,11 @@ interface Props {
   trainerId: string
   clients: ClientData[]
   onManageLabels: () => void
+  /** Texto con el que abre el buscador (viene de la búsqueda global). */
+  initialSearch?: string
 }
 
-const LS_KEY      = (uid: string) => `pf_templates_${uid}`
+const LS_KEY     = (uid: string) => `pf_templates_${uid}`
 const LS_MIGRATED = (uid: string) => `pf_tmpl_migrated_${uid}`
 const LS_TYPES    = (uid: string) => `pf_custom_types_${uid}`
 
@@ -67,7 +69,7 @@ function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan, name: string, ty
 
 // ── Label pill ────────────────────────────────────────────
 
-export function TemplatesTab({ trainerId, onManageLabels }: Props) {
+export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: Props) {
   const [templates, setTemplates]     = useState<TrainingTemplate[]>([])
   const [labels, setLabels]           = useState<TrainerLabel[]>([])
   const [loading, setLoading]         = useState(true)
@@ -85,7 +87,7 @@ export function TemplatesTab({ trainerId, onManageLabels }: Props) {
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterType, setFilterType]   = useState<string | null>(null)
-  const [query, setQuery]             = useState('')
+  const [query, setQuery]             = useState(initialSearch)
   const [exportingId, setExportingId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)

@@ -44,7 +44,7 @@ export interface Program {
   updated_at: number
 }
 
-interface Props { trainerId: string; onManageLabels: () => void; clients: ClientData[] }
+interface Props { trainerId: string; onManageLabels: () => void; clients: ClientData[]; initialSearch?: string /* viene de la búsqueda global */ }
 
 // ── Config tipos tarea ────────────────────────────────────
 const TASK_TYPES = [
@@ -613,7 +613,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
+export function ProgramasTab({ trainerId, onManageLabels, clients, initialSearch = '' }: Props) {
   const [programs, setPrograms]   = useState<Program[]>([])
   const [labels, setLabels]       = useState<TrainerLabel[]>([])
   const [surveyTemplates, setSurveyTemplates] = useState<{ id: string; name: string }[]>([])
@@ -622,7 +622,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients }: Props) {
   const [editing, setEditing]     = useState<Program | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterTipo, setFilterTipo]   = useState<string | null>(null)
-  const [query, setQuery]             = useState('')
+  const [query, setQuery]             = useState(initialSearch)
   const [bulkAssignFor, setBulkAssignFor] = useState<Program | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
