@@ -8,7 +8,7 @@ import { localDateKey } from '../../../lib/dates'
 import { saveHistoryCopy } from '../../../lib/planSnapshot'
 import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan'
 import { loadProgramTemplates } from '../../../lib/programTemplates'
-import { DEMO_TRAINER_ID } from '../../../lib/demo-data'
+import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
 
 interface ProgramTask { id: string; type: string; title: string; data?: Record<string, any> }
 interface ProgramDay { tasks: ProgramTask[] }

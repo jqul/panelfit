@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
-import { ActiveWorkout } from './ActiveWorkout'
+import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
-import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { CalendarioTab } from './CalendarioTab'
 import { Modal } from '../shared/Modal'
@@ -55,6 +55,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
 }
 
 export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, view = 'semana', onViewChange }: Props) {
+  usePrefetchActiveWorkout()
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)

@@ -3,7 +3,7 @@ import { Plus, Trash2, Save, Clock, Utensils, X, ChevronDown, ChevronUp, Eye, Ey
 import { supabase } from '../../lib/supabase'
 import { parseDietExcel } from '../../lib/importDiet'
 import { toast } from './Toast'
-import { DEMO_DIETS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
+import { isDemoClientId } from '../../lib/demoIds'
 
 export interface Meal {
   id: string; time: string; name: string; kcal: number; items: string[]
@@ -158,7 +158,8 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
 
   const loadDiet = async () => {
     setLoading(true)
-    const demoDiet = isDemoClientId(clientId) ? DEMO_DIETS_MAP[clientId] : undefined
+    // Los datos de ejemplo solo se descargan en el modo demo.
+    const demoDiet = isDemoClientId(clientId) ? (await import('../../lib/demo-data-extra')).DEMO_DIETS_MAP[clientId] : undefined
     const { data } = isDemoClientId(clientId)
       ? { data: demoDiet ? { datos: demoDiet } : null }
       : await supabase.from('dietas').select('datos').eq('cliente_id', clientId).maybeSingle()
@@ -235,7 +236,7 @@ export function DietEditor({ clientId, isTrainer, trainerId, syncedMacros, onMac
     setSaving(true)
     const toSave = { ...diet, updatedAt: new Date().toISOString() }
     if (isDemoClientId(clientId)) {
-      DEMO_DIETS_MAP[clientId] = toSave
+      ;(await import('../../lib/demo-data-extra')).DEMO_DIETS_MAP[clientId] = toSave
       setDiet(toSave); toast('Dieta guardada ✓ (demo: solo en esta sesión)', 'ok'); setSaving(false)
       return
     }

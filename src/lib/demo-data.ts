@@ -1,7 +1,8 @@
 // Datos del modo demo — entrenador ficticio con clientes de ejemplo
 import { ClientData, TrainingPlan, TrainingLogs, TrainingTemplate, WeekPlan } from '../types'
 
-export const DEMO_TRAINER_ID = 'demo-trainer-001'
+import { DEMO_TRAINER_ID } from './demoIds'
+export { DEMO_TRAINER_ID }
 
 // ── ETIQUETAS DEMO ──────────────────────────────────────
 // Definidas antes de DEMO_CLIENTS para poder asignarlas por id a cada cliente.

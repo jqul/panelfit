@@ -1,10 +1,10 @@
-import { track } from '@vercel/analytics'
+import { track } from '../../lib/analytics'
 import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLabels } from '../../hooks/useLabels'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, ChevronRight,
@@ -40,7 +40,9 @@ import { PlanGate } from '../shared/PlanGate'
 import { PublicPageEditor } from './PublicPageEditor'
 import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+
+// recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
+const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
 
 type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
 
@@ -382,16 +384,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </button>
                   </div>
                   <div className="h-40 lg:h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                        <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6e5438" stopOpacity={0.2} /><stop offset="95%" stopColor="#6e5438" stopOpacity={0} /></linearGradient></defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0ede8" />
-                        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#8a8278' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'white', border: 'none', borderRadius: 12, fontSize: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }} />
-                        <Area type="monotone" dataKey="count" name="Clientes" stroke="#6e5438" strokeWidth={2.5} fill="url(#grad)" dot={{ fill: '#6e5438', r: 3 }} activeDot={{ r: 5 }} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<div className="h-full rounded-xl bg-bg-alt animate-pulse" />}>
+                      <ActividadChart data={chartData} />
+                    </Suspense>
                   </div>
                 </div>
 

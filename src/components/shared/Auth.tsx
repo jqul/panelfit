@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { track } from '@vercel/analytics'
+import { track } from '../../lib/analytics'
 import { supabase } from '../../lib/supabase'
 import { Eye, EyeOff, Check, ArrowRight } from 'lucide-react'
 

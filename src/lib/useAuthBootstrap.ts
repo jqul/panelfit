@@ -2,12 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
 import { clearTrainerDeviceData } from './deviceStorage'
-import {
-  DEMO_TRAINER_PROFILE, DEMO_TRAINER_ID,
-  DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA,
-  DEMO_WEIGHTS_DIEGO, DEMO_WEIGHTS_MARTA, DEMO_WEIGHTS_BEATRIZ, DEMO_WEIGHTS_LUCAS,
-  DEMO_DOLOR_MAP,
-} from './demo-data'
 
 export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
@@ -17,19 +11,9 @@ export interface PendingUser {
   displayName: string
 }
 
-export function hydrateDemoStorage() {
-  localStorage.setItem(`pf_trainer_profile_${DEMO_TRAINER_ID}`, JSON.stringify(DEMO_TRAINER_PROFILE))
-  localStorage.setItem(`pf_trainer_phone_${DEMO_TRAINER_ID}`, DEMO_TRAINER_PROFILE.phone)
-  localStorage.setItem(`pf_weight_demo-client-001`, JSON.stringify(DEMO_WEIGHTS_MARIA))
-  localStorage.setItem(`pf_weight_demo-client-002`, JSON.stringify(DEMO_WEIGHTS_CARLOS))
-  localStorage.setItem(`pf_weight_demo-client-003`, JSON.stringify(DEMO_WEIGHTS_LAURA))
-  localStorage.setItem(`pf_weight_demo-client-004`, JSON.stringify(DEMO_WEIGHTS_DIEGO))
-  localStorage.setItem(`pf_weight_demo-client-005`, JSON.stringify(DEMO_WEIGHTS_MARTA))
-  localStorage.setItem(`pf_weight_demo-client-006`, JSON.stringify(DEMO_WEIGHTS_BEATRIZ))
-  localStorage.setItem(`pf_weight_demo-client-007`, JSON.stringify(DEMO_WEIGHTS_LUCAS))
-  Object.entries(DEMO_DOLOR_MAP).forEach(([clientId, rows]) => {
-    localStorage.setItem(`pf_dolor_${clientId}`, JSON.stringify(rows))
-  })
+/** Siembra los datos de ejemplo del modo demo (se cargan bajo demanda: no hacen falta para el resto de la app). */
+export async function hydrateDemoStorage(): Promise<void> {
+  (await import('./demoHydrate')).hydrateDemoStorageSync()
 }
 
 export function useAuthBootstrap() {
@@ -52,7 +36,7 @@ export function useAuthBootstrap() {
     if (data.approved === false) {
       const displayName = data.displayName || email.split('@')[0]
       setPendingUser({ uid, email, displayName })
-      hydrateDemoStorage()
+      await hydrateDemoStorage()
       setView('pending-demo')
       return
     }
@@ -110,7 +94,7 @@ export function useAuthBootstrap() {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('c')
     if (token) { setClientToken(token); setView('client-token'); return }
-    if (params.get('demo') === '1') { hydrateDemoStorage(); setView('demo'); return }
+    if (params.get('demo') === '1') { hydrateDemoStorage().then(() => setView('demo')); return }
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
-import { isDemoTrainerId, buildDemoMessageTemplates } from './demo-data-extra'
+import { isDemoTrainerId } from './demoIds'
 
 export type MessageType = 'nueva_rutina' | 'racha' | 'descanso' | 'custom'
 
@@ -29,7 +29,7 @@ export function useMessageTemplates(trainerId?: string) {
 
   const load = useCallback(async () => {
     if (!trainerId) { setLoading(false); return }
-    if (isDemoTrainerId(trainerId)) { setTemplates(buildDemoMessageTemplates() as MessageTemplate[]); setLoading(false); return }
+    if (isDemoTrainerId(trainerId)) { setTemplates((await import('./demo-data-extra')).buildDemoMessageTemplates() as MessageTemplate[]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase.from('plantillas_mensajes').select('*').eq('trainerId', trainerId).order('createdAt')
     let rows = data || []

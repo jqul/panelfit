@@ -3,9 +3,9 @@
 // ids y los clientes para que nada se desincronice.
 import { DEMO_TRAINER_ID, DEMO_CLIENTS, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './demo-data'
 import { localDateKey } from './dates'
+import { isDemoClientId, isDemoTrainerId, DEMO_PUBLIC_SLUG } from './demoIds'
 
-export const isDemoClientId = (id?: string | null): boolean => !!id && id.startsWith('demo-client-')
-export const isDemoTrainerId = (id?: string | null): boolean => id === DEMO_TRAINER_ID
+export { isDemoClientId, isDemoTrainerId, DEMO_PUBLIC_SLUG }
 
 const dayStr = (daysAgo: number) => localDateKey(new Date(Date.now() - daysAgo * 86400000))
 
@@ -397,7 +397,6 @@ export function buildDemoConditioningBlocks() {
 }
 
 // ── PÁGINA PÚBLICA Y CONTACTOS (LEADS) ──────────────────
-export const DEMO_PUBLIC_SLUG = 'alexfit'
 export const DEMO_PUBLIC_PAGE = {
   bio: 'Entrenador personal especializado en hipertrofia y fuerza. Más de 200 clientes transformados con planes 100% personalizados, seguimiento semanal y nutrición incluida.',
   especialidades: ['Hipertrofia', 'Fuerza', 'Powerlifting', 'Pérdida de grasa', 'Rehabilitación', 'Rendimiento deportivo'],

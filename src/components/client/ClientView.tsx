@@ -18,10 +18,8 @@ import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
 import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
-import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/TrainingPlanEditor'
+import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
-import { buildDemoMessageTemplates } from '../../lib/demo-data-extra'
-import { DEMO_CLIENTS, DEMO_PLAN_MAP, DEMO_LOGS_MAP, DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { CLIENT_CACHE_KEY, PLAN_CACHE_KEY } from './client-view/helpers'
 import { cacheGet, cacheSet, hasPendingLogs, getPendingKeys, addPendingKeys, clearPendingKeys, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
@@ -108,23 +106,27 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     // solo si el token coincide EXACTO con uno de los 3 — un cliente real cuyo
     // token generado al azar empiece por "demo-" por pura coincidencia no debe
     // caer aquí, tiene que seguir el camino normal de abajo (get_client_by_token).
-    const demoClient = DEMO_CLIENTS.find(c => c.token === token)
-    if (demoClient) {
+    // Los datos de ejemplo (~25 kB gzip) solo se descargan si el enlace es de demostración.
+    const demo = token.startsWith('demo-')
+      ? await Promise.all([import('../../lib/demo-data'), import('../../lib/demo-data-extra')]).then(([d, x]) => ({ ...d, ...x }))
+      : null
+    const demoClient = demo?.DEMO_CLIENTS.find(c => c.token === token)
+    if (demo && demoClient) {
       // Enlace directo a un cliente demo sin haber pasado antes por el modo
       // demo del entrenador (?demo=1) — sin esto, el peso/dolor/etc. de este
       // cliente concreto nunca se sembraría en localStorage y sus pestañas
       // se verían vacías aunque el resto del demo sí tenga datos.
-      hydrateDemoStorage()
+      await hydrateDemoStorage()
       setClient({
         id: demoClient.id, trainerId: demoClient.trainerId, name: demoClient.name, surname: demoClient.surname,
         weight: demoClient.weight, fatPercentage: demoClient.fatPercentage, muscleMass: demoClient.muscleMass,
         totalLifted: demoClient.totalLifted, planDescription: demoClient.planDescription,
         token: demoClient.token, objetivo: demoClient.objetivo, createdAt: demoClient.createdAt,
       } as ClienteRow)
-      setPlan(DEMO_PLAN_MAP[demoClient.id] || null)
-      setLogs(DEMO_LOGS_MAP[demoClient.id] || {})
-      setTrainerProfile(DEMO_TRAINER_PROFILE)
-      setMessageTemplates(buildDemoMessageTemplates() as MessageTemplate[])
+      setPlan(demo.DEMO_PLAN_MAP[demoClient.id] || null)
+      setLogs(demo.DEMO_LOGS_MAP[demoClient.id] || {})
+      setTrainerProfile(demo.DEMO_TRAINER_PROFILE)
+      setMessageTemplates(demo.buildDemoMessageTemplates() as MessageTemplate[])
       setAuthState('authenticated')
       setLoading(false)
       return

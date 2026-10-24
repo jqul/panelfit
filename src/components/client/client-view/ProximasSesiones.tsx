@@ -4,7 +4,6 @@ import { supabase } from '../../../lib/supabase'
 import { logError } from '../../../lib/errors'
 import { sendPush } from '../../../lib/usePushNotifications'
 import { localDateKey } from '../../../lib/dates'
-import { DEMO_CITAS } from '../../../lib/demo-data'
 
 interface CitaCliente {
   id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
@@ -22,9 +21,12 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
 
   const load = () => {
     if (isDemo) {
-      setCitas(DEMO_CITAS.filter(c => c.client_id === clientId && (c.status === 'confirmada' || c.status === 'pendiente') && c.start_at >= new Date().toISOString())
-        .map(c => ({ id: c.id, title: c.title, start_at: c.start_at, status: c.status })))
-      setLoading(false); return
+      import('../../../lib/demo-data').then(({ DEMO_CITAS }) => {
+        setCitas(DEMO_CITAS.filter(c => c.client_id === clientId && (c.status === 'confirmada' || c.status === 'pendiente') && c.start_at >= new Date().toISOString())
+          .map(c => ({ id: c.id, title: c.title, start_at: c.start_at, status: c.status })))
+        setLoading(false)
+      })
+      return
     }
     supabase.from('citas')
       .select('id, title, start_at, status')
