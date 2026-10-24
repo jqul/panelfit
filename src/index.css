@@ -93,3 +93,10 @@
 }
 .pulse-dot        { animation: pulse-dot 2s infinite; }
 .animate-pr-pop   { animation: prPop 3.6s ease forwards; }
+
+/* Cambio de ejercicio deslizando: el contenido entra desde el lado hacia el que se va. */
+@keyframes pf-slide-next { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes pf-slide-prev { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.pf-slide-next { animation: pf-slide-next 180ms ease-out; }
+.pf-slide-prev { animation: pf-slide-prev 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .pf-slide-next, .pf-slide-prev { animation: none; } }
