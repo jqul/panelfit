@@ -223,3 +223,17 @@ as $$
   update public.clientes set plan_last_opened_at = now()
   where token = p_token and (token_expires_at is null or token_expires_at > now());
 $$;
+
+-- Estado del enlace, para que la pantalla del cliente diga "ha caducado" en vez del
+-- mismo error que un enlace inexistente. Solo responde a quien ya tiene el token
+-- (32 caracteres al azar), y no devuelve ningún dato del cliente: 'ok', 'expired' o null.
+create or replace function public.get_client_link_status(p_token text)
+ returns text language sql security definer stable
+ set search_path to 'public'
+as $$
+  select case when c.token_expires_at is not null and c.token_expires_at <= now() then 'expired' else 'ok' end
+  from public.clientes c
+  where c.token = p_token
+  limit 1;
+$$;
+grant execute on function public.get_client_link_status(text) to anon, authenticated;
