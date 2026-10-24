@@ -4,7 +4,7 @@ import { defineConfig } from '@playwright/test'
 // descarga ningún navegador) y un Supabase simulado en memoria (e2e/support/fakeSupabase.ts):
 // nunca tocan la base de datos real.
 //   npm run test:e2e
-const PORT = 5180
+const PORT = Number(process.env.E2E_PORT ?? 5180) // E2E_PORT permite lanzar las pruebas de varios worktrees a la vez sin pisarse
 
 export default defineConfig({
   testDir: 'e2e',
