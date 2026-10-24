@@ -1,6 +1,7 @@
 import { ChevronLeft, Clock, Flame, Focus } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
 import { FinishButton } from './FinishButton'
+import { SyncBadge } from '../client-view/SyncStatus'
 
 interface Props {
   title: string
@@ -38,6 +39,7 @@ export function WorkoutHeader({
           <div className="font-semibold text-sm truncate">{title}</div>
           {clientName && <p className="text-[11px] text-muted truncate">Sesión de {clientName}</p>}
         </div>
+        <SyncBadge />
         <div className="flex items-center gap-1 text-xs text-muted mr-2">
           <Clock className="w-3.5 h-3.5" />
           <span className="font-mono font-semibold tabular-nums">{elapsedLabel}</span>

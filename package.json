@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "size": "vite build && node scripts/bundle-report.mjs --check"
+    "size": "vite build && node scripts/bundle-report.mjs --check",
+    "test:e2e": "playwright test",
+    "typecheck:e2e": "tsc -p e2e"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -20,7 +22,9 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.2.0",
