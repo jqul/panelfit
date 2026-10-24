@@ -4,7 +4,7 @@ Recorren la app en un navegador de verdad (Chrome) como lo haría una persona. C
 hace más daño: perder entrenos, enseñar datos de salud sin consentimiento, publicar mal un plan o no poder borrar.
 
 ```bash
-npm run test:e2e        # 12 pruebas, ~1,5 min; arranca solo el servidor de desarrollo
+npm run test:e2e        # 15 pruebas, ~1,6 min; arranca solo el servidor de desarrollo
 npm run typecheck:e2e   # tipos de las pruebas
 ```
 
@@ -19,6 +19,7 @@ real**: todas las peticiones a Supabase las contesta un simulador en memoria (`e
 | `sesion-offline.e2e.ts` | Entreno sin conexión | Se pierde la conexión a mitad de un entreno: la serie queda en el móvil y **se ve dentro del entreno** que falta por subir; al volver se sube sola **sin pisar** lo que el entrenador escribió entretanto. Si falla la subida con conexión: queda pendiente y se puede reintentar |
 | `entreno-sin-descargar.e2e.ts` | Entreno no descargado | Sin conexión y sin tener descargado el entreno: avisa en vez de romper; "Volver" y "Reintentar" |
 | `publicar-plan.e2e.ts` | Publicar plan | El cliente no ve el borrador; al publicar, el plan nuevo llega al cliente, se limpia el borrador, sube la versión y queda copia en el historial. Si el cliente cambia sus días de entreno con la copia vieja en pantalla, **no pisa** lo que el entrenador acaba de publicar |
+| `cola-diaria.e2e.ts` | Bandeja del entrenador | Los avisos se reúnen en una fila por cliente, ordenada por urgencia (urgente / para hoy / cuando puedas); lo urgente no se pospone; hecho y posponer sacan la fila, se recuperan y se recuerdan al recargar; un aviso nuevo devuelve a la cola a un cliente marcado como hecho |
 | `borrar-datos.e2e.ts` | Borrado (RGPD) | El entrenador borra a un cliente: confirmación escribiendo el nombre, ficheros de Storage del cliente (los de otro no), filas de todas las tablas y solo las suyas, constancia del borrado. Si falla el borrado de ficheros no se borra nada más. El cliente que pide el borrado retira su consentimiento, avisa al entrenador y no se borra nada solo |
 
 ## Cómo funciona el simulador y qué NO prueba
