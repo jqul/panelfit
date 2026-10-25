@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
@@ -8,6 +8,9 @@ import { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
+
+// La hoja de "registrar entreno ya hecho" solo se descarga al abrirla.
+const QuickLogSheet = lazy(() => import('./QuickLogSheet').then(m => ({ default: m.QuickLogSheet })))
 
 interface Props {
   plan: TrainingPlan
@@ -81,6 +84,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
   usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
+  const [quickLogOpen, setQuickLogOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
 
   useEffect(() => {
@@ -263,6 +267,17 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                  todayDone > 0 ? `Continuar — ${todayTotal - todayDone} ejercicios restantes` :
                  'Empezar entrenamiento'}
               </button>
+              {!todayComplete && (
+                <button onClick={() => setQuickLogOpen(true)} className="w-full mt-2 py-2.5 text-sm font-semibold text-muted hover:text-ink underline-offset-2 hover:underline"
+                  style={{ minHeight: '44px' }}>
+                  ¿Ya lo hiciste? Regístralo sin repetirlo
+                </button>
+              )}
+              {quickLogOpen && (
+                <Suspense fallback={null}>
+                  <QuickLogSheet open onClose={() => setQuickLogOpen(false)} day={todaySession.day} dayKey={todaySession.dayKey} logs={logs} onLogsChange={onLogsChange} />
+                </Suspense>
+              )}
             </div>
           </div>
         ) : (
