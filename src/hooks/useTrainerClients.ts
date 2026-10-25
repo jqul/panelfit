@@ -162,6 +162,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       fechanacimiento: (data || [])[i]?.fechanacimiento || null,
       label_ids: (data || [])[i]?.label_ids || [],
       main_goal: (data || [])[i]?.main_goal || undefined,
+      plan_last_opened_at: (data || [])[i]?.plan_last_opened_at ?? null,
       token_expires_at: (data || [])[i]?.token_expires_at ?? null,
     }))
 
@@ -246,7 +247,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
   const addClient = async (newClient: {
     name: string; surname: string; phone: string; objetivo: string
     altura: string; peso: string; genero: string; fechanacimiento: string
-  }, labelIds: string[] = []) => {
+  }, labelIds: string[] = []): Promise<string | false> => {
     if (clients.length >= clientLimit) {
       toast(`Limite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn')
       return false
@@ -274,7 +275,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     toast('Cliente creado ✓', 'ok')
     if (inserted?.id) await autoAssignProgram(inserted.id, objetivo)
     await fetchClients()
-    return true
+    return inserted?.id ?? false // id del cliente creado (verdadero): quien lo necesite puede seguir con él
   }
 
   // Al dar de alta un cliente, si el entrenador ya tiene un programa que encaja

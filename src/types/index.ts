@@ -24,6 +24,7 @@ export interface ClientData {
   equipo_disponible?: string  // equipo con el que cuenta el cliente para entrenar — solo lo ve el entrenador
   metricas_cliente?: string[]  // ids de Section (lib/progresoSections) que el cliente puede ver en su propio panel
   main_goal?: string  // objetivo principal del cliente en sus palabras — distinto de objetivo (especialidad/categoría)
+  plan_last_opened_at?: string | null  // cuándo abrió el cliente su plan por última vez (null = nunca abrió el enlace)
 }
 
 // ── PLAN ──────────────────────────────────────────────

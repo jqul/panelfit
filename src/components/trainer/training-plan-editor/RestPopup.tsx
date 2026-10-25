@@ -17,7 +17,7 @@ export function RestPopup({ value, onChange, onClose, label }: {
       onClick={e => e.stopPropagation()}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-muted">{label}</p>
-        <button onClick={onClose} className="p-0.5 text-muted hover:text-ink"><X className="w-3 h-3" /></button>
+        <button aria-label="Cerrar" onClick={onClose} className="p-0.5 text-muted hover:text-ink"><X className="w-3 h-3" /></button>
       </div>
       <div className="grid grid-cols-3 gap-1 mb-2">
         {REST_PRESETS.map(p => (
