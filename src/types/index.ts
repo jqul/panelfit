@@ -94,6 +94,10 @@ export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
   category?: string; especialidades?: string[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
   tags?: string[]
+  material?: string          // Barra, Mancuerna, Máquina... (vacío = se deduce del nombre)
+  useCount?: number          // veces añadido a un plan (exercise_library.use_count)
+  archivedAt?: number | null // archivado: no sale al crear planes nuevos, pero los planes y registros viejos siguen
+  alternativas?: string[]    // nombres de ejercicios que lo sustituyen (por nombre: los planes también van por nombre)
 }
 
 // ── REGISTROS ─────────────────────────────────────────

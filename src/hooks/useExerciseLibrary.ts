@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
@@ -39,6 +39,10 @@ interface DBExercise {
   created_at: number
   updated_at: number
   deleted_at: number | null
+  // Migración 20261025000001: pueden no existir todavía en una base sin actualizar.
+  material?: string | null
+  archived_at?: number | null
+  alternativas?: string[] | null
 }
 
 function dbToLocal(row: DBExercise): LibraryExercise {
@@ -52,8 +56,14 @@ function dbToLocal(row: DBExercise): LibraryExercise {
     videos: row.videos || [],
     tags: row.tags || [],
     createdAt: row.created_at,
+    material: row.material || '',
+    useCount: row.use_count || 0,
+    archivedAt: row.archived_at ?? null,
+    alternativas: row.alternativas || [],
   }
 }
+
+const EXTENDED_COLUMNS = ['material', 'archived_at', 'alternativas'] as const
 
 function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'use_count' | 'video_use_count' | 'deleted_at'> {
   return {
@@ -67,11 +77,42 @@ function localToDB(ex: LibraryExercise, trainerId: string): Omit<DBExercise, 'us
     tags: ex.tags || [],
     created_at: ex.createdAt || Date.now(),
     updated_at: Date.now(),
+    material: ex.material || '',
+    archived_at: ex.archivedAt ?? null,
+    alternativas: ex.alternativas || [],
   }
 }
 
+// Una base sin la migración de la biblioteca rechaza las columnas nuevas: se reintenta sin ellas (el ejercicio se
+// guarda igual; lo que dependa de ellas, como archivar, no persiste hasta que se aplique) y se recuerda para no
+// volver a probar en cada guardado.
+let extendedColumnsAvailable = true
+const isMissingColumn = (e: { code?: string; message?: string } | null) =>
+  !!e && (e.code === 'PGRST204' || e.code === '42703' || /column .* does not exist|Could not find the .* column/i.test(e.message || ''))
+function withoutExtended<T extends object>(row: T): T {
+  const strip = (r: object) => { const copy = { ...r } as Record<string, unknown>; EXTENDED_COLUMNS.forEach(c => delete copy[c]); return copy }
+  return (Array.isArray(row) ? row.map(strip) : strip(row)) as T
+}
+/** Ejecuta una escritura (una fila o varias) con las columnas nuevas y, si la base aún no las tiene, la repite sin ellas. */
+async function writeTolerant<T extends object>(row: T, run: (r: T) => PromiseLike<{ error: { code?: string; message?: string } | null }>) {
+  if (extendedColumnsAvailable) {
+    const res = await run(row)
+    if (!isMissingColumn(res.error)) return res
+    extendedColumnsAvailable = false
+  }
+  return run(withoutExtended(row))
+}
+
+export interface NewExercise {
+  name: string; description?: string; category?: string; videos?: LibraryVideo[]
+  especialidades?: string[]; tags?: string[]; material?: string; alternativas?: string[]
+}
+
 export function useExerciseLibrary(trainerId: string) {
-  const [exercises, setExercises] = useState<LibraryExercise[]>([])
+  // `allExercises` incluye los archivados; `exercises` (lo que ven los selectores y el editor de planes) no.
+  const [allExercises, setExercises] = useState<LibraryExercise[]>([])
+  const exercises = useMemo(() => allExercises.filter(e => !e.archivedAt), [allExercises])
+  const archivedExercises = useMemo(() => allExercises.filter(e => !!e.archivedAt), [allExercises])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
 
@@ -94,6 +135,12 @@ export function useExerciseLibrary(trainerId: string) {
       }))
       setExercises(demo)
       setLoading(false)
+      // "Más usados" en la demo: las veces que cada ejercicio aparece en las plantillas de ejemplo.
+      import('../lib/demo-data').then(({ DEMO_PLAN_TEMPLATES }) => {
+        const uses = new Map<string, number>()
+        DEMO_PLAN_TEMPLATES.forEach(t => t.weeks.forEach(w => w.days.forEach(d => d.exercises.forEach(e => uses.set(e.name, (uses.get(e.name) || 0) + 1)))))
+        if (uses.size) setExercises(prev => prev.map(ex => uses.has(ex.name) ? { ...ex, useCount: uses.get(ex.name) } : ex))
+      })
       // Las descripciones se cargan aparte (no van en el bundle) y se
       // rellenan en cuanto llegan, sin bloquear el primer render de la lista.
       loadExerciseDescriptions().then(descriptions => {
@@ -239,7 +286,8 @@ export function useExerciseLibrary(trainerId: string) {
     category = '',
     videos: LibraryVideo[] = [],
     especialidades: string[] = [],
-    tags: string[] = []
+    tags: string[] = [],
+    extra: { material?: string; alternativas?: string[] } = {}
   ) => {
     const ex: LibraryExercise = {
       id: `ex_${Date.now()}`,
@@ -250,47 +298,71 @@ export function useExerciseLibrary(trainerId: string) {
       especialidades,
       videos,
       tags,
+      material: extra.material || '',
+      alternativas: extra.alternativas || [],
+      useCount: 0,
+      archivedAt: null,
       createdAt: Date.now(),
     }
 
     // Optimistic update
-    const updated = [...exercises, ex].sort((a, b) => a.name.localeCompare(b.name))
+    const updated = [...allExercises, ex].sort((a, b) => a.name.localeCompare(b.name))
     if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return ex }
     saveLocal(updated)
 
     // Persistir en Supabase
-    const { error } = await supabase
-      .from('exercise_library')
-      .insert(localToDB(ex, trainerId))
+    const { error } = await writeTolerant(localToDB(ex, trainerId), row => supabase.from('exercise_library').insert(row))
 
     if (error) {
       console.error('[PanelFit] Error al guardar ejercicio:', error)
       // Revertir si falla
-      saveLocal(exercises)
+      saveLocal(allExercises)
     }
 
     return ex
-  }, [exercises, trainerId])
+  }, [allExercises, trainerId])
+
+  /** Alta de varios de una vez (importar): una sola actualización de pantalla y la inserción por tandas. */
+  const addExercises = useCallback(async (list: NewExercise[]) => {
+    const now = Date.now()
+    const created: LibraryExercise[] = list.map((n, i) => ({
+      id: `ex_import_${now}_${i}`, trainerId, name: n.name.trim(), description: n.description || '', category: n.category || '',
+      especialidades: n.especialidades || [], videos: n.videos || [], tags: n.tags || [], material: n.material || '', alternativas: n.alternativas || [],
+      createdAt: now, useCount: 0, archivedAt: null,
+    }))
+    if (!created.length) return 0
+    const updated = [...allExercises, ...created].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return created.length }
+    saveLocal(updated)
+    // Por tandas: un CSV de varios cientos de filas no cabe cómodo en una sola petición.
+    for (let i = 0; i < created.length; i += 200) {
+      const rows = created.slice(i, i + 200).map(ex => ({ ...localToDB(ex, trainerId), use_count: 0, video_use_count: 0 }))
+      const { error } = await writeTolerant(rows, r => supabase.from('exercise_library').insert(r))
+      if (error) { console.error('[PanelFit] Error al importar ejercicios:', error); saveLocal(allExercises); return 0 }
+    }
+    return created.length
+  }, [allExercises, trainerId])
 
   const updateExercise = useCallback(async (id: string, updates: Partial<LibraryExercise>) => {
-    const updated = exercises.map(e => e.id === id ? { ...e, ...updates } : e)
+    const updated = allExercises.map(e => e.id === id ? { ...e, ...updates } : e)
     if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
     const ex = updated.find(e => e.id === id)
     if (!ex) return
 
-    const { error } = await supabase
-      .from('exercise_library')
-      .update({ ...localToDB(ex, trainerId), updated_at: Date.now() })
-      .eq('id', id)
+    const { error } = await writeTolerant({ ...localToDB(ex, trainerId), updated_at: Date.now() }, row => supabase.from('exercise_library').update(row).eq('id', id))
 
     if (error) console.error('[PanelFit] Error al actualizar ejercicio:', error)
-  }, [exercises, trainerId])
+  }, [allExercises, trainerId])
+
+  /** Archivar no borra nada: sale de los selectores, pero los planes y registros viejos (que van por nombre) siguen igual. */
+  const archiveExercise = useCallback((id: string) => updateExercise(id, { archivedAt: Date.now() }), [updateExercise])
+  const restoreExercise = useCallback((id: string) => updateExercise(id, { archivedAt: null }), [updateExercise])
 
   const deleteExercise = useCallback(async (id: string) => {
     // Optimistic update
-    const updated = exercises.filter(e => e.id !== id)
+    const updated = allExercises.filter(e => e.id !== id)
     if (trainerId === DEMO_TRAINER_ID) { setExercises(updated); return }
     saveLocal(updated)
 
@@ -301,7 +373,7 @@ export function useExerciseLibrary(trainerId: string) {
       .eq('id', id)
 
     if (error) console.error('[PanelFit] Error al eliminar ejercicio:', error)
-  }, [exercises, trainerId])
+  }, [allExercises, trainerId])
 
   // ── Telemetría ─────────────────────────────────────
   const trackUsage = useCallback(async (
@@ -376,9 +448,10 @@ export function useExerciseLibrary(trainerId: string) {
   }, [trainerId])
 
   // ── Helpers ────────────────────────────────────────
+  // También entre los archivados: un plan viejo que nombra un ejercicio archivado sigue necesitando su vídeo.
   const findByName = useCallback((name: string) =>
-    exercises.find(e => e.name.toLowerCase() === name.toLowerCase()),
-  [exercises])
+    allExercises.find(e => e.name.toLowerCase() === name.toLowerCase()),
+  [allExercises])
 
   // Priorización en 3 pasos
   const getVideosForClient = useCallback((
@@ -419,7 +492,7 @@ export function useExerciseLibrary(trainerId: string) {
   const validateAndClean = useCallback(() => {
     const VALID_ESPS = ['hipertrofia','fuerza','halterofilia','rehabilitacion','rendimiento','perdida_grasa']
     let changed = false
-    const cleaned = exercises.map(ex => {
+    const cleaned = allExercises.map(ex => {
       let e = { ...ex }
       if (e.especialidades) {
         const valid = e.especialidades.filter(esp => VALID_ESPS.includes(esp))
@@ -430,11 +503,11 @@ export function useExerciseLibrary(trainerId: string) {
     })
     if (changed) saveLocal(cleaned)
     return changed
-  }, [exercises])
+  }, [allExercises])
 
   return {
-    exercises, loading, syncing,
-    addExercise, updateExercise, deleteExercise,
+    exercises, archivedExercises, loading, syncing,
+    addExercise, addExercises, updateExercise, deleteExercise, archiveExercise, restoreExercise,
     findByName, getVideosForClient, getYTId,
     videoCountByEsp, trackUsage, getUsageStats,
     validateAndClean, syncFromSupabase,

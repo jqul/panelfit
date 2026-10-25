@@ -19,7 +19,6 @@ import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { ExercisesTab } from './ExercisesTab'
 import { TemplatesTab } from './TemplatesTab'
 import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
@@ -43,6 +42,8 @@ import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 
 // recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
+// La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
+const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 // La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
 const GlobalSearch = lazy(() => import('./GlobalSearch').then(m => ({ default: m.GlobalSearch })))
 
@@ -688,7 +689,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           )}
 
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
-          {activeTab === 'exercises'  && <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} trainerId={userProfile.uid} onAdd={(n,d,c,v,e,t) => library.addExercise(n,d,c,v,e,t)} onUpdate={library.updateExercise} onDelete={library.deleteExercise} />}
+          {activeTab === 'exercises'  && (
+            <Suspense fallback={<div className="space-y-2 max-w-4xl">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>}>
+              <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} archived={library.archivedExercises} trainerId={userProfile.uid}
+                onAdd={(n,d,c,v,e,t,extra) => library.addExercise(n,d,c,v,e,t,extra)} onUpdate={library.updateExercise} onDelete={library.deleteExercise}
+                onArchive={library.archiveExercise} onRestore={library.restoreExercise} onImport={library.addExercises} />
+            </Suspense>
+          )}
           {activeTab === 'templates'  && <TemplatesTab key={`tp-${seed.nonce}`} initialSearch={seedFor('templates')} trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
           {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
