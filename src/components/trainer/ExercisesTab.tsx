@@ -1,465 +1,57 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase } from '../../lib/supabase'
-import { Plus, Trash2, Edit2, X, Search, Settings2, Star, Dumbbell, MoreHorizontal, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, Settings2, Dumbbell, MoreHorizontal, SlidersHorizontal, Upload, AlertCircle } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
-import { matchesQuery } from '../../lib/workoutList'
-import { exerciseSubtitle, categoryCounts } from '../../lib/exerciseRow'
+import { Modal } from '../shared/Modal'
+import { toast } from '../shared/Toast'
 import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
-import { MuscleDiagram } from './MuscleDiagram'
+import { categoryCounts } from '../../lib/exerciseRow'
+import {
+  filtrar, recomendados, resumen, materialCounts, porRelevancia, nombreDeCopia, type Chip,
+} from '../../lib/exerciseLibrary'
+import type { NewExercise } from '../../hooks/useExerciseLibrary'
+import { FAV_KEY, CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TagBadge, load, save, type CustomTag } from './exercises/classification'
+import { ConfigPanel } from './exercises/ConfigPanel'
+import { ExerciseForm, formFrom, type FormState } from './exercises/ExerciseForm'
+import { ExerciseCard } from './exercises/ExerciseCard'
+import { QuickAddExercise } from './exercises/QuickAddExercise'
+import { ImportExercises } from './exercises/ImportExercises'
 
-// ── Persistencia ───────────────────────────────────────────
-const TAGS_KEY      = (uid: string) => `pf_tags_${uid}`
-const CATS_KEY      = (uid: string) => `pf_cats_${uid}`
-const ESPS_KEY      = (uid: string) => `pf_esps_${uid}`
-const FAV_KEY       = (uid: string) => `pf_fav_${uid}`
+export type { CustomTag, CustomEsp } from './exercises/classification'
 
-const DEFAULT_CATS = ['Pecho','Espalda','Hombros','Bíceps','Tríceps','Antebrazo','Piernas','Glúteos','Core','Cardio','Funcional/Olímpico','General']
-
-export interface CustomTag  { id: string; label: string; emoji: string; colorIdx: number }
-export interface CustomEsp  { id: string; label: string; emoji: string }
-
-const TAG_COLORS = [
-  { bg:'bg-blue-100',   text:'text-blue-700',   border:'border-blue-200'  },
-  { bg:'bg-purple-100', text:'text-purple-700',  border:'border-purple-200'},
-  { bg:'bg-pink-100',   text:'text-pink-700',    border:'border-pink-200'  },
-  { bg:'bg-green-100',  text:'text-green-700',   border:'border-green-200' },
-  { bg:'bg-orange-100', text:'text-orange-700',  border:'border-orange-200'},
-  { bg:'bg-teal-100',   text:'text-teal-700',    border:'border-teal-200'  },
-  { bg:'bg-rose-100',   text:'text-rose-700',    border:'border-rose-200'  },
-  { bg:'bg-amber-100',  text:'text-amber-700',   border:'border-amber-200' },
-]
-
-function load<T>(key: string, def: T): T {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def } catch { return def }
-}
-function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify(val)) }
-
-function TagBadge({ tag }: { tag: CustomTag }) {
-  const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
-  return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-      {tag.emoji} {tag.label}
-    </span>
-  )
-}
-
-// ── Panel configuración ────────────────────────────────────
-function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: string; onClose: () => void; onRefresh: () => void }) {
-  const [section, setSection] = useState<'cats'|'esps'|'tags'>('cats')
-
-  // Grupos musculares
-  const [cats, setCats] = useState<string[]>(() => load(CATS_KEY(trainerId), DEFAULT_CATS))
-  const [newCat, setNewCat] = useState('')
-  const addCat = () => { if (!newCat.trim()) return; const u=[...cats,newCat.trim()]; setCats(u); save(CATS_KEY(trainerId),u); setNewCat(''); onRefresh() }
-  const delCat = (i:number) => { const u=cats.filter((_,idx)=>idx!==i); setCats(u); save(CATS_KEY(trainerId),u); onRefresh() }
-  const editCat = (i:number,v:string) => { const u=[...cats]; u[i]=v; setCats(u); save(CATS_KEY(trainerId),u) }
-
-  // Especialidades
-  const [esps, setEsps] = useState<CustomEsp[]>(() => load(ESPS_KEY(trainerId), []))
-  const [newEspLabel, setNewEspLabel] = useState('')
-  const [newEspEmoji, setNewEspEmoji] = useState('⚡')
-  const addEsp = () => {
-    if (!newEspLabel.trim()) return
-    const u=[...esps,{ id:`esp_${Date.now()}`, label:newEspLabel.trim(), emoji:newEspEmoji }]
-    setEsps(u); save(ESPS_KEY(trainerId),u); setNewEspLabel(''); onRefresh()
-  }
-  const delEsp = (id:string) => { const u=esps.filter(e=>e.id!==id); setEsps(u); save(ESPS_KEY(trainerId),u); onRefresh() }
-  const editEsp = (id:string, updates:Partial<CustomEsp>) => { const u=esps.map(e=>e.id===id?{...e,...updates}:e); setEsps(u); save(ESPS_KEY(trainerId),u) }
-
-  // Etiquetas
-  const [tags, setTags] = useState<CustomTag[]>(() => load(TAGS_KEY(trainerId), []))
-  const [newTagLabel, setNewTagLabel] = useState('')
-  const [newTagEmoji, setNewTagEmoji] = useState('🏷️')
-  const [newTagColor, setNewTagColor] = useState(0)
-  const addTag = () => {
-    if (!newTagLabel.trim()) return
-    const u=[...tags,{ id:`tag_${Date.now()}`, label:newTagLabel.trim(), emoji:newTagEmoji, colorIdx:newTagColor }]
-    setTags(u); save(TAGS_KEY(trainerId),u); setNewTagLabel(''); onRefresh()
-  }
-  const delTag = (id:string) => { const u=tags.filter(t=>t.id!==id); setTags(u); save(TAGS_KEY(trainerId),u); onRefresh() }
-  const editTag = (id:string, updates:Partial<CustomTag>) => { const u=tags.map(t=>t.id===id?{...t,...updates}:t); setTags(u); save(TAGS_KEY(trainerId),u) }
-
-  const SECTIONS = [
-    { id:'cats' as const, label:'Grupos musculares', emoji:'💪' },
-    { id:'esps' as const, label:'Especialidades',    emoji:'⚡' },
-    { id:'tags' as const, label:'Etiquetas',         emoji:'🏷️' },
-  ]
-
-  return (
-    <div className="bg-card border border-accent/20 rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-bg-alt/30">
-        <div className="flex items-center gap-2">
-          <Settings2 className="w-4 h-4 text-accent" />
-          <p className="text-sm font-semibold">Configurar clasificaciones</p>
-        </div>
-        <button onClick={onClose}><X className="w-4 h-4 text-muted" /></button>
-      </div>
-
-      {/* Tabs internas */}
-      <div className="flex border-b border-border">
-        {SECTIONS.map(s => (
-          <button key={s.id} onClick={() => setSection(s.id)}
-            className={`flex-1 py-2.5 text-xs font-semibold transition-all ${section===s.id ? 'border-b-2 border-accent text-accent' : 'text-muted hover:text-ink'}`}>
-            {s.emoji} {s.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="p-5 space-y-3">
-
-        {/* ── Grupos musculares ── */}
-        {section==='cats' && (
-          <>
-            <div className="space-y-1.5">
-              {cats.map((cat,i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input value={cat} onChange={e=>editCat(i,e.target.value)}
-                    className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-                  <button onClick={()=>delCat(i)} className="p-1.5 text-muted hover:text-warn flex-shrink-0"><Trash2 className="w-3.5 h-3.5"/></button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input value={newCat} onChange={e=>setNewCat(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addCat()}
-                placeholder="Nuevo grupo muscular..." autoFocus
-                className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-              <button onClick={addCat} disabled={!newCat.trim()}
-                className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold disabled:opacity-40">Añadir</button>
-            </div>
-          </>
-        )}
-
-        {/* ── Especialidades personalizadas ── */}
-        {section==='esps' && (
-          <>
-            {/* Especialidades del sistema */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Del sistema (fijas)</p>
-              <div className="flex flex-wrap gap-1.5">
-                {ESPECIALIDADES.map(e => (
-                  <span key={e.value} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs bg-bg-alt border border-border text-muted">
-                    {e.emoji} {e.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            {/* Personalizadas */}
-            {esps.length > 0 && (
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted font-semibold mb-2">Personalizadas</p>
-                <div className="space-y-1.5">
-                  {esps.map(esp => (
-                    <div key={esp.id} className="flex items-center gap-2">
-                      <input value={esp.emoji} onChange={e=>editEsp(esp.id,{emoji:e.target.value})}
-                        className="w-8 text-center bg-bg border border-border rounded text-sm outline-none"/>
-                      <input value={esp.label} onChange={e=>editEsp(esp.id,{label:e.target.value})}
-                        className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                      <button onClick={()=>delEsp(esp.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5"/></button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input value={newEspEmoji} onChange={e=>setNewEspEmoji(e.target.value)}
-                className="w-10 text-center bg-bg border border-border rounded-lg text-sm outline-none" placeholder="⚡"/>
-              <input value={newEspLabel} onChange={e=>setNewEspLabel(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addEsp()}
-                placeholder="Nueva especialidad..." autoFocus
-                className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"/>
-              <button onClick={addEsp} disabled={!newEspLabel.trim()}
-                className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold disabled:opacity-40">Añadir</button>
-            </div>
-          </>
-        )}
-
-        {/* ── Etiquetas ── */}
-        {section==='tags' && (
-          <>
-            {tags.length > 0 && (
-              <div className="space-y-2">
-                {tags.map(tag => {
-                  return (
-                    <div key={tag.id} className="flex items-center gap-2">
-                      <input value={tag.emoji} onChange={e=>editTag(tag.id,{emoji:e.target.value})}
-                        className="w-8 text-center bg-bg border border-border rounded text-sm outline-none"/>
-                      <input value={tag.label} onChange={e=>editTag(tag.id,{label:e.target.value})}
-                        className="flex-1 px-3 py-1.5 bg-bg border border-border rounded-lg text-sm outline-none"/>
-                      <div className="flex gap-1">
-                        {TAG_COLORS.map((col,i) => (
-                          <button key={i} onClick={()=>editTag(tag.id,{colorIdx:i})}
-                            className={`w-4 h-4 rounded-full ${col.bg} border-2 transition-all ${tag.colorIdx===i?'border-ink scale-110':'border-transparent'}`}/>
-                        ))}
-                      </div>
-                      <TagBadge tag={tag}/>
-                      <button onClick={()=>delTag(tag.id)} className="p-1.5 text-muted hover:text-warn"><Trash2 className="w-3.5 h-3.5"/></button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            <div className="flex gap-2 flex-wrap items-center">
-              <input value={newTagEmoji} onChange={e=>setNewTagEmoji(e.target.value)}
-                className="w-10 text-center bg-bg border border-border rounded-lg text-sm outline-none" placeholder="🏷️"/>
-              <input value={newTagLabel} onChange={e=>setNewTagLabel(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addTag()}
-                placeholder="Nueva etiqueta..." autoFocus
-                className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"/>
-              <div className="flex gap-1">
-                {TAG_COLORS.map((col,i) => (
-                  <button key={i} onClick={()=>setNewTagColor(i)}
-                    className={`w-5 h-5 rounded-full ${col.bg} border-2 transition-all ${newTagColor===i?'border-ink scale-110':'border-transparent'}`}/>
-                ))}
-              </div>
-              <button onClick={addTag} disabled={!newTagLabel.trim()}
-                className="px-4 py-2 bg-ink text-white rounded-lg text-sm font-semibold disabled:opacity-40">Añadir</button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── ExForm ─────────────────────────────────────────────────
-interface FormState {
-  name: string; description: string; category: string
-  especialidades: string[]; videos: LibraryVideo[]; tags: string[]
-}
-const emptyForm = (): FormState => ({ name:'', description:'', category:'', especialidades:[], videos:[], tags:[] })
-
-function getYTId(url: string) {
-  const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
-  return m ? m[1] : null
-}
-
-interface ExFormProps { initial:FormState; trainerId:string; onSave:(f:FormState)=>void; onCancel:()=>void; title:string }
-
-function ExForm({ initial, trainerId, onSave, onCancel, title }: ExFormProps) {
-  const [form, setForm] = useState<FormState>(initial)
-  const [newVideoUrl, setNewVideoUrl] = useState('')
-  const [newVideoLabel, setNewVideoLabel] = useState('')
-  const [newVideoEsps, setNewVideoEsps] = useState<string[]>([])       // para YouTube URL
-  const [uploadVideoEsps, setUploadVideoEsps] = useState<string[]>([]) // para subida local
-  const [uploading, setUploading] = useState(false)
-  const [videoMode, setVideoMode] = useState<'url'|'file'>('url')
-
-  const cats   = load(CATS_KEY(trainerId), DEFAULT_CATS)
-  const esps   = load<{id:string;label:string;emoji:string}[]>(ESPS_KEY(trainerId), [])
-  const tags   = load<CustomTag[]>(TAGS_KEY(trainerId), [])
-  const allEsps = [
-    ...ESPECIALIDADES.map(e => ({ id:e.value, label:e.label, emoji:e.emoji })),
-    ...esps,
-  ]
-
-  const toggle = (field:'especialidades'|'tags', val:string) =>
-    setForm(f => ({ ...f, [field]: f[field].includes(val) ? f[field].filter((x:string)=>x!==val) : [...f[field], val] }))
-
-  const addVideo = () => {
-    if (!newVideoUrl.trim()) return
-    const nv: LibraryVideo = { url:newVideoUrl.trim(), label:newVideoLabel.trim()||undefined, especialidades:newVideoEsps }
-    setForm(f => ({ ...f, videos:[...f.videos, nv] }))
-    setNewVideoUrl(''); setNewVideoLabel(''); setNewVideoEsps([])
-  }
-
-  return (
-    <div className="bg-card border border-accent/20 rounded-2xl p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">{title}</h3>
-        <button onClick={onCancel}><X className="w-4 h-4 text-muted"/></button>
-      </div>
-
-      <div className="flex items-center justify-center bg-bg border border-border rounded-2xl py-3 min-h-[90px]">
-        {form.name.trim() || form.category
-          ? <MuscleDiagram category={form.category} name={form.name} size={72} />
-          : <p className="text-xs text-muted">Escribe un nombre o elige grupo muscular para ver el pictograma</p>}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold text-muted mb-1">Nombre *</label>
-          <input autoFocus type="text" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
-            placeholder="Ej: Sentadilla barra"
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-accent/20"/>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-muted mb-1">Grupo muscular</label>
-          <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}
-            className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none">
-            <option value="">Sin categoría</option>
-            {cats.map(c=><option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-muted mb-1">Descripción / notas</label>
-        <textarea rows={2} value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))}
-          placeholder="Indicaciones técnicas..."
-          className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-sm outline-none resize-none"/>
-      </div>
-
-      {/* Especialidades (sistema + custom) */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-muted">Especialidades del ejercicio</label>
-          <span className="text-[11px] text-muted">Añade más en ⚙️ Configurar</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {allEsps.map(e => (
-            <button key={e.id} type="button" onClick={()=>toggle('especialidades',e.id)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs border transition-all ${form.especialidades.includes(e.id)?'bg-ink text-white border-ink':'border-border text-muted hover:border-accent'}`}>
-              {e.emoji} {e.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Etiquetas personalizadas */}
-      {tags.length > 0 && (
-        <div>
-          <label className="block text-xs font-semibold text-muted mb-2">Etiquetas</label>
-          <div className="flex flex-wrap gap-2">
-            {tags.map(tag => {
-              const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]
-              const active = form.tags.includes(tag.id)
-              return (
-                <button key={tag.id} type="button" onClick={()=>toggle('tags',tag.id)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs border-2 transition-all ${active?`${c.bg} ${c.text} ${c.border}`:'border-border text-muted hover:border-accent'}`}>
-                  {tag.emoji} {tag.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Vídeos */}
-      {form.videos.length > 0 && (
-        <div className="space-y-2">
-          {form.videos.map((v,i) => {
-            const ytId = getYTId(v.url)
-            return (
-              <div key={i} className="bg-bg border border-border rounded-xl p-2.5 space-y-2">
-                <div className="flex items-center gap-2">
-                  {ytId && <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-12 h-9 object-cover rounded flex-shrink-0" alt=""/>}
-                  <input value={v.label||''} onChange={e=>{const vs=[...form.videos];vs[i]={...vs[i],label:e.target.value};setForm(f=>({...f,videos:vs}))}}
-                    placeholder="Etiqueta del vídeo..." className="flex-1 text-xs bg-transparent outline-none border-b border-border focus:border-accent"/>
-                  <button onClick={()=>setForm(f=>({...f,videos:f.videos.filter((_,idx)=>idx!==i)}))} className="p-1 text-muted hover:text-warn flex-shrink-0"><X className="w-3.5 h-3.5"/></button>
-                </div>
-                {/* Edición rápida de especialidades del vídeo */}
-                <div className="flex flex-wrap gap-1">
-                  <span className="text-[11px] text-muted uppercase tracking-wider self-center mr-1">Especialidades:</span>
-                  {allEsps.map(e => {
-                    const active = (v.especialidades||[]).includes(e.id)
-                    return (
-                      <button key={e.id} type="button"
-                        onClick={()=>{
-                          const vs=[...form.videos]
-                          const esps=vs[i].especialidades||[]
-                          vs[i]={...vs[i],especialidades:active?esps.filter(x=>x!==e.id):[...esps,e.id]}
-                          setForm(f=>({...f,videos:vs}))
-                        }}
-                        className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[11px] font-semibold border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted hover:border-accent'}`}>
-                        {e.emoji} {e.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Añadir vídeo */}
-      <div className="bg-bg-alt border border-border rounded-xl p-3 space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-muted font-semibold">Añadir vídeo</p>
-        <div className="flex gap-1 bg-bg p-0.5 rounded-lg border border-border w-fit">
-          {(['url','file'] as const).map(m => (
-            <button key={m} type="button" onClick={()=>setVideoMode(m)}
-              className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${videoMode===m?'bg-card shadow-sm text-ink':'text-muted'}`}>
-              {m==='url'?'🔗 YouTube URL':'📁 Subir archivo'}
-            </button>
-          ))}
-        </div>
-        {videoMode==='url' ? (
-          <input type="text" value={newVideoUrl} onChange={e=>setNewVideoUrl(e.target.value)}
-            placeholder="URL YouTube" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
-        ) : (
-          <label className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-lg text-xs font-semibold cursor-pointer ${uploading?'border-accent text-accent':'border-border text-muted hover:border-accent'}`}>
-            {uploading?'Subiendo...':'📁 Seleccionar vídeo (máx 500MB)'}
-            <input type="file" accept="video/*" className="hidden" disabled={uploading}
-              onChange={async e => {
-                const file=e.target.files?.[0]; if(!file) return
-                setUploading(true)
-                const ext=file.name.split('.').pop()
-                const path=`${trainerId}/${Date.now()}.${ext}`
-                const {error}=await supabase.storage.from('trainer-videos').upload(path,file,{upsert:true})
-                if(error){alert('Error al subir');setUploading(false);return}
-                const {data}=supabase.storage.from('trainer-videos').getPublicUrl(path)
-                setNewVideoUrl(data.publicUrl);setUploading(false)
-              }}/>
-          </label>
-        )}
-        {/* Opciones extra — solo cuando hay URL/archivo */}
-        {newVideoUrl.trim() && (
-          <>
-            <input type="text" value={newVideoLabel} onChange={e=>setNewVideoLabel(e.target.value)}
-              placeholder="Etiqueta del vídeo (opcional)" className="w-full px-3 py-2 bg-bg border border-border rounded-lg text-xs outline-none"/>
-            <div>
-              <p className="text-[11px] text-muted uppercase tracking-wider mb-1.5">Solo mostrar a clientes de... (opcional)</p>
-              <div className="flex flex-wrap gap-1.5">
-                {allEsps.map(e => {
-                  const esps = videoMode === 'file' ? uploadVideoEsps : newVideoEsps
-                  const setEsps = videoMode === 'file' ? setUploadVideoEsps : setNewVideoEsps
-                  const active = esps.includes(e.id)
-                  return (
-                    <button key={e.id} type="button" onClick={()=>setEsps(p=>p.includes(e.id)?p.filter(x=>x!==e.id):[...p,e.id])}
-                      className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] border transition-all ${active?'bg-accent text-white border-accent':'border-border text-muted'}`}>
-                      {e.emoji} {e.label}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="text-[11px] text-muted mt-1">Sin selección = vídeo genérico visible para todos</p>
-            </div>
-          </>
-        )}
-        <button onClick={addVideo} disabled={!newVideoUrl.trim()||uploading}
-          className="w-full py-2 bg-ink text-white rounded-lg text-xs font-semibold disabled:opacity-40">
-          + Añadir vídeo
-        </button>
-      </div>
-
-      <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">Cancelar</button>
-        <button onClick={()=>onSave(form)} disabled={!form.name.trim()}
-          className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Guardar</button>
-      </div>
-    </div>
-  )
-}
-
-// ── Props ──────────────────────────────────────────────────
 interface Props {
   exercises: LibraryExercise[]
+  /** Archivados: no salen al crear planes, pero se pueden recuperar desde aquí. */
+  archived: LibraryExercise[]
   trainerId: string
   /** Texto con el que abre el buscador (viene de la búsqueda global). */
   initialSearch?: string
-  onAdd: (name:string,desc:string,cat:string,videos:LibraryVideo[],esps:string[],tags:string[])=>void
-  onUpdate: (id:string,updates:Partial<LibraryExercise>)=>void
-  onDelete: (id:string)=>void
+  onAdd: (name: string, desc: string, cat: string, videos: LibraryVideo[], esps: string[], tags: string[], extra?: { material?: string; alternativas?: string[] }) => Promise<LibraryExercise> | void
+  onUpdate: (id: string, updates: Partial<LibraryExercise>) => void
+  onDelete: (id: string) => void
+  onArchive: (id: string) => void
+  onRestore: (id: string) => void
+  onImport: (list: NewExercise[]) => Promise<number> | number
 }
 
-// ── ExercisesTab ───────────────────────────────────────────
-export function ExercisesTab({ exercises, trainerId, initialSearch = '', onAdd, onUpdate, onDelete }: Props) {
-  const [search, setSearch]         = useState(initialSearch)
-  const [filterCat, setFilterCat]   = useState('')
-  const [filterEsp, setFilterEsp]   = useState('')
-  const [filterTag, setFilterTag]   = useState('')
-  const [filterVideos, setFilterVideos] = useState<''|'con_esp'|'sin_esp'|'sin_video'>('')
+const PAGE_SIZE = 60
+const chipCls = (on: boolean) => `px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${on ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`
+
+export function ExercisesTab({ exercises, archived, trainerId, initialSearch = '', onAdd, onUpdate, onDelete, onArchive, onRestore, onImport }: Props) {
+  const [search, setSearch]       = useState(initialSearch)
+  const [chip, setChip]           = useState<Chip>('todos')
+  const [filterCat, setFilterCat] = useState('')
+  const [filterMat, setFilterMat] = useState('')
+  const [filterEsp, setFilterEsp] = useState('')
+  const [filterTag, setFilterTag] = useState('')
+  const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [favs, setFavs] = useState<Set<string>>(() => new Set(load(FAV_KEY(trainerId), [] as string[])))
+  const [editing, setEditing]     = useState<LibraryExercise | null>(null)
+  const [showQuick, setShowQuick] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
+  const [, forceUpdate] = useState(0)
+  const refresh = () => forceUpdate(n => n + 1)
 
   const toggleFav = (id: string) => {
     const next = new Set(favs)
@@ -467,230 +59,236 @@ export function ExercisesTab({ exercises, trainerId, initialSearch = '', onAdd, 
     setFavs(next)
     save(FAV_KEY(trainerId), Array.from(next))
   }
-  const [editId, setEditId]         = useState<string|null>(null)
-  const [showNew, setShowNew]       = useState(false)
-  const [showConfig, setShowConfig] = useState(false)
-  const [showMoreFilters, setShowMoreFilters] = useState(false)
-  const [editInitial, setEditInitial] = useState<FormState>(emptyForm())
-  const [, forceUpdate] = useState(0)
-  const refresh = () => forceUpdate(n=>n+1)
 
-  const esps     = load<{id:string;label:string;emoji:string}[]>(ESPS_KEY(trainerId), [])
-  const tags     = load<CustomTag[]>(TAGS_KEY(trainerId), [])
-  const allEsps  = [...ESPECIALIDADES.map(e=>({id:e.value,label:e.label,emoji:e.emoji})), ...esps]
+  const cats    = load(CATS_KEY(trainerId), DEFAULT_CATS)
+  const esps    = load<{ id: string; label: string; emoji: string }[]>(ESPS_KEY(trainerId), [])
+  const tags    = load<CustomTag[]>(TAGS_KEY(trainerId), [])
+  const allEsps = [...ESPECIALIDADES.map(e => ({ id: e.value, label: e.label, emoji: e.emoji })), ...esps]
 
-  // Solo los grupos que tienen ejercicios, del más al menos poblado.
+  const all = useMemo(() => [...exercises, ...archived], [exercises, archived])
+  const stats = useMemo(() => resumen(all, favs), [all, favs])
   const catChips = useMemo(() => categoryCounts(exercises), [exercises])
-  const extraFilters = [filterEsp, filterTag, filterVideos].filter(Boolean).length
+  const matChips = useMemo(() => materialCounts(exercises), [exercises])
+  const extraFilters = [filterEsp, filterTag].filter(Boolean).length
 
-  const filtered = useMemo(() => exercises.filter(ex => {
-    if (!matchesQuery(ex.name, search)) return false
-    if (filterCat && ex.category !== filterCat) return false
-    if (filterEsp && !(ex.especialidades||[]).includes(filterEsp)) return false
-    if (filterTag && !(ex.tags||[]).includes(filterTag)) return false
-    if (filterVideos === 'con_esp' && !(ex.videos||[]).some(v => v.especialidades?.length)) return false
-    if (filterVideos === 'sin_esp' && !(ex.videos||[]).some(v => !v.especialidades?.length)) return false
-    if (filterVideos === 'sin_video' && (ex.videos||[]).length > 0) return false
-    return true
-  }), [exercises, search, filterCat, filterEsp, filterTag, filterVideos])
+  const filtered = useMemo(() => {
+    let list = filtrar(all, { query: search, chip, category: filterCat, material: filterMat, favs })
+    if (filterEsp) list = list.filter(e => (e.especialidades || []).includes(filterEsp))
+    if (filterTag) list = list.filter(e => (e.tags || []).includes(filterTag))
+    // Los favoritos primero (como antes); en "Más usados", por uso.
+    return chip === 'usados' ? porRelevancia(list, favs) : [...list].sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0))
+  }, [all, search, chip, filterCat, filterMat, filterEsp, filterTag, favs])
 
-  // Con una biblioteca de 1500+ ejercicios, pintar la lista sin filtrar de
-  // golpe bloquea el hilo principal varios segundos (cada fila trae su
-  // pictograma + insignias) — un móvil de gama media lo nota mucho más que
-  // este entorno de desarrollo. Se muestran de N en N con un botón "Mostrar
-  // más", y el contador vuelve a 60 en cuanto cambia cualquier filtro.
-  const PAGE_SIZE = 60
+  // Con una biblioteca de 1500+ ejercicios, pintar la lista sin filtrar de golpe bloquea el hilo principal varios
+  // segundos en un móvil de gama media: se muestran de 60 en 60 y el contador vuelve a 60 al cambiar cualquier filtro.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, filterCat, filterEsp, filterTag, filterVideos])
-  const sortedFiltered = useMemo(
-    () => [...filtered].sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0)),
-    [filtered, favs]
-  )
-  const visible = sortedFiltered.slice(0, visibleCount)
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, chip, filterCat, filterMat, filterEsp, filterTag])
+  const visible = filtered.slice(0, visibleCount)
 
-  const startEdit = (ex: LibraryExercise) => {
-    setEditInitial({
-      name:ex.name, description:ex.description||'', category:ex.category||'',
-      especialidades:ex.especialidades||[],
-      videos:ex.videos||[], tags:ex.tags||[],
-    })
-    setEditId(ex.id); setShowNew(false)
+  const sinFiltros = chip === 'todos' && !search.trim() && !filterCat && !filterMat && !extraFilters
+  const recomendadosHoy = useMemo(() => sinFiltros ? recomendados(exercises, favs, 4) : [], [sinFiltros, exercises, favs])
+  const hayHuecos = stats.muyUsadosSinVideo > 0 || stats.muyUsadosSinAlternativa > 0
+
+  const clearAll = () => { setSearch(''); setChip('todos'); setFilterCat(''); setFilterMat(''); setFilterEsp(''); setFilterTag('') }
+
+  // ── Acciones ──────────────────────────────────────────
+  const create = async (f: { name: string; material: string; category: string }, completar: boolean) => {
+    const ex = await onAdd(f.name, '', f.category, [], [], [], { material: f.material })
+    if (completar && ex) setEditing(ex)
   }
+  const duplicate = async (ex: LibraryExercise) => {
+    const name = nombreDeCopia(ex.name, all.map(e => e.name))
+    const copy = await onAdd(name, ex.description || '', ex.category || '', ex.videos || [], ex.especialidades || [], ex.tags || [], { material: ex.material, alternativas: ex.alternativas })
+    toast(`Duplicado como «${name}»`, 'ok')
+    if (copy) setEditing(copy)
+  }
+  const archive = (ex: LibraryExercise) => { onArchive(ex.id); toast(`«${ex.name}» archivado. Sigue en tus planes antiguos; lo recuperas en Archivados.`, 'ok') }
+  const remove = (ex: LibraryExercise) => { if (window.confirm(`¿Eliminar "${ex.name}" de tu biblioteca?`)) onDelete(ex.id) }
+  const save_ = (ex: LibraryExercise, f: FormState) => { onUpdate(ex.id, f); setEditing(null) }
+  const doImport = async (rows: NewExercise[]) => {
+    const n = await onImport(rows)
+    toast(n ? `${n} ejercicio${n === 1 ? '' : 's'} importado${n === 1 ? '' : 's'} ✓` : 'No se pudo importar', n ? 'ok' : 'warn')
+  }
+
+  const card = (ex: LibraryExercise, tile = false) => (
+    <ExerciseCard key={ex.id} ex={ex} fav={favs.has(ex.id)} tile={tile}
+      extra={(ex.tags || []).map(id => tags.find(t => t.id === id)).filter((t): t is CustomTag => !!t).map(t => <TagBadge key={t.id} tag={t} />)}
+      onOpen={() => setEditing(ex)} onToggleFav={() => toggleFav(ex.id)} onDuplicate={() => duplicate(ex)}
+      onArchive={() => archive(ex)} onRestore={() => onRestore(ex.id)} onDelete={() => remove(ex)} />
+  )
+
+  const CHIPS: { id: Chip; label: string; n?: number }[] = [
+    { id: 'todos', label: 'Todos', n: stats.total },
+    { id: 'usados', label: 'Más usados', n: stats.usados },
+    { id: 'sin-video', label: 'Sin vídeo', n: stats.sinVideo },
+    { id: 'favoritos', label: 'Favoritos', n: stats.favoritos },
+    { id: 'pendientes', label: 'Pendientes', n: stats.pendientes },
+    ...(stats.archivados > 0 ? [{ id: 'archivados' as Chip, label: 'Archivados', n: stats.archivados }] : []),
+  ]
 
   return (
     <div className="space-y-5 animate-fade-in max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Cabecera */}
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-3xl font-serif font-bold">Ejercicios</h2>
-          <p className="text-muted text-sm mt-1">{exercises.length} ejercicios en tu biblioteca</p>
+          <p className="text-muted text-sm mt-1">{stats.total} en tu biblioteca{stats.archivados > 0 && ` · ${stats.archivados} archivados`}</p>
         </div>
         <div className="flex items-center gap-2">
           <ActionMenu title="Más herramientas" buttonClassName={`p-2.5 rounded-xl border transition-colors ${showConfig ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`}
             trigger={<MoreHorizontal className="w-4 h-4" />}>
+            <button onClick={() => setShowImport(true)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+              <Upload className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Importar lista o CSV
+            </button>
             <button onClick={() => setShowConfig(v => !v)} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
               <Settings2 className="w-3.5 h-3.5 text-muted flex-shrink-0" /> {showConfig ? 'Cerrar configuración' : 'Grupos, especialidades y etiquetas'}
             </button>
           </ActionMenu>
-          <button onClick={()=>{setShowNew(true);setEditId(null)}}
-            className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-            <Plus className="w-4 h-4"/> Nuevo ejercicio
+          <button onClick={() => setShowQuick(true)} className="flex items-center gap-2 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+            <Plus className="w-4 h-4" /> Nuevo ejercicio
           </button>
         </div>
       </div>
 
-      {/* Panel configuración */}
-      {showConfig && <ConfigPanel trainerId={trainerId} onClose={()=>{setShowConfig(false);refresh()}} onRefresh={refresh}/>}
+      {showConfig && <ConfigPanel trainerId={trainerId} onClose={() => { setShowConfig(false); refresh() }} onRefresh={refresh} />}
 
-      {showNew && (
-        <ExForm key="new" initial={emptyForm()} trainerId={trainerId} title="Nuevo ejercicio"
-          onSave={f=>{onAdd(f.name,f.description,f.category,f.videos,f.especialidades,f.tags);setShowNew(false)}}
-          onCancel={()=>setShowNew(false)}/>
-      )}
-
-      {/* Buscar, y los grupos musculares a un toque */}
+      {/* Buscador y chips */}
       <div className="space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"/>
-            <input type="text" placeholder="Buscar ejercicio..." aria-label="Buscar ejercicio" value={search} onChange={e=>setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20"/>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input type="text" placeholder="Buscar “sentadilla, glúteo, barra…”" aria-label="Buscar ejercicio" value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-card border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
-          <button onClick={()=>setShowMoreFilters(v=>!v)} aria-expanded={showMoreFilters}
+          <button onClick={() => setShowMoreFilters(v => !v)} aria-expanded={showMoreFilters}
             className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${showMoreFilters || extraFilters > 0 ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`}>
-            <SlidersHorizontal className="w-4 h-4"/> Filtros{extraFilters > 0 ? ` (${extraFilters})` : ''}
+            <SlidersHorizontal className="w-4 h-4" /> Filtros{extraFilters > 0 ? ` (${extraFilters})` : ''}
           </button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          <button onClick={()=>setFilterCat('')} aria-pressed={!filterCat}
-            className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${!filterCat ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-            Todos
-          </button>
-          {catChips.map(c => (
-            <button key={c.category} onClick={()=>setFilterCat(filterCat === c.category ? '' : c.category)} aria-pressed={filterCat === c.category}
-              className={`px-3 py-1 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${filterCat === c.category ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
-              {c.category}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Vista de la biblioteca">
+          {CHIPS.map(c => (
+            <button key={c.id} onClick={() => setChip(c.id)} aria-pressed={chip === c.id} className={chipCls(chip === c.id)}>
+              {c.label}{c.n !== undefined && c.n > 0 ? ` ${c.n}` : ''}
             </button>
           ))}
         </div>
 
         {showMoreFilters && (
           <div className="flex gap-2 flex-wrap p-3 bg-bg-alt/40 border border-border rounded-xl">
-            <select value={filterEsp} onChange={e=>setFilterEsp(e.target.value)} aria-label="Filtrar por especialidad"
+            <select value={filterEsp} onChange={e => setFilterEsp(e.target.value)} aria-label="Filtrar por especialidad"
               className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
               <option value="">Todas las especialidades</option>
-              {allEsps.map(e=><option key={e.id} value={e.id}>{e.emoji} {e.label}</option>)}
+              {allEsps.map(e => <option key={e.id} value={e.id}>{e.emoji} {e.label}</option>)}
             </select>
-            {tags.length>0 && (
-              <select value={filterTag} onChange={e=>setFilterTag(e.target.value)} aria-label="Filtrar por etiqueta"
+            {tags.length > 0 && (
+              <select value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="Filtrar por etiqueta"
                 className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
                 <option value="">Todas las etiquetas</option>
-                {tags.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+                {tags.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
               </select>
             )}
-            <select value={filterVideos} onChange={e=>setFilterVideos(e.target.value as ''|'con_esp'|'sin_esp'|'sin_video')} aria-label="Filtrar por vídeo"
-              className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-              <option value="">Con o sin vídeo</option>
-              <option value="con_esp">Con vídeos de especialidad</option>
-              <option value="sin_esp">Solo vídeos genéricos</option>
-              <option value="sin_video">Sin vídeo</option>
-            </select>
           </div>
         )}
       </div>
 
-      {/* Lista */}
-      {filtered.length===0 ? (
-        exercises.length === 0 ? (
-          <div className="border-2 border-dashed border-border rounded-2xl overflow-hidden">
-            <div className="px-8 py-10 text-center">
-              <div className="w-16 h-16 bg-accent/8 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Dumbbell className="w-8 h-8 text-accent opacity-60" />
-              </div>
-              <p className="font-serif text-xl font-bold text-ink">Crea tu biblioteca de ejercicios</p>
-              <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Añade ejercicios una vez y reutilízalos en todos tus planes. Puedes incluir vídeos de referencia para cada uno.</p>
-              <button onClick={() => { setShowNew(true); setEditId(null) }} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-                + Añadir primer ejercicio
-              </button>
+      {/* Huecos de contenido: lo que más se usa y aún no está completo */}
+      {sinFiltros && hayHuecos && (
+        <div role="status" className="flex items-start gap-3 bg-warn/5 border border-warn/20 rounded-2xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-warn flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 text-sm">
+            <p className="font-semibold">Huecos en lo que más usas</p>
+            <p className="text-xs text-muted mt-0.5">
+              {[
+                stats.muyUsadosSinVideo > 0 && `${stats.muyUsadosSinVideo} muy ${stats.muyUsadosSinVideo === 1 ? 'usado' : 'usados'} sin vídeo`,
+                stats.muyUsadosSinAlternativa > 0 && `${stats.muyUsadosSinAlternativa} sin alternativa`,
+              ].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <button onClick={() => setChip('pendientes')} className="text-xs font-semibold text-accent hover:underline flex-shrink-0">Ver pendientes</button>
+        </div>
+      )}
+
+      {/* Recomendados: lo que ya usas, a un toque */}
+      {recomendadosHoy.length > 0 && (
+        <section aria-label="Recomendados para ti">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-2 px-1">Recomendados para ti</h3>
+          <div className="grid sm:grid-cols-2 gap-2">{recomendadosHoy.map(ex => card(ex, true))}</div>
+        </section>
+      )}
+
+      {/* Explorar por grupo y material */}
+      {(chip === 'todos' || chip === 'usados' || chip === 'sin-video' || chip === 'favoritos' || chip === 'pendientes') && (catChips.length > 0 || matChips.length > 0) && (
+        <section aria-label="Explorar por" className="space-y-2">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted px-1">Explorar por</h3>
+          {catChips.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Grupo muscular">
+              {catChips.map(c => (
+                <button key={c.category} onClick={() => setFilterCat(filterCat === c.category ? '' : c.category)} aria-pressed={filterCat === c.category} className={chipCls(filterCat === c.category)}>
+                  {c.category}
+                </button>
+              ))}
             </div>
-            <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>
-              <div className="flex items-start gap-6 flex-wrap">
-                {[
-                  { step: '1', label: 'Crea ejercicios', desc: 'Con vídeo de YouTube o propio', color: 'bg-accent/10 text-accent' },
-                  { step: '2', label: 'Crea workouts', desc: 'Combina ejercicios en rutinas', color: 'bg-ok/10 text-ok' },
-                  { step: '3', label: 'Asígnalos', desc: 'A clientes desde su plan', color: 'bg-ink/10 text-ink' },
-                ].map(({ step, label, desc, color }) => (
-                  <div key={step} className="flex items-start gap-3 flex-1 min-w-36">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${color}`}>{step}</div>
-                    <div>
-                      <p className="text-sm font-semibold text-ink">{label}</p>
-                      <p className="text-xs text-muted">{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          )}
+          {matChips.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Material">
+              {matChips.map(m => (
+                <button key={m.material} onClick={() => setFilterMat(filterMat === m.material ? '' : m.material)} aria-pressed={filterMat === m.material} className={chipCls(filterMat === m.material)}>
+                  {m.material}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Lista */}
+      {filtered.length === 0 ? (
+        all.length === 0 ? (
+          <div className="border-2 border-dashed border-border rounded-2xl px-8 py-10 text-center">
+            <div className="w-16 h-16 bg-accent/8 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Dumbbell className="w-8 h-8 text-accent opacity-60" />
+            </div>
+            <p className="font-serif text-xl font-bold text-ink">Crea tu biblioteca de ejercicios</p>
+            <p className="text-sm text-muted mt-2 max-w-sm mx-auto">Empieza con una lista de nombres: en 30 segundos tienes la base. El vídeo y las indicaciones los completas después, solo en los que más usas.</p>
+            <div className="flex gap-2 justify-center mt-5 flex-wrap">
+              <button onClick={() => setShowQuick(true)} className="px-5 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">+ Añadir el primero</button>
+              <button onClick={() => setShowImport(true)} className="px-5 py-3 border border-border rounded-xl text-sm font-semibold hover:border-ink">Importar una lista</button>
             </div>
           </div>
         ) : (
           <div className="text-center py-12 text-muted border-2 border-dashed border-border rounded-2xl">
-            <p className="font-serif text-lg">Sin resultados</p>
-            <p className="text-sm mt-1">Prueba con otro término o categoría.</p>
-            <button onClick={() => { setSearch(''); setFilterCat(''); setFilterEsp(''); setFilterTag(''); setFilterVideos('') }} className="mt-3 text-accent text-sm hover:underline">Limpiar filtros</button>
+            <p className="font-serif text-lg">{chip === 'favoritos' ? 'Aún no tienes favoritos' : chip === 'usados' ? 'Todavía no has usado ninguno en un plan' : chip === 'archivados' ? 'No hay ejercicios archivados' : 'Sin resultados'}</p>
+            <p className="text-sm mt-1">{chip === 'favoritos' ? 'Marca con la estrella los que repites siempre.' : 'Prueba con otro término o filtro.'}</p>
+            <button onClick={clearAll} className="mt-3 text-accent text-sm hover:underline">Ver todos</button>
           </div>
         )
       ) : (
-        <div className="space-y-2">
-          {visible.map(ex => {
-            const exTags = ex.tags||[]
-            return (
-              <div key={ex.id}>
-                {editId===ex.id ? (
-                  <ExForm key={`edit-${ex.id}`} initial={editInitial} trainerId={trainerId} title={`Editar: ${ex.name}`}
-                    onSave={f=>{onUpdate(ex.id,f);setEditId(null)}}
-                    onCancel={()=>setEditId(null)}/>
-                ) : (
-                  <div className="bg-card border border-border rounded-xl px-4 py-3 flex items-center gap-3">
-                    <MuscleDiagram category={ex.category} name={ex.name} size={28} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold">{ex.name}</p>
-                        {exTags.map(tagId=>{
-                          const tag=tags.find(t=>t.id===tagId)
-                          return tag?<TagBadge key={tagId} tag={tag}/>:null
-                        })}
-                      </div>
-                      <p className="text-xs text-muted mt-0.5 truncate">{exerciseSubtitle(ex, id => allEsps.find(e => e.id === id)?.label)}</p>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={()=>toggleFav(ex.id)} aria-pressed={favs.has(ex.id)} aria-label={favs.has(ex.id) ? 'Quitar de favoritos' : 'Marcar como favorito'} className="p-1.5">
-                        <Star className={`w-3.5 h-3.5 transition-colors ${favs.has(ex.id) ? 'fill-amber-400 text-amber-400' : 'text-border hover:text-amber-300'}`}/>
-                      </button>
-                      <button onClick={()=>startEdit(ex)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors">
-                        <Edit2 className="w-3.5 h-3.5"/> Editar
-                      </button>
-                      <ActionMenu title="Acciones del ejercicio">
-                        <button onClick={()=>{ if (window.confirm(`¿Eliminar "${ex.name}" de tu biblioteca?`)) onDelete(ex.id) }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-warn hover:bg-warn/5">
-                          <Trash2 className="w-3.5 h-3.5 flex-shrink-0"/> Eliminar
-                        </button>
-                      </ActionMenu>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          {visibleCount < sortedFiltered.length && (
-            <button onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
-              Mostrar más ({sortedFiltered.length - visibleCount} restantes)
-            </button>
-          )}
-        </div>
+        <section aria-label={sinFiltros ? 'Todos los ejercicios' : 'Resultados'}>
+          {sinFiltros && <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-2 px-1">Todos los ejercicios</h3>}
+          <div className="space-y-2">
+            {visible.map(ex => card(ex))}
+            {visibleCount < filtered.length && (
+              <button onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+                className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted hover:border-accent hover:text-accent transition-colors">
+                Mostrar más ({filtered.length - visibleCount} restantes)
+              </button>
+            )}
+          </div>
+        </section>
       )}
+
+      <QuickAddExercise open={showQuick} categories={cats} onClose={() => setShowQuick(false)} onCreate={create} />
+      <ImportExercises open={showImport} existingNames={all.map(e => e.name)} categories={cats} onClose={() => setShowImport(false)} onImport={doImport} />
+
+      {/* Ficha completa en un cajón lateral */}
+      <Modal open={!!editing} onClose={() => setEditing(null)} variant="drawer" plain maxWidth="max-w-lg" ariaLabel={editing ? `Editar ${editing.name}` : 'Editar ejercicio'}>
+        {editing && (
+          <ExerciseForm key={editing.id} initial={formFrom(editing)} trainerId={trainerId} title={editing.name}
+            origen={/^ex_(default|demo)_/.test(editing.id) ? 'base' : 'personal'} useCount={editing.useCount ?? 0}
+            library={all} onSave={f => save_(editing, f)} onCancel={() => setEditing(null)} />
+        )}
+      </Modal>
     </div>
   )
 }
