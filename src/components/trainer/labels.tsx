@@ -17,7 +17,7 @@ export function LabelPill({ label, onRemove, small }: { label: TrainerLabel; onR
       style={{ backgroundColor: label.color + '18', borderColor: label.color + '40', color: label.color }}>
       <span>{label.emoji}</span>
       <span>{label.name}</span>
-      {onRemove && <button onClick={onRemove} className="ml-0.5 hover:opacity-70"><X className="w-2.5 h-2.5" /></button>}
+      {onRemove && <button aria-label="Quitar etiqueta" onClick={onRemove} className="ml-0.5 hover:opacity-70"><X className="w-2.5 h-2.5" /></button>}
     </span>
   )
 }

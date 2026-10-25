@@ -409,7 +409,7 @@ function CohorteCreateForm({ form, onChange, onSave, onClose }: {
     <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold">Crear grupo</p>
-        <button onClick={onClose} className="p-1 text-muted hover:text-warn"><X className="w-4 h-4" /></button>
+        <button aria-label="Cerrar" onClick={onClose} className="p-1 text-muted hover:text-warn"><X className="w-4 h-4" /></button>
       </div>
       <input value={form.nombre} onChange={e => onChange({ ...form, nombre: e.target.value })}
         placeholder="Nombre del grupo (ej: Reto verano 2026)"
@@ -461,7 +461,7 @@ function CohorteEditModal({ cohorte, onChange, onSave, onClose }: {
       <div className="p-5 space-y-3 overflow-y-auto">
         <div className="flex items-center justify-between">
           <p className="font-bold text-sm">Editar grupo</p>
-          <button onClick={onClose} className="p-1 text-muted"><X className="w-4 h-4" /></button>
+          <button aria-label="Cerrar" onClick={onClose} className="p-1 text-muted"><X className="w-4 h-4" /></button>
         </div>
         <input value={cohorte.nombre} onChange={e => onChange({ ...cohorte, nombre: e.target.value })}
           className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
