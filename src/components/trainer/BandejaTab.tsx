@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2 } from 'lucide-react'
+import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle } from 'lucide-react'
 import { ClientData } from '../../types'
 import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { localDateKey } from '../../lib/dates'
 import { nextMonday, tomorrow, type QueueRow, type QueueTier } from '../../lib/dailyQueue'
+import { DEMO_TRAINER_ID } from '../../lib/demoIds'
+import { toast } from '../shared/Toast'
 
 const DAYS_BACK = 14
 const PRIMERAS = 5 // filas que se enseñan por nivel antes de "Ver N más" (lo urgente se enseña entero)
@@ -16,6 +18,8 @@ const KIND_STYLE: Record<InboxKind, { bg: string; fg: string; icon: (props: { cl
   borrador:  { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <FileEdit {...p} /> },
   riesgo:    { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <AlertTriangle {...p} /> },
   revision:  { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Target {...p} /> },
+  sustitucion: { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Repeat {...p} /> },
+  duda:      { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <HelpCircle {...p} /> },
   sesion:    { bg: 'bg-ok/10',     fg: 'text-ok',     icon: () => <></> },
 }
 
@@ -38,9 +42,21 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   const [vista, setVista] = useState<Vista>('cola')
   const [verTodas, setVerTodas] = useState<Record<QueueTier, boolean>>({ urgente: true, hoy: false, luego: false })
   const [pospongo, setPospongo] = useState<string | null>(null) // fila con el menú de posponer abierto
+  const [aceptando, setAceptando] = useState<string | null>(null) // aviso de sustitución que se está guardando
   const { queue, setDone, snooze, unsnooze, loading } = useInboxItems(trainerId, clients, logsMap)
   const abrir = (clientId: string) => { const c = clients.find(cl => cl.id === clientId); if (c) onSelectClient(c) }
   const hoy = localDateKey()
+
+  // Aceptar la sustitución de un cliente como alternativa habitual: pasa al plan B de ese ejercicio (en todas sus
+  // semanas) y el aviso se da por revisado.
+  const aceptar = async ({ key, accion }: { key: string; accion: { clientId: string; ejercicio: string; alternativa: string; exerciseId?: string } }) => {
+    setAceptando(key)
+    const res = trainerId === DEMO_TRAINER_ID ? { ok: true as const } : await import('../../lib/serverSync').then(m => m.addPlanAlternative(accion.clientId, accion.ejercicio, { name: accion.alternativa, ...(accion.exerciseId ? { exerciseId: accion.exerciseId } : {}) }))
+    setAceptando(null)
+    if (!res.ok) { toast('No se pudo añadir al plan. Inténtalo de nuevo', 'warn'); return }
+    setDone([key], true)
+    toast(`«${accion.alternativa}» ya es una alternativa habitual de «${accion.ejercicio}» ✓`, 'ok')
+  }
 
   const resumen = [
     queue.counts.urgente > 0 && `${queue.counts.urgente} urgente${queue.counts.urgente !== 1 ? 's' : ''}`,
@@ -51,7 +67,9 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
   const renderFila = (row: QueueRow) => {
     const top = row.reasons[0]
     const style = KIND_STYLE[top.kind]
-    const otras = row.reasons.slice(1)
+    // Lo que ya sale en su propia tarjeta (con su botón) no se repite en la línea de "también"
+    const otras = row.reasons.slice(1).filter(r => !r.acciones?.length)
+    const acciones = row.reasons.flatMap(r => r.acciones ?? [])
     return (
       <div key={row.clientId} className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -73,6 +91,23 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
               className="p-2 rounded-lg text-muted hover:text-ok hover:bg-ok/10" title="Hecho"><Check className="w-4 h-4" /></button>
           </div>
         </div>
+        {acciones.length > 0 && (
+          <div className="mt-2 ml-11 space-y-2">
+            {acciones.map(a => (
+              <div key={a.key} className="bg-bg-alt/60 rounded-xl p-3 space-y-2">
+                <p className="text-xs leading-snug">{a.detail}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => aceptar(a)} disabled={aceptando === a.key}
+                    aria-label={`Aceptar ${a.accion.alternativa} como alternativa habitual de ${a.accion.ejercicio}`}
+                    className="px-3 py-1.5 rounded-lg bg-ink text-white text-xs font-semibold disabled:opacity-50">
+                    {aceptando === a.key ? 'Guardando…' : 'Aceptar como alternativa habitual'}
+                  </button>
+                  <button onClick={() => abrir(row.clientId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-bg-alt">Revisar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {pospongo === row.clientId && (
           <div className="flex gap-2 mt-2 ml-11" role="group" aria-label="Posponer hasta">
             <button onClick={() => { snooze(row.clientId, tomorrow(hoy)); setPospongo(null) }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-bg-alt">Hasta mañana</button>

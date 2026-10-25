@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ClipboardList, CheckCircle2, Dumbbell, TrendingUp, X } from 'lucide-react'
-import { TrainingPlan, TrainingLogs, LogSet } from '../../../types'
+import { TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../../types'
+import { ETIQUETA_MOTIVO, ETIQUETA_APROBACION } from '../../../lib/sustitucionPlan'
 import { supabase } from '../../../lib/supabase'
 import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
 
@@ -80,7 +81,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
   })
   Object.values(exHistory).forEach(arr => arr.sort((a, b) => a.date.localeCompare(b.date)))
 
-  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string; substituteName?: string; dolorEva?: number }[]> = {}
+  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string; substituteName?: string; sustitucion?: Sustitucion; dolorEva?: number }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
     if (!log.dateDone) return
     const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
@@ -88,7 +89,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
     const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
     const exName = plan?.weeks?.[wi]?.days?.[di]?.exercises?.[ri]?.name || key
     if (!byDate[log.dateDone]) byDate[log.dateDone] = []
-    byDate[log.dateDone].push({ exName, sets: log.sets, key, substituteName: log.substituteName, dolorEva: log.dolorEva })
+    byDate[log.dateDone].push({ exName, sets: log.sets, key, substituteName: log.substituteName, sustitucion: log.sustitucion, dolorEva: log.dolorEva })
   })
   const dates = Object.keys(byDate).sort().reverse()
   if (!dates.length) return <div className="text-center py-16 text-muted"><ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin entrenamientos aún</p></div>
@@ -109,7 +110,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
             </div>
           )}
           <div className="divide-y divide-border">
-            {byDate[fecha].map(({ exName, sets, key, substituteName, dolorEva }) => {
+            {byDate[fecha].map(({ exName, sets, key, substituteName, sustitucion, dolorEva }) => {
               const setsArr = Object.values(sets || {})
               const mejor = setsArr.reduce((max, s) => Math.max(max, parseFloat(s.weight) || 0), 0)
               const evaColor = dolorEva === undefined ? undefined : dolorEva <= 3 ? '#4caf7d' : dolorEva <= 6 ? '#e0a854' : '#dc2626'
@@ -120,7 +121,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${substituteName ? 'line-through text-muted' : ''}`}>{exName}</p>
                       {substituteName && (
-                        <p className="text-xs font-semibold text-warn flex items-center gap-1">🔄 {substituteName}</p>
+                        <p className="text-xs font-semibold text-warn flex items-center gap-1 flex-wrap">🔄 {substituteName}{sustitucion && <span className="font-normal text-muted">· {ETIQUETA_MOTIVO[sustitucion.reason]} · {ETIQUETA_APROBACION[sustitucion.approvedBy]}</span>}</p>
                       )}
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
                         {setsArr.map((s, si) => <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}

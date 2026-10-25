@@ -372,7 +372,7 @@ export function FocusWorkout(p: Props) {
         <div className="mx-4 mt-6 mb-10">
           <button onClick={() => setShowMore(s => !s)} aria-expanded={showMore}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-border text-sm font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
-            <MoreHorizontal className="w-4 h-4" /> {showMore ? 'Ocultar opciones' : 'Más: historial, cambiar ejercicio, molestias, vídeo'}
+            <MoreHorizontal className="w-4 h-4" /> {showMore ? 'Ocultar opciones' : 'Más: historial, ¿no puedes hacerlo?, vídeo'}
           </button>
           {showMore && <div className="mt-3 -mx-4">{p.renderMore(p.ri)}</div>}
         </div>

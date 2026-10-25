@@ -8,7 +8,10 @@
 //  · "Hecho" y "Posponer" sacan la fila de la cola sin perder nada (se recuperan). Lo urgente no se pospone.
 
 export type QueueTier = 'urgente' | 'hoy' | 'luego'
-export type QueueKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo' | 'revision'
+export type QueueKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo' | 'revision' | 'sustitucion' | 'duda'
+
+/** Lo que el entrenador puede resolver desde la propia fila, sin abrir la ficha. */
+export interface QueueAccion { tipo: 'aceptar-alternativa'; clientId: string; ejercicio: string; alternativa: string; exerciseId?: string }
 
 /** Aviso tal como lo genera useInboxItems, ya con su prioridad. */
 export interface QueueItem {
@@ -22,9 +25,14 @@ export interface QueueItem {
   tier: QueueTier | 'actividad'
   /** Dentro de un nivel, mayor = antes. */
   score: number
+  accion?: QueueAccion
 }
 
-export interface QueueReason { kind: QueueKind; detail: string; score: number; keys: string[]; count: number }
+export interface QueueReason {
+  kind: QueueKind; detail: string; score: number; keys: string[]; count: number
+  /** Avisos de esta razón que se pueden resolver desde la fila (cada uno con su texto, porque no se pueden resumir en uno). */
+  acciones?: { key: string; detail: string; accion: QueueAccion }[]
+}
 
 export interface QueueRow {
   clientId: string
@@ -77,7 +85,8 @@ function buildRow(clientId: string, items: QueueItem[]): QueueRow {
   for (const it of items) (byKind.get(it.kind) ?? byKind.set(it.kind, []).get(it.kind)!).push(it)
   const reasons: QueueReason[] = [...byKind.entries()].map(([kind, list]) => {
     const top = [...list].sort((a, b) => b.score - a.score || b.date.localeCompare(a.date))[0]
-    return { kind, detail: list.length > 1 ? `${top.detail} (+${list.length - 1} más)` : top.detail, score: top.score, keys: list.map(i => i.key), count: list.length }
+    const acciones = list.filter(i => i.accion).map(i => ({ key: i.key, detail: i.detail, accion: i.accion! }))
+    return { kind, detail: list.length > 1 ? `${top.detail} (+${list.length - 1} más)` : top.detail, score: top.score, keys: list.map(i => i.key), count: list.length, ...(acciones.length ? { acciones } : {}) }
   }).sort((a, b) => b.score - a.score)
 
   const tier = items.reduce<QueueTier>((t, i) => (i.tier !== 'actividad' && TIER_RANK[i.tier] < TIER_RANK[t] ? i.tier : t), 'luego')
