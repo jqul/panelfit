@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { isPlausibleToken, tokenAtStart, rememberClientLink, recalledClientLink, forgetClientLink } from './clientLink'
 
 const TOKEN = 'a1b2c3d4e5f60718293a4b5c6d7e8f90'
@@ -51,5 +53,18 @@ describe('acceso directo del cliente', () => {
     expect(tokenAtStart({ pathname: '/blog', search: '', standalone: true, recalled: TOKEN })).toBeNull()
     expect(tokenAtStart({ pathname: '/', search: '', standalone: true, recalled: null })).toBeNull()
     expect(tokenAtStart({ pathname: '/', search: '', standalone: true, recalled: '<x>' })).toBeNull()
+  })
+
+  it('la regla de forma de token es la misma en la página, en la app y en la función del servidor', () => {
+    const regla = "[A-Za-z0-9_-]{8,128}"
+    const leer = (f: string) => readFileSync(join(process.cwd(), f), 'utf8')
+    for (const f of ['index.html', 'api/manifest.js', 'src/lib/clientLink.ts']) expect(leer(f), f).toContain(regla)
+  })
+
+  it('index.html pone el manifiesto del cliente desde el primer momento (iOS lo lee al cargar, no después)', () => {
+    const html = readFileSync(join(process.cwd(), 'index.html'), 'utf8')
+    expect(html).toContain("'/api/manifest?c=' + c")
+    expect(html).toContain("var href = '/manifest.json'")
+    expect(html).not.toMatch(/<link rel="manifest"/) // ya no hay un enlace fijo que el navegador lea antes
   })
 })
