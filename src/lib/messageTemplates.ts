@@ -18,10 +18,7 @@ const DEFAULTS: { tipo: MessageType; nombre: string; texto: string }[] = [
   { tipo: 'descanso', nombre: 'Día de descanso', texto: 'Hola {{cliente}}, hoy toca descanso 🛌 Aprovecha para recuperar bien, mañana seguimos.' },
 ]
 
-/** Sustituye los placeholders del mensaje por los datos reales del cliente. */
-export function resolveMessage(texto: string, clientName: string): string {
-  return texto.replace(/\{\{\s*cliente\s*\}\}/gi, clientName)
-}
+export { resolveMessage } from './messageText'
 
 export function useMessageTemplates(trainerId?: string) {
   const [templates, setTemplates] = useState<MessageTemplate[]>([])

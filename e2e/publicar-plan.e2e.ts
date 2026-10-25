@@ -2,7 +2,7 @@ import { test, expect } from './support/test'
 import { seedWorld, samplePlan, ids } from './support/seed'
 import { entrarComoEntrenador, abrirFichaDelCliente, entrarComoCliente, verEjerciciosDelDia } from './support/flows'
 
-const OPCIONES_CLIENTE = { baseURL: 'http://127.0.0.1:5180', serviceWorkers: 'block', viewport: { width: 390, height: 844 }, locale: 'es-ES' } as const
+const OPCIONES_CLIENTE = { baseURL: `http://127.0.0.1:${process.env.E2E_PORT ?? 5180}`, serviceWorkers: 'block', viewport: { width: 390, height: 844 }, locale: 'es-ES' } as const
 
 test('el cliente no ve el borrador; al publicarlo el entrenador, el cliente ve el plan nuevo', async ({ page, browser, fake }) => {
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
