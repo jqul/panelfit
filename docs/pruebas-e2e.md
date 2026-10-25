@@ -4,7 +4,7 @@ Recorren la app en un navegador de verdad (Chrome) como lo haría una persona. C
 hace más daño: perder entrenos, enseñar datos de salud sin consentimiento, publicar mal un plan o no poder borrar.
 
 ```bash
-npm run test:e2e        # 15 pruebas, ~1,6 min; arranca solo el servidor de desarrollo
+npm run test:e2e        # ~3 min; arranca solo el servidor de desarrollo (puerto 5180; con otro worktree a la vez: E2E_PORT=5181 npm run test:e2e)
 npm run typecheck:e2e   # tipos de las pruebas
 ```
 
