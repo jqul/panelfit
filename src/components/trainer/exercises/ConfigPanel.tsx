@@ -52,7 +52,7 @@ export function ConfigPanel({ trainerId, onClose, onRefresh }: { trainerId: stri
           <Settings2 className="w-4 h-4 text-accent" />
           <p className="text-sm font-semibold">Configurar clasificaciones</p>
         </div>
-        <button onClick={onClose}><X className="w-4 h-4 text-muted" /></button>
+        <button onClick={onClose} aria-label="Cerrar configuración"><X className="w-4 h-4 text-muted" /></button>
       </div>
 
       {/* Tabs internas */}

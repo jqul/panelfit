@@ -1,4 +1,4 @@
-import { test, expect } from './support/test'
+import { test, expect as expectBase } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoEntrenador } from './support/flows'
 import type { FakeSupabase } from './support/fakeSupabase'
@@ -29,8 +29,10 @@ async function abrirBiblioteca(page: Page) {
   await expect(page.getByRole('heading', { name: 'Ejercicios', level: 2 })).toBeVisible()
 }
 
-// La primera carga en frío compila el trozo diferido de la biblioteca: más margen que el resto.
+// Este fichero es el primero en ejecutarse: la carga en frío compila la app y el trozo diferido de la biblioteca,
+// así que cada aserción y el test entero tienen más margen que el resto.
 test.setTimeout(120_000)
+const expect = expectBase.configure({ timeout: 30_000 })
 
 /**
  * Abre un menú ⋯ y espera a que aparezca su opción. El menú se cierra con cualquier scroll del contenedor (también los
