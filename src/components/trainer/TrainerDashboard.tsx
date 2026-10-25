@@ -36,7 +36,8 @@ import { EtiquetasTab } from './EtiquetasTab'
 import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
-import { OnboardingTour } from './OnboardingTour'
+import { OnboardingChecklist } from './OnboardingChecklist'
+import { useOnboarding } from '../../hooks/useOnboarding'
 import { PlanGate } from '../shared/PlanGate'
 import { PublicPageEditor } from './PublicPageEditor'
 import { EquipoSection } from './EquipoSection'
@@ -48,6 +49,8 @@ const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ defaul
 const GlobalSearch = lazy(() => import('./GlobalSearch').then(m => ({ default: m.GlobalSearch })))
 // Las acciones masivas (barra y hojas de plan, mensaje, etiquetas y encuesta) solo se descargan al seleccionar clientes.
 const BulkActions = lazy(() => import('./bulk/BulkActions').then(m => ({ default: m.BulkActions })))
+// El asistente de primer cliente (cliente → workout → acceso) también se descarga solo al abrirlo.
+const PrimerClienteWizard = lazy(() => import('./PrimerClienteWizard').then(m => ({ default: m.PrimerClienteWizard })))
 
 type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
 
@@ -73,7 +76,7 @@ interface Props {
 export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
   const clientLimit = userProfile.clientLimit ?? 999
-  const { clients, logsMap, loading, addClient, deleteClient, limitReached, fetchClients } =
+  const { clients, logsMap, loading, fetchClients, addClient, deleteClient, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
   const { labels } = useLabels(userProfile.uid)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
@@ -81,6 +84,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     if (demoClients) return false
     try { return localStorage.getItem(`pf_onboarding_done_${userProfile.uid}`) !== '1' } catch { return false }
   })
+  // Asistente de primer cliente: null = cerrado; con cliente = sigue por el workout o el acceso de ese cliente.
+  const [wizard, setWizard] = useState<null | { step: 'cliente' } | { step: 'plan' | 'acceso'; clientId: string }>(null)
+  const onboarding = useOnboarding(userProfile.uid, clients.map(c => ({ id: c.id, hasPlan: c.hasPlan, openedAt: c.plan_last_opened_at })), !demoClients)
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [clientSort, setClientSort] = useState<ClientSort>('attention')
@@ -157,6 +163,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       setShowAdd(false)
       setNewClientLabelIds([])
       setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+      // Mismo asistente que el primer cliente: seguir con su workout y su acceso (se puede cerrar con "Ahora no").
+      if (!demoClients) setWizard({ step: 'plan', clientId: ok })
     }
     setAdding(false)
   }
@@ -209,6 +217,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'ir-cohortes', title: 'Ir a Grupos', keywords: 'cohortes', run: verTab('cohortes') },
     { id: 'ir-negocio', title: 'Ir a Mi negocio', keywords: 'ingresos facturacion', run: verTab('negocio') },
     { id: 'ir-ajustes', title: 'Ir a Ajustes', keywords: 'configuracion cuenta perfil settings', run: verTab('settings') },
+    ...(demoClients ? [] : [{ id: 'primeros-pasos', title: 'Primeros pasos', keywords: 'empezar onboarding guia checklist ayuda', run: () => { onboarding.show(); handleTabChange('dashboard') } }]),
   ]
   const abrirConTexto = (tab: Tab) => (text: string) => { setSeed(s => ({ tab, text, nonce: s.nonce + 1 })); handleTabChange(tab) }
   // El texto solo vale para la pestaña a la que se saltó; si luego se navega a otra, se olvida.
@@ -307,14 +316,19 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     </div>
   )
 
-  const closeOnboarding = () => {
+  // Primera visita sin clientes: en vez de un recorrido de pantallas, directo al asistente del primer cliente.
+  useEffect(() => {
+    if (!showOnboarding || loading) return
     setShowOnboarding(false)
     try { localStorage.setItem(`pf_onboarding_done_${userProfile.uid}`, '1') } catch {}
-  }
+    if (clients.length === 0) setWizard({ step: 'cliente' })
+  }, [showOnboarding, loading, clients.length, userProfile.uid])
+
+  const onboardingStep = (step: 'cliente' | 'plan' | 'acceso', clientId: string | null) =>
+    setWizard(step === 'cliente' || !clientId ? { step: 'cliente' } : { step, clientId })
 
   return (
     <div className="flex min-h-[100dvh] overflow-hidden bg-bg">
-      {showOnboarding && <OnboardingTour onClose={closeOnboarding} />}
       <div className="hidden lg:block w-52 flex-shrink-0 bg-card border-r border-border"><SidebarContent /></div>
       {sidebarOpen && (
         <>
@@ -371,6 +385,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   )}
                 </div>
 
+                {/* Primeros pasos: cliente → workout → acceso, marcados solos según los datos reales */}
+                {onboarding.visible && !loading && (
+                  <OnboardingChecklist progress={onboarding.progress} onStep={onboardingStep} onHide={onboarding.hide} />
+                )}
+
                 {/* Stat cards — borde de color + número prominente */}
                 <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
                   {[
@@ -402,35 +421,6 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   ))}
                 </div>
 
-
-                {/* Onboarding — solo cuando no hay clientes */}
-                {clients.length === 0 && !loading && (
-                  <div className="rounded-2xl overflow-hidden border border-border">
-                    <div className="px-8 pt-10 pb-6">
-                      <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">Bienvenido a PanelFit</p>
-                      <h3 className="font-serif text-2xl font-bold leading-snug mb-1">Tu primer cliente, listo en 2 minutos</h3>
-                      <p className="text-sm text-muted">Sigue estos 3 pasos y tendrás a un cliente entrenando con su panel móvil hoy mismo.</p>
-                    </div>
-                    <div className="px-8 pb-8 space-y-3">
-                      {[
-                        { n: '1', title: 'Añade al cliente', desc: 'Nombre y objetivo. En 30 segundos.', cta: '+ Nuevo cliente', onClick: () => setShowAdd(true), primary: true },
-                        { n: '2', title: 'Asígnale una rutina', desc: 'Usa una plantilla o créala desde cero.', cta: 'Ver Workouts', onClick: () => handleTabChange('templates'), primary: false },
-                        { n: '3', title: 'Envíale el enlace', desc: 'Un clic lo manda por WhatsApp. Sin instalar nada.', cta: 'Ver Clientes', onClick: () => handleTabChange('clients'), primary: false },
-                      ].map(({ n, title, desc, cta, onClick, primary }) => (
-                        <div key={n} className={`flex items-center gap-4 p-4 rounded-xl border ${primary ? 'bg-ink text-white border-ink' : 'bg-card border-border'}`}>
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-serif font-bold text-sm flex-shrink-0 ${primary ? 'bg-white/15 text-white' : 'bg-bg-alt text-muted'}`}>{n}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-semibold ${primary ? 'text-white' : 'text-ink'}`}>{title}</p>
-                            <p className={`text-xs mt-0.5 ${primary ? 'text-white/60' : 'text-muted'}`}>{desc}</p>
-                          </div>
-                          <button onClick={onClick} className={`text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all ${primary ? 'bg-card text-ink hover:opacity-90' : 'border border-border text-muted hover:border-ink hover:text-ink'}`}>
-                            {cta}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Gráfica actividad */}
                 <div className="bg-card rounded-2xl p-6" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -772,6 +762,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       {selection.selecting && selectedClients.length > 0 && (
         <Suspense fallback={null}>
           <BulkActions trainerId={userProfile.uid} clients={selectedClients} onClear={selection.stop} onChanged={fetchClients} aboveDemoBanner={!!demoClients} />
+        </Suspense>
+      )}
+
+      {wizard && (
+        <Suspense fallback={null}>
+          <PrimerClienteWizard trainerId={userProfile.uid} clients={clients} start={wizard}
+            addClient={addClient} refresh={fetchClients} onSent={onboarding.noteSent} onClose={() => setWizard(null)} />
         </Suspense>
       )}
 
