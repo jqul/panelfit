@@ -13,12 +13,16 @@ interface Props {
   brandColor?: string
   brandLogo?: string
   initialStep?: 'register' | 'login'
+  /** La cuenta de este cliente: al entrar se comprueba que el usuario sea ESTE (no vale, p. ej., el de entrenador). */
+  expectedUserId?: string | null
+  /** Hay otra sesión abierta en el dispositivo (p. ej. la de entrenador): se avisa de que se cerrará. */
+  otherSessionNotice?: boolean
   onComplete: () => void
 }
 
 type Step = 'register' | 'login' | 'forgot' | 'intake' | 'success'
 
-export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, initialStep = 'register', onComplete }: Props) {
+export function ClientRegister({ token, clientId, clientName, trainerName, brandColor = '#6e5438', brandLogo, initialStep = 'register', expectedUserId, otherSessionNotice = false, onComplete }: Props) {
   const [step, setStep] = useState<Step>(initialStep)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -93,12 +97,20 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     setError('')
     if (!email.trim() || !password) { setError('Rellena todos los campos'); return }
     setLoading(true)
-    const { error: loginError } = await supabase.auth.signInWithPassword({
+    const { data: login, error: loginError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password
     })
     if (loginError) {
       setError('Email o contraseña incorrectos')
+      setLoading(false)
+      return
+    }
+    // La contraseña era buena, pero ¿es la cuenta de ESTE cliente? Si no (típico: el usuario de entrenador en el móvil
+    // del propio entrenador), se cierra esa sesión y se explica, en vez de entrar a medias y pedir el acceso otra vez al refrescar.
+    if (expectedUserId && login?.user?.id !== expectedUserId) {
+      await supabase.auth.signOut()
+      setError('Ese usuario no es el de este panel. Entra con el email con el que te registraste en este enlace (el de entrenador no sirve aquí). Si no recuerdas la contraseña, usa «¿Olvidaste tu contraseña?».')
       setLoading(false)
       return
     }
@@ -344,6 +356,12 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
           <button onClick={() => { setError(''); setStep('forgot') }} className="text-sm text-muted hover:underline" style={{ color: brandColor }}>
             ¿Olvidaste tu contraseña?
           </button>
+        )}
+
+        {step === 'login' && otherSessionNotice && (
+          <div role="note" className="bg-bg-alt border border-border rounded-xl px-4 py-3">
+            <p className="text-sm text-muted leading-relaxed">En este dispositivo hay otra sesión abierta (por ejemplo la de entrenador). Al entrar con tu cuenta de cliente, esa sesión se cerrará.</p>
+          </div>
         )}
 
         {/* Error */}
