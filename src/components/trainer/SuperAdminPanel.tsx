@@ -157,7 +157,7 @@ export function SuperAdminPanel({ onLogout }: Props) {
               className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">
               <FileText className="w-3.5 h-3.5" /> Generar propuesta
             </button>
-            <button onClick={loadEntrenadores} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
+            <button aria-label="Recargar la lista" onClick={loadEntrenadores} className="p-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink transition-colors">
               <RefreshCw className="w-4 h-4" />
             </button>
             <button onClick={onLogout} className="flex items-center gap-2 px-3 py-2 border border-border rounded-lg text-sm text-muted hover:bg-bg-alt transition-colors">

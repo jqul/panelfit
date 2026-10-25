@@ -90,7 +90,7 @@ export function TempoWidget({ tempo }: { tempo?: string }) {
   return (
     <div className="mx-4 mb-3 rounded-xl border overflow-hidden" style={{ borderColor: phase.color + '40' }}>
       <div className="flex items-center gap-3 px-3 py-2" style={{ backgroundColor: phase.color + '12' }}>
-        <button onClick={toggle}
+        <button aria-label="Iniciar o pausar el tempo" onClick={toggle}
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white active:scale-90 transition-transform"
           style={{ backgroundColor: phase.color }}>
           {running ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}

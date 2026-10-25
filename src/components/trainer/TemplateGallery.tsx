@@ -38,7 +38,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
     <Modal open plain onClose={onClose} ariaLabel="Galería de la comunidad" maxWidth="max-w-lg">
         <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
           <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Store className="w-5 h-5" /> Galería de la comunidad</h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
+          <button aria-label="Cerrar" onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-5 pt-4 space-y-2 overflow-y-auto flex-1">
           <p className="text-xs text-muted mb-2">Workouts que otros entrenadores han compartido públicamente. Añadirlo crea una copia en tu propia librería.</p>

@@ -204,7 +204,7 @@ export function SeriesInfoModal({ types, onClose, onManage }: {
             <button onClick={onManage} className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
               <Pencil className="w-3 h-3" /> Gestionar
             </button>
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
+            <button aria-label="Cerrar" onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
           </div>
         </div>
         <div className="space-y-3 p-6 pt-4 overflow-y-auto flex-1 min-h-0">

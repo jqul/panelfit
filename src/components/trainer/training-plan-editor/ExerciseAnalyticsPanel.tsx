@@ -94,7 +94,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
           <p className="font-serif font-bold text-base leading-tight mt-0.5">{exName || 'Ejercicio'}</p>
           {clientName && <p className="text-[11px] text-muted">{clientName}</p>}
         </div>
-        <button onClick={onClose} className="p-1 text-muted hover:text-ink rounded flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+        <button aria-label="Cerrar" onClick={onClose} className="p-1 text-muted hover:text-ink rounded flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
       </div>
 
       <div className="bg-accent/5 border border-accent/15 rounded-xl px-3 py-2 flex items-center gap-2">
