@@ -43,6 +43,8 @@ const CORS = {
 const json = (route: Route, status: number, body: unknown, extra: Record<string, string> = {}) =>
   route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json', ...extra }, body: JSON.stringify(body) })
 const empty = (route: Route, status = 204) => route.fulfill({ status, headers: CORS })
+/** PNG de 1×1 píxel: lo que "devuelve" una URL firmada. */
+const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHdJ7KQAAAABJRU5ErkJggg==', 'base64')
 /** Igual que `token_expires_at is null or token_expires_at > now()` de las funciones reales. */
 const vigente = (c: Row) => !c.token_expires_at || new Date(String(c.token_expires_at)).getTime() > Date.now()
 
@@ -56,6 +58,11 @@ export class FakeSupabase {
   /** Ficheros de Storage por bucket. */
   storage: Record<string, string[]> = {}
   removedFiles: { bucket: string; paths: string[] }[] = []
+  /** Ficheros subidos con la API de Storage (el contenido no se guarda, solo dónde y cuánto pesaba). */
+  uploads: { bucket: string; path: string; bytes: number }[] = []
+  /** Lecturas de ficheros: las firmadas (correctas) y las públicas (no deberían existir: los buckets son privados). */
+  signedReads: string[] = []
+  publicReads: string[] = []
   offline = false
   /** Todas las escrituras (POST/PATCH/DELETE a la API), por si un test quiere saber qué se envió. */
   writes: { method: string; table: string; body: unknown }[] = []
@@ -260,7 +267,9 @@ export class FakeSupabase {
   // ── Storage ──
   private async storageApi(route: Route, req: Request, path: string) {
     const method = req.method()
-    const body = req.postDataJSON?.() ?? {}
+    // Las subidas llegan como formulario con el fichero (no es JSON): solo las demás operaciones llevan cuerpo JSON.
+    let body: any = {}
+    try { body = req.postDataJSON?.() ?? {} } catch { /* subida multipart */ }
     let m: RegExpMatchArray | null
     if (method === 'POST' && (m = path.match(/^object\/list\/([^/]+)$/))) {
       const prefix = String(body.prefix ?? '').replace(/\/$/, '')
@@ -280,6 +289,24 @@ export class FakeSupabase {
     }
     if (method === 'POST' && (m = path.match(/^object\/sign\/([^/]+)\/(.+)$/))) {
       return json(route, 200, { signedURL: `/object/sign/${m[1]}/${m[2]}?token=e2e` })
+    }
+    // Lectura de un fichero con la URL firmada (con su token) → una imagen de 1×1. Una lectura pública
+    // se registra aparte y falla: los buckets de fotos y vídeos son privados.
+    if (method === 'GET' && (m = path.match(/^object\/sign\/([^/?]+)\/([^?]+)/))) {
+      this.signedReads.push(`${m[1]}/${decodeURIComponent(m[2])}`)
+      return route.fulfill({ status: 200, headers: { ...CORS, 'content-type': 'image/png' }, body: PIXEL })
+    }
+    if (method === 'GET' && (m = path.match(/^object\/public\/([^/?]+)\/([^?]+)/))) {
+      this.publicReads.push(`${m[1]}/${decodeURIComponent(m[2])}`)
+      return json(route, 400, { message: 'Bucket no público' })
+    }
+    // Subida: POST (o PUT con upsert) a object/<bucket>/<ruta>
+    if ((method === 'POST' || method === 'PUT') && (m = path.match(/^object\/(?!list\/|sign\/|public\/)([^/]+)\/(.+)$/))) {
+      const bucket = m[1]; const file = decodeURIComponent(m[2])
+      this.uploads.push({ bucket, path: file, bytes: req.postDataBuffer()?.length ?? 0 })
+      const lista = (this.storage[bucket] ??= [])
+      if (!lista.includes(file)) lista.push(file)
+      return json(route, 200, { Key: `${bucket}/${file}`, Id: `id-${file}` })
     }
     this.unhandled.push(`${method} /storage/v1/${path}`)
     return json(route, 404, { message: 'storage no simulado' })

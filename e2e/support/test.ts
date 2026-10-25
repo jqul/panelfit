@@ -14,6 +14,7 @@ export const test = base.extend<{ fake: FakeSupabase; erroresEsperados: RegExp[]
     page.on('pageerror', e => pageErrors.push(e.message))
     await use(fake)
     expect(fake.unhandled, 'peticiones que el Supabase simulado no entiende').toEqual([])
+    expect(fake.publicReads, 'lecturas de ficheros por URL pública (los buckets de fotos y vídeos son privados)').toEqual([])
     expect(pageErrors.filter(m => !erroresEsperados.some(re => re.test(m))), 'errores de JavaScript en la página').toEqual([])
   },
 })
