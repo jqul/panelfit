@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
 import { clearTrainerDeviceData } from './deviceStorage'
+import { tokenAtStart, isStandaloneDisplay, recalledClientLink } from './clientLink'
 
 export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
@@ -95,6 +96,13 @@ export function useAuthBootstrap() {
     const token = params.get('c')
     if (token) { setClientToken(token); setView('client-token'); return }
     if (params.get('demo') === '1') { hydrateDemoStorage().then(() => setView('demo')); return }
+    // App instalada / acceso directo del cliente: arranca en "/" sin el enlace, así que se recupera el recordado
+    // (y se deja en la dirección para que recargar no lo pierda). Solo en la app instalada: ver lib/clientLink.ts.
+    const recalled = tokenAtStart({ pathname, search: window.location.search, standalone: isStandaloneDisplay(), recalled: recalledClientLink() })
+    if (recalled) {
+      try { window.history.replaceState({}, '', `/?c=${recalled}`) } catch { /* sin historial: se abre igualmente */ }
+      setClientToken(recalled); setView('client-token'); return
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) loadProfile(data.session.user.id, data.session.user.email || '')

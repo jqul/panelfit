@@ -3,6 +3,7 @@ import { MessageSquare, ShieldCheck } from 'lucide-react'
 import { TrainingPlan } from '../../../types'
 import { ClienteRow } from '../../../lib/supabase-types'
 import { isDeviceCacheEnabled, setDeviceCacheEnabled, clearClientDeviceData, hasPendingLogs } from '../../../lib/deviceStorage'
+import { forgetClientLink } from '../../../lib/clientLink'
 import { ThemeToggle } from '../../shared/ThemeToggle'
 import { PushToggle } from '../../shared/PushToggle'
 import { CicloWidget } from '../CicloWidget'
@@ -111,6 +112,7 @@ function DevicePrivacyCard({ client }: { client: ClienteRow }) {
     if (hasPendingLogs(client.id) &&
       !window.confirm('Tienes entrenos que todavía no se han subido. Si borras los datos de este dispositivo se perderán. ¿Borrar de todos modos?')) return
     clearClientDeviceData(client.id, client.token)
+    forgetClientLink(client.token) // la app instalada ya no abrirá tu panel sola en este dispositivo
     setMsg('Datos borrados de este dispositivo.')
   }
 

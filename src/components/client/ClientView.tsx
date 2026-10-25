@@ -15,6 +15,7 @@ import { logError } from '../../lib/errors'
 import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { pantallaDeEnlace } from '../../lib/enlaceCliente'
+import { rememberClientLink, forgetClientLink, installClientManifest } from '../../lib/clientLink'
 import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
 import { BadgesWidget } from './BadgesWidget'
@@ -152,11 +153,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       if (!cErr) {
         const { data: estado } = await supabase.rpc('get_client_link_status', { p_token: token })
         if (pantallaDeEnlace(estado) === 'caducado') setLinkExpired(true)
+        else forgetClientLink(token) // el enlace ya no existe: el acceso directo deja de insistir en él
       }
       setError('Enlace no válido o expirado.'); setLoading(false); return
     }
     setClient(clientData)
     cacheSet(CLIENT_CACHE_KEY(token), clientData)
+    // Acceso directo: la app instalada recordará este enlace y el manifiesto arrancará en él (lib/clientLink.ts)
+    rememberClientLink(token); installClientManifest(token)
 
     // 2. ¿El cliente tiene cuenta creada?
     if (!clientData.auth_user_id) {
