@@ -3,7 +3,7 @@ import {
   ChevronDown, Trophy,
   Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Repeat
 } from 'lucide-react'
-import { DayPlan, TrainingPlan, TrainingLogs, LogSet } from '../../types'
+import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
@@ -28,9 +28,9 @@ import { localDateKey } from '../../lib/dates'
 import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
-import { getSafeAlternatives, guessZonaForExercise } from '../../lib/exerciseAlternatives'
+import { guessZonaForExercise } from '../../lib/exerciseAlternatives'
+import { construirSustitucion } from '../../lib/sustitucion'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
-import { rankByQuery } from '../../lib/exerciseSearch'
 import { streakDays } from '../../lib/progressSummary'
 import { latestPreviousLog } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
@@ -131,31 +131,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     })
     return initial
   })
-  const [editingSubstitute, setEditingSubstitute] = useState<number | null>(null)
-  const [substituteDraft, setSubstituteDraft] = useState('')
-  // Sustituir por texto libre rompía las estadísticas del entrenador (grupo
-  // muscular, récords...) al no coincidir con ningún nombre conocido — ahora
-  // se elige de la biblioteca real del entrenador; el texto libre queda como
-  // último recurso si de verdad no está en la lista.
+  // La biblioteca real del entrenador: de ahí salen las alternativas sugeridas y la búsqueda (último recurso).
   const { names: libraryNames } = useTrainerExerciseNames(trainerId)
-  const substituteSuggestions = substituteDraft.trim().length >= 2
-    ? rankByQuery(libraryNames, substituteDraft).slice(0, 8)
-    : []
   const libraryMuscleMap = useLibraryMuscleMap(libraryNames)
-
-  // Sustitución inteligente por molestia — a diferencia de "Sustitúyelo" (que
-  // es libre, por disponibilidad de material), aquí el cliente dice qué zona
-  // le duele AHORA MISMO y se le proponen ejercicios del mismo grupo muscular
-  // que no cargan esa zona, para no parar del todo la sesión ni forzar la
-  // molestia.
-  const [molestiaPickerRi, setMolestiaPickerRi] = useState<number | null>(null)
-  const [molestiaPickerZona, setMolestiaPickerZona] = useState<string | null>(null)
-  const openMolestiaPicker = (ri: number, exName: string) => {
-    setEditingSubstitute(null)
-    setMolestiaPickerRi(ri)
-    setMolestiaPickerZona(guessZonaForExercise(exName, libraryMuscleMap))
-  }
-  const closeMolestiaPicker = () => { setMolestiaPickerRi(null); setMolestiaPickerZona(null) }
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null)
   const [uploadingVideoRi, setUploadingVideoRi] = useState<number | null>(null)
 
@@ -186,7 +164,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     setUploadingVideoRi(null)
   }, [dayKey, onLogsChange])
 
-  const setSubstitute = useCallback((ri: number, name: string) => {
+  const setSubstitute = useCallback((ri: number, name: string, sustitucion?: Sustitucion) => {
     const trimmed = name.trim()
     setSubstitutions(prev => {
       const updated = { ...prev }
@@ -195,10 +173,11 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     })
     const key = `ex_${dayKey}_r${ri}`
     const currentLogs = logsRef.current
-    const { substituteName: _drop, ...rest } = currentLogs[key] || { sets: {}, done: false }
+    // substituteName se sigue escribiendo igual que antes: estadísticas e historial lo leen. sustitucion añade el porqué y quién lo aprueba.
+    const { substituteName: _drop, sustitucion: _drop2, ...rest } = currentLogs[key] || { sets: {}, done: false }
     onLogsChange({
       ...currentLogs,
-      [key]: { ...rest, ...(trimmed ? { substituteName: trimmed } : {}) },
+      [key]: { ...rest, ...(trimmed ? { substituteName: trimmed, ...(sustitucion ? { sustitucion: { ...sustitucion, performedName: trimmed } } : {}) } : {}) },
     })
   }, [dayKey, onLogsChange])
 
@@ -658,34 +637,31 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     )
   }
 
-  // Sustituir / molestia: lo comparten la vista de lista y la de foco.
+  // "¿No puedes hacerlo?": lo comparten la vista de lista y la de foco. El cliente dice por qué (material ocupado, le
+  // molesta, no lo entiende) y se le propone lo que su entrenador dejó aprobado; el cambio queda en el registro de esa
+  // sesión, nunca en el plan, y el entrenador lo ve en su cola.
   const renderSubstitution = (ri: number, ex: DayPlan['exercises'][number]) => (
     <ExerciseSubstitution
-        substitutionName={substitutions[ri]}
-        isEditing={editingSubstitute === ri}
-        draft={substituteDraft}
-        onDraftChange={setSubstituteDraft}
-        suggestions={substituteSuggestions}
-        onStartEdit={() => { closeMolestiaPicker(); setSubstituteDraft(substitutions[ri] || ''); setEditingSubstitute(ri) }}
-        onConfirmEdit={(name) => { setSubstitute(ri, name); setEditingSubstitute(null) }}
-        onCancelEdit={() => setEditingSubstitute(null)}
-        isMolestiaOpen={molestiaPickerRi === ri}
-        onOpenMolestia={() => openMolestiaPicker(ri, ex.name)}
-        onCloseMolestia={closeMolestiaPicker}
-        molestiaZona={molestiaPickerZona}
-        onSetMolestiaZona={setMolestiaPickerZona}
-        alternatives={molestiaPickerRi === ri && molestiaPickerZona
-          ? getSafeAlternatives(ex.name, molestiaPickerZona, libraryNames, libraryMuscleMap)
-          : []}
-        onPickAlternative={(altName) => {
-          setSubstitute(ri, altName)
-          addPainEntry(molestiaPickerZona!, 5, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
-          closeMolestiaPicker()
-        }}
-        onJustNotify={() => {
-          addPainEntry(molestiaPickerZona!, 5, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')
-          closeMolestiaPicker()
-        }}
+      exercise={ex}
+      substitutionName={substitutions[ri]}
+      library={libraryNames}
+      libraryMap={libraryMuscleMap}
+      zonaSugerida={guessZonaForExercise(ex.name, libraryMuscleMap)}
+      asked={!!logs[`ex_${dayKey}_r${ri}`]?.duda}
+      onSubstitute={(opcion, reason, extra) => {
+        setSubstitute(ri, opcion.name, construirSustitucion({
+          ex, performedName: opcion.name, performedExerciseId: opcion.exerciseId, reason, origen: opcion.origen,
+          zona: extra?.zona, intensidad: extra?.intensidad, fecha: localDateKey(),
+        }))
+        if (extra) addPainEntry(extra.zona, extra.intensidad, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
+      }}
+      onRevert={() => setSubstitute(ri, '')}
+      onPain={(zona, intensidad) => addPainEntry(zona, intensidad, `Molestia en "${ex.name}" durante la sesión`, undefined, 'articular')}
+      onAsk={() => {
+        const key = `ex_${dayKey}_r${ri}`
+        const current = logsRef.current
+        onLogsChange({ ...current, [key]: { ...(current[key] ?? { sets: {}, done: false }), duda: new Date().toISOString() } })
+      }}
     />
   )
 

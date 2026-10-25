@@ -11,8 +11,8 @@ import { GRUPO_A_ZONA } from './painWarning'
 // que no basta con excluir "press militar" — hay que descartar el patrón de
 // empuje vertical entero, no solo una variante concreta.
 const ZONA_RIESGO: Record<string, string[]> = {
-  'Rodilla':      ['squat', 'sentadilla', 'prensa', 'zancada', 'lunges', 'salto', 'step up', 'pistol'],
-  'Hombro':       ['press', 'arnold', 'fondos', 'elevación frontal', 'elevacion frontal'],
+  'Rodilla':      ['squat', 'sentadilla', 'prensa', 'zancada', 'lunges', 'salto', 'step up', 'pistol', 'thruster'],
+  'Hombro':       ['press', 'arnold', 'fondos', 'elevación frontal', 'elevacion frontal', 'thruster', 'jerk', 'remo erguido', 'upright row'],
   'Espalda baja': ['peso muerto', 'buenos días', 'buenos dias', 'remo pendlay', 'hip thrust', 'sentadilla', 'zancada'],
   'Cadera':       ['sentadilla', 'peso muerto', 'hip thrust', 'zancada', 'lunges'],
   'Codo':         ['curl', 'francés', 'frances', 'extensión', 'extension', 'fondos', 'press banca'],
@@ -29,6 +29,34 @@ export function guessZonaForExercise(exName: string, libraryMap?: Map<string, st
   return GRUPO_A_ZONA[getMuscleGroup(exName, libraryMap)] || null
 }
 
+/** ¿Este ejercicio carga directamente la zona con molestia? Mismo criterio conservador de siempre. */
+export function cargaZona(zona: string, exName: string): boolean {
+  const lower = exName.toLowerCase().trim()
+  return (ZONA_RIESGO[zona] || []).some(k => lower.includes(k))
+}
+
+const palabras = (s: string) => new Set(s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(w => w.length > 2))
+
+/** Cuántas palabras comparten dos nombres ("Press banca con barra" / "Press banca con mancuernas" = 3): para ofrecer primero la variante más parecida. */
+export function similitudNombres(a: string, b: string): number {
+  const pa = palabras(a)
+  let n = 0
+  for (const w of palabras(b)) if (pa.has(w)) n++
+  return n
+}
+
+/** Ejercicios del mismo grupo muscular que el prescrito (el estímulo se mantiene), los más parecidos de nombre primero. */
+export function alternativasMismoGrupo(exName: string, library: AltCandidate[], libraryMap?: Map<string, string>, limit = 5): AltCandidate[] {
+  const group = getMuscleGroup(exName, libraryMap)
+  const lowerExName = exName.toLowerCase().trim()
+  return library
+    .filter(e => e.name.toLowerCase().trim() !== lowerExName && (e.category || getMuscleGroup(e.name, libraryMap)) === group)
+    .map(e => ({ e, s: similitudNombres(exName, e.name) }))
+    .sort((a, b) => b.s - a.s || a.e.name.length - b.e.name.length || a.e.name.localeCompare(b.e.name, 'es'))
+    .slice(0, limit)
+    .map(x => x.e)
+}
+
 /**
  * Alternativas biomecánicamente equivalentes (mismo grupo muscular, así que
  * el estímulo de entrenamiento se mantiene) y más seguras para la zona con
@@ -40,14 +68,5 @@ export function guessZonaForExercise(exName: string, libraryMap?: Map<string, st
 export function getSafeAlternatives(
   exName: string, zona: string, library: AltCandidate[], libraryMap?: Map<string, string>
 ): AltCandidate[] {
-  const group = getMuscleGroup(exName, libraryMap)
-  const riesgo = ZONA_RIESGO[zona] || []
-  const lowerExName = exName.toLowerCase().trim()
-  return library.filter(e => {
-    const lower = e.name.toLowerCase().trim()
-    if (lower === lowerExName) return false
-    const eGroup = e.category || getMuscleGroup(e.name, libraryMap)
-    if (eGroup !== group) return false
-    return !riesgo.some(k => lower.includes(k))
-  }).slice(0, 5)
+  return alternativasMismoGrupo(exName, library.filter(e => !cargaZona(zona, e.name)), libraryMap, 5)
 }

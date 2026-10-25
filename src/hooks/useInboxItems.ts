@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
-import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP } from '../lib/demo-data'
+import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
+import { avisosDeEjercicios, ETIQUETA_MOTIVO } from '../lib/sustitucionPlan'
+import type { TrainingPlan } from '../types'
 import { PainEntry } from '../lib/clientPain'
 import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
@@ -54,6 +56,9 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
   const [videos, setVideos] = useState<VideoRow[]>([])
   const [borradores, setBorradores] = useState<BorradorRow[]>([])
   const [lastReviews, setLastReviews] = useState<Record<string, string>>({}) // clientId -> week_start más reciente
+  // Planes de los clientes que han sustituido un ejercicio o pedido ayuda con él: hace falta el plan para saber qué
+  // ejercicio estaba prescrito y cuál es su plan B. Solo se piden los de esos clientes (suelen ser pocos).
+  const [planes, setPlanes] = useState<Record<string, TrainingPlan>>({})
   const [loading, setLoading] = useState(true)
   const [reviewed, setReviewed] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(`pf_bandeja_revisados_${trainerId}`) || '[]')) } catch { return new Set() }
@@ -108,6 +113,24 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       setLoading(false)
     })
   }, [clients, trainerId])
+
+  const idsConAvisoDeEjercicio = useMemo(() => clients
+    .filter(c => Object.values(logsMap[c.id] || {}).some((l: any) => l?.sustitucion || l?.substituteName || l?.duda))
+    .map(c => c.id).sort().join(','), [clients, logsMap])
+  useEffect(() => {
+    if (!idsConAvisoDeEjercicio) { setPlanes({}); return }
+    const ids = idsConAvisoDeEjercicio.split(',')
+    if (trainerId === DEMO_TRAINER_ID) {
+      setPlanes(Object.fromEntries(ids.filter(id => DEMO_PLAN_MAP[id]).map(id => [id, DEMO_PLAN_MAP[id] as unknown as TrainingPlan])))
+      return
+    }
+    let vivo = true
+    supabase.from('planes').select('clientId, plan').in('clientId', ids).then(({ data }) => {
+      if (!vivo) return
+      setPlanes(Object.fromEntries(((data || []) as { clientId: string; plan: { P?: TrainingPlan } | null }[]).filter(r => r.plan?.P).map(r => [r.clientId, r.plan!.P!])))
+    })
+    return () => { vivo = false }
+  }, [idsConAvisoDeEjercicio, trainerId])
 
   const items = useMemo(() => {
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
@@ -168,6 +191,24 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       list.push({ key: `riesgo:${c.id}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'riesgo', detail: risk.detail, warn: true, tier: risk.tier, score: risk.score })
     })
 
+    // Sustituciones de ejercicio y dudas de técnica. Una sustitución que no estaba en el plan B del entrenador se
+    // puede aceptar como alternativa habitual desde la propia fila; si ya estaba aprobada solo informa.
+    clients.forEach(c => {
+      const { sustituciones, dudas } = avisosDeEjercicios(logsMap[c.id] || {}, planes[c.id], sinceKey)
+      sustituciones.forEach(x => {
+        const motivo = ETIQUETA_MOTIVO[x.reason]
+        const texto = `🔄 ${c.name} cambió «${x.prescrita}» por «${x.hecha}» · ${motivo}${x.detalle ? ` · ${x.detalle}` : ''}`
+        list.push({ key: `sustitucion:${c.id}:${x.key}:${x.hecha}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: x.fecha, kind: 'sustitucion',
+          detail: x.conocida ? `${texto} (alternativa aprobada)` : texto, warn: !x.conocida,
+          tier: x.conocida ? 'luego' : 'hoy', score: x.conocida ? 8 : 40,
+          ...(x.conocida ? {} : { accion: { tipo: 'aceptar-alternativa' as const, clientId: c.id, ejercicio: x.prescrita, alternativa: x.hecha, ...(x.exerciseId ? { exerciseId: x.exerciseId } : {}) } }) })
+      })
+      dudas.forEach(d => {
+        list.push({ key: `duda:${c.id}:${d.key}:${d.fecha}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: d.fecha, kind: 'duda',
+          detail: `🙋 ${c.name} no entiende «${d.ejercicio}» y te pregunta`, warn: true, tier: 'hoy', score: 50 })
+      })
+    })
+
     // Solo para clientes con objetivo principal puesto (el entrenador optó
     // por usar esto) y sin ninguna revisión en los últimos 7 días. Clave por
     // semana (no por día): si se marca como revisado, no reaparece hasta la
@@ -189,7 +230,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
 
     // Lo urgente (warn) siempre arriba; dentro de cada bloque, lo más reciente primero.
     return list.sort((a, b) => (Number(!!b.warn) - Number(!!a.warn)) || b.date.localeCompare(a.date))
-  }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews])
+  }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews, planes])
 
   const persistReviewed = (next: Set<string>) => { try { localStorage.setItem(`pf_bandeja_revisados_${trainerId}`, JSON.stringify([...next])) } catch {} }
   const persistSnoozed = (next: Record<string, string>) => { try { localStorage.setItem(`pf_bandeja_pospuestos_${trainerId}`, JSON.stringify(next)) } catch {} }
