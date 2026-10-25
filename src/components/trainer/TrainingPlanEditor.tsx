@@ -9,6 +9,8 @@ import { ActionMenu } from '../shared/ActionMenu'
 import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs, RunSpec } from '../../types'
 import { RunEditor } from './training-plan-editor/RunEditor'
+import { PlanBEditor } from './training-plan-editor/PlanBEditor'
+import { conPlanB } from '../../lib/sustitucionPlan'
 import { runDefaultName, runLabel } from '../../lib/run'
 import { TRAINING_TYPES } from '../../lib/constants'
 import { toast } from '../shared/Toast'
@@ -668,6 +670,10 @@ export function TrainingPlanEditor({
                                         <span>🩹</span>
                                         {ex.enReadaptacion ? '✓ En readaptación — pide dolor EVA 0-10' : 'Marcar como terapéutico / en readaptación'}
                                       </button>
+                                      {ex.kind !== 'run' && (
+                                        <PlanBEditor exercise={ex} library={library} libraryMap={libraryMap}
+                                          onChange={patch => updatePlan({ weeks: conPlanB(weeks, ex.name, patch).weeks })} />
+                                      )}
                                     </div>
                                     <div className="p-3 space-y-3">
                                       <div className="flex items-center gap-1.5">

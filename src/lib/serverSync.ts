@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { logError } from './errors'
-import { TrainingLogs } from '../types'
+import { TrainingLogs, ExerciseAlternative, WeekPlan } from '../types'
+import { conAlternativa } from './sustitucionPlan'
 
 // Sincronización de los entrenos entre el dispositivo del cliente, el servidor y el entrenador.
 // Reglas (docs/sincronizacion.md):
@@ -109,4 +110,46 @@ export async function savePlanDiasMerged(clientId: string, dias: number[]): Prom
     },
   })
   return res.ok ? { ok: true, plan: res.merged.P } : { ok: false }
+}
+
+type PlanRow = { plan: { P: { weeks?: WeekPlan[] } & Record<string, unknown> } | null; borrador: { P: { weeks?: WeekPlan[] } & Record<string, unknown> } | null }
+
+/**
+ * El entrenador acepta una sustitución del cliente como alternativa habitual: se añade al plan B de ese ejercicio
+ * (en todas sus apariciones) en el plan publicado y también en el borrador si lo hay. Lectura-escritura con versión,
+ * como todo lo que escribe en `planes`: si el entrenador está editando ese plan, no se pisan.
+ * `changed` es false si ya estaba (no se escribe nada).
+ */
+export async function addPlanAlternative(clientId: string, exerciseName: string, alt: ExerciseAlternative): Promise<{ ok: true; changed: boolean } | { ok: false }> {
+  let changed = false
+  let hadBorrador = false
+  const res = await casUpdate<PlanRow>({
+    read: async () => {
+      const { data, error } = await supabase.from('planes').select('plan, plan_borrador, updatedAt').eq('clientId', clientId).maybeSingle()
+      if (error || !data?.plan) { if (error) logError('serverSync:readPlanAlt', error); return null }
+      return { value: { plan: data.plan as PlanRow['plan'], borrador: (data.plan_borrador as PlanRow['borrador']) ?? null }, version: (data.updatedAt as number | null) ?? null, exists: true }
+    },
+    merge: cur => {
+      changed = false
+      hadBorrador = !!cur!.borrador?.P
+      const apply = (p: PlanRow['plan']): PlanRow['plan'] => {
+        if (!p?.P?.weeks) return p
+        const r = conAlternativa(p.P.weeks, exerciseName, alt)
+        if (r.changed) changed = true
+        return r.changed ? { ...p, P: { ...p.P, weeks: r.weeks } } : p
+      }
+      return { plan: apply(cur!.plan), borrador: apply(cur!.borrador) }
+    },
+    write: async (merged, version) => {
+      if (!changed) return 'ok'
+      const payload: Record<string, unknown> = { plan: merged.plan, updatedAt: nextVersion(version) }
+      if (hadBorrador) payload.plan_borrador = merged.borrador
+      let q = supabase.from('planes').update(payload).eq('clientId', clientId)
+      q = version === null ? q.is('updatedAt', null) : q.eq('updatedAt', version)
+      const { data, error } = await q.select('clientId')
+      if (error) { logError('serverSync:writePlanAlt', error); return 'error' }
+      return data && data.length > 0 ? 'ok' : 'conflict'
+    },
+  })
+  return res.ok ? { ok: true, changed } : { ok: false }
 }

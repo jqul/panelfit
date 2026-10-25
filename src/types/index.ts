@@ -41,7 +41,12 @@ export interface Exercise {
   enReadaptacion?: boolean // ejercicio terapéutico/de readaptación — pide dolor EVA 0-10 durante la sesión
   kind?: 'run'             // ejercicio de carrera/pista: se registra tiempo y distancia en vez de kg × reps (`sets` sigue siendo "NxM" para lo que lo lea)
   run?: RunSpec
+  alternativas?: ExerciseAlternative[]  // plan B: sustituciones que el entrenador aprueba de antemano para este ejercicio (material ocupado, etc.)
+  dolorSinSustituir?: boolean  // si le molesta algo con este ejercicio, no se le propone cambiarlo: se le dice que pare y se avisa al entrenador
 }
+
+// Plan B de un ejercicio prescrito. Se identifica por nombre (como todo en el plan) y, si se conoce, por el id de la biblioteca.
+export interface ExerciseAlternative { name: string; exerciseId?: string }
 
 // Ejercicio de carrera. Por tiradas: `reps` tiradas de `distanceM` metros con
 // `recoveryM` metros andando entre ellas (0 = sin recuperación medida; una
@@ -95,6 +100,10 @@ export interface LibraryExercise {
   id: string; trainerId: string; name: string; description?: string
   category?: string; especialidades?: string[]; videos: LibraryVideo[]; createdAt: number  // siempre array, nunca undefined
   tags?: string[]
+  material?: string          // Barra, Mancuerna, Máquina... (vacío = se deduce del nombre)
+  useCount?: number          // veces añadido a un plan (exercise_library.use_count)
+  archivedAt?: number | null // archivado: no sale al crear planes nuevos, pero los planes y registros viejos siguen
+  alternativas?: string[]    // nombres de ejercicios que lo sustituyen (por nombre: los planes también van por nombre)
 }
 
 // ── REGISTROS ─────────────────────────────────────────
@@ -109,7 +118,22 @@ export interface LogSet {
 // terminar una sesión con ejercicios sin hacer — deliberadamente NO usa
 // `done`/`dateDone` para no ensuciar los muchos sitios que cuentan
 // ejercicios/fechas iterando todo TrainingLogs sin filtrar por clave.
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sessionFinished?: boolean; dolorEva?: number }
+// sustitucion: lo que el cliente hizo EN VEZ del ejercicio prescrito (la receta del plan no se toca). substituteName se mantiene
+// con el mismo nombre que sustitucion.performedName porque estadísticas e historial leen ese campo.
+// duda: el cliente pidió ayuda con la técnica de este ejercicio (fecha ISO); el entrenador lo ve en su cola.
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sustitucion?: Sustitucion; duda?: string; sessionFinished?: boolean; dolorEva?: number }
+export type SustitucionMotivo = 'material' | 'dolor' | 'preferencia' | 'tecnico'
+// automatico = lo propuso la app (mismo grupo muscular); entrenador = estaba en su plan B; pendiente = lo eligió el cliente por su cuenta y falta que lo revise.
+export type SustitucionAprobacion = 'automatico' | 'entrenador' | 'pendiente'
+export interface Sustitucion {
+  performedName: string
+  performedExerciseId?: string
+  reason: SustitucionMotivo
+  approvedBy: SustitucionAprobacion
+  zona?: string        // solo por dolor
+  intensidad?: number  // solo por dolor, 0-10
+  fecha: string        // AAAA-MM-DD
+}
 export type TrainingLogs = Record<string, ExerciseLog>
 
 // ── PROGRESO ──────────────────────────────────────────

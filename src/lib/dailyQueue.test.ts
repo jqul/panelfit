@@ -34,6 +34,23 @@ describe('buildQueue', () => {
     expect(q.counts).toEqual({ urgente: 1, hoy: 2, luego: 1 })
   })
 
+  it('las sustituciones de un cliente son una razón, pero cada una conserva su acción para resolverla desde la fila', () => {
+    const accion = (alternativa: string) => ({ tipo: 'aceptar-alternativa' as const, clientId: 'a', ejercicio: 'Press banca', alternativa })
+    const q = buildQueue([
+      item({ key: 's1', clientId: 'a', kind: 'sustitucion', tier: 'hoy', score: 40, detail: 'cambió Press banca por Flexiones', accion: accion('Flexiones') }),
+      item({ key: 's2', clientId: 'a', kind: 'sustitucion', tier: 'hoy', score: 40, detail: 'cambió Press banca por Chest press', accion: accion('Chest press') }),
+      item({ key: 'd1', clientId: 'a', kind: 'duda', tier: 'hoy', score: 50, detail: 'no entiende Sentadilla' }),
+    ], sinNada)
+    const r = q.pending[0].reasons
+    expect(r.map(x => x.kind)).toEqual(['duda', 'sustitucion'])
+    expect(r[0].acciones).toBeUndefined() // sin acción no se añade el campo
+    expect(r[1].count).toBe(2)
+    expect(r[1].acciones).toEqual([
+      { key: 's1', detail: 'cambió Press banca por Flexiones', accion: accion('Flexiones') },
+      { key: 's2', detail: 'cambió Press banca por Chest press', accion: accion('Chest press') },
+    ])
+  })
+
   it('el globo cuenta urgente y hoy, no lo de "cuando puedas"', () => {
     const q = buildQueue([
       item({ key: '1', clientId: 'a', kind: 'readiness', tier: 'luego', score: 10 }),

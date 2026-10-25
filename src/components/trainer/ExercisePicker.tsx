@@ -6,6 +6,7 @@ import { ESPECIALIDADES, Especialidad } from '../../lib/especialidades'
 import { useLibraryMuscleMap } from './progreso-tab/helpers'
 import { usePainWarning } from '../../lib/painWarning'
 import { rankByQuery } from '../../lib/exerciseSearch'
+import { porRelevancia } from '../../lib/exerciseLibrary'
 
 function getYTId(url: string) {
   const m = url.match(/(?:youtu\.be\/|v=|embed\/)([a-zA-Z0-9_-]{11})/)
@@ -102,7 +103,8 @@ export function ExercisePicker({ library, onSelect, onClose, clientEspecialidad,
     } else if (espFilter) {
       list = list.filter(e => e.especialidades?.includes(espFilter))
     }
-    return rankByQuery(list, q)
+    // Sin búsqueda, lo que más usas va primero; la biblioteca entera queda debajo.
+    return q.trim() ? rankByQuery(list, q) : porRelevancia(list)
   }, [library, q, catFilter, espFilter, onlyClientEsp, clientEspecialidad])
   const visible = filtered.slice(0, 60)
 

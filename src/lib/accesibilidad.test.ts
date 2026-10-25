@@ -17,7 +17,6 @@ function archivos(dir: string): string[] {
 // Pendientes de etiquetar: están en archivos que otras ramas estaban reescribiendo cuando se hizo esta prueba.
 // Quitar de aquí cuando se arreglen; la prueba falla si una excepción ya no hace falta.
 const PENDIENTES = new Set([
-  'components/trainer/ExercisesTab.tsx',
   'components/trainer/ProgramasTab.tsx',
 ])
 

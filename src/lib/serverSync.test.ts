@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // y update condicionado a la versión (updatedAt), que devuelve las filas que cambió.
 const db = vi.hoisted(() => ({
   row: null as { logs: Record<string, any>; updatedAt: number | null } | null,
-  plan: null as { plan: any; updatedAt: number | null } | null,
+  plan: null as { plan: any; plan_borrador?: any; updatedAt: number | null } | null,
   beforeWrite: null as null | (() => void),
 }))
 
@@ -14,7 +14,7 @@ vi.mock('./supabase', () => {
     const set = (v: any) => { if (name === 'registros') db.row = v; else db.plan = v }
     const col = name === 'registros' ? 'logs' : 'plan'
     return {
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: get() ? { [col]: get()[col], updatedAt: get().updatedAt } : null, error: null }) }) }),
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: get() ? { [col]: get()[col], plan_borrador: get().plan_borrador ?? null, updatedAt: get().updatedAt } : null, error: null }) }) }),
       insert: async (v: any) => {
         if (get()) return { error: { code: '23505', message: 'duplicado' } }
         set({ [col]: v[col], updatedAt: v.updatedAt }); return { error: null }
@@ -27,7 +27,7 @@ vi.mock('./supabase', () => {
           select: async () => {
             db.beforeWrite?.(); db.beforeWrite = null
             const cur = get()
-            if (cur && cur.updatedAt === filters.updatedAt) { set({ [col]: v[col], updatedAt: v.updatedAt }); return { data: [{ clientId: 'c' }], error: null } }
+            if (cur && cur.updatedAt === filters.updatedAt) { set({ [col]: v[col], ...('plan_borrador' in v ? { plan_borrador: v.plan_borrador } : { plan_borrador: cur.plan_borrador }), updatedAt: v.updatedAt }); return { data: [{ clientId: 'c' }], error: null } }
             return { data: [], error: null }
           },
         }
@@ -38,7 +38,7 @@ vi.mock('./supabase', () => {
   return { supabase: { from: (n: 'registros' | 'planes') => table(n) } }
 })
 
-import { diffKeys, mergeLogs, adoptRemote, casUpdate, saveLogsMerged, savePlanDiasMerged } from './serverSync'
+import { diffKeys, mergeLogs, adoptRemote, casUpdate, saveLogsMerged, savePlanDiasMerged, addPlanAlternative } from './serverSync'
 
 const e = (done: boolean, peso = '100') => ({ done, sets: { 0: { weight: peso, reps: '5' } } }) as any
 
@@ -164,5 +164,50 @@ describe('savePlanDiasMerged', () => {
 
   it('sin plan en el servidor no escribe nada', async () => {
     expect((await savePlanDiasMerged('c', [1])).ok).toBe(false)
+  })
+})
+
+describe('addPlanAlternative', () => {
+  const ejercicio = (name: string, extra: object = {}) => ({ name, sets: '3x10', weight: '', isMain: false, comment: '', ...extra })
+  const planConPress = (extra: object = {}) => ({ P: { weeks: [0, 1].map(i => ({ label: 'S' + i, rpe: '', isCurrent: false, days: [{ title: 'A', focus: '', exercises: [ejercicio('Press banca', extra), ejercicio('Remo')] }] })) } })
+
+  it('añade la alternativa al ejercicio en todas las semanas y sube la versión', async () => {
+    db.plan = { plan: planConPress(), updatedAt: 5000 }
+    const res = await addPlanAlternative('c', 'Press banca', { name: 'Press mancuernas' })
+    expect(res).toEqual({ ok: true, changed: true })
+    for (const w of db.plan!.plan.P.weeks) {
+      expect(w.days[0].exercises[0].alternativas).toEqual([{ name: 'Press mancuernas' }])
+      expect(w.days[0].exercises[1].alternativas).toBeUndefined()
+    }
+    expect(db.plan!.updatedAt!).toBeGreaterThan(5000)
+  })
+
+  it('si ya estaba no escribe nada (la versión no cambia)', async () => {
+    db.plan = { plan: planConPress({ alternativas: [{ name: 'Press mancuernas' }] }), updatedAt: 5000 }
+    expect(await addPlanAlternative('c', 'Press banca', { name: 'press MANCUERNAS' })).toEqual({ ok: true, changed: false })
+    expect(db.plan!.updatedAt).toBe(5000)
+  })
+
+  it('también lo añade al borrador si hay uno, y lo deja como estaba si no', async () => {
+    db.plan = { plan: planConPress(), plan_borrador: planConPress({ comment: 'borrador' }), updatedAt: 5000 }
+    await addPlanAlternative('c', 'Press banca', { name: 'Flexiones' })
+    expect(db.plan!.plan_borrador.P.weeks[0].days[0].exercises[0].alternativas).toEqual([{ name: 'Flexiones' }])
+    db.plan = { plan: planConPress(), updatedAt: 5000 }
+    await addPlanAlternative('c', 'Press banca', { name: 'Flexiones' })
+    expect(db.plan!.plan_borrador ?? null).toBeNull() // sin borrador no se inventa uno
+    expect(db.plan!.plan.P.weeks[0].days[0].exercises[0].alternativas).toEqual([{ name: 'Flexiones' }])
+  })
+
+  it('si el entrenador publica justo mientras tanto, reintenta sobre su versión sin perderla', async () => {
+    db.plan = { plan: planConPress(), updatedAt: 5000 }
+    db.beforeWrite = () => { db.plan = { plan: planConPress({ comment: 'publicado entre medias' }), updatedAt: 6000 } }
+    expect((await addPlanAlternative('c', 'Press banca', { name: 'Flexiones' })).ok).toBe(true)
+    const ex = db.plan!.plan.P.weeks[0].days[0].exercises[0]
+    expect(ex.comment).toBe('publicado entre medias')
+    expect(ex.alternativas).toEqual([{ name: 'Flexiones' }])
+  })
+
+  it('sin plan en el servidor no escribe nada', async () => {
+    expect((await addPlanAlternative('c', 'Press banca', { name: 'Flexiones' })).ok).toBe(false)
   })
 })

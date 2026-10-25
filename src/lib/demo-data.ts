@@ -397,6 +397,23 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
 // Semana 2 (actual) con DÍA D todavía sin empezar — igual que antes.
 export const DEMO_LOGS_MARIA: TrainingLogs = buildDemoLogsFromPlan(DEMO_PLAN_MARIA, 3)
 
+// Para que la demo enseñe la cola del entrenador: María no tenía el banco libre y cambió el press por mancuernas (no
+// estaba en su plan B), y no entiende bien el pulldown.
+{
+  const w = DEMO_PLAN_MARIA.weeks.length - 1
+  const clave = (nombre: string) => {
+    for (let d = 0; d < DEMO_PLAN_MARIA.weeks[w].days.length; d++) {
+      const r = DEMO_PLAN_MARIA.weeks[w].days[d].exercises.findIndex(e => e.name === nombre)
+      if (r >= 0) return `ex_w${w}_d${d}_r${r}`
+    }
+    return null
+  }
+  const banca = clave('Press banca'), pulldown = clave('Pulldown agarre neutro')
+  if (banca && DEMO_LOGS_MARIA[banca]) DEMO_LOGS_MARIA[banca] = { ...DEMO_LOGS_MARIA[banca], substituteName: 'Press banca con mancuernas',
+    sustitucion: { performedName: 'Press banca con mancuernas', reason: 'material', approvedBy: 'pendiente', fecha: DEMO_LOGS_MARIA[banca].dateDone ?? '' } }
+  if (pulldown && DEMO_LOGS_MARIA[pulldown]) DEMO_LOGS_MARIA[pulldown] = { ...DEMO_LOGS_MARIA[pulldown], duda: `${DEMO_LOGS_MARIA[pulldown].dateDone}T09:30:00.000Z` }
+}
+
 // ── PLAN CARLOS (Powerlifting) ─────────────────────────
 export const DEMO_PLAN_CARLOS: TrainingPlan = {
   clientId: 'demo-client-002',

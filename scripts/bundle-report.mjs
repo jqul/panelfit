@@ -32,7 +32,8 @@ const entryText = read(entry).toString()
 const deps = JSON.parse(entryText.match(/m\.f\|\|\(m\.f=(\[[^\]]*\])/)?.[1] ?? 'null')
 if (!deps) { console.error('No encuentro __vite__mapDeps en el JS de entrada: ¿ha cambiado Vite?'); process.exit(2) }
 const lazyDeps = {}
-for (const m of entryText.matchAll(/import\("\.\/([^"]+)"\),__vite__mapDeps\(\[([\d,]+)\]\)/g)) {
+// El import puede llevar un `.then(t=>t.x)` antes de la lista de precarga (Vite lo añade cuando el trozo reexporta algo).
+for (const m of entryText.matchAll(/import\("\.\/([^"]+)"\)(?:\.then\([^)]*\))?,__vite__mapDeps\(\[([\d,]+)\]\)/g)) {
   lazyDeps[m[1].replace(/-[\w-]{6,}\.js$/, '')] = m[2].split(',').map(i => deps[Number(i)])
 }
 
