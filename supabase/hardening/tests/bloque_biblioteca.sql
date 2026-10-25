@@ -1,4 +1,4 @@
--- Prueba de supabase/migrations/20261025000001_biblioteca_ejercicios.sql
+-- Prueba de supabase/migrations/20261025000003_biblioteca_ejercicios.sql
 -- (material, archivado y alternativas de exercise_library).
 --
 -- EJECUTAR SOLO EN UN BRANCH / ENTORNO DE PRUEBAS, NUNCA EN PRODUCCIÓN.

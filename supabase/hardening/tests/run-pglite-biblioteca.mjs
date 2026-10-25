@@ -3,7 +3,7 @@
 //   npm i --no-save @electric-sql/pglite
 //   node supabase/hardening/tests/run-pglite-biblioteca.mjs
 //
-// Carga el baseline, aplica 20261025000001_biblioteca_ejercicios.sql y ejecuta bloque_biblioteca.sql:
+// Carga el baseline, aplica 20261025000003_biblioteca_ejercicios.sql y ejecuta bloque_biblioteca.sql:
 // todo debe salir OK. Sale con código 1 si algo no es lo esperado.
 import { crearBase, read } from './pglite-base.mjs'
 
@@ -11,9 +11,9 @@ const db = await crearBase()
 const antes = (await db.query(`select count(*)::int as n from information_schema.columns where table_schema='public' and table_name='exercise_library' and column_name in ('material','archived_at','alternativas')`)).rows[0].n
 console.log(`ANTES: ${antes} de las 3 columnas nuevas existen (se espera 0)\n`)
 
-await db.exec(read('migrations/20261025000001_biblioteca_ejercicios.sql'))
+await db.exec(read('migrations/20261025000003_biblioteca_ejercicios.sql'))
 // Idempotente: aplicarla dos veces no falla
-await db.exec(read('migrations/20261025000001_biblioteca_ejercicios.sql'))
+await db.exec(read('migrations/20261025000003_biblioteca_ejercicios.sql'))
 console.log('migración aplicada (dos veces, sin error)\n')
 
 const res = await db.exec(read('hardening/tests/bloque_biblioteca.sql'))

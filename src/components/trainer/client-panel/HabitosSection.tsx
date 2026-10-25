@@ -63,7 +63,7 @@ export function HabitosSection({ clientId }: { clientId: string }) {
             onKeyDown={e => e.key === 'Enter' && addHabito()}
             placeholder="Ej: Beber 2L de agua, dormir 8h..." aria-label="Nuevo hábito"
             className="flex-1 px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-          <button onClick={addHabito} disabled={adding || !newText.trim()}
+          <button onClick={addHabito} disabled={adding || !newText.trim()} aria-label="Añadir hábito"
             className="px-3 py-2 bg-ink text-white rounded-xl text-sm disabled:opacity-40">
             <Plus className="w-4 h-4" />
           </button>

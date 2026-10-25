@@ -20,10 +20,12 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 | `migrations/20261023000008_rgpd_exportar_datos_cliente.sql` | Bloque 10 (RGPD), **aplicado el 2026-10-23** |
 | `migrations/20261023000009_rgpd_borrado_completo_cliente.sql` | Bloque 11 (RGPD), **aplicado el 2026-10-23** |
 | `migrations/20261024000001_enlace_caducidad.sql` | Bloque 8: caducidad opcional del enlace del cliente y `get_client_link_status`, **aplicado el 2026-10-24** |
-| `migrations/20261025000001_biblioteca_ejercicios.sql` | Biblioteca de ejercicios rediseñada: columnas `material`, `archived_at` y `alternativas` en `exercise_library`, **aplicado el 2026-10-25** |
+| `migrations/20261025000001_handle_new_user_sin_clientes.sql` | El alta de un cliente deja de crear una fila fantasma en `entrenadores`, **aplicado el 2026-10-25**. Las 2 filas fantasma que ya existían (y la biblioteca de 1.504 ejercicios de una de ellas) se dejan: son inertes y podrían ser una cuenta de pruebas tuya |
+| `migrations/20261025000002_anon_sin_permisos_tablas.sql` | Bloque 6: `anon` pierde los privilegios sobre las tablas (solo conserva SELECT en `plan_templates`), **aplicado el 2026-10-25**. Sin cambio de comportamiento: la RLS ya lo bloqueaba todo; ahora además lo bloquean los privilegios |
+| `migrations/20261025000003_biblioteca_ejercicios.sql` | Biblioteca de ejercicios rediseñada: columnas `material`, `archived_at` y `alternativas` en `exercise_library`, **aplicado el 2026-10-25** |
 | `hardening/20261023_rgpd.sql` | Origen de los bloques 9 a 11 (consentimientos, exportación y borrado completo de un cliente), ya aplicados. Ver `docs/rgpd.md` |
-| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; el 8 (caducidad del enlace) se aplicó el 2026-10-24; solo queda el 6, opcional |
-| `hardening/tests/` | Pruebas de los bloques 1, 7, 8 y 9 a 11 y de la biblioteca de ejercicios (`run-pglite-biblioteca.mjs`), con sus runners locales (ver más abajo) |
+| `hardening/20261018_propuesta_endurecimiento.sql` | **Propuesta** de correcciones: los bloques 1 a 5 y 7 ya están aplicados; todos aplicados (el 8, caducidad del enlace, el 24-oct; el 6, privilegios de anon, el 25-oct) |
+| `hardening/tests/` | Pruebas de los bloques 1, 6, 7, 8, 9 a 11 y 12 (alta de usuarios), y de la biblioteca de ejercicios (`run-pglite-biblioteca.mjs`), con sus runners locales (ver más abajo) |
 | `functions/` | Edge Functions (`send-push`, `send-welcome-email`, `weekly-checkin-digest`) |
 
 Los cuatro ficheros de `migrations/` son una **foto** de producción a 2026-10-18, reconstruida desde el catálogo de Postgres. No reproducen las 69 migraciones históricas que ya están aplicadas (no hay forma de recuperar su SQL original) y **no deben ejecutarse sobre producción**: sirven para crear entornos nuevos y para detectar desvíos con `supabase db diff`.
