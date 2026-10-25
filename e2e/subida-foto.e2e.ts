@@ -27,7 +27,7 @@ test('la foto va a un bucket privado, solo se guarda la ruta y se ve con una URL
 
   await page.getByRole('button', { name: 'Nueva sesión de fotos' }).click()
   await expect(page.getByText('0/3 fotos')).toBeVisible()
-  await page.getByText('0/3 fotos').click() // despliega la sesión
+  // crear la sesión ya la despliega
   await page.locator('input[type=file][accept="image/*"]').first().setInputFiles({ name: 'frente.png', mimeType: 'image/png', buffer: PNG })
 
   await expect(page.getByText('1/3 fotos')).toBeVisible()
@@ -64,7 +64,6 @@ test('una foto de más de 10 MB se rechaza sin subir nada', async ({ page, fake 
   sembrar(fake, { fotos: true })
   await abrirFotos(page)
   await page.getByRole('button', { name: 'Nueva sesión de fotos' }).click()
-  await page.getByText('0/3 fotos').click()
 
   await page.locator('input[type=file][accept="image/*"]').first()
     .setInputFiles({ name: 'enorme.png', mimeType: 'image/png', buffer: Buffer.alloc(10 * 1024 * 1024 + 1) })

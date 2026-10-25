@@ -267,7 +267,9 @@ export class FakeSupabase {
   // ── Storage ──
   private async storageApi(route: Route, req: Request, path: string) {
     const method = req.method()
-    const body = req.postDataJSON?.() ?? {}
+    // Las subidas llegan como formulario con el fichero (no es JSON): solo las demás operaciones llevan cuerpo JSON.
+    let body: any = {}
+    try { body = req.postDataJSON?.() ?? {} } catch { /* subida multipart */ }
     let m: RegExpMatchArray | null
     if (method === 'POST' && (m = path.match(/^object\/list\/([^/]+)$/))) {
       const prefix = String(body.prefix ?? '').replace(/\/$/, '')
