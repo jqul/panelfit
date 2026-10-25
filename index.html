@@ -29,7 +29,23 @@
     <meta name="google-site-verification" content="CLbDaJEI5u5Ws8E6PHR5lFqd5pWGGitT3BJQyBXXI4Y" />
 
     <!-- PWA -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Manifiesto: con el enlace de un cliente (/?c=<token>) se pide el que sirve el servidor, cuyo start_url lleva ese
+         enlace. Tiene que estar puesto ANTES de que el navegador lo lea (iOS lo lee al cargar la página, no después), por
+         eso se decide aquí y no desde la aplicación. Sin enlace válido, el general de siempre. La misma regla de forma de
+         token que lib/clientLink.ts y api/manifest.js. -->
+    <script>
+      (function () {
+        var href = '/manifest.json'
+        try {
+          var c = new URLSearchParams(location.search).get('c')
+          if (c && /^[A-Za-z0-9_-]{8,128}$/.test(c)) href = '/api/manifest?c=' + c
+        } catch (e) { /* se queda el general */ }
+        var link = document.createElement('link')
+        link.rel = 'manifest'
+        link.href = href
+        document.head.appendChild(link)
+      })()
+    </script>
     <meta name="theme-color" content="#6e5438" />
 
     <!-- iOS PWA -->
