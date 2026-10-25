@@ -29,7 +29,8 @@
   --color-card:    #faf8f5;
   --color-border:  #d8d4ca;
   --color-ink:     #1a1814;
-  --color-muted:   #8a8278;
+  /* Texto secundario: #8a8278 daba 3,1:1 sobre el fondo (mínimo AA 4,5:1); este da 4,8-5,9:1 y sigue siendo un marrón cálido. */
+  --color-muted:   #675f56;
   --color-accent:  #6e5438;
   --color-accent2: #a8886a;
   --color-ok:      #1a6038;
@@ -73,6 +74,15 @@
   input, textarea, select {
     @apply font-sans;
   }
+}
+
+/* Foco visible para quien navega con teclado: todo lo que se puede pulsar o enfocar lo marca con el acento.
+   Va fuera de @layer para ganar a outline-none; los campos que ya traen su propio estilo focus: (anillo, borde)
+   no llevan un segundo indicador encima. Solo aparece con teclado (:focus-visible), no al hacer clic. */
+:is(a[href], button, summary, [role='button'], [role='tab'], [role='switch'], [role='option'], [role='checkbox'], [tabindex]:not([tabindex='-1'])):focus-visible,
+:is(input, textarea, select):not([class*='focus:']):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* Scrollbar */

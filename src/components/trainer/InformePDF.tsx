@@ -102,7 +102,7 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
                 style={{ backgroundColor: brandColor }}>
                 <Download className="w-4 h-4" /> Descargar PDF
               </button>
-              <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
+              <button aria-label="Cerrar" onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600">
                 <X className="w-4 h-4" />
               </button>
             </div>

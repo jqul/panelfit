@@ -103,7 +103,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
     <div className="bg-card border border-accent/20 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-accent/5">
         <h3 className="font-semibold text-sm">{initial ? 'Editar plantilla' : 'Nueva plantilla'}</h3>
-        <button onClick={onCancel}><X className="w-4 h-4 text-muted" /></button>
+        <button aria-label="Cancelar" onClick={onCancel}><X className="w-4 h-4 text-muted" /></button>
       </div>
       <div className="p-5 space-y-4">
         <div>
@@ -190,7 +190,7 @@ function ScheduleEditor({ trainerId, templates, clients, initial, presetTemplate
     <div className="bg-card border border-accent/20 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-border flex items-center justify-between bg-accent/5">
         <h3 className="font-semibold text-sm">Programar envío</h3>
-        <button onClick={onCancel}><X className="w-4 h-4 text-muted" /></button>
+        <button aria-label="Cancelar" onClick={onCancel}><X className="w-4 h-4 text-muted" /></button>
       </div>
       <div className="p-5 space-y-4">
         <div>

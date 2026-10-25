@@ -88,7 +88,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
     <div className="bg-card border-2 border-accent/30 rounded-xl p-3 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-accent flex items-center gap-1.5"><Video className="w-3.5 h-3.5" /> {isDropJump ? 'Calcular RSI desde vídeo' : 'Calcular altura desde vídeo'}</p>
-        <button onClick={onClose} className="text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+        <button aria-label="Cerrar" onClick={onClose} className="text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
       </div>
 
       {!videoUrl ? (
@@ -133,7 +133,7 @@ export function JumpVideoAnalyzer({ clientId, mode = 'jump', onComputed, onClose
 
           <div className="flex items-center justify-center gap-2">
             <button onClick={() => step(-1)} className="p-2 border border-border rounded-lg hover:border-accent transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-            <button onClick={togglePlay} className="p-2 border border-border rounded-lg hover:border-accent transition-colors">{isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
+            <button aria-label="Reproducir o pausar el vídeo" onClick={togglePlay} className="p-2 border border-border rounded-lg hover:border-accent transition-colors">{isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
             <button onClick={() => step(1)} className="p-2 border border-border rounded-lg hover:border-accent transition-colors"><ChevronRight className="w-4 h-4" /></button>
             <span className="text-xs text-muted ml-2 tabular-nums">{currentTime.toFixed(3)}s</span>
           </div>

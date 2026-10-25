@@ -58,7 +58,7 @@ export function ProposalModal({ onClose }: { onClose: () => void }) {
       <div className="p-6 space-y-4 overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-serif text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5" /> Generar propuesta</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
+          <button aria-label="Cerrar" onClick={onClose} className="p-1.5 rounded-lg hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
         </div>
         <p className="text-xs text-muted">Rellena lo acordado en la llamada y se abrirá un documento listo para guardar como PDF (Ctrl+P → Guardar como PDF).</p>
 
