@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame, Link2, Gauge } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, Timer, Info, Pencil, BatteryLow, Layers, Dumbbell, Flame, Link2, Gauge, Target } from 'lucide-react'
+import { normalizeRirTarget, RIR_PRESETS } from '../../lib/rirTarget'
 import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { BlockManager } from './training-plan-editor/BlockManager'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
@@ -625,6 +626,30 @@ export function TrainingPlanEditor({
                                         onChange={e => updateExercise(activeWeek, di, ri, { comment: e.target.value })}
                                         placeholder="Indicaciones técnicas para el alumno..."
                                         className="w-full text-xs text-muted bg-bg border border-border/50 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-accent/20" />
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <Target className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                                          <input value={ex.rir || ''} aria-label="RIR objetivo"
+                                            onChange={e => updateExercise(activeWeek, di, ri, { rir: e.target.value.replace(/[^0-9\-–]/g, '').slice(0, 5) })}
+                                            onBlur={e => { const n = normalizeRirTarget(e.target.value); if (n !== (ex.rir || '')) updateExercise(activeWeek, di, ri, { rir: n }) }}
+                                            inputMode="numeric" placeholder="RIR objetivo (ej. 2-3) — opcional"
+                                            className="flex-1 text-xs bg-bg border border-border/50 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-accent/20" />
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 pl-5">
+                                          {RIR_PRESETS.map(p => (
+                                            <button key={p} onClick={() => updateExercise(activeWeek, di, ri, { rir: p })} aria-pressed={ex.rir === p}
+                                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all ${ex.rir === p ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                                              RIR {p}
+                                            </button>
+                                          ))}
+                                          {ex.rir && (
+                                            <button onClick={() => updateExercise(activeWeek, di, ri, { rir: '' })}
+                                              className="px-2 py-0.5 rounded-md text-[11px] font-bold text-muted hover:text-warn">
+                                              Quitar
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
                                       <div className="space-y-1">
                                         <div className="flex items-center gap-2">
                                           <Gauge className="w-3.5 h-3.5 text-muted flex-shrink-0" />

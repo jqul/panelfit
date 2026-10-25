@@ -3,6 +3,7 @@ import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, More
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
 import { FinishButton } from './FinishButton'
+import { RirTargetChip } from './RirTargetChip'
 import { useSwipe } from '../../../lib/swipe'
 import { SyncBadge } from '../client-view/SyncStatus'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
@@ -232,6 +233,7 @@ export function FocusWorkout(p: Props) {
           </p>
         )}
         {ex.comment && <p className="px-6 mt-2 text-center text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+        {ex.rir && <div className="mt-3 flex justify-center"><RirTargetChip rir={ex.rir} /></div>}
 
         {isRun ? (
           <div className="mt-4">{p.renderRun(p.ri)}</div>

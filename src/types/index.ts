@@ -38,6 +38,7 @@ export interface Exercise {
   hideRest?: boolean       // oculta la cuenta atrás de descanso al cliente
   supersetId?: string      // ejercicios con el mismo id forman una superserie (sin descanso entre ellos)
   tempo?: string           // cadencia "excéntrica-pausa abajo-concéntrica-pausa arriba" en segundos, ej. "3-1-1-0" ('X' = explosivo)
+  rir?: string             // RIR objetivo (repeticiones en reserva): "2-3", "1", "0-1". Lo ve el cliente al hacer la serie (lib/rirTarget.ts)
   enReadaptacion?: boolean // ejercicio terapéutico/de readaptación — pide dolor EVA 0-10 durante la sesión
   kind?: 'run'             // ejercicio de carrera/pista: se registra tiempo y distancia en vez de kg × reps (`sets` sigue siendo "NxM" para lo que lo lea)
   run?: RunSpec

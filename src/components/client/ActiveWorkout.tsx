@@ -10,6 +10,7 @@ import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelo
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
+import { RirTargetChip } from './active-workout/RirTargetChip'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
@@ -978,6 +979,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               )}
 
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
+              <RirTargetChip rir={ex.rir} />
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
               {ex.kind === 'run' && ex.run ? (
