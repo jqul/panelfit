@@ -8,7 +8,11 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 - **Etiquetas**: sistema central de etiquetas (color + emoji) aplicables a clientes, workouts y programas, con conteo de uso. Sustituyó al sistema anterior fragmentado entre pestañas.
 - **Grupos (cohortes)**: agrupar clientes (ej. "Hipertrofia — Grupo A") para verlos juntos, independiente de las etiquetas (que son por rasgo individual).
 - **Calendario**: citas con cada cliente (confirmada/cancelada/completada), notas por cita, recurrencia.
-- **Acceso del cliente**: cada cliente tiene un token único (`?c=token`) que da acceso a su panel sin registro ni contraseña. El entrenador puede regenerar el token si quiere revocar el acceso anterior.
+- **Acceso del cliente**: cada cliente tiene un enlace único (`?c=token`) que lleva a su pantalla de acceso; los datos de salud exigen además su cuenta (email y contraseña). El entrenador puede **regenerar** el enlace (el anterior deja de valer) y ponerle **caducidad opcional** (sin caducidad / 7 / 30 / 90 días, en Cliente › Configuración). Un enlace caducado dice «Este enlace ha caducado, pídele uno nuevo» (distinto de «Enlace no encontrado»); se reactiva eligiendo una caducidad nueva.
+- **Bandeja (cola diaria)**: una fila por cliente que atender, ordenada por urgencia (*Urgente / Para hoy / Cuando puedas*): dolor fuerte o articular, carga alta, vídeos esperando, borradores sin publicar, check-ins, sustituciones y dudas del cliente. «Hecho» y «Posponer» (mañana / lunes) sacan la fila sin perder nada; lo urgente no se pospone.
+- **Búsqueda global** (Ctrl/⌘+K, o la lupa en el móvil): un cuadro para llegar a un cliente, ejercicio, workout, programa o acción («Nuevo cliente», «Ir a la Bandeja»…). No distingue tildes ni mayúsculas; un ejercicio, workout o programa salta a su pestaña con el buscador ya relleno.
+- **Acciones masivas**: modo «Seleccionar» en Clientes para asignar un workout o programa, enviar un mensaje, añadir/quitar etiquetas o mandar una encuesta a varios a la vez. Cada acción acaba con un resumen de hechos / fallos / omitidos; la asignación deja copia en el historial y se puede deshacer; **no pisa un borrador sin publicar**.
+- **Primeros pasos**: asistente de tres pantallas (cliente → workout, con 3 plantillas de arranque → enviar el acceso por WhatsApp) y una tarjeta en «Hoy» que se marca sola con datos reales. Se reabre desde Ctrl+K.
 
 ## 2. Niveles de plan (Básico / Alto Rendimiento)
 
@@ -20,6 +24,7 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 ## 3. Planes de entrenamiento
 
 - Estructura: Plan → Semanas → Días → Ejercicios. Cada ejercicio tiene series/reps, peso, tipo de serie (normal, dropset, etc. — personalizables), descansos configurables, vídeo de referencia, comentario del entrenador.
+- **Intensidad y ejecución por ejercicio**: peso sugerido, **RIR objetivo** (`"2-3"`: el cliente lo ve como indicador al hacer la serie, sin abrir nada), **tempo** (cadencia `3-1-1-0` con marcador sonoro) y **plan B** (2-3 alternativas aprobadas de antemano, con la regla «con dolor, no sustituir»).
 - **Programación por %1RM**: se puede definir el peso de un ejercicio como porcentaje de un 1RM conocido en vez de un kg fijo; se recalcula automáticamente.
 - **Pesos sugeridos**: basado en el RIR (reps en reserva) que el cliente registró la última vez, sugiere el peso del próximo entreno (autorregulación).
 - **Bloques de periodización**: plantillas de bloque (ej. "Hipertrofia 4 semanas") con una progresión de RPE/descarga por semana, completamente editables por el entrenador (crear los suyos desde cero).
@@ -32,10 +37,13 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 
 ## 4. Librería de ejercicios
 
-- Biblioteca propia por entrenador: nombre, categoría, descripción, vídeos (con etiqueta de especialidad: hipertrofia/fuerza/rehabilitación/etc.), tags.
+- Biblioteca propia por entrenador: nombre, grupo, material, descripción, vídeos (con etiqueta de especialidad: hipertrofia/fuerza/rehabilitación/etc.), tags y alternativas.
+- **Pantalla pensada para crear rápido**: buscador con chips con contador (*Todos · Más usados · Sin vídeo · Favoritos · Pendientes · Archivados*), «Recomendados» (lo más usado), «Explorar por» grupo y material, y un aviso de **huecos de contenido** (muy usados sin vídeo o sin alternativa). Tarjetas con miniatura, estado de la ficha (*Completo / Falta vídeo / Faltan indicaciones / Sin alternativa*) y origen (*Base PanelFit* / *Personal*).
+- Ficha en un cajón lateral; **Nuevo ejercicio en segundos** (nombre + material + grupo). **Duplicar** una variante, **Archivar** (sale de los selectores y de la búsqueda, sin romper planes ni registros viejos) e **Importar** una lista pegada o un CSV (`nombre;grupo;material`, con vista previa y sin duplicar).
+- El selector de «añadir ejercicio» al plan muestra primero lo más usado.
 - Los vídeos se priorizan por especialidad del cliente: si hay un vídeo específico para su especialidad se muestra ese, si no el genérico.
 - Telemetría de uso (qué ejercicios se seleccionan más, qué vídeos se reproducen más) visible en Insights.
-- **Sustitución de ejercicios**: sugiere alternativas si un ejercicio no es viable para un cliente.
+- **Sustitución guiada** (cliente): ver sección 13.
 
 ## 5. Seguimiento y analítica (pestaña Progreso)
 
@@ -93,7 +101,10 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 ## 13. Modo cliente (sin instalar nada)
 
-- Acceso por enlace con token, o cuenta opcional con email/contraseña (`claim_client_by_token`) si el cliente quiere acceder desde varios dispositivos.
+- Acceso por enlace + cuenta del cliente (email y contraseña, `claim_client_by_token`). Solo vale la cuenta **de ese** cliente: con otra (p. ej. la de entrenador) se explica y no se deja una sesión a medias. Una cuenta de cliente que abre la raíz va a su panel.
+- **Acceso directo / app instalada**: el enlace del cliente se recuerda en el dispositivo y el manifiesto de la app instalada (`/api/manifest?c=…`) arranca en su enlace, así el icono de la pantalla de inicio abre SU panel (y no la pantalla de entrenadores). Se olvida con «Borrar datos de este dispositivo».
+- **¿No puedes hacerlo?** (en Más): por qué no puede un ejercicio → *Material ocupado* (solo alternativas aprobadas por el entrenador), *No lo entiendo* (indicaciones, vídeo y «Preguntar a mi entrenador»), *Me molesta* (zona + intensidad; con ≥7 recomienda parar; nunca una sustitución agresiva). La búsqueda libre queda al final y deja la sustitución *pendiente de revisar*. El entrenador la ve en su cola con **[Aceptar como alternativa habitual]**. Se guarda estructurada (`sustitucion`) sin tocar la receta del plan.
+- **¿Ya lo hiciste? Regístralo sin repetirlo**: bajo «Empezar entrenamiento», abre el día prerrellenado con lo programado (Hoy o Ayer); se desmarca lo no hecho y se corrige peso o repeticiones.
 - Pestañas: Hoy (entreno del día + widgets de racha/hábitos/próximas sesiones), Entreno activo, Progreso (calendario, historial, récords, peso, fotos, feedback de vídeo), Dieta, Encuestas, Más (ajustes/cerrar sesión).
 - **Recuperación de contraseña**: para clientes que se registraron con email/contraseña, igual que para entrenadores.
 - Tema visual personalizable por el entrenador (color, logo, imagen de fondo) — *white-label* básico.
@@ -109,6 +120,13 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 ## 16. Seguridad e infraestructura
 
+- **Base de datos versionada y endurecida**: migraciones y pruebas en `supabase/` (ver su README); funciones y políticas auditadas, columnas del entrenador protegidas, `anon` sin permisos sobre las tablas (solo plantillas públicas), enlace del cliente que solo devuelve lo mínimo antes de autenticar.
+- **Fotos y vídeos privados**: buckets privados con URL firmadas de corta duración; la ruta, no la URL, es lo que se guarda.
+- **RGPD**: consentimiento versionado y retirable (salud / fotos), exportar los datos de un cliente y **borrarlos por completo** (filas de todas las tablas y ficheros de Storage) con confirmación escribiendo el nombre.
+- **Datos en el dispositivo**: la copia local del cliente caduca a los 30 días, se borra al cerrar sesión y se puede desactivar o borrar a mano (sin perder entrenos pendientes de subir).
+- **Sin conexión**: el entreno se guarda en el móvil, se ve qué falta por subir y al volver la conexión se sube fusionando sin pisar lo que el entrenador publicó en el servidor.
+- **Calidad**: integración continua en cada PR (tipos, 480+ pruebas unitarias, ~65 pruebas end-to-end con un Supabase simulado, presupuesto de tamaño por ruta).
+- **Accesibilidad**: foco visible con teclado, contraste AA del texto secundario, botones de icono con nombre (una prueba lo impide en el futuro), tipografías propias.
 - RLS (Row Level Security) en todas las tablas: cada entrenador solo ve sus propios datos y los de sus clientes; cada cliente solo ve los suyos.
 - Políticas optimizadas (`(select auth.uid())`) para no penalizar el rendimiento al crecer.
 - Índices en todas las claves foráneas usadas en filtros habituales.
@@ -118,6 +136,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 ## Pendiente / aparcado a propósito
 
+- **Biblioteca: fusionar duplicados, compartir con el equipo y convertir en plantilla** — necesitan una identidad estable del ejercicio (hoy los planes y registros lo identifican por nombre) y políticas de acceso nuevas; aparcado hasta que haya varios entrenadores usándolo.
 - **Pagos / cobro real** — decidido explícitamente dejarlo para más adelante.
 - **Automatización real de WhatsApp** (sin clic) — requiere la API de pago de Meta/WhatsApp Business, evaluar cuando haya ingresos.
 - **n8n / automatización externa** — aparcado, retomar cuando haga falta.
