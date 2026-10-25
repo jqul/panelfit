@@ -11,12 +11,10 @@ import { Modal } from '../shared/Modal'
 import { matchesQuery, plural } from '../../lib/workoutList'
 import type { TrainerLabel } from './labels'
 import { LabelPill, LabelSelector } from './labels'
-import type { ClientData, TrainingPlan } from '../../types'
-import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES, DEMO_COHORTE_CLIENTES, DEMO_PLAN_MAP } from '../../lib/demo-data'
-import { localDateKey } from '../../lib/dates'
-import { snapshotBeforeAssign, restoreSnapshots } from '../../lib/planSnapshot'
-import { programToPlanWeeks, workoutTemplateIds } from '../../lib/programPlan'
-import { loadProgramTemplates } from '../../lib/programTemplates'
+import type { ClientData } from '../../types'
+import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES, DEMO_COHORTE_CLIENTES } from '../../lib/demo-data'
+import { restoreSnapshots } from '../../lib/planSnapshot'
+import { assignProgramToClients, abortMessage } from '../../lib/bulkAssign'
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -504,42 +502,11 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
     if (targetIds.length === 0) { toast('Selecciona al menos un cliente', 'warn'); return }
 
     setAssigning(true)
-    // Los ejercicios de cada día vienen de los workouts que usa el programa: sin leerlos se asignaría
-    // un plan de días vacíos, así que si falla no se asigna nada.
-    const isDemo = trainerId === DEMO_TRAINER_ID
-    const templates = isDemo ? Object.fromEntries(DEMO_PLAN_TEMPLATES.map(t => [t.id, t])) : await loadProgramTemplates(trainerId, workoutTemplateIds(program.weeks))
-    if (templates === null) {
-      setAssigning(false)
-      toast('No se pudieron leer los workouts del programa: no se ha asignado nada', 'warn')
-      return
-    }
-    // Copia del plan (y del borrador, que esta asignación descarta) antes de sustituirlos.
-    // Si no se pueden leer los planes actuales, no se toca nada.
-    const previous = isDemo ? [] : await snapshotBeforeAssign(targetIds, program.name)
-    if (previous === null) {
-      setAssigning(false)
-      toast('No se pudo guardar una copia del plan anterior: no se ha asignado nada', 'warn')
-      return
-    }
-    const { weeks, missing } = programToPlanWeeks(program.weeks, templates)
-    const results = await Promise.all(targetIds.map(async clientId => {
-      const newPlan: TrainingPlan = {
-        clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
-        weeks: JSON.parse(JSON.stringify(weeks)),
-        programId: program.id, programName: program.name,
-        fechaInicio: localDateKey(),
-      }
-      if (isDemo) { DEMO_PLAN_MAP[clientId] = newPlan; return true }
-      const { error } = await supabase.from('planes').upsert(
-        { clientId, plan: { P: newPlan }, borrador_activo: false, plan_borrador: null, updatedAt: Date.now() },
-        { onConflict: 'clientId' }
-      )
-      return !error
-    }))
+    // El modal descarta un borrador abierto (con copia y "Deshacer"); la barra de Clientes, en cambio, lo respeta.
+    const { aborted, result, missing, undoable } = await assignProgramToClients(program, targetIds, trainerId, { skipDrafts: false })
     setAssigning(false)
-    const ok = results.filter(Boolean).length
-    const assignedIds = new Set(targetIds.filter((_, i) => results[i]))
-    const undoable = previous.filter(r => assignedIds.has(r.clientId))
+    if (aborted) { toast(abortMessage(aborted), 'warn'); return }
+    const ok = result.ok.length
     if (missing.length) toast(`${missing.length === 1 ? 'Un workout del programa ya no existe' : `${missing.length} workouts del programa ya no existen`} (${missing.join(', ')}): esos días quedan sin ejercicios`, 'warn')
     toast(`Programa asignado a ${ok}/${targetIds.length} cliente${targetIds.length > 1 ? 's' : ''} ✓`, ok === targetIds.length ? 'ok' : 'warn',
       undoable.length ? {
