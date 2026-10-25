@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserProfile } from '../types'
 import { clearTrainerDeviceData } from './deviceStorage'
-import { tokenAtStart, isStandaloneDisplay, recalledClientLink } from './clientLink'
+import { tokenAtStart, isStandaloneDisplay, recalledClientLink, isPlausibleToken } from './clientLink'
 
 export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
@@ -31,6 +31,18 @@ export function useAuthBootstrap() {
       .select('"displayName", approved, rol, profile')
       .eq('uid', uid)
       .maybeSingle()
+
+    // Una cuenta de CLIENTE (sin entrenador aprobado) que abre la raíz —p. ej. el acceso directo de su móvil— va a
+    // su panel, no a la pantalla de entrenador pendiente. Un entrenador aprobado que además es cliente sigue entrando
+    // como entrenador. (Un cliente puede leer su propia ficha: política client_reads_own_cliente.)
+    if (!data || data.approved === false) {
+      const { data: propia } = await supabase.from('clientes').select('token').eq('auth_user_id', uid).limit(1).maybeSingle()
+      if (isPlausibleToken(propia?.token)) {
+        try { window.history.replaceState({}, '', `/?c=${propia.token}`) } catch { /* sin historial: se abre igualmente */ }
+        setClientToken(propia.token); setView('client-token')
+        return
+      }
+    }
 
     if (!data) { await supabase.auth.signOut(); setView('auth'); return }
 

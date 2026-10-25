@@ -43,6 +43,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [linkExpired, setLinkExpired] = useState(false)
+  const [otherSession, setOtherSession] = useState(false) // hay una sesión de otra cuenta (p. ej. entrenador) abierta en este dispositivo
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
@@ -89,7 +90,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       if (event === 'SIGNED_OUT' && c && !c.id.startsWith('demo-client-')) {
         clearClientDeviceData(c.id, token, { keepPending: true })
       }
-      if (session?.user && authStateRef.current === 'needs_login') {
+      // Solo la cuenta de ESTE cliente abre su panel: antes entraba cualquier usuario (p. ej. el de entrenador) y al
+      // refrescar volvía a pedir el acceso, porque la sesión no coincidía con la del cliente.
+      if (session?.user && authStateRef.current === 'needs_login' && session.user.id === clientRef.current?.auth_user_id) {
         loadData()
       }
     })
@@ -176,7 +179,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       // Sesión activa y coincide — cargar datos
       await loadData(clientData)
     } else {
-      // Tiene cuenta pero no sesión — mostrar login
+      // Tiene cuenta pero no sesión suya — mostrar login (y avisar si en el dispositivo hay OTRA sesión abierta)
+      setOtherSession(!!session?.user)
       setAuthState('needs_login')
       setLoading(false)
     }
@@ -411,6 +415,8 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         brandColor={trainerProf.brandColor}
         brandLogo={trainerProf.brandLogo}
         initialStep="login"
+        expectedUserId={client.auth_user_id}
+        otherSessionNotice={otherSession}
         onComplete={() => loadData()}
       />
     )

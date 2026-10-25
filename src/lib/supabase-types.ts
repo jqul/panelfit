@@ -11,6 +11,7 @@ export interface ClienteRow {
   totalLifted?: number
   planDescription?: string
   token: string
+  auth_user_id?: string | null  // la cuenta (Auth) del cliente; null mientras no se ha registrado
   objetivo?: string
   createdAt: number
 }
