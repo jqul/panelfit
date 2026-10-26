@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, celebraciones, fraseRachaAlTerminar } from './hoyResumen'
+import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, celebraciones, fraseRachaAlTerminar, semanasCompletasSeguidas } from './hoyResumen'
 import type { TrainingLogs } from '../types'
 
 const ej = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `E${i}`, sets: '3x5', weight: '', isMain: false, comment: '' }))
@@ -84,6 +84,25 @@ describe('frases de las métricas', () => {
     ])
     const varios = celebraciones({ records: [{ name: 'A', best: 1 }, { name: 'B', best: 2 }, { name: 'C', best: 3 }], semanaCompleta: false, racha: 0 })
     expect(varios).toEqual([{ icono: 'trofeo', texto: '3 récords nuevos: A y B…' }])
+  })
+
+  it('semanas completas seguidas: cuenta hacia atrás y se corta en la primera incompleta', () => {
+    const una = (d: number) => ({ label: 'S', rpe: '', isCurrent: false, days: [{ title: 'L', focus: '', exercises: ej(1) }, { title: 'X', focus: '', exercises: ej(1) }].slice(0, d) })
+    const tres = { weeks: [una(1), una(1), una(1)] }
+    const logs = hecho('ex_w0_d0_r0', 'ex_w1_d0_r0', 'ex_w2_d0_r0')
+    expect(semanasCompletasSeguidas(tres, logs, 2)).toBe(3)
+    expect(semanasCompletasSeguidas(tres, hecho('ex_w0_d0_r0', 'ex_w2_d0_r0'), 2)).toBe(1) // la 1 falta: se corta ahí
+    // la semana en curso aún no está completa: cuentan las anteriores
+    expect(semanasCompletasSeguidas(tres, hecho('ex_w0_d0_r0', 'ex_w1_d0_r0'), 2)).toBe(2)
+    expect(semanasCompletasSeguidas(tres, {}, 0)).toBe(0)
+    expect(semanasCompletasSeguidas({ weeks: [] }, {}, 0)).toBe(0)
+  })
+
+  it('celebraciones: con 2 o más semanas seguidas lo dice', () => {
+    expect(celebraciones({ records: [], semanaCompleta: true, racha: 0, semanasSeguidas: 3 })).toEqual([
+      { icono: 'semana', texto: 'Semana completada: 3 semanas completas seguidas' },
+    ])
+    expect(celebraciones({ records: [], semanaCompleta: true, racha: 0, semanasSeguidas: 1 })[0].texto).toBe('Semana completada. Buen trabajo.')
   })
 
   it('nombre de pila', () => {
