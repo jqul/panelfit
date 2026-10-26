@@ -66,12 +66,20 @@ export function fraseRachaAlTerminar(dias: number): string | null {
 }
 
 /** Lo que se celebra al terminar una sesión, en orden de mayor a menor alegría: récords, semana cerrada, racha. */
-export function celebraciones(p: { records: { name: string; best: number }[]; semanaCompleta: boolean; racha: number }): Celebracion[] {
+export function celebraciones(p: { records: { name: string; best: number }[]; semanaCompleta: boolean; racha: number; semanasSeguidas?: number }): Celebracion[] {
   const out: Celebracion[] = []
   if (p.records.length === 1) out.push({ icono: 'trofeo', texto: `Récord nuevo en ${p.records[0].name}: ${String(p.records[0].best).replace('.', ',')} kg` })
   else if (p.records.length > 1) out.push({ icono: 'trofeo', texto: `${p.records.length} récords nuevos: ${p.records.slice(0, 2).map(r => r.name).join(' y ')}${p.records.length > 2 ? '…' : ''}` })
-  if (p.semanaCompleta) out.push({ icono: 'semana', texto: 'Semana completada. Buen trabajo.' })
+  if (p.semanaCompleta) out.push({ icono: 'semana', texto: (p.semanasSeguidas ?? 0) >= 2 ? `Semana completada: ${p.semanasSeguidas} semanas completas seguidas` : 'Semana completada. Buen trabajo.' })
   const racha = fraseRachaAlTerminar(p.racha)
   if (racha) out.push({ icono: 'llama', texto: racha })
   return out
+}
+
+/** Semanas completas seguidas que acaban en `weekIdx` (si esa aún no está completa, cuentan las anteriores). */
+export function semanasCompletasSeguidas(plan: Pick<TrainingPlan, 'weeks'>, logs: TrainingLogs, weekIdx: number): number {
+  const completa = (w: number) => { const s = semanaResumen(plan, logs, w); return s.previstas > 0 && s.hechas >= s.previstas }
+  let n = 0
+  for (let w = completa(weekIdx) ? weekIdx : weekIdx - 1; w >= 0 && completa(w); w--) n++
+  return n
 }

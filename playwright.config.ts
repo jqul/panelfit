@@ -30,6 +30,6 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { VITE_SUPABASE_URL: 'https://e2e-supabase.test', VITE_SUPABASE_ANON_KEY: 'e2e-anon-key' },
+    env: { VITE_SUPABASE_URL: 'https://e2e-supabase.test', VITE_SUPABASE_ANON_KEY: 'e2e-anon-key', VITE_VAPID_PUBLIC_KEY: 'BDummyClaveDePruebaE2E' }, // con clave, la app ofrece los avisos (solo se usa si se pulsa Activar)
   },
 })

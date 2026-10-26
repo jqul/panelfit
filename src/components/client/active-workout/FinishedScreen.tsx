@@ -1,5 +1,10 @@
-import { Check, Trophy, Flame, CalendarCheck } from 'lucide-react'
+import { useState } from 'react'
+import { Check, Trophy, Flame, CalendarCheck, Bell } from 'lucide-react'
 import { celebraciones } from '../../../lib/hoyResumen'
+import { usePushNotifications } from '../../../lib/usePushNotifications'
+
+const AVISOS_KEY = 'pf_avisos_pedidos'
+const yaPedido = () => { try { return localStorage.getItem(AVISOS_KEY) === '1' } catch { return true } }
 
 interface Props {
   title: string
@@ -11,12 +16,21 @@ interface Props {
   streak: number
   /** La sesión cierra la semana del plan (todas las previstas hechas). */
   semanaCompleta: boolean
+  /** Semanas completas seguidas que acaban en esta (para decir «3 seguidas»). */
+  semanasSeguidas?: number
+  /** Cliente que entrena: se le ofrece activar los avisos (no al entrenador que registra por él). */
+  clientId?: string
   onContinue: () => void
 }
 
 // Lo último que ve el cliente: la sesión ya está guardada, esto es el cierre.
-export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, semanaCompleta, onContinue }: Props) {
-  const fiestas = celebraciones({ records: newRecords, semanaCompleta, racha: streak })
+export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, semanaCompleta, semanasSeguidas, clientId, onContinue }: Props) {
+  const fiestas = celebraciones({ records: newRecords, semanaCompleta, racha: streak, semanasSeguidas })
+  // Pedir permiso al terminar el entreno, no al abrir la app: es cuando el aviso tiene sentido. Una sola vez.
+  const push = usePushNotifications({ clientId })
+  const [pedido, setPedido] = useState(yaPedido)
+  const ofrecerAvisos = !trainerMode && !!clientId && push.supported && !push.subscribed && !pedido && (typeof Notification === 'undefined' || Notification.permission === 'default')
+  const recordarPedido = () => { setPedido(true); try { localStorage.setItem(AVISOS_KEY, '1') } catch {} }
   return (
     <div className="fixed inset-0 z-50 bg-bg flex flex-col items-center justify-center p-6 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-full bg-ok text-white flex items-center justify-center mb-6 shadow-lg shadow-ok/30">
@@ -45,6 +59,18 @@ export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, t
               {f.icono === 'trofeo' ? <Trophy className="w-4 h-4 flex-shrink-0" /> : f.icono === 'semana' ? <CalendarCheck className="w-4 h-4 flex-shrink-0" /> : <Flame className="w-4 h-4 flex-shrink-0" />} {f.texto}
             </p>
           ))}
+        </div>
+      )}
+
+      {ofrecerAvisos && (
+        <div className="mt-6 w-full max-w-xs bg-card border border-border rounded-2xl p-4 text-left">
+          <p className="flex items-center gap-2 text-sm font-semibold"><Bell className="w-4 h-4 text-accent" /> ¿Activamos los avisos?</p>
+          <p className="text-xs text-muted mt-1">Te llegarán los mensajes de tu entrenador y los cambios de tu plan, sin abrir la app.</p>
+          <div className="flex gap-2 mt-3">
+            <button onClick={async () => { recordarPedido(); await push.subscribe() }} disabled={push.loading}
+              className="flex-1 py-2 rounded-xl bg-ink text-white text-sm font-semibold">Activar</button>
+            <button onClick={recordarPedido} className="flex-1 py-2 rounded-xl border border-border text-sm font-semibold text-muted">Ahora no</button>
+          </div>
         </div>
       )}
 
