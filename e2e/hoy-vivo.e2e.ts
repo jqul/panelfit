@@ -77,3 +77,19 @@ test('al terminar la sesión que cierra la semana, la pantalla final lo celebra 
   await expect(final.getByText('Semana completada. Buen trabajo.')).toBeVisible()
   await expect(final.getByText('Racha de', { exact: false })).toHaveCount(0) // primera sesión: aún sin racha
 })
+
+test('la pestaña Dieta solo sale si el cliente tiene dieta', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  await entrarComoCliente(page)
+  const barra = page.getByRole('navigation')
+  await expect(barra.getByRole('button', { name: 'Progreso' })).toBeVisible()
+  await expect(barra.getByRole('button', { name: 'Dieta' })).toHaveCount(0) // sin dieta: cuatro pestañas
+  await expect(barra.getByRole('button')).toHaveCount(4)
+})
+
+test('con dieta, la pestaña Dieta sigue en la barra', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  fake.seed('dietas', { cliente_id: ids.client, datos: { clientId: ids.client, kcal: 2400, protein: 160, carbs: 260, fats: 70, meals: [], advice: '', updatedAt: '' } })
+  await entrarComoCliente(page)
+  await expect(page.getByRole('navigation').getByRole('button', { name: 'Dieta' })).toBeVisible()
+})

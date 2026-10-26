@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { dietaConContenido } from '../../lib/dietaCliente'
+import { isDemoClientId } from '../../lib/demoIds'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
 import { TrainingPlanView } from './TrainingPlanView'
@@ -59,6 +61,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     setPendingCount(p === null ? 0 : p === 'all' ? Math.max(1, Object.keys(logsRef.current).length) : p.length)
   }, [])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
+  const [tieneDieta, setTieneDieta] = useState(true) // hasta saber lo contrario, la pestaña está (como siempre)
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
   const [isOnline, setIsOnline] = useState(navigator.onLine)
@@ -196,6 +199,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const localLogs = cacheGet<TrainingLogs>(deviceKeys.logs(clientData.id), { ignoreTtl: hasPendingLocal })
     if (localLogs) setLogs(localLogs)
 
+    // ¿Hay dieta que enseñar? Se pregunta en paralelo y se espera al final; si falla (sin conexión) se deja la pestaña.
+    const dietaP = isDemoClientId(clientData.id) ? Promise.resolve(null)
+      : Promise.resolve(supabase.from('dietas').select('datos').eq('cliente_id', clientData.id).maybeSingle())
+          .then(r => r.error ? null : { hay: dietaConContenido(r.data?.datos) }, () => null)
+
     // Plan — se guarda una copia en local para poder seguir viendo el entreno de
     // hoy sin conexión (ej. sótano de gimnasio), en vez de quedarse sin plan.
     const { data: planData } = await supabase
@@ -253,6 +261,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         .from('plantillas_mensajes').select('*').eq('trainerId', clientData.trainerId)
       if (tmplData) setMessageTemplates(tmplData as MessageTemplate[])
     }
+
+    const dieta = await dietaP
+    if (dieta) setTieneDieta(dieta.hay)
 
     setAuthState('authenticated')
     setLoading(false)
@@ -469,11 +480,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const motivMsg = resolveTemplate('descanso')
   const restDayMsg = resolveTemplate('racha')
 
+  // Hoy · Entreno · Progreso · (Dieta, solo si tiene) · Más: con cuatro pestañas la barra respira y nada se esconde.
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
     { id: 'entreno' as Tab,  icon: Dumbbell,       label: 'Entreno' },
     { id: 'progreso' as Tab, icon: BarChart2,      label: 'Progreso' },
-    { id: 'dieta' as Tab,    icon: Utensils,       label: 'Dieta' },
+    ...(tieneDieta ? [{ id: 'dieta' as Tab, icon: Utensils, label: 'Dieta' }] : []),
     { id: 'mas' as Tab,      icon: MoreHorizontal, label: 'Más' },
   ]
 
