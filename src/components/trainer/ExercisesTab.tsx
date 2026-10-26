@@ -12,6 +12,8 @@ import {
 import type { NewExercise } from '../../hooks/useExerciseLibrary'
 import { FAV_KEY, CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TagBadge, load, save, type CustomTag } from './exercises/classification'
 import { syncLibraryPrefs } from '../../lib/libraryPrefsSync'
+import { clientesConEjercicio, type ClienteLite, type FilaPlan } from '../../lib/usoEjercicio'
+import { leerPlanes } from '../../lib/usoEjercicioLectura'
 import { ConfigPanel } from './exercises/ConfigPanel'
 import { ExerciseForm, formFrom, type FormState } from './exercises/ExerciseForm'
 import { ExerciseCard } from './exercises/ExerciseCard'
@@ -25,6 +27,8 @@ interface Props {
   /** Archivados: no salen al crear planes, pero se pueden recuperar desde aquí. */
   archived: LibraryExercise[]
   trainerId: string
+  /** Tus clientes: la ficha del ejercicio dice a cuáles se lo has puesto en el plan. */
+  clients?: ClienteLite[]
   /** Texto con el que abre el buscador (viene de la búsqueda global). */
   initialSearch?: string
   onAdd: (name: string, desc: string, cat: string, videos: LibraryVideo[], esps: string[], tags: string[], extra?: { material?: string; alternativas?: string[] }) => Promise<LibraryExercise> | void
@@ -38,7 +42,7 @@ interface Props {
 const PAGE_SIZE = 60
 const chipCls = (on: boolean) => `px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap flex-shrink-0 transition-all ${on ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`
 
-export function ExercisesTab({ exercises, archived, trainerId, initialSearch = '', onAdd, onUpdate, onDelete, onArchive, onRestore, onImport }: Props) {
+export function ExercisesTab({ exercises, archived, trainerId, clients, initialSearch = '', onAdd, onUpdate, onDelete, onArchive, onRestore, onImport }: Props) {
   const [search, setSearch]       = useState(initialSearch)
   const [chip, setChip]           = useState<Chip>('todos')
   const [filterCat, setFilterCat] = useState('')
@@ -68,6 +72,23 @@ export function ExercisesTab({ exercises, archived, trainerId, initialSearch = '
     })
     return () => { montado.current = false }
   }, [trainerId])
+
+  // Uso real de la ficha abierta: a qué clientes se lo has puesto ahora. Los planes se leen una vez, al abrir la primera
+  // ficha, y se reutilizan; si no se pueden leer, la ficha simplemente no enseña esa línea.
+  const planes = useRef<Promise<FilaPlan[] | null> | null>(null)
+  const [uso, setUso] = useState<string[] | null>(null)
+  useEffect(() => {
+    setUso(null)
+    if (!editing || !clients?.length) return
+    let vigente = true
+    const cargar = planes.current ??= leerPlanes(clients)
+    cargar.then(filas => {
+      if (!filas) { planes.current = null; return }
+      if (vigente) setUso(clientesConEjercicio(editing.name, filas, clients))
+    })
+    return () => { vigente = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id])
 
   const toggleFav = (id: string) => {
     const next = new Set(favs)
@@ -301,7 +322,7 @@ export function ExercisesTab({ exercises, archived, trainerId, initialSearch = '
       <Modal open={!!editing} onClose={() => setEditing(null)} variant="drawer" plain maxWidth="max-w-lg" ariaLabel={editing ? `Editar ${editing.name}` : 'Editar ejercicio'}>
         {editing && (
           <ExerciseForm key={editing.id} initial={formFrom(editing)} trainerId={trainerId} title={editing.name}
-            origen={/^ex_(default|demo)_/.test(editing.id) ? 'base' : 'personal'} useCount={editing.useCount ?? 0}
+            origen={/^ex_(default|demo)_/.test(editing.id) ? 'base' : 'personal'} useCount={editing.useCount ?? 0} uso={uso}
             library={all} onSave={f => save_(editing, f)} onCancel={() => setEditing(null)} />
         )}
       </Modal>

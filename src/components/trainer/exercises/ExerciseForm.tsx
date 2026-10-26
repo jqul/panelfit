@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { ESPECIALIDADES } from '../../../lib/especialidades'
 import type { LibraryExercise, LibraryVideo } from '../../../types'
 import { norm } from '../../../lib/globalSearch'
+import { fraseUso } from '../../../lib/usoEjercicio'
 import { MATERIALES, inferMaterial, ORIGEN_LABEL, type Origen } from '../../../lib/exerciseLibrary'
 import { MuscleDiagram } from '../MuscleDiagram'
 import { CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TAG_COLORS, load, type CustomTag } from './classification'
@@ -28,12 +29,14 @@ function getYTId(url: string) {
 interface ExFormProps {
   initial: FormState; trainerId: string; title: string
   origen: Origen; useCount: number
+  /** Clientes que lo llevan ahora en su plan; null mientras se leen (o si no se pudo). */
+  uso?: string[] | null
   /** Ejercicios de la biblioteca: sugerencias para las alternativas. */
   library: LibraryExercise[]
   onSave: (f: FormState) => void; onCancel: () => void
 }
 
-export function ExerciseForm({ initial, trainerId, title, origen, useCount, library, onSave, onCancel }: ExFormProps) {
+export function ExerciseForm({ initial, trainerId, title, origen, useCount, uso, library, onSave, onCancel }: ExFormProps) {
   const [form, setForm] = useState<FormState>(initial)
   const [newAlt, setNewAlt] = useState('')
   const [newVideoUrl, setNewVideoUrl] = useState('')
@@ -80,6 +83,7 @@ export function ExerciseForm({ initial, trainerId, title, origen, useCount, libr
         <div className="min-w-0">
           <h3 className="text-lg font-serif font-bold truncate">{title}</h3>
           <p className="text-xs text-muted mt-0.5">{ORIGEN_LABEL[origen]}{useCount > 0 && ` · usado ${useCount} ${useCount === 1 ? 'vez' : 'veces'} en planes`}</p>
+          {uso && <p className="text-xs text-muted mt-0.5">{fraseUso(uso)}</p>}
         </div>
         <button onClick={onCancel} aria-label="Cerrar" className="p-2 -mr-2 rounded-lg hover:bg-bg-alt text-muted hover:text-ink"><X className="w-4 h-4"/></button>
       </div>
