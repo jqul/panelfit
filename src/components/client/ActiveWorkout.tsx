@@ -36,6 +36,7 @@ import { streakDays } from '../../lib/progressSummary'
 import { latestPreviousLog } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
 import { semanaResumen, semanasCompletasSeguidas } from '../../lib/hoyResumen'
+import { mantenerPantallaEncendida } from '../../lib/pantallaEncendida'
 import { FocusWorkout } from './active-workout/FocusWorkout'
 
 interface Props {
@@ -188,6 +189,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [showFinish, setShowFinish] = useState(false)
   const [saving, setSaving] = useState(false)    // guardando al terminar: evita el doble toque
   const [finished, setFinished] = useState(false) // sesión ya guardada: se enseña la pantalla de cierre
+  // Con el móvil apoyado entre series, la pantalla no se apaga mientras dura el entreno (se suelta al cerrar la sesión).
+  useEffect(() => (finished ? undefined : mantenerPantallaEncendida()), [finished])
   // Vista Foco (una serie a la vez) o Lista (todos los ejercicios) — se recuerda la elección.
   const [view, setView] = useState<'foco' | 'lista'>(() => {
     try { return localStorage.getItem('pf_workout_view') === 'lista' ? 'lista' : 'foco' } catch { return 'foco' }

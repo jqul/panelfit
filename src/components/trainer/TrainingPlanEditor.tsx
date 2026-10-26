@@ -25,6 +25,7 @@ import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
 import { useTestCatalog } from '../../lib/testCatalog'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { estimarMinutos } from '../../lib/duracionSesion'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 
 export { getYTId } from './training-plan-editor/utils'
@@ -411,6 +412,9 @@ export function TrainingPlanEditor({
                         placeholder="foco del día..." className="text-xs text-muted bg-transparent outline-none flex-1 min-w-0" />
                     </div>
                     <span className="text-[11px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium">{day.exercises.length}ej</span>
+                    {day.exercises.length > 0 && (
+                      <span title="Duración estimada con los descansos de este plan" className="text-[11px] text-muted bg-bg-alt border border-border px-2 py-0.5 rounded-full font-medium whitespace-nowrap">~{estimarMinutos(day.exercises, plan)} min</span>
+                    )}
                     <button onClick={e => { e.stopPropagation(); copyDay(activeWeek, di) }} className="p-1 text-muted hover:text-accent opacity-0 group-hover/day:opacity-100 transition-all"><Copy className="w-3 h-3" /></button>
                     <button onClick={e => { e.stopPropagation(); deleteDay(activeWeek, di) }} className="p-1 text-muted hover:text-warn opacity-0 group-hover/day:opacity-100 transition-all"><Trash2 className="w-3 h-3" /></button>
                     {openDays[di] ? <ChevronUp className="w-3.5 h-3.5 text-muted flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted flex-shrink-0" />}
