@@ -112,6 +112,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 - **Celebraciones al terminar**: récord con nombre y kilos, «Semana completada. Buen trabajo.» si la sesión cierra la semana, racha con hitos (una semana, dos, un mes) y **semanas completas seguidas** («Semana completada: 3 semanas completas seguidas»). Al terminar su primer entreno se le ofrece, una sola vez, **activar los avisos** (mensajes del entrenador y cambios del plan).
 - Pestañas: Hoy (entreno del día + widgets de racha/hábitos/próximas sesiones), Entreno activo, Progreso (calendario, historial, récords, peso, fotos, feedback de vídeo), Dieta (solo si el cliente tiene dieta: sin ella la barra queda en cuatro pestañas), Encuestas, Más (ajustes/cerrar sesión).
 - **Recuperación de contraseña**: para clientes que se registraron con email/contraseña, igual que para entrenadores.
+- **Consejos del entrenador**: en Ajustes, el entrenador escribe tarjetas cortas (sueño, descanso, qué hacer un día que no se puede entrenar…; hasta 20, con ejemplos para empezar y orden a su gusto) y el cliente las lee, plegadas, en Más → «Consejos de {nombre}». Se guardan en el perfil del entrenador, sin tablas nuevas.
 - Tema visual personalizable por el entrenador (color, logo, imagen de fondo) — *white-label* básico.
 
 ## 14. Página pública del entrenador

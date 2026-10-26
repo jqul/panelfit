@@ -46,6 +46,7 @@ import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
 // La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
+const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
 // La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
 const GlobalSearch = lazy(() => import('./GlobalSearch').then(m => ({ default: m.GlobalSearch })))
 // Las acciones masivas (barra y hojas de plan, mensaje, etiquetas y encuesta) solo se descargan al seleccionar clientes.
@@ -1043,6 +1044,7 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
           ))}
         </div>
       </div>
+      <Suspense fallback={null}><ConsejosEditor trainerId={userProfile.uid} /></Suspense>
       <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">

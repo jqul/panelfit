@@ -286,6 +286,11 @@ export const DEMO_TRAINER_PROFILE = {
   motivMsg: 'Hoy es día de descanso. El músculo crece mientras descansas. 🧘 Aprovecha para comer bien.',
   restDayMsg: '¡Racha increíble! Eso es lo que marca la diferencia. 🔥 Sigue así.',
   especialidades: ['hipertrofia', 'fuerza'],
+  consejos: [
+    { id: 'demo-c1', titulo: 'Dormir bien', texto: 'Intenta dormir entre 7 y 9 horas y acostarte a una hora parecida cada día. Es cuando mejor se recupera el cuerpo de lo que entrenas.' },
+    { id: 'demo-c2', titulo: 'Los días de descanso', texto: 'Un día sin entrenar no es un día perdido: es cuando el cuerpo asimila el trabajo. Camina un rato, estira suave y come bien.' },
+    { id: 'demo-c3', titulo: 'Si un día no puedes entrenar', texto: 'Haz lo principal de la sesión y avísame. Mejor una sesión corta que ninguna.' },
+  ],
 }
 
 // ── PLAN MARÍA (Hipertrofia 4 días) ───────────────────
