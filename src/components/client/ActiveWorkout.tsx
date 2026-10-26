@@ -35,6 +35,7 @@ import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 import { streakDays } from '../../lib/progressSummary'
 import { latestPreviousLog } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
+import { semanaResumen } from '../../lib/hoyResumen'
 import { FocusWorkout } from './active-workout/FocusWorkout'
 
 interface Props {
@@ -634,7 +635,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   if (finished) {
     return (
       <FinishedScreen title={day.title} trainerMode={trainerMode} clientName={clientName} elapsedLabel={formatElapsed()}
-        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish} />
+        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish}
+        semanaCompleta={(() => { const s = semanaResumen(plan, logs, weekIdx); return s.previstas > 0 && s.hechas >= s.previstas })()} />
     )
   }
 

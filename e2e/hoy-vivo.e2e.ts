@@ -58,3 +58,22 @@ test('en el modo foco, "Serie X de Y" va en grande y al acabar las series avisa 
   await page.getByRole('button', { name: 'Ir al ejercicio 1' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Ejercicio completado' })).toBeVisible()
 })
+
+test('al terminar la sesión que cierra la semana, la pantalla final lo celebra con frases', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  await entrarComoCliente(page)
+  await page.getByRole('button', { name: 'Empezar entrenamiento' }).click()
+
+  // El día de la semilla es 3x5 + 3x8 + 2x12: ocho series
+  for (let i = 0; i < 8; i++) {
+    await page.getByRole('button', { name: 'HECHO' }).click()
+    const saltar = page.getByRole('button', { name: /Listo, siguiente serie/ })
+    if (await saltar.isVisible().catch(() => false)) await saltar.click()
+  }
+  await page.getByRole('button', { name: /Terminar entrenamiento/ }).click()
+  await page.getByRole('button', { name: /Guardar y terminar/ }).click()
+
+  const final = page.locator('div.fixed').filter({ has: page.getByRole('heading', { name: '¡Buen trabajo!' }) })
+  await expect(final.getByText('Semana completada. Buen trabajo.')).toBeVisible()
+  await expect(final.getByText('Racha de', { exact: false })).toHaveCount(0) // primera sesión: aún sin racha
+})
