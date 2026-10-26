@@ -93,3 +93,21 @@ test('con dieta, la pestaña Dieta sigue en la barra', async ({ page, fake }) =>
   await entrarComoCliente(page)
   await expect(page.getByRole('navigation').getByRole('button', { name: 'Dieta' })).toBeVisible()
 })
+
+test('con un programa de varias semanas y una sesión larga: dónde vas y qué cabe si hay poco tiempo', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  const fila = fake.rows('planes').find(p => p.clientId === ids.client)!
+  const semana = fila.plan.P.weeks[0]
+  semana.days[0].exercises.push(...['Prensa', 'Curl femoral', 'Gemelo', 'Abdominales', 'Plancha', 'Zancadas'].map(name => ({ name, sets: '3x8', weight: '', comment: '', isMain: false })))
+  fila.plan.P.weeks = [semana, { ...semana, label: 'Semana 2', isCurrent: false }, { ...semana, label: 'Semana 3', isCurrent: false }]
+  await entrarComoCliente(page)
+
+  await expect(page.getByText('Semana 1 de 3', { exact: true })).toBeVisible()
+
+  await expect(page.getByText('¿Poco tiempo?', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '30 min' }).click()
+  const guia = page.getByRole('status').filter({ hasText: 'En 30 min' })
+  await expect(guia).toContainText('Press banca') // el principal siempre entra
+  await expect(guia).not.toContainText('Zancadas') // el final de la sesión es lo que se recorta
+  await expect(guia).toContainText('Terminar igual')
+})
