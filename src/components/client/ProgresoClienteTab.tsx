@@ -21,6 +21,7 @@ import { localDateKey } from '../../lib/dates'
 import { DEMO_FOTO_SESSIONS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 import { Modal } from '../shared/Modal'
+import { ProgressRing } from '../shared/ProgressRing'
 
 
 interface Props {
@@ -210,7 +211,10 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, 
       <div className="bg-card border border-border rounded-2xl p-5">
         <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-2">🎯 Constancia</p>
         {s.adh !== null ? (
-          <p className="text-base font-serif font-bold leading-snug">Has hecho el {s.adh}% de tus sesiones de las últimas 4 semanas.</p>
+          <div className="flex items-center gap-4">
+            <ProgressRing pct={s.adh} label={`Constancia: ${s.adh}% de tus sesiones`} />
+            <p className="text-base font-serif font-bold leading-snug">Has hecho el {s.adh}% de tus sesiones de las últimas 4 semanas.</p>
+          </div>
         ) : (
           <p className="text-sm text-muted">Cuando tengas un plan asignado verás tu constancia aquí.</p>
         )}

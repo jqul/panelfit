@@ -3,6 +3,7 @@ import { X, HeartPulse } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
+import { avisarCambioHoy } from '../../lib/hoyEventos'
 
 interface Metric { key: 'motivation' | 'sleep' | 'soreness' | 'stress'; label: string; emoji: string; lowLabel: string; highLabel: string }
 
@@ -36,6 +37,8 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
     supabase.from('readiness_checkins').select('id').eq('clientId', clientId).eq('date', today).maybeSingle()
       .then(({ data }) => { setDoneToday(!!data); setLoading(false) })
   }, [clientId, today])
+
+  useEffect(() => { if (!loading) avisarCambioHoy(clientId, { checkinHecho: doneToday }) }, [clientId, loading, doneToday])
 
   const submit = async () => {
     if (clientId.startsWith('demo-client-')) {

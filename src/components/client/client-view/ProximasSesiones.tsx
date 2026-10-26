@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { logError } from '../../../lib/errors'
 import { sendPush } from '../../../lib/usePushNotifications'
 import { localDateKey } from '../../../lib/dates'
+import { avisarCambioHoy } from '../../../lib/hoyEventos'
 
 interface CitaCliente {
   id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
@@ -39,6 +40,14 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   }
 
   useEffect(() => { load() }, [clientId])
+
+  // Para la lista "Para hoy": la primera sesión confirmada de hoy (una solicitud pendiente aún no es una cita).
+  useEffect(() => {
+    if (loading) return
+    const hoy = localDateKey()
+    const cita = citas.find(c => c.status === 'confirmada' && localDateKey(new Date(c.start_at)) === hoy)
+    avisarCambioHoy(clientId, { citaHoy: cita ? new Date(cita.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : null })
+  }, [clientId, loading, citas])
 
   const cancelar = async (id: string) => {
     if (isDemo) { setCitas(prev => prev.filter(c => c.id !== id)); return }

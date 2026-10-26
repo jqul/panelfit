@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { CheckSquare, Square } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { localDateKey } from '../../lib/dates'
+import { avisarCambioHoy } from '../../lib/hoyEventos'
 
 interface Habito { id: string; text: string; sub?: string; order: number }
 
@@ -26,6 +27,12 @@ export function HabitosWidget({ clientId }: { clientId: string }) {
       setLoading(false)
     })
   }, [clientId, today])
+
+  // Para la lista "Para hoy": cuántos van, al cargar y cada vez que se marca uno.
+  useEffect(() => {
+    if (loading) return
+    avisarCambioHoy(clientId, { habitos: { hechos: completed.filter(id => habitos.some(h => h.id === id)).length, total: habitos.length } })
+  }, [clientId, loading, habitos, completed])
 
   const toggle = async (id: string) => {
     const updated = completed.includes(id) ? completed.filter(x => x !== id) : [...completed, id]

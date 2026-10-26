@@ -546,10 +546,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       seriesTypes={seriesTypes}
                     />
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
-                    <ReadinessCheckin clientId={client.id} trainerId={client.trainerId} />
-                    <ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} />
+                    {/* Los id son los destinos de las filas de "Para hoy" */}
+                    <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
+                    <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
                     <BadgesWidget logs={logs} />
-                    <HabitosWidget clientId={client.id} />
+                    <div id="hoy-habitos" className="scroll-mt-2"><HabitosWidget clientId={client.id} /></div>
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                   </>
                 : <NoPlanView />
