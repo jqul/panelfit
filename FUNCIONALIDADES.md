@@ -109,7 +109,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 - **Hoy con vida**: el entreno del día va primero (tarjeta con el color de la marca y botón grande; en verde cuando está hecho), «Esta semana» dice cómo vas en palabras («Has hecho 3 de 4. Te falta 1 para cerrar la semana.») y cada métrica trae su frase (racha, adherencia *Muy bien / Bien / A mejorar*, fuerza ↑ Subiendo / ↔ Estable / ↓ Bajando; lo que va mal se dice en ámbar, sin alarma). La nota de bienvenida va firmada («Nota de Javier»).
 - **Modo foco**: «Serie 2 de 4» en grande con una barra por serie, aviso «Ejercicio completado · desliza para el siguiente» y «La última vez: 22 kg × 10» a la vista.
 - **Celebraciones al terminar**: récord con nombre y kilos, «Semana completada. Buen trabajo.» si la sesión cierra la semana, y racha con hitos (una semana, dos, un mes).
-- Pestañas: Hoy (entreno del día + widgets de racha/hábitos/próximas sesiones), Entreno activo, Progreso (calendario, historial, récords, peso, fotos, feedback de vídeo), Dieta, Encuestas, Más (ajustes/cerrar sesión).
+- Pestañas: Hoy (entreno del día + widgets de racha/hábitos/próximas sesiones), Entreno activo, Progreso (calendario, historial, récords, peso, fotos, feedback de vídeo), Dieta (solo si el cliente tiene dieta: sin ella la barra queda en cuatro pestañas), Encuestas, Más (ajustes/cerrar sesión).
 - **Recuperación de contraseña**: para clientes que se registraron con email/contraseña, igual que para entrenadores.
 - Tema visual personalizable por el entrenador (color, logo, imagen de fondo) — *white-label* básico.
 
