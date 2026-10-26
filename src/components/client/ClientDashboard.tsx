@@ -8,6 +8,10 @@ import { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
+import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, type Tono } from '../../lib/hoyResumen'
+
+// Color solo para estados: verde = bien, naranja/rojo = atención, gris = neutro.
+const TONO_CLASE: Record<Tono, string> = { ok: 'text-ok', atencion: 'text-attn', neutro: 'text-muted' }
 
 // La hoja de "registrar entreno ya hecho" solo se descarga al abrirla.
 const QuickLogSheet = lazy(() => import('./QuickLogSheet').then(m => ({ default: m.QuickLogSheet })))
@@ -26,6 +30,8 @@ interface Props {
   brandBg?: string
   brandColor?: string
   seriesTypes?: SeriesTypeDef[]
+  /** Quien deja la nota de bienvenida (entrenador): se enseña su nombre de pila. */
+  trainerName?: string
 }
 
 // Lunes=0 ... domingo=6, igual que Date.getDay() ajustado (domingo=0 -> 6).
@@ -80,7 +86,7 @@ function estimateMinutes(exercises: any[]): number {
   }, 0) / 60
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
@@ -97,6 +103,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
 
   const streak = streakDays(logs, new Date(), false, true)
   const todaySession = getTodaySession(plan, logs)
+  const weekIdx = getEffectiveWeekIdx(plan, logs)
+  const weekLabel = plan.weeks?.[weekIdx]?.label
+  const semana = semanaResumen(plan, logs, weekIdx)
+  const fraseSem = fraseSemana(semana.hechas, semana.previstas)
   // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
   const adherencia = adherence28(plan, logs)
   // El peso corporal vive en Progreso → Cuerpo: el inicio responde a "qué toca
@@ -190,35 +200,23 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
             <div className="mt-3 flex gap-2 rounded-xl p-3"
               style={{ backgroundColor: `${brandColor}12`, border: `1px solid ${brandColor}30` }}>
               <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: brandColor }} />
-              <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg || plan.message}"</p>
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-widest font-bold mb-0.5" style={{ color: brandColor }}>{nombreDePila(trainerName) ? `Nota de ${nombreDePila(trainerName)}` : 'Nota de tu entrenador'}</p>
+                <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg || plan.message}"</p>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha' },
-            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia' },
-            { icon: <TrendingUp className="w-4 h-4 text-accent" />, value: fuerza ? `${fuerza.pct > 0 ? '+' : ''}${fuerza.pct}%` : '—', label: 'Fuerza' },
-          ].map((s, i) => (
-            <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5">
-                {s.icon}
-                <span className="text-xl font-serif font-bold">{s.value}</span>
-              </div>
-              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
-            </div>
-          ))}
-        </div>
-
         {/* Card sesión de hoy */}
         {todaySession ? (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className={`border rounded-2xl overflow-hidden ${todayComplete ? 'bg-ok/5 border-ok/30' : 'bg-card border-border'}`}
+            style={todayComplete ? undefined : { backgroundColor: `${brandColor}0d`, borderColor: `${brandColor}33` }}>
             <div className="px-5 pt-5 pb-4">
-              <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Tu entrenamiento de hoy</p>
+              <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Hoy{weekLabel ? ` · ${weekLabel}` : ''}</p>
               <h3 className="font-serif font-bold text-xl leading-tight">{todaySession.day.title}</h3>
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
+              {todayComplete && <p role="status" className="text-sm font-semibold text-ok mt-2">Entreno de hoy hecho. Buen trabajo.</p>}
 
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted">
@@ -292,7 +290,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
 
         {/* Racha semanal — círculos dorados de lunes a domingo, sin ser punitiva */}
         <div className="bg-card border border-border rounded-2xl p-4">
-          <h4 className="font-serif font-bold text-sm mb-4">Esta semana</h4>
+          <h4 className="font-serif font-bold text-sm">Esta semana</h4>
+          <div className="mb-4 min-h-[1.25rem]">
+            {fraseSem && <p role="status" className={`text-xs font-semibold mt-0.5 ${TONO_CLASE[fraseSem.tono]}`}>{fraseSem.texto}</p>}
+          </div>
           <div className="flex gap-1.5 justify-between">
             {(() => {
               const now = new Date()
@@ -317,6 +318,25 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
               })
             })()}
           </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { icon: <Flame className="w-4 h-4 text-warn" />, value: streak, label: 'Racha', frase: fraseRacha(streak) },
+            { icon: <Target className="w-4 h-4 text-ok" />, value: adherencia !== null ? `${adherencia}%` : '—', label: 'Adherencia', frase: fraseAdherencia(adherencia) },
+            { icon: <TrendingUp className="w-4 h-4 text-accent" />, value: fuerza ? `${fuerza.pct > 0 ? '+' : ''}${fuerza.pct}%` : '—', label: 'Fuerza',
+              frase: (() => { const t = tendenciaFuerza(fuerza ? fuerza.pct : null); return { texto: `${t.flecha} ${t.texto}`, tono: t.tono } })() },
+          ].map((s, i) => (
+            <div key={i} className="bg-card border border-border rounded-2xl p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                {s.icon}
+                <span className="text-xl font-serif font-bold">{s.value}</span>
+              </div>
+              <p className="text-[11px] text-muted uppercase tracking-wider">{s.label}</p>
+              <p className={`text-xs font-semibold mt-1 ${TONO_CLASE[s.frase.tono]}`}>{s.frase.texto}</p>
+            </div>
+          ))}
         </div>
 
         {/* Macros */}

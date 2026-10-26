@@ -35,6 +35,8 @@
   --color-accent2: #a8886a;
   --color-ok:      #1a6038;
   --color-warn:    #b02a20;
+  /* Atención sin alarma: frases de ánimo ("A mejorar"), no errores. Contraste ≥4,5:1 en claro y ≥7:1 en oscuro. */
+  --color-attn:    #9a5b00;
 }
 
 .dark {
@@ -48,6 +50,7 @@
   --color-accent2: #a8886a;
   --color-ok:      #34c97a;
   --color-warn:    #ef6b5e;
+  --color-attn:    #e0a854;
 }
 
 /* Tema oscuro: los rellenos sólidos de tinta, acento, ok y aviso se aclaran, y el texto
