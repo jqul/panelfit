@@ -53,3 +53,25 @@ export function tendenciaFuerza(pct: number | null): { flecha: '↑' | '↓' | '
 export function nombreDePila(nombre?: string | null): string {
   return (nombre ?? '').trim().split(/\s+/)[0] ?? ''
 }
+
+export interface Celebracion { icono: 'trofeo' | 'llama' | 'semana'; texto: string }
+
+/** Frase de racha al cerrar una sesión: los hitos (una semana, dos, un mes) se dicen con nombre; null si aún no hay racha. */
+export function fraseRachaAlTerminar(dias: number): string | null {
+  if (dias < 2) return null
+  if (dias === 7) return 'Una semana seguida. Eso es constancia.'
+  if (dias === 14) return 'Dos semanas seguidas. Ya es un hábito.'
+  if (dias === 30) return 'Un mes entero sin fallar. Enhorabuena.'
+  return `Racha de ${dias} días`
+}
+
+/** Lo que se celebra al terminar una sesión, en orden de mayor a menor alegría: récords, semana cerrada, racha. */
+export function celebraciones(p: { records: { name: string; best: number }[]; semanaCompleta: boolean; racha: number }): Celebracion[] {
+  const out: Celebracion[] = []
+  if (p.records.length === 1) out.push({ icono: 'trofeo', texto: `Récord nuevo en ${p.records[0].name}: ${String(p.records[0].best).replace('.', ',')} kg` })
+  else if (p.records.length > 1) out.push({ icono: 'trofeo', texto: `${p.records.length} récords nuevos: ${p.records.slice(0, 2).map(r => r.name).join(' y ')}${p.records.length > 2 ? '…' : ''}` })
+  if (p.semanaCompleta) out.push({ icono: 'semana', texto: 'Semana completada. Buen trabajo.' })
+  const racha = fraseRachaAlTerminar(p.racha)
+  if (racha) out.push({ icono: 'llama', texto: racha })
+  return out
+}

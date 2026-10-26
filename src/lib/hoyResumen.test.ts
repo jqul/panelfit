@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila } from './hoyResumen'
+import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, celebraciones, fraseRachaAlTerminar } from './hoyResumen'
 import type { TrainingLogs } from '../types'
 
 const ej = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `E${i}`, sets: '3x5', weight: '', isMain: false, comment: '' }))
@@ -64,6 +64,26 @@ describe('frases de las métricas', () => {
     expect(tendenciaFuerza(-0.9).flecha).toBe('↔')
     expect(tendenciaFuerza(6)).toEqual({ flecha: '↑', texto: 'Subiendo', tono: 'ok' })
     expect(tendenciaFuerza(-3)).toEqual({ flecha: '↓', texto: 'Bajando', tono: 'atencion' })
+  })
+
+  it('la racha al terminar: sin racha no hay frase, y los hitos tienen nombre', () => {
+    expect(fraseRachaAlTerminar(0)).toBeNull()
+    expect(fraseRachaAlTerminar(1)).toBeNull()
+    expect(fraseRachaAlTerminar(3)).toBe('Racha de 3 días')
+    expect(fraseRachaAlTerminar(7)).toBe('Una semana seguida. Eso es constancia.')
+    expect(fraseRachaAlTerminar(14)).toBe('Dos semanas seguidas. Ya es un hábito.')
+    expect(fraseRachaAlTerminar(30)).toBe('Un mes entero sin fallar. Enhorabuena.')
+  })
+
+  it('celebraciones: récord con nombre y kilos, semana cerrada y racha, en ese orden', () => {
+    expect(celebraciones({ records: [], semanaCompleta: false, racha: 1 })).toEqual([])
+    expect(celebraciones({ records: [{ name: 'Sentadilla', best: 102.5 }], semanaCompleta: true, racha: 4 })).toEqual([
+      { icono: 'trofeo', texto: 'Récord nuevo en Sentadilla: 102,5 kg' },
+      { icono: 'semana', texto: 'Semana completada. Buen trabajo.' },
+      { icono: 'llama', texto: 'Racha de 4 días' },
+    ])
+    const varios = celebraciones({ records: [{ name: 'A', best: 1 }, { name: 'B', best: 2 }, { name: 'C', best: 3 }], semanaCompleta: false, racha: 0 })
+    expect(varios).toEqual([{ icono: 'trofeo', texto: '3 récords nuevos: A y B…' }])
   })
 
   it('nombre de pila', () => {

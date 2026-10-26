@@ -1,4 +1,5 @@
-import { Check, Trophy, Flame } from 'lucide-react'
+import { Check, Trophy, Flame, CalendarCheck } from 'lucide-react'
+import { celebraciones } from '../../../lib/hoyResumen'
 
 interface Props {
   title: string
@@ -8,11 +9,14 @@ interface Props {
   totalVolume: number
   newRecords: { name: string; best: number }[]
   streak: number
+  /** La sesión cierra la semana del plan (todas las previstas hechas). */
+  semanaCompleta: boolean
   onContinue: () => void
 }
 
 // Lo último que ve el cliente: la sesión ya está guardada, esto es el cierre.
-export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, onContinue }: Props) {
+export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, semanaCompleta, onContinue }: Props) {
+  const fiestas = celebraciones({ records: newRecords, semanaCompleta, racha: streak })
   return (
     <div className="fixed inset-0 z-50 bg-bg flex flex-col items-center justify-center p-6 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-full bg-ok text-white flex items-center justify-center mb-6 shadow-lg shadow-ok/30">
@@ -34,18 +38,13 @@ export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, t
         </div>
       </div>
 
-      {(newRecords.length > 0 || streak >= 2) && (
+      {fiestas.length > 0 && (
         <div className="mt-4 space-y-2 w-full max-w-xs">
-          {newRecords.length > 0 && (
-            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-warn">
-              <Trophy className="w-4 h-4" /> {newRecords.length} {newRecords.length === 1 ? 'récord nuevo' : 'récords nuevos'}
+          {fiestas.map(f => (
+            <p key={f.icono} className={`flex items-center justify-center gap-2 text-sm font-semibold ${f.icono === 'trofeo' ? 'text-attn' : f.icono === 'semana' ? 'text-ok' : 'text-accent'}`}>
+              {f.icono === 'trofeo' ? <Trophy className="w-4 h-4 flex-shrink-0" /> : f.icono === 'semana' ? <CalendarCheck className="w-4 h-4 flex-shrink-0" /> : <Flame className="w-4 h-4 flex-shrink-0" />} {f.texto}
             </p>
-          )}
-          {streak >= 2 && (
-            <p className="flex items-center justify-center gap-2 text-sm font-semibold text-accent">
-              <Flame className="w-4 h-4" /> Racha de {streak} días
-            </p>
-          )}
+          ))}
         </div>
       )}
 
