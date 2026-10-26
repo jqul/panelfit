@@ -40,3 +40,21 @@ test('la nota de bienvenida dice quién la deja', async ({ page, fake }) => {
   await expect(page.getByText('Nota de Alex')).toBeVisible() // el nombre de pila del entrenador ("Alex Trainer")
   await expect(page.getByText('"Vamos con todo esta semana"')).toBeVisible()
 })
+
+test('en el modo foco, "Serie X de Y" va en grande y al acabar las series avisa de que el ejercicio está completo', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  await entrarComoCliente(page)
+  await page.getByRole('button', { name: 'Empezar entrenamiento' }).click()
+
+  await expect(page.getByText('Serie 1 de 3', { exact: true })).toBeVisible() // el primer ejercicio es de 3x5
+  for (let i = 1; i <= 3; i++) {
+    await expect(page.getByText(`Serie ${i} de 3`, { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'HECHO' }).click()
+    const saltar = page.getByRole('button', { name: /Listo, siguiente serie/ })
+    if (await saltar.isVisible().catch(() => false)) await saltar.click()
+  }
+
+  // Al terminar la última serie salta al siguiente ejercicio; al volver, el primero se ve completo
+  await page.getByRole('button', { name: 'Ir al ejercicio 1' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Ejercicio completado' })).toBeVisible()
+})
