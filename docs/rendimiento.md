@@ -14,12 +14,20 @@ node scripts/bundle-report.mjs   # solo el informe, sobre un dist/ ya hecho
 | Recorrido | Antes | Después | Presupuesto |
 | --- | --- | --- | --- |
 | Landing y blog | 144 kB | **127 kB** | 135 kB |
-| Cliente (`/?c=token`) | 243 kB | **177 kB** | 185 kB |
+| Cliente (`/?c=token`) | 243 kB | **169 kB** | 175 kB |
 | Entrenador (panel) | 384 kB | **282 kB** | 295 kB |
 
 Estimación de solo transferencia con la "4G lenta" de Lighthouse (1,6 Mb/s): el cliente pasa de ~1,2 s a ~0,9 s,
 y el panel del entrenador de ~2,0 s a ~1,4 s. **No es una medida en un móvil real**: no cuenta la latencia ni el
 tiempo de ejecución del JS, que en un Android de gama baja pesa tanto como la descarga.
+
+## Segunda pasada (2026-10-26): el panel del cliente, de 183 a 169 kB
+
+El panel del cliente había vuelto a subir con las funciones nuevas (183 de 185 kB). Se midió qué había dentro (la entrada compartida son 110 kB: React y Supabase) y se sacó lo que solo se usa a veces:
+
+- **Tipos de serie**: `seriesTypes.tsx` mezclaba los datos que usa el cliente con el gestor, el modal y el hook del entrenador; los datos están ahora en `seriesTypesData.ts` (el cliente ya no se descarga el gestor).
+- **Bajo demanda**: el registro/acceso (`ClientRegister`), la pestaña Más, la encuesta y el calendario se descargan al llegar a ellos. Quien ya ha entrado no los baja nunca si no los abre.
+- Presupuesto del cliente: **175 kB** (antes 185). El mayor trozo que queda es la entrada compartida: Supabase pesa ~66 kB gzip ahí dentro (Realtime y Phoenix ~16 kB, que solo usa el panel del entrenador); sacarlos exigiría una capa propia sobre el cliente de Supabase y no se ha hecho.
 
 ## Qué se hizo
 

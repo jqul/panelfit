@@ -9,27 +9,29 @@ import { TrainingPlanView } from './TrainingPlanView'
 // Carga perezosa: recharts es pesado (~500kb) y solo hace falta al entrar de
 // verdad en la pestaña de progreso, no con solo abrir la app.
 const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => ({ default: m.ProgresoClienteTab })))
+// Lo que quien ya ha entrado casi no abre (registro, encuesta, Más) se descarga al llegar a ello: el panel arranca antes.
+const ClientRegister = lazy(() => import('./ClientRegister').then(m => ({ default: m.ClientRegister })))
+const EncuestaClienteTab = lazy(() => import('./EncuestaClienteTab').then(m => ({ default: m.EncuestaClienteTab })))
+const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
+const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PWAInstallBanner } from './PWAInstallBanner'
 import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
-import { EncuestaClienteTab } from './EncuestaClienteTab'
 import { logError } from '../../lib/errors'
 import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { pantallaDeEnlace } from '../../lib/enlaceCliente'
 import { rememberClientLink, forgetClientLink, installClientManifest } from '../../lib/clientLink'
-import { ClientRegister } from './ClientRegister'
 import { HabitosWidget } from './HabitosWidget'
 import { BadgesWidget } from './BadgesWidget'
 import { ReadinessCheckin } from './ReadinessCheckin'
-import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
+import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { CLIENT_CACHE_KEY, PLAN_CACHE_KEY } from './client-view/helpers'
 import { cacheGet, cacheSet, hasPendingLogs, getPendingKeys, addPendingKeys, clearPendingKeys, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
 import { diffKeys, mergeLogs, adoptRemote, saveLogsMerged, savePlanDiasMerged } from '../../lib/serverSync'
 import { ProximasSesiones } from './client-view/ProximasSesiones'
-import { MasTab } from './client-view/MasTab'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
@@ -401,15 +403,17 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
     })()
     return (
-      <ClientRegister
-        token={token}
-        clientId={client.id}
-        clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
-        trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
-        brandColor={trainerProf.brandColor}
-        brandLogo={trainerProf.brandLogo}
-        onComplete={handleRegistered}
-      />
+      <Suspense fallback={<Cargando />}>
+        <ClientRegister
+          token={token}
+          clientId={client.id}
+          clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
+          trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
+          brandColor={trainerProf.brandColor}
+          brandLogo={trainerProf.brandLogo}
+          onComplete={handleRegistered}
+        />
+      </Suspense>
     )
   }
 
@@ -418,18 +422,20 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       try { return JSON.parse(localStorage.getItem(`pf_trainer_profile_${client.trainerId}`) || '{}') } catch { return {} }
     })()
     return (
-      <ClientRegister
-        token={token}
-        clientId={client.id}
-        clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
-        trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
-        brandColor={trainerProf.brandColor}
-        brandLogo={trainerProf.brandLogo}
-        initialStep="login"
-        expectedUserId={client.auth_user_id}
-        otherSessionNotice={otherSession}
-        onComplete={() => loadData()}
-      />
+      <Suspense fallback={<Cargando />}>
+        <ClientRegister
+          token={token}
+          clientId={client.id}
+          clientName={`${client.name || ''} ${client.surname || ''}`.trim()}
+          trainerName={trainerProf.brandName || trainerProf.displayName || 'Tu entrenador'}
+          brandColor={trainerProf.brandColor}
+          brandLogo={trainerProf.brandLogo}
+          initialStep="login"
+          expectedUserId={client.auth_user_id}
+          otherSessionNotice={otherSession}
+          onComplete={() => loadData()}
+        />
+      </Suspense>
     )
   }
 
@@ -560,9 +566,13 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
               </Suspense>
             )}
             {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
-            {activeTab === 'encuesta' && <EncuestaClienteTab client={client} />}
-            {activeTab === 'mas' && <MasTab client={client} plan={plan} onLogout={logoutClient}
-              fotosConsent={consent.fotos} onConsentChange={consent.grant} />}
+            {activeTab === 'encuesta' && <Suspense fallback={<Cargando />}><EncuestaClienteTab client={client} /></Suspense>}
+            {activeTab === 'mas' && (
+              <Suspense fallback={<Cargando />}>
+                <MasTab client={client} plan={plan} onLogout={logoutClient}
+                  fotosConsent={consent.fotos} onConsentChange={consent.grant} />
+              </Suspense>
+            )}
           </>
         )}
       </main>

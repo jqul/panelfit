@@ -4,7 +4,7 @@ import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp,
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
-import { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
+import type { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
