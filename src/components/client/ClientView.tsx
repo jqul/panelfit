@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { dietaConContenido } from '../../lib/dietaCliente'
+import { limpiarConsejos } from '../../lib/consejos'
+import { nombreDePila } from '../../lib/hoyResumen'
 import { isDemoClientId } from '../../lib/demoIds'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
@@ -570,6 +572,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'mas' && (
               <Suspense fallback={<Cargando />}>
                 <MasTab client={client} plan={plan} onLogout={logoutClient}
+                  consejos={limpiarConsejos(trainerProfile.consejos)} trainerName={nombreDePila(trainerProfile.displayName || trainerProfile.brandName)}
                   fotosConsent={consent.fotos} onConsentChange={consent.grant} />
               </Suspense>
             )}

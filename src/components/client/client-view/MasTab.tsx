@@ -9,9 +9,12 @@ import { PushToggle } from '../../shared/PushToggle'
 import { CicloWidget } from '../CicloWidget'
 import { ReferralWidget } from '../ReferralWidget'
 import { MisDatosCard } from './MisDatosCard'
+import type { Consejo } from '../../../lib/consejos'
 
-export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange }: {
+export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, consejos = [], trainerName }: {
   client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void
+  /** Consejos que ha escrito el entrenador (ya limpios) y su nombre de pila. */
+  consejos?: Consejo[]; trainerName?: string
   fotosConsent: boolean; onConsentChange: (salud: boolean, fotos: boolean) => Promise<boolean>
 }) {
   const trainerPhone = localStorage.getItem(`pf_trainer_phone_${client.trainerId}`) || ''
@@ -48,6 +51,23 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange }
             <div className="flex justify-between"><span className="text-muted">Semanas</span><span className="font-semibold">{plan.weeks?.length || 0}</span></div>
           </div>
         </div>
+      )}
+
+      {consejos.length > 0 && (
+        <section aria-label="Consejos de tu entrenador" className="bg-card border border-border rounded-2xl overflow-hidden">
+          <p className="px-5 py-3 border-b border-border text-xs font-bold uppercase tracking-wider text-muted">{trainerName ? `Consejos de ${trainerName}` : 'Consejos de tu entrenador'}</p>
+          <div className="divide-y divide-border/60">
+            {consejos.map(c => (
+              <details key={c.id} className="group">
+                <summary className="flex items-center justify-between gap-3 px-5 py-3.5 cursor-pointer list-none text-sm font-semibold" style={{ minHeight: '48px' }}>
+                  {c.titulo}
+                  <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-90">›</span>
+                </summary>
+                <p className="px-5 pb-4 text-sm text-muted leading-relaxed whitespace-pre-line">{c.texto}</p>
+              </details>
+            ))}
+          </div>
+        </section>
       )}
 
       <div className="bg-card border border-border rounded-2xl p-5 space-y-2">
