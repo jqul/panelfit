@@ -189,6 +189,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [showFinish, setShowFinish] = useState(false)
   const [saving, setSaving] = useState(false)    // guardando al terminar: evita el doble toque
   const [finished, setFinished] = useState(false) // sesión ya guardada: se enseña la pantalla de cierre
+  // Fondo del modo foco: oscuro por defecto (en el gimnasio se lee mejor); el cliente puede volver al claro y se recuerda.
+  const [focoOscuro, setFocoOscuro] = useState(() => { try { return localStorage.getItem('pf_foco_claro') !== '1' } catch { return true } })
+  const cambiarFocoOscuro = () => setFocoOscuro(o => { try { localStorage.setItem('pf_foco_claro', o ? '1' : '0') } catch {} return !o })
   // Con el móvil apoyado entre series, la pantalla no se apaga mientras dura el entreno (se suelta al cerrar la sesión).
   useEffect(() => (finished ? undefined : mantenerPantallaEncendida()), [finished])
   // Vista Foco (una serie a la vez) o Lista (todos los ejercicios) — se recuerda la elección.
@@ -758,7 +761,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   ) : undefined
 
   return (
-    <div className="fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden"
+    <div className={`fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden ${view === 'foco' && focoOscuro ? 'pf-foco-oscuro' : ''}`}
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
@@ -776,6 +779,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
           onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
           renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
+          oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
         />
       ) : (
       <>
