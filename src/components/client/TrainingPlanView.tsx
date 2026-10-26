@@ -1,14 +1,16 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
-import { DEFAULT_SERIES_TYPES, SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
+import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
-import { CalendarioTab } from './CalendarioTab'
 import { Modal } from '../shared/Modal'
+
+// El calendario solo se abre desde su botón: se descarga entonces.
+const CalendarioTab = lazy(() => import('./CalendarioTab').then(m => ({ default: m.CalendarioTab })))
 
 interface Props {
   plan: TrainingPlan
@@ -112,7 +114,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
       )}
 
       {view === 'calendario' ? (
-        <div className="px-4 pt-4"><CalendarioTab logs={logs} plan={plan} /></div>
+        <div className="px-4 pt-4"><Suspense fallback={<p className="py-6 text-sm text-muted">Cargando…</p>}><CalendarioTab logs={logs} plan={plan} /></Suspense></div>
       ) : (
       <>
       <div className="px-4 pt-5 pb-3">
