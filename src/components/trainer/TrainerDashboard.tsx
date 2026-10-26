@@ -707,7 +707,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
           {activeTab === 'exercises'  && (
             <Suspense fallback={<div className="space-y-2 max-w-4xl">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>}>
-              <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} archived={library.archivedExercises} trainerId={userProfile.uid}
+              <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} archived={library.archivedExercises} trainerId={userProfile.uid} clients={clients}
                 onAdd={(n,d,c,v,e,t,extra) => library.addExercise(n,d,c,v,e,t,extra)} onUpdate={library.updateExercise} onDelete={library.deleteExercise}
                 onArchive={library.archiveExercise} onRestore={library.restoreExercise} onImport={library.addExercises} />
             </Suspense>
