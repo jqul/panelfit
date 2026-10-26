@@ -1,10 +1,13 @@
 // Clasificaciones propias del entrenador (grupos musculares, especialidades y etiquetas): viven en el navegador
 // (localStorage) y las comparten la pestaña, el panel de configuración y el formulario del ejercicio.
 
-export const TAGS_KEY = (uid: string) => `pf_tags_${uid}`
-export const CATS_KEY = (uid: string) => `pf_cats_${uid}`
-export const ESPS_KEY = (uid: string) => `pf_esps_${uid}`
-export const FAV_KEY  = (uid: string) => `pf_fav_${uid}`
+import { prefKey } from '../../../lib/libraryPrefs'
+import { notePrefChanged } from '../../../lib/libraryPrefsSync'
+
+export const TAGS_KEY = (uid: string) => prefKey('tags', uid)
+export const CATS_KEY = (uid: string) => prefKey('cats', uid)
+export const ESPS_KEY = (uid: string) => prefKey('esps', uid)
+export const FAV_KEY  = (uid: string) => prefKey('fav', uid)
 
 export const DEFAULT_CATS = ['Pecho','Espalda','Hombros','Bíceps','Tríceps','Antebrazo','Piernas','Glúteos','Core','Cardio','Funcional/Olímpico','General']
 
@@ -25,7 +28,9 @@ export const TAG_COLORS = [
 export function load<T>(key: string, def: T): T {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def } catch { return def }
 }
-export function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify(val)) }
+// Los favoritos y las listas propias se sincronizan con Supabase (lib/libraryPrefsSync.ts): aquí se sigue guardando
+// en local, de forma síncrona, y `notePrefChanged` programa la subida. Cualquier otra clave se ignora.
+export function save<T>(key: string, val: T) { localStorage.setItem(key, JSON.stringify(val)); notePrefChanged(key) }
 
 export function TagBadge({ tag }: { tag: CustomTag }) {
   const c = TAG_COLORS[(tag.colorIdx ?? 0) % TAG_COLORS.length] ?? TAG_COLORS[0]

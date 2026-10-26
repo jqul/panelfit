@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Plus, Search, Settings2, Dumbbell, MoreHorizontal, SlidersHorizontal, Upload, AlertCircle } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { Modal } from '../shared/Modal'
@@ -11,6 +11,7 @@ import {
 } from '../../lib/exerciseLibrary'
 import type { NewExercise } from '../../hooks/useExerciseLibrary'
 import { FAV_KEY, CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TagBadge, load, save, type CustomTag } from './exercises/classification'
+import { syncLibraryPrefs } from '../../lib/libraryPrefsSync'
 import { ConfigPanel } from './exercises/ConfigPanel'
 import { ExerciseForm, formFrom, type FormState } from './exercises/ExerciseForm'
 import { ExerciseCard } from './exercises/ExerciseCard'
@@ -52,6 +53,21 @@ export function ExercisesTab({ exercises, archived, trainerId, initialSearch = '
   const [showConfig, setShowConfig] = useState(false)
   const [, forceUpdate] = useState(0)
   const refresh = () => forceUpdate(n => n + 1)
+
+  // Favoritos y listas propias se sincronizan entre dispositivos: al abrir la biblioteca se reconcilia con el servidor
+  // y, si llega algo nuevo, se vuelve a leer (lib/libraryPrefsSync.ts).
+  // (La referencia, y no una variable del efecto: React en desarrollo ejecuta cada efecto dos veces y la primera
+  // respuesta —la que trae lo nuevo— se descartaba.)
+  const montado = useRef(true)
+  useEffect(() => {
+    montado.current = true
+    syncLibraryPrefs(trainerId).then(cambio => {
+      if (!montado.current || !cambio) return
+      setFavs(new Set(load(FAV_KEY(trainerId), [] as string[])))
+      refresh()
+    })
+    return () => { montado.current = false }
+  }, [trainerId])
 
   const toggleFav = (id: string) => {
     const next = new Set(favs)
