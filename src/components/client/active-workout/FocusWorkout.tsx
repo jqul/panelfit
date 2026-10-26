@@ -239,7 +239,14 @@ export function FocusWorkout(p: Props) {
           <div className="mt-4">{p.renderRun(p.ri)}</div>
         ) : (
           <>
-            <p className="text-center text-sm font-bold uppercase tracking-widest text-accent mt-6">Serie {p.si + 1} de {total}</p>
+            {exDone(p.ri) && <p role="status" className="text-center text-sm font-semibold text-ok mt-5">Ejercicio completado{p.ri < p.exercises.length - 1 ? ' · desliza para el siguiente' : ''}</p>}
+            <p className={`text-center font-serif font-bold text-3xl text-accent ${exDone(p.ri) ? 'mt-1' : 'mt-6'}`}>Serie {p.si + 1} de {total}</p>
+            {/* Una barra con un tramo por serie: hecha / actual / pendiente */}
+            <div className="flex gap-1.5 mx-8 mt-2.5" aria-hidden="true">
+              {Array.from({ length: total }, (_, i) => (
+                <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${exSets[i]?.done ? 'bg-ok' : i === p.si ? 'bg-ink' : 'bg-border'}`} />
+              ))}
+            </div>
 
             {/* Peso y repeticiones, grandes */}
             <div className={`mx-4 mt-3 rounded-3xl border p-5 transition-colors ${cur.done ? 'bg-ok/10 border-ok/30' : 'bg-card border-border'}`}>
@@ -275,7 +282,7 @@ export function FocusWorkout(p: Props) {
               {/* Referencia: la última vez y lo recomendado hoy */}
               {(prev?.weight || targetRange) && (
                 <div className="mt-5 pt-4 border-t border-border/60 text-center space-y-1.5">
-                  {prev?.weight && <p className="text-xs text-muted">Última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · RIR ${prev.rir}` : ''}</p>}
+                  {prev?.weight && <p className="text-sm font-medium text-muted">La última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · RIR ${prev.rir}` : ''}</p>}
                   {targetRange && <p className="text-sm font-bold" style={{ color: suggestion?.color || '#6e5438' }}>🎯 Recomendado hoy: {fmt(targetRange)}</p>}
                   {!cur.done && prev?.weight && (
                     <button onClick={useSuggested} className="inline-flex items-center gap-1 text-sm font-semibold text-accent py-1">
