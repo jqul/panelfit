@@ -8,6 +8,7 @@ import { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypes'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
+import { estimarMinutos, presupuestosUtiles, versionCorta } from '../../lib/duracionSesion'
 import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, type Tono } from '../../lib/hoyResumen'
 
 // Color solo para estados: verde = bien, naranja/rojo = atención, gris = neutro.
@@ -78,14 +79,6 @@ function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
 
-function estimateMinutes(exercises: any[]): number {
-  return exercises.reduce((acc, ex) => {
-    const sets = parseInt(ex.sets?.split('×')[0] || '3')
-    const restSecs = ex.isMain ? 180 : 90
-    return acc + (sets * 45) + (sets * restSecs)
-  }, 0) / 60
-}
-
 export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
   usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
@@ -127,7 +120,13 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
   // progreso (todayPct) se sigue mostrando real; esto solo afecta al CTA.
   const todayFinishedEarly = todaySession ? !!logs[`finished_${todaySession.dayKey}`]?.sessionFinished : false
   const todayComplete = todayPct === 100 || todayFinishedEarly
-  const estimatedMin = todaySession ? Math.round(estimateMinutes(todaySession.day.exercises)) : 0
+  const estimatedMin = todaySession ? estimarMinutos(todaySession.day.exercises, plan) : 0
+  // "¿Poco tiempo?": una guía de qué hacer con 30/45/60 min. No cambia el entreno ni los registros (van por posición):
+  // se hace en orden y, si no llega, se termina con «Terminar igual».
+  const [pocoTiempo, setPocoTiempo] = useState<number | null>(null)
+  const presupuestos = todaySession && todayDone === 0 ? presupuestosUtiles(todaySession.day.exercises, plan) : []
+  const corta = todaySession && pocoTiempo ? versionCorta(todaySession.day.exercises, plan, pocoTiempo) : null
+  const nTotalSemanas = plan.weeks?.length ?? 0
 
   const nextExIdx = todaySession
     ? todaySession.day.exercises.findIndex((_: any, ri: number) => !logs[`ex_${todaySession.dayKey}_r${ri}`]?.done)
@@ -218,6 +217,19 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
               {todayComplete && <p role="status" className="text-sm font-semibold text-ok mt-2">Entreno de hoy hecho. Buen trabajo.</p>}
 
+              {/* Dónde vas en el programa */}
+              {nTotalSemanas > 1 && (
+                <div className="mt-3" role="img" aria-label={`Semana ${weekIdx + 1} de ${nTotalSemanas}`}>
+                  <div className="flex justify-between text-[11px] text-muted mb-1">
+                    <span>Semana {weekIdx + 1} de {nTotalSemanas}</span>
+                    {plan.programName && <span className="truncate ml-3">{plan.programName}</span>}
+                  </div>
+                  <div className="h-1 bg-bg-alt rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(((weekIdx + 1) / nTotalSemanas) * 100)}%`, backgroundColor: brandColor }} />
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted">
                   <Dumbbell className="w-3.5 h-3.5" />
@@ -244,6 +256,26 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                   <div className="h-2 bg-bg-alt rounded-full overflow-hidden">
                     <div className="h-full bg-ok rounded-full transition-all duration-500" style={{ width: `${todayPct}%` }} />
                   </div>
+                </div>
+              )}
+
+              {presupuestos.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted">¿Poco tiempo?</span>
+                    {presupuestos.map(m => (
+                      <button key={m} onClick={() => setPocoTiempo(pocoTiempo === m ? null : m)} aria-pressed={pocoTiempo === m}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${pocoTiempo === m ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+                        {m} min
+                      </button>
+                    ))}
+                  </div>
+                  {corta && (
+                    <p role="status" className="mt-2 text-xs text-muted leading-relaxed">
+                      En {pocoTiempo} min (unos {corta.minutos}): <span className="font-semibold text-ink">{corta.hacer.map(i => todaySession!.day.exercises[i].name).join(', ')}</span>.
+                      {' '}Haz la sesión en orden y, cuando te quedes sin tiempo, termina con «Terminar igual»: tu entrenador verá qué has hecho.
+                    </p>
+                  )}
                 </div>
               )}
 
