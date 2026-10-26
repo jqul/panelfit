@@ -29,6 +29,8 @@ interface Props {
   motivMsg?: string
   restDayMsg?: string
   brandBg?: string
+  /** Logo o foto de la marca del entrenador: acompaña a su nota. */
+  trainerLogo?: string | null
   brandColor?: string
   seriesTypes?: SeriesTypeDef[]
   /** Quien deja la nota de bienvenida (entrenador): se enseña su nombre de pila. */
@@ -79,7 +81,7 @@ function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
   usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
@@ -198,7 +200,9 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
           {(welcomeMsg || plan.message) && (
             <div className="mt-3 flex gap-2 rounded-xl p-3"
               style={{ backgroundColor: `${brandColor}12`, border: `1px solid ${brandColor}30` }}>
-              <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: brandColor }} />
+              {trainerLogo
+                ? <img src={trainerLogo} alt="" className="w-9 h-9 rounded-full object-cover border flex-shrink-0" style={{ borderColor: `${brandColor}40` }} />
+                : <MessageSquare className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: brandColor }} />}
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-widest font-bold mb-0.5" style={{ color: brandColor }}>{nombreDePila(trainerName) ? `Nota de ${nombreDePila(trainerName)}` : 'Nota de tu entrenador'}</p>
                 <p className="text-sm italic" style={{ color: brandColor }}>"{welcomeMsg || plan.message}"</p>

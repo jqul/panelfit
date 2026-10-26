@@ -155,3 +155,14 @@ test('al terminar el entreno se ofrecen los avisos una sola vez', async ({ page,
   await expect(final.getByText('¿Activamos los avisos?')).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('pf_avisos_pedidos'))).toBe('1')
 })
+
+test('la nota de bienvenida lleva el logo del entrenador si lo tiene', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  const logo = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>'
+  fake.rows('entrenadores').find(e => e.uid === ids.trainer)!.profile.brandLogo = logo
+  fake.rows('planes').find(p => p.clientId === ids.client)!.plan.P.message = 'A por la semana'
+  await entrarComoCliente(page)
+
+  const nota = page.locator('div.rounded-xl').filter({ hasText: 'Nota de Alex' })
+  await expect(nota.locator('img')).toHaveAttribute('src', logo)
+})
