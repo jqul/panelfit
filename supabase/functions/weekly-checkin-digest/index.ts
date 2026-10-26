@@ -45,11 +45,12 @@ serve(async (req) => {
   let sent = 0
 
   for (const trainer of trainers) {
-    // Obtener clientes
+    // Obtener clientes (los archivados no entrenan contigo: no son "inactivos" que avisar)
     const { data: clientes } = await supabase
       .from('clientes')
       .select('id, name, surname, token')
       .eq('trainerId', trainer.uid)
+      .is('archived_at', null)
 
     if (!clientes?.length) continue
 

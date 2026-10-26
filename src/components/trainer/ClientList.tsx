@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { MessageCircle, Trash2, ChevronRight } from 'lucide-react'
+import { MessageCircle, Archive, ChevronRight } from 'lucide-react'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { clientStatus, StatusLevel } from '../../lib/clientStatus'
 
@@ -9,7 +8,8 @@ interface Props {
   formatLastActive: (date?: string) => string
   onOpen: (client: ClientWithStats) => void
   onSend: (client: ClientWithStats) => void
-  onDelete: (id: string) => void
+  /** Archivar se puede deshacer, así que va sin confirmación; borrar del todo solo desde Archivados. */
+  onArchive: (id: string) => void
   /** Modo selección (acciones masivas): casilla por fila, y pulsar el nombre marca en vez de abrir la ficha. */
   selection?: { selected: ReadonlySet<string>; onToggle: (id: string) => void }
 }
@@ -24,8 +24,7 @@ const DOT: Record<StatusLevel, string> = {
 // Lista de clientes pensada como centro de control: cada fila dice cómo está
 // ese cliente (estado, último entreno, adherencia y qué alertas tiene) para no
 // tener que abrir cada ficha. En móvil cada fila pasa a ser una tarjeta.
-export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, onSend, onDelete, selection }: Props) {
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, onSend, onArchive, selection }: Props) {
   const now = new Date()
 
   return (
@@ -38,7 +37,6 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
           const status = clientStatus(client, now)
           const adherencia = adherenciaMap[client.id] ?? 0
           const barColor = adherencia >= 75 ? '#4caf7d' : adherencia >= 40 ? '#e0a854' : '#e07b54'
-          const confirming = confirmId === client.id
           const fullName = `${client.name} ${client.surname || ''}`.trim()
           const isSelected = !!selection?.selected.has(client.id)
           return (
@@ -95,19 +93,10 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
               </div>
 
               <div className="flex items-center justify-end gap-1.5 md:w-[88px]">
-                {confirming ? (
-                  <>
-                    <button onClick={() => { onDelete(client.id); setConfirmId(null) }} className="px-2.5 py-1.5 rounded-lg bg-warn text-white text-xs font-bold">Eliminar</button>
-                    <button onClick={() => setConfirmId(null)} className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted">No</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => onSend(client)} aria-label={`Enviar enlace a ${client.name}`} title="Enviar enlace"
-                      className="p-2 rounded-lg border border-border text-muted hover:text-ink hover:border-ink transition-colors"><MessageCircle className="w-4 h-4" /></button>
-                    <button onClick={() => setConfirmId(client.id)} aria-label={`Eliminar a ${client.name}`} title="Eliminar"
-                      className="p-2 rounded-lg border border-border text-muted hover:text-warn hover:border-warn transition-colors"><Trash2 className="w-4 h-4" /></button>
-                  </>
-                )}
+                <button onClick={() => onSend(client)} aria-label={`Enviar enlace a ${client.name}`} title="Enviar enlace"
+                  className="p-2 rounded-lg border border-border text-muted hover:text-ink hover:border-ink transition-colors"><MessageCircle className="w-4 h-4" /></button>
+                <button onClick={() => onArchive(client.id)} aria-label={`Archivar a ${client.name}`} title="Archivar (se puede deshacer)"
+                  className="p-2 rounded-lg border border-border text-muted hover:text-ink hover:border-ink transition-colors"><Archive className="w-4 h-4" /></button>
               </div>
             </li>
           )

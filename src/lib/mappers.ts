@@ -13,6 +13,7 @@ export function mapCliente(row: any): ClientData {
     token: row.token || '',
     createdAt: row.createdAt || (row.created_at ? new Date(row.created_at).getTime() : Date.now()),
     isActive: row.isActive ?? row.activo ?? true,
+    archivedAt: row.archived_at ?? undefined,
   }
 }
 export function mapClientes(rows: any[]): ClientData[] {
