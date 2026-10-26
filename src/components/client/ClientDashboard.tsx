@@ -1,6 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { createPortal } from 'react-dom'
-import { Flame, Dumbbell, Play, CheckCircle2, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
+import { Flame, Dumbbell, Play, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
@@ -9,6 +9,7 @@ import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
 import { estimarMinutos, presupuestosUtiles, versionCorta } from '../../lib/duracionSesion'
+import { AnilloProgreso } from './AnilloProgreso'
 import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, type Tono } from '../../lib/hoyResumen'
 
 // Color solo para estados: verde = bien, naranja/rojo = atención, gris = neutro.
@@ -129,6 +130,16 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
   const presupuestos = todaySession && todayDone === 0 ? presupuestosUtiles(todaySession.day.exercises, plan) : []
   const corta = todaySession && pocoTiempo ? versionCorta(todaySession.day.exercises, plan, pocoTiempo) : null
   const nTotalSemanas = plan.weeks?.length ?? 0
+  // El botón de empezar se queda a mano: cuando el de la tarjeta sale de la pantalla al desplazar, aparece uno fijo abajo.
+  const botonHero = useRef<HTMLButtonElement>(null)
+  const [botonVisible, setBotonVisible] = useState(true)
+  useEffect(() => {
+    const el = botonHero.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(([e]) => setBotonVisible(e.isIntersecting))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [todaySession?.dayKey, todayComplete])
 
   const nextExIdx = todaySession
     ? todaySession.day.exercises.findIndex((_: any, ri: number) => !logs[`ex_${todaySession.dayKey}_r${ri}`]?.done)
@@ -187,6 +198,17 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
     <div className="max-w-xl mx-auto" style={{ paddingTop: brandBg ? 8 : 0 }}>
       {sessionOverlay}
 
+      {/* Botón fijo: aparece cuando el de la tarjeta de hoy se ha desplazado fuera de la pantalla */}
+      {todaySession && !todayComplete && !session && !botonVisible && (
+        <div className="fixed left-0 right-0 z-30 px-4 pointer-events-none" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 8px)' }}>
+          <button onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
+            style={{ minHeight: '52px' }}
+            className="pointer-events-auto max-w-xl mx-auto w-full flex items-center justify-center gap-2 bg-ink text-white rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-transform">
+            <Play className="w-5 h-5" /> {todayDone > 0 ? 'Continuar' : 'Entrenar ahora'}
+          </button>
+        </div>
+      )}
+
       {!isOnline && (
         <div className="bg-warn/10 border-b border-warn/20 px-4 py-2 text-center">
           <p className="text-xs font-semibold text-warn">Sin conexión — los datos se guardarán cuando vuelvas a conectarte</p>
@@ -221,18 +243,20 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
               {todayComplete && <p role="status" className="text-sm font-semibold text-ok mt-2">Entreno de hoy hecho. Buen trabajo.</p>}
 
-              {/* Dónde vas en el programa */}
-              {nTotalSemanas > 1 && (
-                <div className="mt-3" role="img" aria-label={`Semana ${weekIdx + 1} de ${nTotalSemanas}`}>
-                  <div className="flex justify-between text-[11px] text-muted mb-1">
-                    <span>Semana {weekIdx + 1} de {nTotalSemanas}</span>
-                    {plan.programName && <span className="truncate ml-3">{plan.programName}</span>}
-                  </div>
-                  <div className="h-1 bg-bg-alt rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.round(((weekIdx + 1) / nTotalSemanas) * 100)}%`, backgroundColor: brandColor }} />
-                  </div>
-                </div>
-              )}
+              {/* Dónde vas: hoy y en el programa, en anillos */}
+              <div className="mt-4 flex items-start gap-6">
+                <figure className="flex flex-col items-center gap-1">
+                  <AnilloProgreso valor={todayTotal ? todayDone / todayTotal : 0} color={todayComplete ? 'var(--color-ok)' : brandColor}>{todayDone}/{todayTotal}</AnilloProgreso>
+                  <figcaption className="text-[11px] text-muted">{todayComplete ? 'Hecho' : 'Hoy'}</figcaption>
+                </figure>
+                {nTotalSemanas > 1 && (
+                  <figure className="flex flex-col items-center gap-1">
+                    <AnilloProgreso valor={(weekIdx + 1) / nTotalSemanas} color={brandColor}>{weekIdx + 1}/{nTotalSemanas}</AnilloProgreso>
+                    <figcaption className="text-[11px] text-muted">Semana {weekIdx + 1} de {nTotalSemanas}</figcaption>
+                    {plan.programName && <p className="text-[11px] text-muted/80 max-w-[8rem] truncate -mt-0.5">{plan.programName}</p>}
+                  </figure>
+                )}
+              </div>
 
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1.5 text-xs text-muted">
@@ -243,25 +267,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
                   <Clock className="w-3.5 h-3.5" />
                   <span>~{estimatedMin} min</span>
                 </div>
-                {todayDone > 0 && (
-                  <div className="flex items-center gap-1.5 text-xs text-ok font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{todayDone}/{todayTotal} hechos</span>
-                  </div>
-                )}
               </div>
-
-              {todayDone > 0 && (
-                <div className="mt-3">
-                  <div className="flex justify-between text-xs text-muted mb-1">
-                    <span>Progreso</span>
-                    <span className="font-semibold text-ok">{todayPct}%</span>
-                  </div>
-                  <div className="h-2 bg-bg-alt rounded-full overflow-hidden">
-                    <div className="h-full bg-ok rounded-full transition-all duration-500" style={{ width: `${todayPct}%` }} />
-                  </div>
-                </div>
-              )}
 
               {presupuestos.length > 0 && (
                 <div className="mt-3">
@@ -293,7 +299,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
             </div>
 
             <div className="px-4 pb-4">
-              <button onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
+              <button ref={botonHero} onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
                 style={{ minHeight: '52px' }}
                 className="w-full flex items-center justify-center gap-3 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
                 <Play className="w-5 h-5" />

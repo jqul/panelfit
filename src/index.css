@@ -53,6 +53,10 @@
   --color-attn:    #e0a854;
 }
 
+/* Franjas de seguridad (muesca y barra inferior) del modo foco oscuro: el resto del foco lleva la clase .dark en su propio
+   contenedor; esto pinta lo que queda fuera. Mismo valor que --color-bg de .dark (más arriba). */
+.pf-foco-oscuro { background-color: #1a1814; }
+
 /* Tema oscuro: los rellenos sólidos de tinta, acento, ok y aviso se aclaran, y el texto
    blanco que llevan encima (text-white, text-white/70...) pasa al fondo oscuro. Sin
    esto quedaban botones con texto blanco sobre crema (contraste 1,2:1). Las

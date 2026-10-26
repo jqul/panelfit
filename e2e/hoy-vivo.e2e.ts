@@ -166,3 +166,34 @@ test('la nota de bienvenida lleva el logo del entrenador si lo tiene', async ({ 
   const nota = page.locator('div.rounded-xl').filter({ hasText: 'Nota de Alex' })
   await expect(nota.locator('img')).toHaveAttribute('src', logo)
 })
+
+test('el modo foco es oscuro por defecto, se puede pasar a claro y se recuerda', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  await entrarComoCliente(page)
+  await page.getByRole('button', { name: 'Empezar entrenamiento' }).click()
+  await expect(page.getByRole('button', { name: 'HECHO' })).toBeVisible()
+
+  const foco = page.locator('div.dark').filter({ has: page.getByRole('button', { name: 'HECHO' }) })
+  await expect(foco).toHaveCount(1) // oscuro por defecto
+  await page.getByRole('button', { name: 'Cambiar a fondo claro' }).click()
+  await expect(foco).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('pf_foco_claro'))).toBe('1')
+
+  await page.reload() // al volver a entrar se mantiene la elección
+  await page.getByRole('button', { name: 'Empezar entrenamiento' }).click()
+  await expect(page.getByRole('button', { name: 'Cambiar a fondo oscuro' })).toBeVisible()
+})
+
+test('al desplazar el Hoy, el botón de entrenar se queda a mano abajo', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  await page.setViewportSize({ width: 390, height: 520 }) // bajito, para que la tarjeta de hoy se pueda salir de la pantalla
+  await entrarComoCliente(page)
+  await expect(page.getByRole('button', { name: 'Entrenar ahora' })).toHaveCount(0) // con el botón de la tarjeta a la vista, no hace falta
+
+  await page.locator('main').evaluate(el => el.scrollTo(0, el.scrollHeight))
+  const fijo = page.getByRole('button', { name: 'Entrenar ahora' })
+  await expect(fijo).toBeVisible()
+  await fijo.click()
+  await expect(page.getByRole('button', { name: 'HECHO' })).toBeVisible() // abre el entreno
+
+})

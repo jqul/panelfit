@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react'
-import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame } from 'lucide-react'
+import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame, Moon, Sun } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
 import { FinishButton } from './FinishButton'
@@ -39,6 +39,9 @@ interface Props {
   renderRun: (ri: number) => ReactNode
   topExtras?: ReactNode
   allComplete: boolean
+  /** Fondo oscuro (el del gimnasio): se decide en ActiveWorkout para pintar también las franjas de seguridad. */
+  oscuro: boolean
+  onToggleOscuro: () => void
 }
 
 const SWIPE_HINT_KEY = 'pf_swipe_hint_done'
@@ -169,7 +172,7 @@ export function FocusWorkout(p: Props) {
   const sub = p.substitutionName(p.ri)
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className={`flex-1 flex flex-col min-h-0 bg-bg text-ink ${p.oscuro ? 'dark' : ''}`}>
       {/* Cabecera mínima */}
       <div className="bg-card border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-3">
@@ -183,6 +186,8 @@ export function FocusWorkout(p: Props) {
             <Clock className="w-3.5 h-3.5" />
             <span className="font-mono font-semibold tabular-nums">{p.elapsedLabel}</span>
           </div>
+          <button onClick={p.onToggleOscuro} aria-label={p.oscuro ? 'Cambiar a fondo claro' : 'Cambiar a fondo oscuro'} aria-pressed={p.oscuro}
+            className="p-2 rounded-xl hover:bg-bg-alt text-muted">{p.oscuro ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
           <button onClick={p.onToggleView} aria-label="Ver todos los ejercicios en lista" title="Ver lista completa"
             className="p-2 rounded-xl hover:bg-bg-alt text-muted"><List className="w-5 h-5" /></button>
           <FinishButton allComplete={p.allComplete} onClick={p.onFinishClick} />
@@ -283,7 +288,7 @@ export function FocusWorkout(p: Props) {
               {(prev?.weight || targetRange) && (
                 <div className="mt-5 pt-4 border-t border-border/60 text-center space-y-1.5">
                   {prev?.weight && <p className="text-sm font-medium text-muted">La última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · RIR ${prev.rir}` : ''}</p>}
-                  {targetRange && <p className="text-sm font-bold" style={{ color: suggestion?.color || '#6e5438' }}>🎯 Recomendado hoy: {fmt(targetRange)}</p>}
+                  {targetRange && <p className="text-sm font-bold" style={{ color: suggestion?.color || 'var(--color-accent)' }}>🎯 Recomendado hoy: {fmt(targetRange)}</p>}
                   {!cur.done && prev?.weight && (
                     <button onClick={useSuggested} className="inline-flex items-center gap-1 text-sm font-semibold text-accent py-1">
                       <CornerLeftDown className="w-3.5 h-3.5" /> Usar {targetRange ? 'lo recomendado' : 'lo de la última vez'}
@@ -302,7 +307,7 @@ export function FocusWorkout(p: Props) {
                   return (
                     <button key={o.value} onClick={() => p.onSetRir(p.ri, p.si, o.value)} aria-pressed={active}
                       className="flex-1 max-w-[72px] py-2 rounded-xl text-sm font-bold border-2 transition-all active:scale-95"
-                      style={active ? { backgroundColor: o.color, borderColor: o.color, color: '#fff' } : { borderColor: '#e2ddd4', color: '#8a8278' }}>
+                      style={active ? { backgroundColor: o.color, borderColor: o.color, color: '#fff' } : { borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
                       {o.value}
                     </button>
                   )
