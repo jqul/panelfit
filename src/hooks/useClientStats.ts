@@ -17,8 +17,9 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
 
   const activeToday = clients.filter(c => c.doneToday).length
   const noPlan = clients.filter(c => !c.hasPlan).length
+  // Quien está de viaje o de baja no cuenta como inactivo.
   const noActivity7d = clients.filter(c =>
-    !c.lastActive || new Date(c.lastActive) < haceUnaS
+    !c.ausencia && (!c.lastActive || new Date(c.lastActive) < haceUnaS)
   ).length
   const atRiskCount = clients.filter(c => c.atRisk).length
   const highAcwrCount = clients.filter(c => c.highAcwr).length
@@ -49,7 +50,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
     if (clientFilter === 'active') list = list.filter(c => c.doneToday)
     else if (clientFilter === 'no-plan') list = list.filter(c => !c.hasPlan)
     else if (clientFilter === 'no-activity') list = list.filter(c =>
-      !c.lastActive || new Date(c.lastActive) < haceUnaS
+      !c.ausencia && (!c.lastActive || new Date(c.lastActive) < haceUnaS)
     )
     else if (clientFilter === 'at-risk') list = list.filter(c => c.atRisk)
     else if (clientFilter === 'high-acwr') list = list.filter(c => c.highAcwr)

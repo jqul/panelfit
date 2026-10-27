@@ -72,3 +72,15 @@ describe('sortClients', () => {
     expect(names(list)).toEqual(before)
   })
 })
+
+describe('clientStatus con una ausencia que cubre hoy', () => {
+  it('no cuenta los días sin entrenar ni el riesgo: dice dónde está', () => {
+    const s = clientStatus({ hasPlan: true, lastActive: ago(20), atRisk: true, ausencia: { texto: 'De viaje hasta el 18 nov' } }, now)
+    expect(s).toMatchObject({ level: 'ok', label: 'De viaje hasta el 18 nov', reasons: [] })
+  })
+  it('la carga alta sigue avisando aunque esté fuera', () => {
+    const s = clientStatus({ hasPlan: true, lastActive: ago(2), highAcwr: true, acwrRatio: 1.7, ausencia: { texto: 'Enfermedad hasta el 3 nov' } }, now)
+    expect(s.level).toBe('review')
+    expect(s.reasons).toEqual(['Carga alta (ACWR 1,7)'])
+  })
+})

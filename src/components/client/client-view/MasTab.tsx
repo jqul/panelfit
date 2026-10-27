@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { MessageSquare, ShieldCheck } from 'lucide-react'
 import { TrainingPlan } from '../../../types'
 import { ClienteRow } from '../../../lib/supabase-types'
@@ -10,6 +10,8 @@ import { CicloWidget } from '../CicloWidget'
 import { ReferralWidget } from '../ReferralWidget'
 import { MisDatosCard } from './MisDatosCard'
 import type { Consejo } from '../../../lib/consejos'
+// Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
+const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
 
 export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, consejos = [], trainerName }: {
   client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void
@@ -92,6 +94,9 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, 
         </div>
         <PushToggle clientId={client.id} />
       </div>
+
+      {/* Fechas clave y cuándo no puede entrenar: lo ve su entrenador */}
+      <Suspense fallback={null}><AusenciasEventos clientId={client.id} quien="cliente" /></Suspense>
 
       {/* Ciclo menstrual (opcional) */}
       <CicloWidget clientId={client.id} trainerId={client.trainerId} />

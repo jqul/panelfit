@@ -14,6 +14,8 @@ export interface StatusInput {
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   planEndingSoon?: boolean
+  /** Ausencia que cubre hoy ("De viaje hasta el 18 nov"): no se le cuenta como inactivo ni en riesgo. */
+  ausencia?: { texto: string }
 }
 
 export interface ClientStatus {
@@ -40,6 +42,14 @@ export function clientStatus(c: StatusInput, now: Date = new Date()): ClientStat
   const reasons: string[] = []
 
   if (!c.hasPlan) return { level: 'no-plan', label: 'Sin plan', reasons: ['Sin plan asignado'] }
+
+  // De viaje, enfermo, de baja…: no entrenar es lo esperado, así que ni "días sin entrenar" ni "en riesgo".
+  // La carga y el salto siguen avisando: son del cuerpo, no de la agenda.
+  if (c.ausencia) {
+    if (c.highAcwr) reasons.push(c.acwrRatio ? `Carga alta (ACWR ${fmt(c.acwrRatio)})` : 'Carga alta')
+    if (c.highJumpDrop) reasons.push(c.jumpDropPct ? `Caída de salto ${fmt(Math.abs(c.jumpDropPct))}%` : 'Caída de salto')
+    return { level: reasons.length ? 'review' : 'ok', label: c.ausencia.texto, reasons }
+  }
 
   if (days === null) reasons.push('Aún no ha entrenado')
   else if (!c.doneToday && days >= 4) reasons.push(`${days} días sin entrenar`)
