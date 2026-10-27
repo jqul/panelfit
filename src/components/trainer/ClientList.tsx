@@ -1,6 +1,7 @@
 import { MessageCircle, Archive, ChevronRight } from 'lucide-react'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { clientStatus, StatusLevel } from '../../lib/clientStatus'
+import { PuntosSemana } from '../shared/PuntosSemana'
 
 interface Props {
   clients: ClientWithStats[]
@@ -71,11 +72,14 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
 
               <div className="flex-1 min-w-0 md:flex-none">
                 {client.hasPlan ? (
+                  <div className="space-y-1.5">
+                  {client.semana7 && <PuntosSemana dias={client.semana7} />}
                   <div className="flex items-center gap-2.5">
                     <div className="h-1.5 flex-1 max-w-[120px] bg-bg-alt rounded-full overflow-hidden" role="progressbar" aria-valuenow={adherencia} aria-valuemin={0} aria-valuemax={100} aria-label="Cumplimiento semanal">
                       <div className="h-full rounded-full" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />
                     </div>
                     <span className="text-xs font-bold tabular-nums w-9" style={{ color: barColor }}>{adherencia}%</span>
+                  </div>
                   </div>
                 ) : (
                   <span className="text-sm text-muted">—</span>
