@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Activity } from 'lucide-react'
 import { TrainingLogs } from '../../../types'
-import { computeLoadTrend, computeSessionLoadTrend, estadoForma, FITNESS_DIAS, SEMANAS_MIN_FORMA, SessionLoadRow, EstadoForma } from '../../../lib/loadRisk'
+import { computeLoadTrend, computeSessionLoadTrend, FITNESS_DIAS, SessionLoadRow } from '../../../lib/loadRisk'
+import { estadoForma, SEMANAS_MIN_FORMA, EstadoForma } from '../../../lib/estadoForma'
 import { EmptyState } from './helpers'
 
 function CustomTrendTooltip({ active, payload, label }: any) {

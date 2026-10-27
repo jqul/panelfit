@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TrainingLogs } from '../../types'
 import { supabase } from '../../lib/supabase'
-import { computeLoadTrend, computeSessionLoadTrend, estadoForma, ClaveForma, SessionLoadRow } from '../../lib/loadRisk'
+import { computeLoadTrend, computeSessionLoadTrend, SessionLoadRow } from '../../lib/loadRisk'
+import { estadoForma, ClaveForma } from '../../lib/estadoForma'
 
 // De más cansado a más descansado: la barra coloca al cliente en esta escala.
 const ESCALA: { clave: ClaveForma; corto: string }[] = [

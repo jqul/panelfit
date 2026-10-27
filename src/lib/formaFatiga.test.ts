@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeSessionLoadTrend, estadoForma, FITNESS_DIAS, SEMANAS_MIN_FORMA, LoadTrendPoint } from './loadRisk'
+import { computeSessionLoadTrend, FITNESS_DIAS, LoadTrendPoint } from './loadRisk'
+import { estadoForma, SEMANAS_MIN_FORMA } from './estadoForma'
 
 // Las pruebas de tramos usan puntos sueltos: sin el mínimo de semanas.
 const UNA = { minSemanas: 1 }
