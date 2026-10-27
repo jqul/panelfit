@@ -4,6 +4,7 @@ import { Flame, Dumbbell, Play, Target, MessageSquare, TrendingUp, Trophy, Clock
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { ParaHoy } from './ParaHoy'
 import type { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
@@ -82,7 +83,7 @@ function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
   usePrefetchActiveWorkout()
   const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
   const [sessionMinimized, setSessionMinimized] = useState(false)
@@ -233,9 +234,13 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
           )}
         </div>
 
+        <ParaHoy clientId={clientId} entreno={todaySession
+          ? { titulo: todaySession.day.title, hechos: todayDone, total: todayTotal, completo: todayComplete }
+          : null} />
+
         {/* Card sesión de hoy */}
         {todaySession ? (
-          <div className={`border rounded-2xl overflow-hidden ${todayComplete ? 'bg-ok/5 border-ok/30' : 'bg-card border-border'}`}
+          <div id="hoy-entreno" className={`scroll-mt-4 border rounded-2xl overflow-hidden ${todayComplete ? 'bg-ok/5 border-ok/30' : 'bg-card border-border'}`}
             style={todayComplete ? undefined : { backgroundColor: `${brandColor}0d`, borderColor: `${brandColor}33` }}>
             <div className="px-5 pt-5 pb-4">
               <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Hoy{weekLabel ? ` · ${weekLabel}` : ''}</p>
@@ -321,7 +326,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, trainerI
             </div>
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-2xl p-8 text-center">
+          <div id="hoy-entreno" className="scroll-mt-4 bg-card border border-border rounded-2xl p-8 text-center">
             <div className="w-14 h-14 bg-bg-alt rounded-full flex items-center justify-center mx-auto mb-3">
               <Dumbbell className="w-7 h-7 text-muted opacity-40" />
             </div>
