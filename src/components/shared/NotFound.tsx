@@ -1,5 +1,23 @@
-/** `caducado`: el enlace existía pero su entrenador le puso fecha límite y ya pasó. */
-export function NotFound({ caducado = false }: { caducado?: boolean }) {
+/**
+ * `caducado`: el enlace existía pero su entrenador le puso fecha límite y ya pasó.
+ * `pausado`: su entrenador lo archivó; sus datos se conservan hasta que lo reactive.
+ */
+export function NotFound({ motivo }: { motivo?: 'caducado' | 'pausado' }) {
+  const caducado = motivo === 'caducado'
+  if (motivo === 'pausado') return (
+    <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
+      <div className="max-w-sm space-y-6">
+        <h1 className="text-3xl font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
+        <div>
+          <p className="text-lg font-semibold text-ink">Tu acceso está en pausa</p>
+          <p className="text-sm text-muted mt-2 leading-relaxed">
+            Tu entrenador ha pausado tu panel. Tus entrenos, tu progreso y tus datos siguen guardados: si quieres volver, escríbele y lo reactivará.
+          </p>
+        </div>
+        <a href="/" className="block px-6 py-3 bg-ink text-white rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">Ir al inicio</a>
+      </div>
+    </div>
+  )
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 text-center">
       <div className="max-w-sm space-y-6">

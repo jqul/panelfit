@@ -38,8 +38,9 @@ describe('caducidad del enlace', () => {
     expect(CADUCIDADES.map(c => c.id)).toContain(opcionActual(caducaEn(7, AHORA), AHORA))
   })
 
-  it('solo "expired" enseña el mensaje de caducado; todo lo demás es un enlace que no existe', () => {
+  it('"expired" es caducado, "archived" es acceso pausado; todo lo demás es un enlace que no existe', () => {
     expect(pantallaDeEnlace('expired')).toBe('caducado')
+    expect(pantallaDeEnlace('archived')).toBe('pausado')
     expect(pantallaDeEnlace('ok')).toBe('no-existe') // el servidor dice que va bien pero no devolvió cliente: no inventar un motivo
     expect(pantallaDeEnlace(null)).toBe('no-existe')
     expect(pantallaDeEnlace(undefined)).toBe('no-existe')

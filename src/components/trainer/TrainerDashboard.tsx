@@ -10,7 +10,7 @@ import {
   LogOut, UserPlus, Search, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare
+  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare, Archive
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -51,6 +51,8 @@ const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ defaul
 const GlobalSearch = lazy(() => import('./GlobalSearch').then(m => ({ default: m.GlobalSearch })))
 // Las acciones masivas (barra y hojas de plan, mensaje, etiquetas y encuesta) solo se descargan al seleccionar clientes.
 const BulkActions = lazy(() => import('./bulk/BulkActions').then(m => ({ default: m.BulkActions })))
+// La pestaña Archivados se abre poco: también bajo demanda.
+const ArchivedClientList = lazy(() => import('./ArchivedClientList').then(m => ({ default: m.ArchivedClientList })))
 // El asistente de primer cliente (cliente → workout → acceso) también se descarga solo al abrirlo.
 const PrimerClienteWizard = lazy(() => import('./PrimerClienteWizard').then(m => ({ default: m.PrimerClienteWizard })))
 
@@ -78,7 +80,7 @@ interface Props {
 export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
   const clientLimit = userProfile.clientLimit ?? 999
-  const { clients, logsMap, loading, fetchClients, addClient, deleteClient, limitReached } =
+  const { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
   const { labels } = useLabels(userProfile.uid)
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
@@ -172,6 +174,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   }
 
   const handleDelete = async (id: string) => { await deleteClient(id) }
+
+  // Activos / Archivados. Las acciones masivas son solo de los activos.
+  const [clientView, setClientView] = useState<'active' | 'archived'>('active')
+  useEffect(() => { if (clientView === 'archived') stopSelection() }, [clientView, stopSelection])
+  const visibleArchived = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return q ? archivedClients.filter(c => `${c.name} ${c.surname}`.toLowerCase().includes(q)) : archivedClients
+  }, [archivedClients, search])
+  const handleBulkArchive = async (ids: string[]) => { if (await archiveClients(ids)) stopSelection() }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
     window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
@@ -641,6 +652,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   <input type="text" placeholder="Buscar cliente..." value={search} onChange={e => setSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 bg-card border border-border/50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 shadow-sm" />
                 </div>
+                {clientView === 'active' && <>
                 <button onClick={() => selection.selecting ? selection.stop() : selection.setSelecting(true)} aria-pressed={selection.selecting}
                   className={`flex items-center gap-2 px-3.5 min-h-[44px] rounded-xl text-sm font-semibold border transition-all shadow-sm ${selection.selecting ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-ink hover:border-accent'}`}>
                   <CheckSquare className="w-4 h-4" /> {selection.selecting ? 'Cancelar selección' : 'Seleccionar'}
@@ -655,8 +667,20 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     <option value="adherence">Menor adherencia</option>
                   </select>
                 </label>
+                </>}
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1 border-b border-border/60" role="tablist" aria-label="Clientes activos o archivados">
+                {([
+                  { id: 'active', label: 'Activos', n: clients.length },
+                  { id: 'archived', label: 'Archivados', n: archivedClients.length },
+                ] as const).map(v => (
+                  <button key={v.id} role="tab" aria-selected={clientView === v.id} onClick={() => setClientView(v.id)}
+                    className={`px-4 min-h-[44px] text-sm font-semibold border-b-2 -mb-px transition-colors ${clientView === v.id ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+                    {v.label} <span className="text-muted font-medium">{v.n}</span>
+                  </button>
+                ))}
+              </div>
+              {clientView === 'active' && <div className="flex gap-2 flex-wrap">
                 {([
                   { id: 'all', label: 'Todos', n: clients.length, always: true },
                   { id: 'active', label: 'Entrenaron hoy', n: activeToday, always: true },
@@ -673,9 +697,21 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted'}>{f.n}</span>
                     </button>
                   ))}
-              </div>
+              </div>}
               {loading ? (
                 <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
+              ) : clientView === 'archived' ? (
+                visibleArchived.length === 0 ? (
+                  <div className="text-center py-16 bg-card rounded-2xl shadow-sm px-6">
+                    <Archive className="w-12 h-12 text-muted/30 mx-auto mb-4" />
+                    <p className="font-serif font-bold text-lg">{archivedClients.length === 0 ? 'Ningún cliente archivado' : 'Sin resultados'}</p>
+                    {archivedClients.length === 0 && <p className="text-sm text-muted mt-1 max-w-sm mx-auto">Archiva a quien deje de entrenar contigo: no cuenta en tu plan, no puede abrir su panel y conservas todo su historial por si vuelve.</p>}
+                  </div>
+                ) : (
+                  <Suspense fallback={<div className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />}>
+                    <ArchivedClientList clients={visibleArchived} onRestore={id => restoreClients([id])} onDelete={handleDelete} />
+                  </Suspense>
+                )
               ) : sortedClients.length === 0 ? (
                 <div className="text-center py-20 bg-card rounded-2xl shadow-sm"><Users className="w-12 h-12 text-muted/30 mx-auto mb-4" /><p className="font-serif font-bold text-lg">Sin resultados</p></div>
               ) : (
@@ -691,11 +727,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </label>
                   )}
                   <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
-                    onOpen={onSelectClient} onSend={setLinkModal} onDelete={handleDelete}
+                    onOpen={onSelectClient} onSend={setLinkModal} onArchive={id => archiveClients([id])}
                     selection={selection.selecting ? { selected: selection.selected, onToggle: selection.toggle } : undefined} />
                 </>
               )}
-              {!loading && (
+              {!loading && clientView === 'active' && (
                 <button onClick={() => !limitReached && setShowAdd(true)} disabled={limitReached}
                   className="w-full border-2 border-dashed border-border rounded-2xl py-4 flex items-center justify-center gap-2 text-muted hover:border-accent hover:text-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   <UserPlus className="w-4 h-4" />
@@ -769,7 +805,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
       {selection.selecting && selectedClients.length > 0 && (
         <Suspense fallback={null}>
-          <BulkActions trainerId={userProfile.uid} clients={selectedClients} onClear={selection.stop} onChanged={fetchClients} aboveDemoBanner={!!demoClients} />
+          <BulkActions trainerId={userProfile.uid} clients={selectedClients} onClear={selection.stop} onChanged={fetchClients} aboveDemoBanner={!!demoClients} onArchive={handleBulkArchive} />
         </Suspense>
       )}
 

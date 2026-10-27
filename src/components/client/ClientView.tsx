@@ -48,7 +48,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const [authState, setAuthState] = useState<AuthState>('loading')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [linkExpired, setLinkExpired] = useState(false)
+  const [linkProblem, setLinkProblem] = useState<'caducado' | 'pausado' | undefined>(undefined)
   const [otherSession, setOtherSession] = useState(false) // hay una sesión de otra cuenta (p. ej. entrenador) abierta en este dispositivo
   const [client, setClient] = useState<ClienteRow | null>(null)
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
@@ -162,8 +162,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       // devolver ningún dato, para decirle al cliente qué hacer (pedir uno nuevo) en vez de "404".
       if (!cErr) {
         const { data: estado } = await supabase.rpc('get_client_link_status', { p_token: token })
-        if (pantallaDeEnlace(estado) === 'caducado') setLinkExpired(true)
+        const pantalla = pantallaDeEnlace(estado)
+        if (pantalla === 'caducado' || pantalla === 'pausado') setLinkProblem(pantalla)
         else forgetClientLink(token) // el enlace ya no existe: el acceso directo deja de insistir en él
+        // Pausado: sin copia local, para que el panel no siga abriéndose sin conexión.
+        if (pantalla === 'pausado') { try { localStorage.removeItem(CLIENT_CACHE_KEY(token)) } catch {} }
       }
       setError('Enlace no válido o expirado.'); setLoading(false); return
     }
@@ -397,7 +400,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     </div>
   )
 
-  if (error) return <NotFound caducado={linkExpired} />
+  if (error) return <NotFound motivo={linkProblem} />
 
   // ── Registro / Login ──
   if (authState === 'needs_register' && client) {

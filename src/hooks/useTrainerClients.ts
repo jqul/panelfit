@@ -105,13 +105,20 @@ interface Options {
 }
 
 export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientLimit = 999 }: Options) {
+  // `clients` son solo los activos: todo lo demás (Hoy, bandeja, estadísticas, límite del plan)
+  // trabaja sobre ellos sin saber que existen archivados.
   const [clients, setClients] = useState<ClientWithStats[]>([])
+  const [archivedClients, setArchivedClients] = useState<ClientData[]>([])
   const [logsMap, setLogsMap] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
+  // En la demo no se escribe en la base de datos: el archivado vive solo en memoria.
+  const [demoArchived, setDemoArchived] = useState<Record<string, number>>({})
 
   const fetchClients = useCallback(async () => {
     setLoading(true)
     if (demoClients) {
+      setArchivedClients(demoClients.filter(c => demoArchived[c.id]).map(c => ({ ...c, archivedAt: demoArchived[c.id] })))
+      const demoActive = demoClients.filter(c => !demoArchived[c.id])
       const lm = demoLogsMap || {}
       setLogsMap(lm)
       const hoy = localDateKey()
@@ -120,7 +127,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       DEMO_TEST_CATALOG.forEach(t => { if (isJumpTest(t.categoria, t.nombre)) jumpTestNames[t.id] = t.nombre })
       const allDemoResultados = Object.values(DEMO_TEST_RESULTS_MAP).flat()
       const jumpByClient = groupJumpResultsByClient(allDemoResultados, jumpTestNames)
-      setClients(demoClients.map(c => {
+      setClients(demoActive.map(c => {
         const logs = lm[c.id] || {}
         const dates = [...new Set(
           Object.values(logs)
@@ -153,17 +160,21 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       .from('clientes').select('*').eq('trainerId', trainerId)
     if (error) { console.error('Error:', error); toast('No se pudieron cargar los clientes', 'warn'); setLoading(false); return }
 
-    const mapped = mapClientes(data || []).map((c, i) => ({
+    const rows = (data || []).filter((r: any) => !r.archived_at)
+    setArchivedClients(mapClientes((data || []).filter((r: any) => r.archived_at))
+      .sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0)))
+
+    const mapped = mapClientes(rows).map((c, i) => ({
       ...c,
-      phone: (data || [])[i]?.phone || '',
-      objetivo: (data || [])[i]?.objetivo || 'general',
-      altura: (data || [])[i]?.altura || null,
-      genero: (data || [])[i]?.genero || null,
-      fechanacimiento: (data || [])[i]?.fechanacimiento || null,
-      label_ids: (data || [])[i]?.label_ids || [],
-      main_goal: (data || [])[i]?.main_goal || undefined,
-      plan_last_opened_at: (data || [])[i]?.plan_last_opened_at ?? null,
-      token_expires_at: (data || [])[i]?.token_expires_at ?? null,
+      phone: rows[i]?.phone || '',
+      objetivo: rows[i]?.objetivo || 'general',
+      altura: rows[i]?.altura || null,
+      genero: rows[i]?.genero || null,
+      fechanacimiento: rows[i]?.fechanacimiento || null,
+      label_ids: rows[i]?.label_ids || [],
+      main_goal: rows[i]?.main_goal || undefined,
+      plan_last_opened_at: rows[i]?.plan_last_opened_at ?? null,
+      token_expires_at: rows[i]?.token_expires_at ?? null,
     }))
 
     const hoy = localDateKey()
@@ -230,7 +241,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       setClients([])
     }
     setLoading(false)
-  }, [trainerId, demoClients])
+  }, [trainerId, demoClients, demoArchived])
 
   useEffect(() => {
     fetchClients()
@@ -313,7 +324,46 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     return true
   }
 
+  // Archivar no borra nada: el cliente deja de contar en el límite y no puede abrir su panel
+  // (get_client_by_token ignora a los archivados) hasta que se reactive.
+  const setArchived = async (ids: string[], archived: boolean) => {
+    if (!ids.length) return false
+    const archivedAt = archived ? Date.now() : null
+    if (demoClients) {
+      setDemoArchived(prev => {
+        const next = { ...prev }
+        ids.forEach(id => { if (archivedAt) next[id] = archivedAt; else delete next[id] })
+        return next
+      })
+      return true
+    }
+    const { error } = await supabase.from('clientes').update({ archived_at: archivedAt }).in('id', ids)
+    if (error) { toast(archived ? 'No se pudo archivar' : 'No se pudo reactivar', 'warn'); return false }
+    await fetchClients()
+    return true
+  }
+
+  const archiveClients = async (ids: string[]) => {
+    const ok = await setArchived(ids, true)
+    if (ok) toast(ids.length === 1 ? 'Cliente archivado: ya no cuenta en tu plan' : `${ids.length} clientes archivados: ya no cuentan en tu plan`, 'ok',
+      { label: 'Deshacer', onClick: () => { setArchived(ids, false) } })
+    return ok
+  }
+
+  const restoreClients = async (ids: string[]) => {
+    const free = clientLimit - clients.length
+    if (!demoClients && ids.length > free) {
+      toast(free <= 0
+        ? `Límite alcanzado: tu plan permite ${clientLimit} clientes activos. Archiva a otro antes de reactivar.`
+        : `Solo te queda${free === 1 ? '' : 'n'} ${free} plaza${free === 1 ? '' : 's'} en tu plan: reactiva como máximo ${free}.`, 'warn')
+      return false
+    }
+    const ok = await setArchived(ids, false)
+    if (ok) toast(ids.length === 1 ? 'Cliente reactivado ✓' : `${ids.length} clientes reactivados ✓`, 'ok')
+    return ok
+  }
+
   const limitReached = !demoClients && clients.length >= clientLimit
 
-  return { clients, logsMap, loading, fetchClients, addClient, deleteClient, limitReached }
+  return { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached }
 }

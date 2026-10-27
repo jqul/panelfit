@@ -47,6 +47,8 @@ export function opcionActual(expiresAt: string | null | undefined, ahora = new D
 }
 
 /** Lo que el servidor contesta a get_client_link_status → qué pantalla enseñar al cliente. */
-export function pantallaDeEnlace(estado: unknown): 'caducado' | 'no-existe' {
-  return estado === 'expired' ? 'caducado' : 'no-existe'
+export function pantallaDeEnlace(estado: unknown): 'caducado' | 'pausado' | 'no-existe' {
+  if (estado === 'expired') return 'caducado'
+  if (estado === 'archived') return 'pausado' // su entrenador lo archivó: los datos siguen, el acceso no
+  return 'no-existe'
 }
