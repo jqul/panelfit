@@ -12,6 +12,7 @@ import { MisDatosCard } from './MisDatosCard'
 import type { Consejo } from '../../../lib/consejos'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
+const CalendarioSuscripcion = lazy(() => import('../CalendarioSuscripcion').then(m => ({ default: m.CalendarioSuscripcion })))
 
 export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, consejos = [], trainerName }: {
   client: ClienteRow; plan: TrainingPlan | null; onLogout: () => void
@@ -97,6 +98,9 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, 
 
       {/* Fechas clave y cuándo no puede entrenar: lo ve su entrenador */}
       <Suspense fallback={null}><AusenciasEventos clientId={client.id} quien="cliente" /></Suspense>
+
+      {/* Sus entrenos, sesiones y fechas en Google / Apple / Outlook */}
+      <Suspense fallback={null}><CalendarioSuscripcion clientId={client.id} /></Suspense>
 
       {/* Ciclo menstrual (opcional) */}
       <CicloWidget clientId={client.id} trainerId={client.trainerId} />
