@@ -125,21 +125,45 @@ export function worseAcwr(a: ACWRSignal, b: ACWRSignal): ACWRSignal {
 
 export interface LoadTrendPoint { date: string; fitness: number; fatigue: number; form: number }
 
+/** Ventana de la carga crónica en la tendencia Fitness / Fatiga / Forma. */
+export const FITNESS_DIAS = 42
+/** Semanas con carga registrada antes de dar un estado de forma. */
+export const SEMANAS_MIN_FORMA = Math.ceil(FITNESS_DIAS / 7)
+
 /**
- * Serie temporal de Fitness (carga crónica 28d) / Fatiga (carga aguda 7d) /
+ * Serie temporal de Fitness (carga crónica 42d) / Fatiga (carga aguda 7d) /
  * Forma (fitness - fatiga), muestreada semana a semana — el mismo concepto
  * del Performance Management Chart de TrainingPeaks (CTL/ATL/TSB), aplicado
  * aquí al tonelaje de fuerza en vez de al Training Stress Score.
  */
 export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
-  const dayTonnage = buildDayTonnage(logs)
-  const firstDate = firstLoggedDate(dayTonnage)
+  return trendFromDaily(buildDayTonnage(logs), weeks, today)
+}
+
+/**
+ * La misma tendencia sobre la carga de sesión (sRPE: minutos × RPE). Ve también el
+ * cardio, la pista y la técnica, que el tonelaje no cuenta.
+ */
+export function computeSessionLoadTrend(rows: SessionLoadRow[], weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
+  const dayLoad: Record<string, number> = {}
+  rows.forEach(r => { dayLoad[r.date] = (dayLoad[r.date] || 0) + r.duration_min * r.rpe })
+  return trendFromDaily(dayLoad, weeks, today)
+}
+
+function trendFromDaily(dayLoad: Record<string, number>, weeks: number, today: Date): LoadTrendPoint[] {
+  const firstDate = firstLoggedDate(dayLoad)
   if (!firstDate) return []
   const points: LoadTrendPoint[] = []
   for (let w = weeks - 1; w >= 0; w--) {
     const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
-    const fitness = ewmaFrom(dayTonnage, endDate, firstDate, 28)
-    const fatigue = ewmaFrom(dayTonnage, endDate, firstDate, 7)
+    // Antes del primer registro no hay carga. ewmaFrom con una fecha final anterior al primer
+    // día devolvía la carga de ese primer día: rellenaba hacia atrás semanas inexistentes con
+    // una línea plana y la "rampa" de la semana siguiente salía disparada.
+    const antes = endDate.toISOString().slice(0, 10) < firstDate.toISOString().slice(0, 10)
+    // Fitness a 42 días (modelo de Banister y el de TrainingPeaks): más estable que 28, que se
+    // queda para el ACWR, donde es la ventana de la literatura de riesgo de lesión.
+    const fitness = antes ? 0 : ewmaFrom(dayLoad, endDate, firstDate, FITNESS_DIAS)
+    const fatigue = antes ? 0 : ewmaFrom(dayLoad, endDate, firstDate, 7)
     points.push({
       date: endDate.toISOString().slice(0, 10),
       fitness: Math.round(fitness),
@@ -149,6 +173,54 @@ export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = n
   }
   const firstNonZero = points.findIndex(p => p.fitness > 0 || p.fatigue > 0)
   return firstNonZero === -1 ? [] : points.slice(firstNonZero)
+}
+
+export type ClaveForma = 'recargando' | 'fresco' | 'manteniendo' | 'productivo' | 'sobrecarga'
+
+export interface EstadoForma {
+  clave: ClaveForma
+  etiqueta: string
+  /** Para el entrenador. */
+  frase: string
+  /** Para el cliente: sin números ni jerga. */
+  fraseCliente: string
+  tono: 'ok' | 'neutro' | 'aviso'
+  /** Forma como % de la forma física (negativo = más fatiga que forma de base). */
+  formaPct: number
+  /** Cuánto ha cambiado la forma física respecto al punto anterior (una semana), en %. */
+  rampaPct: number | null
+}
+
+/**
+ * Traduce el último punto de la tendencia a un estado con frase, como hace TrainingPeaks con su
+ * "Form". La carga no tiene unidades fijas (tonelaje o minutos × RPE), así que los cortes van en %
+ * de la forma física en vez de en puntos absolutos: así valen igual para un cliente que levanta
+ * 2 t a la semana que para uno que levanta 20.
+ */
+export function estadoForma(trend: LoadTrendPoint[], { minSemanas = SEMANAS_MIN_FORMA } = {}): EstadoForma | null {
+  const last = trend[trend.length - 1]
+  // Con pocas semanas la media larga aún no se ha asentado y daría alarmas falsas
+  // ("fitness +111 %"): mejor no dar estado que darlo mal.
+  if (!last || last.fitness <= 0 || trend.length < minSemanas) return null
+  const formaPct = Math.round((last.form / last.fitness) * 100)
+  const prev = trend[trend.length - 2]
+  const rampaPct = prev && prev.fitness > 0 ? Math.round(((last.fitness - prev.fitness) / prev.fitness) * 100) : null
+  const base = { formaPct, rampaPct }
+  if (formaPct >= 25) return { ...base, clave: 'recargando', etiqueta: 'Recargando', tono: 'neutro',
+    frase: 'Muy descansado: buen momento para un test o una competición; si se alarga, se pierde forma física.',
+    fraseCliente: 'Estás muy descansado. Aprovecha para darlo todo; si sigues mucho así, perderás algo de forma.' }
+  if (formaPct >= 5) return { ...base, clave: 'fresco', etiqueta: 'Fresco', tono: 'ok',
+    frase: 'Fresco y con forma física: el mejor momento para rendir.',
+    fraseCliente: 'Llegas fresco: buen momento para rendir.' }
+  if (formaPct >= -10) return { ...base, clave: 'manteniendo', etiqueta: 'Manteniendo', tono: 'neutro',
+    frase: 'Carga estable: mantiene la forma física sin acumular fatiga.',
+    fraseCliente: 'Vas estable: mantienes tu forma sin acumular cansancio.' }
+  if (formaPct >= -30) return { ...base, clave: 'productivo', etiqueta: 'Productivo', tono: 'ok',
+    frase: 'Fatiga propia de un bloque que construye: la forma física sube.',
+    fraseCliente: 'Estás construyendo: notarás cansancio, es lo que hace que mejores.' }
+  return { ...base, clave: 'sobrecarga', etiqueta: 'Sobrecarga', tono: 'aviso',
+    frase: 'La fatiga va muy por encima de la forma física: valora una semana de descarga.',
+    fraseCliente: 'Llevas mucha carga acumulada. Descansa bien y cuéntaselo a tu entrenador si te notas muy cansado.' }
 }
 
 /** Señal de carga de entrenamiento: RIR semanal, cambio de volumen, sesiones. */

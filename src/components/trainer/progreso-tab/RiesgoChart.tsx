@@ -54,7 +54,7 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
         <p className="text-xs font-bold uppercase tracking-wider text-muted">Tendencia de carga (Fitness / Fatiga / Forma)</p>
       </div>
       <div className="p-4">
-        <CargaTrendChart logs={logs} />
+        <CargaTrendChart logs={logs} sessionLoadRows={sessionLoadRows} />
       </div>
     </div>
   )
