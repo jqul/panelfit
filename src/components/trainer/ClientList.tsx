@@ -1,7 +1,9 @@
 import { MessageCircle, Archive, ChevronRight } from 'lucide-react'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
 import { clientStatus, StatusLevel } from '../../lib/clientStatus'
-import { PuntosSemana } from '../shared/PuntosSemana'
+import { lazy, Suspense } from 'react'
+// Los 7 puntos llegan en un trozo aparte para no cargar el cumplimiento con el panel.
+const PuntosSemanaCliente = lazy(() => import('./PuntosSemanaCliente').then(m => ({ default: m.PuntosSemanaCliente })))
 
 interface Props {
   clients: ClientWithStats[]
@@ -73,7 +75,11 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
               <div className="flex-1 min-w-0 md:flex-none">
                 {client.hasPlan ? (
                   <div className="space-y-1.5">
-                  {client.semana7 && <PuntosSemana dias={client.semana7} />}
+                  {client.semanaFuente && (
+                    <Suspense fallback={<span className="block h-2.5" aria-hidden />}>
+                      <PuntosSemanaCliente plan={client.semanaFuente.plan} logs={client.semanaFuente.logs} />
+                    </Suspense>
+                  )}
                   <div className="flex items-center gap-2.5">
                     <div className="h-1.5 flex-1 max-w-[120px] bg-bg-alt rounded-full overflow-hidden" role="progressbar" aria-valuenow={adherencia} aria-valuemin={0} aria-valuemax={100} aria-label="Cumplimiento semanal">
                       <div className="h-full rounded-full" style={{ width: `${adherencia}%`, backgroundColor: barColor }} />

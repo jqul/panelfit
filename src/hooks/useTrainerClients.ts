@@ -6,7 +6,6 @@ import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
-import { ultimos7Dias, DiaCumplimiento } from '../lib/cumplimiento'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
@@ -25,8 +24,8 @@ export interface ClientWithStats extends ClientData {
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   jumpDropTestName?: string | null
-  /** Cumplimiento de los últimos 7 días (más antiguo primero), para los puntos de la lista. */
-  semana7?: DiaCumplimiento[]
+  /** Plan y registros para los 7 puntos de cumplimiento de la lista (se calculan en un trozo aparte). */
+  semanaFuente?: { plan: any; logs: Record<string, any> }
 }
 
 const ACWR_HIGH_THRESHOLD = 1.5
@@ -146,7 +145,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           lastActive: dates[0],
           doneToday: dates[0] === hoy,
           hasPlan: true,
-          semana7: ultimos7Dias(DEMO_PLAN_MAP[c.id], logs),
+          semanaFuente: { plan: DEMO_PLAN_MAP[c.id], logs },
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
           atRisk: computeAtRisk(true, dates[0], c.createdAt),
           highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
@@ -240,7 +239,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           highJumpDrop: jumpFatigue.isDrop,
           jumpDropPct: jumpFatigue.dropPct,
           jumpDropTestName: jumpFatigue.testName,
-          semana7: ultimos7Dias(planObjMap[c.id], logs),
+          semanaFuente: { plan: planObjMap[c.id], logs },
           ...planEndMap[c.id],
         }
       }))
