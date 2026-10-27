@@ -234,10 +234,6 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           )}
         </div>
 
-        <ParaHoy clientId={clientId} entreno={todaySession
-          ? { titulo: todaySession.day.title, hechos: todayDone, total: todayTotal, completo: todayComplete }
-          : null} />
-
         {/* Card sesión de hoy */}
         {todaySession ? (
           <div id="hoy-entreno" className={`scroll-mt-4 border rounded-2xl overflow-hidden ${todayComplete ? 'bg-ok/5 border-ok/30' : 'bg-card border-border'}`}
@@ -334,6 +330,12 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             <p className="text-sm text-muted mt-1">{motivMsg || "Hoy toca descansar y recuperar. ¡Tu cuerpo lo necesita!"}</p>
           </div>
         )}
+
+        {/* "Para hoy" va DESPUÉS de la tarjeta: el entreno y su botón tienen que verse al abrir (antes iba encima
+            y en un móvil bajito empujaba el botón fuera de la pantalla). */}
+        <ParaHoy clientId={clientId} entreno={todaySession
+          ? { titulo: todaySession.day.title, hechos: todayDone, total: todayTotal, completo: todayComplete }
+          : null} />
 
         {/* Racha semanal — círculos dorados de lunes a domingo, sin ser punitiva */}
         <div className="bg-card border border-border rounded-2xl p-4">
