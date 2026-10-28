@@ -99,3 +99,38 @@ test('convertir un contacto en cliente: el alta sale rellena, se guardan sus dat
   // Y el contacto queda como convertido
   await expect.poll(() => fake.rows('leads').find(l => l.id === 'l1')!.status).toBe('convertido')
 })
+
+async function irAContactos(page: import('@playwright/test').Page) {
+  await page.keyboard.press('Control+K')
+  await page.getByRole('combobox', { name: 'Buscar' }).fill('ir a contactos')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Contactos', level: 2 })).toBeVisible()
+}
+
+test('con la página pública activa, Contactos da el enlace para copiar y el QR', async ({ page, fake }) => {
+  sembrar(fake)
+  const fila = fake.rows('entrenadores').find(e => e.uid === ids.trainer)!
+  fila.slug = 'alexfit'
+  fila.public_page = { activa: true, bio: '', especialidades: [], servicios: [], ubicacion: '', instagram: '', whatsapp: '' }
+  await entrarComoEntrenador(page)
+  await irAContactos(page)
+
+  await expect(page.getByText(/\/p\/alexfit$/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Copiar enlace' })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Código QR de tu página pública' })).toHaveCount(0) // plegado
+  await page.getByRole('button', { name: 'Ver QR' }).click()
+  const qr = page.getByRole('img', { name: 'Código QR de tu página pública' })
+  await expect(qr).toBeVisible()
+  expect((await qr.locator('path').getAttribute('d'))!.length).toBeGreaterThan(200) // trazo con módulos de verdad
+  await expect(page.getByRole('button', { name: /Descargar \(SVG\)/ })).toBeVisible()
+})
+
+test('sin página pública activa, Contactos explica qué falta y lleva a Ajustes', async ({ page, fake }) => {
+  sembrar(fake)
+  await entrarComoEntrenador(page)
+  await irAContactos(page)
+
+  await expect(page.getByText('Aún no tienes página pública activa')).toBeVisible()
+  await page.getByRole('button', { name: 'Configurar mi página' }).click()
+  await expect(page.getByRole('heading', { name: 'Personalización' })).toBeVisible() // Ajustes
+})

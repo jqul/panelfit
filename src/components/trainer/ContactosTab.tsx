@@ -3,9 +3,12 @@ import { Inbox, Mail, MessageCircle, Gift, UserPlus } from 'lucide-react'
 import { toast } from '../shared/Toast'
 import { ESTADOS_LEAD, contactoDe, haceCuanto, saludoParaLead, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
+import { PaginaPublicaCard } from './PaginaPublicaCard'
 
 // Las personas que han escrito desde tu página pública: quién es, cómo contestarle y en qué punto está.
-export function ContactosTab({ leadsState, miNombre, onConvertir }: { leadsState: LeadsState; miNombre?: string; onConvertir?: (lead: Lead) => void }) {
+export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onIrAAjustes }: {
+  leadsState: LeadsState; trainerId: string; miNombre?: string; onConvertir?: (lead: Lead) => void; onIrAAjustes: () => void
+}) {
   const { leads, loading, cambiarEstado } = leadsState
   const [filtro, setFiltro] = useState<EstadoLead | 'todos'>('nuevo')
   const cuenta = (e: EstadoLead) => leads.filter(l => l.status === e).length
@@ -25,6 +28,8 @@ export function ContactosTab({ leadsState, miNombre, onConvertir }: { leadsState
         </p>
       </div>
 
+      <PaginaPublicaCard trainerId={trainerId} miNombre={miNombre} onIrAAjustes={onIrAAjustes} />
+
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Estado del contacto">
         {([...ESTADOS_LEAD, { id: 'todos' as const, label: 'Todos' }]).map(e => {
           const n = e.id === 'todos' ? leads.length : cuenta(e.id)
@@ -43,7 +48,7 @@ export function ContactosTab({ leadsState, miNombre, onConvertir }: { leadsState
           <p className="font-serif font-bold text-lg">{filtro === 'nuevo' ? 'Nadie esperando' : 'Nada aquí'}</p>
           <p className="text-sm text-muted mt-1 max-w-xs mx-auto">
             {leads.length === 0
-              ? 'Cuando alguien rellene el formulario de tu página pública, aparecerá aquí y recibirás un aviso.'
+              ? 'Cuando alguien rellene el formulario de tu página pública, aparecerá aquí y recibirás un aviso. Tus clientes también te traen contactos con «Invita a un amigo» (en su pestaña Más).'
               : 'Cambia de pestaña para ver el resto.'}
           </p>
         </div>
