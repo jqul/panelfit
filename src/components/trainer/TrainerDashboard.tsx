@@ -257,7 +257,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <NotificacionesBell trainerId={userProfile.uid} onSelectClient={(clientId) => {
+          <NotificacionesBell trainerId={userProfile.uid} onVerContactos={() => handleTabChange('contactos')} onSelectClient={(clientId) => {
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)
           }} />
@@ -361,7 +361,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
         <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14"
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
-          <button onClick={() => setSidebarOpen(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
           <div className="flex items-center">
             <button onClick={openSearch} aria-label="Buscar" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Search className="w-5 h-5" /></button>

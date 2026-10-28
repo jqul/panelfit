@@ -60,3 +60,17 @@ test('la Bandeja y Ajustes llevan a los contactos', async ({ page, fake }) => {
   await page.getByRole('button', { name: /Contactos recibidos \(2\)/ }).click()
   await expect(page.getByRole('heading', { name: 'Contactos', level: 2 })).toBeVisible()
 })
+
+test('el aviso del contacto nuevo sale en la campanita y lleva a la pestaña', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  fake.seed('leads', lead('l1', 'Paula Navarro', { phone: '622 11 22 33', message: 'Quiero empezar a entrenar fuerza' }))
+  // Lo que deja el trigger de la base de datos al entrar el contacto
+  fake.seed('notificaciones', { id: 'lead_l1', trainer_id: ids.trainer, client_id: null, tipo: 'nuevo_contacto', titulo: 'Nuevo contacto: Paula Navarro', mensaje: 'Quiero empezar a entrenar fuerza', leida: false, created_at: Date.now(), destinatario: 'trainer' })
+  await entrarComoEntrenador(page)
+
+  await page.getByRole('button', { name: 'Abrir menú' }).click() // en el móvil, la campanita está en el menú lateral
+  await page.getByRole('button', { name: /Notificaciones \(1 sin leer\)/ }).first().click()
+  await page.getByText('Nuevo contacto: Paula Navarro').click()
+  await expect(page.getByRole('heading', { name: 'Contactos', level: 2 })).toBeVisible()
+  await expect(page.getByText('Quiero empezar a entrenar fuerza').first()).toBeVisible()
+})
