@@ -121,6 +121,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 ## 14. Página pública del entrenador
 
 - URL pública (`/p/slug`) tipo landing page con la marca del entrenador, bio, especialidades, botón de contacto por WhatsApp — para compartir en redes/bio de Instagram.
+- **Contactos** (los que rellenan el formulario de la página): tienen su propia pestaña (Más → Contactos) con Nuevos / Contactados / Descartados, enlace directo a WhatsApp (un móvil de 9 cifras se toma como +34) y al correo, y si vienen de «Invita a un amigo», quién los refirió. Los nuevos se ven también en Hoy (tarjeta arriba a la derecha), en la Bandeja (sección propia) y con un número en «Más»; Ajustes → Página pública enlaza a la pestaña.
 
 ## 15. Superadmin
 

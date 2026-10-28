@@ -4,10 +4,12 @@ import { supabase } from '../../lib/supabase'
 import { UserProfile } from '../../types'
 import { toast } from '../shared/Toast'
 import { Globe, Copy, Eye, Save, Inbox } from 'lucide-react'
-import { isDemoTrainerId, buildDemoLeads, DEMO_PUBLIC_PAGE, DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
+import { isDemoTrainerId, DEMO_PUBLIC_PAGE, DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
 
 interface Props {
   userProfile: UserProfile
+  /** Los contactos viven en su propia pestaña; aquí solo se enlaza a ella. */
+  contactos?: { nuevos: number; total: number; onVer: () => void }
 }
 
 interface PublicPageData {
@@ -36,9 +38,9 @@ const DEFAULT_PAGE: PublicPageData = {
   activa: false,
 }
 
-interface Lead { id: string; name: string; email: string | null; phone: string | null; message: string | null; status: string; created_at: number; referred_by_client_id: string | null; referrerName?: string }
 
-export function PublicPageEditor({ userProfile }: Props) {
+
+export function PublicPageEditor({ userProfile, contactos }: Props) {
   const [data, setData] = useState<PublicPageData>(DEFAULT_PAGE)
   const [slug, setSlug] = useState('')
   const [slugInput, setSlugInput] = useState('')
@@ -46,31 +48,10 @@ export function PublicPageEditor({ userProfile }: Props) {
   const [checkingSlug, setCheckingSlug] = useState(false)
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
   const [preview, setPreview] = useState(false)
-  const [leads, setLeads] = useState<Lead[]>([])
 
   useEffect(() => {
     loadData()
-    loadLeads()
   }, [userProfile.uid])
-
-  const loadLeads = async () => {
-    if (isDemoTrainerId(userProfile.uid)) { setLeads(buildDemoLeads() as Lead[]); return }
-    const { data: rows } = await supabase.from('leads').select('*').eq('trainer_id', userProfile.uid).order('created_at', { ascending: false })
-    if (!rows) return
-    const referrerIds = [...new Set(rows.map(r => r.referred_by_client_id).filter(Boolean))]
-    let names: Record<string, string> = {}
-    if (referrerIds.length > 0) {
-      const { data: referrers } = await supabase.from('clientes').select('id, name, surname').in('id', referrerIds)
-      names = Object.fromEntries((referrers || []).map(c => [c.id, `${c.name} ${c.surname || ''}`.trim()]))
-    }
-    setLeads((rows as Lead[]).map(l => ({ ...l, referrerName: l.referred_by_client_id ? names[l.referred_by_client_id] : undefined })))
-  }
-
-  const setLeadStatus = async (id: string, status: string) => {
-    setLeads(prev => prev.map(l => l.id === id ? { ...l, status } : l))
-    if (isDemoTrainerId(userProfile.uid)) return
-    await supabase.from('leads').update({ status }).eq('id', id)
-  }
 
   const loadData = async () => {
     if (isDemoTrainerId(userProfile.uid)) {
@@ -285,33 +266,17 @@ export function PublicPageEditor({ userProfile }: Props) {
         </div>
       )}
 
-      {/* Leads captados desde la página pública */}
-      <div className="space-y-2 pt-2">
-        <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted"><Inbox className="w-3.5 h-3.5" /> Contactos recibidos ({leads.length})</label>
-        {leads.length === 0 ? (
-          <p className="text-xs text-muted">Aquí aparecerán las personas que rellenen el formulario de tu página pública.</p>
-        ) : (
-          <div className="space-y-2">
-            {leads.map(lead => (
-              <div key={lead.id} className="bg-bg border border-border rounded-xl px-4 py-3 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{lead.name}</p>
-                  <p className="text-xs text-muted">{[lead.email, lead.phone].filter(Boolean).join(' · ') || 'Sin contacto directo'}</p>
-                  {lead.message && <p className="text-xs text-ink/70 mt-1 italic">"{lead.message}"</p>}
-                  {lead.referrerName && <p className="text-[11px] text-accent font-semibold mt-1">🎁 Referido por {lead.referrerName}</p>}
-                  <p className="text-[11px] text-muted mt-1">{new Date(lead.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-                <select value={lead.status} onChange={e => setLeadStatus(lead.id, e.target.value)}
-                  className="text-[11px] font-semibold bg-card border border-border rounded-lg px-2 py-1 outline-none flex-shrink-0">
-                  <option value="nuevo">Nuevo</option>
-                  <option value="contactado">Contactado</option>
-                  <option value="descartado">Descartado</option>
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Los contactos que llegan por esta página tienen su propia pestaña */}
+      {contactos && (
+        <button onClick={contactos.onVer} className="w-full flex items-center gap-3 px-4 py-3 bg-bg border border-border rounded-xl text-left hover:border-accent transition-colors">
+          <Inbox className="w-4 h-4 text-accent flex-shrink-0" />
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-semibold">Contactos recibidos ({contactos.total})</span>
+            <span className="block text-xs text-muted">{contactos.nuevos > 0 ? `${contactos.nuevos} por contestar` : 'Quién te ha escrito desde esta página'}</span>
+          </span>
+          <span className="text-xs font-semibold text-accent">Ver →</span>
+        </button>
+      )}
     </div>
   )
 }
