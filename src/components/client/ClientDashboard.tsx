@@ -5,6 +5,8 @@ import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
 import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
 import { ParaHoy } from './ParaHoy'
+// Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
+const FechaClaveHoy = lazy(() => import('./FechaClaveHoy').then(m => ({ default: m.FechaClaveHoy })))
 import type { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
@@ -331,8 +333,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
           </div>
         )}
 
-        {/* "Para hoy" va DESPUÉS de la tarjeta: el entreno y su botón tienen que verse al abrir (antes iba encima
-            y en un móvil bajito empujaba el botón fuera de la pantalla). */}
+        {/* La cuenta atrás y «Para hoy» van DESPUÉS de la tarjeta: el entreno y su botón tienen que verse al abrir
+            (encima, en un móvil bajito empujaban el botón fuera de la pantalla). */}
+        <Suspense fallback={null}><FechaClaveHoy clientId={clientId} /></Suspense>
+
         <ParaHoy clientId={clientId} entreno={todaySession
           ? { titulo: todaySession.day.title, hechos: todayDone, total: todayTotal, completo: todayComplete }
           : null} />

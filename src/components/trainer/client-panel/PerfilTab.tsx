@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { Bell, Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react'
 import { ClientData, TrainingLogs, TrainingPlan } from '../../../types'
 import { TrainerLabel } from '../labels'
@@ -10,6 +10,8 @@ import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { FichaSections } from './FichaSections'
+// Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
+const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
 import { localDateKey } from '../../../lib/dates'
 
 export interface ClientAlert {
@@ -133,6 +135,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
 
       <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
+
+      <Suspense fallback={null}><AusenciasEventos clientId={c.id} quien="entrenador" /></Suspense>
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (

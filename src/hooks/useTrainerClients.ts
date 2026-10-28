@@ -10,6 +10,7 @@ import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
 import { eraseClient } from '../lib/clientData'
+import { ausenciaActiva, MOTIVO_LABEL, MotivoAusencia } from '../lib/ausenciaHoy'
 
 export interface ClientWithStats extends ClientData {
   lastActive?: string
@@ -24,6 +25,8 @@ export interface ClientWithStats extends ClientData {
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   jumpDropTestName?: string | null
+  /** Ausencia que cubre hoy: la lista dice "De viaje hasta el 18 nov" y no lo cuenta como inactivo. */
+  ausencia?: { texto: string; hasta: string }
   /** Plan y registros para los 7 puntos de cumplimiento de la lista (se calculan en un trozo aparte). */
   semanaFuente?: { plan: any; logs: Record<string, any> }
 }
@@ -186,12 +189,14 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
     if (mapped.length) {
       const ids = mapped.map(c => c.id)
-      const [{ data: regs }, { data: planes }, { data: sessionLoads }, { data: testCatalogo }, { data: testResultados }] = await Promise.all([
+      const [{ data: regs }, { data: planes }, { data: sessionLoads }, { data: testCatalogo }, { data: testResultados }, { data: ausenciasRows }] = await Promise.all([
         supabase.from('registros').select('clientId,logs').in('clientId', ids),
         supabase.from('planes').select('clientId,plan').in('clientId', ids),
         supabase.from('session_load').select('client_id,date,duration_min,rpe').in('client_id', ids),
         supabase.from('test_catalogo').select('id,categoria,nombre').eq('trainer_id', trainerId),
         supabase.from('test_resultados').select('client_id,test_id,valor,fecha').in('client_id', ids),
+        // Solo las que no han terminado: lo que cubra hoy cambia el estado del cliente en la lista.
+        supabase.from('ausencias').select('client_id,desde,hasta,motivo').in('client_id', ids).gte('hasta', localDateKey()),
       ])
       const loadByClient: Record<string, { date: string; duration_min: number; rpe: number }[]> = {}
       ;(sessionLoads || []).forEach((r: any) => {
@@ -222,6 +227,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .filter((l: any) => l.dateDone)
             .map((l: any) => l.dateDone as string)
         )].sort().reverse()
+        const ausencia = ausenciaActiva(((ausenciasRows || []) as { client_id: string; desde: string; hasta: string; motivo: MotivoAusencia }[]).filter(a => a.client_id === c.id))
         const hasPlan = planMap[c.id] || false
         const tonnageAcwr = computeACWR(logs)
         const srpeAcwr = computeSessionLoadACWR(loadByClient[c.id] || [])
@@ -233,7 +239,8 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           doneToday: dates[0] === hoy,
           hasPlan,
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
-          atRisk: computeAtRisk(hasPlan, dates[0], c.createdAt),
+          atRisk: !ausencia && computeAtRisk(hasPlan, dates[0], c.createdAt),
+          ...(ausencia ? { ausencia: { texto: `${MOTIVO_LABEL[ausencia.motivo] ?? 'Fuera'} hasta el ${new Date(ausencia.hasta + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`, hasta: ausencia.hasta } } : {}),
           highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
           acwrRatio: acwr.ratio,
           highJumpDrop: jumpFatigue.isDrop,
