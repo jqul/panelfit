@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, type Lead } from './leads'
+import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, type Lead } from './leads'
 
 const lead = (id: string, status: string, created_at: number): Lead => ({ id, name: id, email: null, phone: null, message: null, status, created_at, referred_by_client_id: null })
 
@@ -30,9 +30,9 @@ describe('contactoDe y ordenarLeads', () => {
     expect(contactoDe({ email: null, phone: null })).toBe('')
   })
 
-  it('los nuevos primero, luego contactados y descartados, y en cada grupo el más reciente arriba', () => {
-    const l = [lead('d1', 'descartado', 50), lead('n1', 'nuevo', 10), lead('c1', 'contactado', 40), lead('n2', 'nuevo', 30)]
-    expect(ordenarLeads(l).map(x => x.id)).toEqual(['n2', 'n1', 'c1', 'd1'])
+  it('los nuevos primero, luego contactados, clientes y descartados, y en cada grupo el más reciente arriba', () => {
+    const l = [lead('d1', 'descartado', 50), lead('v1', 'convertido', 45), lead('n1', 'nuevo', 10), lead('c1', 'contactado', 40), lead('n2', 'nuevo', 30)]
+    expect(ordenarLeads(l).map(x => x.id)).toEqual(['n2', 'n1', 'c1', 'v1', 'd1'])
   })
 })
 
@@ -51,5 +51,24 @@ describe('saludoParaLead', () => {
   it('usa el nombre de pila del contacto', () => {
     expect(saludoParaLead('Paula Navarro', 'Javier')).toContain('Hola Paula, soy Javier.')
     expect(saludoParaLead('Paula')).toContain('soy tu entrenador')
+  })
+})
+
+describe('alta de cliente desde un contacto', () => {
+  it('parte el nombre en nombre y apellido', () => {
+    expect(partirNombre('Paula Navarro Ruiz')).toEqual({ name: 'Paula', surname: 'Navarro Ruiz' })
+    expect(partirNombre('  Paula ')).toEqual({ name: 'Paula', surname: '' })
+    expect(partirNombre('')).toEqual({ name: '', surname: '' })
+  })
+
+  it('las notas llevan el correo, el teléfono, quién lo refirió y lo que escribió, solo lo que haya', () => {
+    const n = notasDeLead({ email: 'p@x.es', phone: '622', message: 'Quiero fuerza', created_at: new Date('2026-10-28T10:00:00').getTime(), referrerName: 'Carlos López' })
+    expect(n).toContain('Contacto desde la página pública (28 de octubre de 2026).')
+    expect(n).toContain('Correo: p@x.es')
+    expect(n).toContain('Teléfono: 622')
+    expect(n).toContain('Referido por Carlos López.')
+    expect(n).toContain('Mensaje: «Quiero fuerza»')
+    const minimo = notasDeLead({ email: null, phone: null, message: null, created_at: Date.now() })
+    expect(minimo.split('\n')).toHaveLength(1)
   })
 })
