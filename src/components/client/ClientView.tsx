@@ -14,6 +14,7 @@ const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => (
 // Lo que quien ya ha entrado casi no abre (registro, encuesta, Más) se descarga al llegar a ello: el panel arranca antes.
 const ClientRegister = lazy(() => import('./ClientRegister').then(m => ({ default: m.ClientRegister })))
 const EncuestaClienteTab = lazy(() => import('./EncuestaClienteTab').then(m => ({ default: m.EncuestaClienteTab })))
+const CuestionarioAviso = lazy(() => import('./CuestionarioAviso').then(m => ({ default: m.CuestionarioAviso })))
 const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PWAInstallBanner } from './PWAInstallBanner'
@@ -548,6 +549,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
+                    <Suspense fallback={null}><CuestionarioAviso clientId={client.id} onAbrir={() => setActiveTab('encuesta')} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
                     <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
