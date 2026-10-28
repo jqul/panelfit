@@ -14,7 +14,9 @@ export function CuestionarioAviso({ clientId, onAbrir }: { clientId: string; onA
   }, [clientId])
 
   if (!nombres.length) return null
+  // Mismo margen que las tarjetas de al lado (hábitos, check-in): van fuera del contenedor de la tarjeta del entreno.
   return (
+    <div className="px-4 pt-4">
     <button onClick={onAbrir}
       className="w-full flex items-center gap-3 bg-card border border-accent/30 rounded-2xl px-4 py-3 text-left hover:border-accent transition-colors">
       <span className="w-9 h-9 rounded-xl bg-accent/10 text-accent flex items-center justify-center flex-shrink-0" aria-hidden><ClipboardList className="w-4 h-4" /></span>
@@ -24,5 +26,6 @@ export function CuestionarioAviso({ clientId, onAbrir }: { clientId: string; onA
       </span>
       <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
     </button>
+    </div>
   )
 }
