@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Inbox, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle } from 'lucide-react'
+import { Inbox, UserPlus, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle } from 'lucide-react'
 import { ClientData } from '../../types'
 import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
@@ -7,6 +7,8 @@ import { localDateKey } from '../../lib/dates'
 import { nextMonday, tomorrow, type QueueRow, type QueueTier } from '../../lib/dailyQueue'
 import { DEMO_TRAINER_ID } from '../../lib/demoIds'
 import { toast } from '../shared/Toast'
+import { contactoDe, haceCuanto } from '../../lib/leads'
+import type { LeadsState } from '../../hooks/useLeads'
 
 const DAYS_BACK = 14
 const PRIMERAS = 5 // filas que se enseñan por nivel antes de "Ver N más" (lo urgente se enseña entero)
@@ -33,11 +35,14 @@ const fechaCorta = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('
 
 type Vista = 'cola' | 'aparte' | 'actividad'
 
-export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
+export function BandejaTab({ trainerId, clients, logsMap, onSelectClient, leadsState, onVerContactos }: {
   trainerId: string
   clients: ClientWithStats[]
   logsMap: Record<string, any>
   onSelectClient: (c: ClientData) => void
+  /** Contactos de la página pública: los nuevos van arriba de la cola, porque son clientes por ganar. */
+  leadsState?: LeadsState
+  onVerContactos?: () => void
 }) {
   const [vista, setVista] = useState<Vista>('cola')
   const [verTodas, setVerTodas] = useState<Record<QueueTier, boolean>>({ urgente: true, hoy: false, luego: false })
@@ -58,7 +63,9 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
     toast(`«${accion.alternativa}» ya es una alternativa habitual de «${accion.ejercicio}» ✓`, 'ok')
   }
 
+  const leadsNuevos = leadsState?.nuevos ?? []
   const resumen = [
+    leadsNuevos.length > 0 && `${leadsNuevos.length} contacto${leadsNuevos.length !== 1 ? 's' : ''} nuevo${leadsNuevos.length !== 1 ? 's' : ''}`,
     queue.counts.urgente > 0 && `${queue.counts.urgente} urgente${queue.counts.urgente !== 1 ? 's' : ''}`,
     queue.counts.hoy > 0 && `${queue.counts.hoy} para hoy`,
     queue.counts.luego > 0 && `${queue.counts.luego} cuando puedas`,
@@ -142,7 +149,31 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
       ) : vista === 'cola' ? (
-        queue.pending.length === 0 ? (
+        <>
+        {leadsNuevos.length > 0 && (
+          <section aria-label="Contactos nuevos">
+            <div className="flex items-baseline gap-2 mb-2 px-1">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-accent">Contactos nuevos</h3>
+              <span className="text-xs text-muted">{leadsNuevos.length} · Gente que te ha escrito desde tu página</span>
+            </div>
+            <div className="bg-card rounded-2xl overflow-hidden divide-y divide-border/50 border border-accent/40" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+              {leadsNuevos.slice(0, PRIMERAS).map(l => (
+                <button key={l.id} onClick={onVerContactos} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/40" aria-label={`Contacto nuevo: ${l.name}`}>
+                  <div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center flex-shrink-0"><UserPlus className="w-3.5 h-3.5" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{l.name}</p>
+                    <p className="text-xs text-muted truncate">{[contactoDe(l) || 'Sin datos de contacto', haceCuanto(l.created_at)].join(' · ')}</p>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" />
+                </button>
+              ))}
+              {leadsNuevos.length > PRIMERAS && (
+                <button onClick={onVerContactos} className="w-full py-2.5 text-xs font-semibold text-accent hover:bg-bg-alt/50">Ver {leadsNuevos.length - PRIMERAS} más</button>
+              )}
+            </div>
+          </section>
+        )}
+        {queue.pending.length === 0 && leadsNuevos.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-2xl shadow-sm">
             <Inbox className="w-10 h-10 text-muted/30 mx-auto mb-3" />
             <p className="font-serif font-bold text-lg">Todo al día ✓</p>
@@ -170,7 +201,8 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient }: {
               </section>
             )
           })
-        )
+        )}
+        </>
       ) : vista === 'aparte' ? (
         queue.parked.length === 0 ? (
           <div className="text-center py-16 bg-card rounded-2xl shadow-sm">

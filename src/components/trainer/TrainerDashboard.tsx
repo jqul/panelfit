@@ -3,6 +3,8 @@ import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
+import { useLeads } from '../../hooks/useLeads'
+import { contactoDe, haceCuanto } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
@@ -37,7 +39,6 @@ import { PushToggle } from '../shared/PushToggle'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { useOnboarding } from '../../hooks/useOnboarding'
 import { PlanGate } from '../shared/PlanGate'
-import { PublicPageEditor } from './PublicPageEditor'
 import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 
@@ -46,6 +47,9 @@ const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ defaul
 // La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
 // Encuestas: el editor, los resultados y la impresión solo se descargan al abrir la pestaña.
 const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m.EncuestasTab })))
+// Ajustes → Página pública y la pestaña de Contactos solo se descargan al abrirlas.
+const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ default: m.PublicPageEditor })))
+const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
 // La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
@@ -57,14 +61,14 @@ const ArchivedClientList = lazy(() => import('./ArchivedClientList').then(m => (
 // El asistente de primer cliente (cliente → workout → acceso) también se descarga solo al abrirlo.
 const PrimerClienteWizard = lazy(() => import('./PrimerClienteWizard').then(m => ({ default: m.PrimerClienteWizard })))
 
-type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'mas'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'contactos' | 'mas'
 
 // Menú reducido a 5 destinos (antes 14 sueltos) — lo menos usado a diario
 // queda agrupado en "Más" y "Planificar", en vez de competir por espacio en
 // el primer nivel. El id de cada pestaña original no cambia: solo cambia
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
-const MAS_TABS: Tab[] = ['bandeja', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
+const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
 
 interface Props {
@@ -158,6 +162,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { queue: inboxQueue, loading: inboxLoading } = useInboxItems(userProfile.uid, clients, logsMap)
   const inboxPendingCount = inboxQueue.badge // clientes por atender (urgente + hoy), no avisos sueltos
   const inboxTop = inboxQueue.pending.slice(0, 5)
+  // Contactos de la página pública: una sola carga para Hoy, la Bandeja y su pestaña
+  const leadsState = useLeads(userProfile.uid, clients)
+  const leadsNuevos = leadsState.nuevos.length
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
@@ -211,11 +218,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'clients',   icon: Users,           label: 'Clientes', badge: clients.length },
     { id: 'templates', icon: Dumbbell,        label: 'Planificar' },
     { id: 'mensajes',  icon: MessageCircle,   label: 'Mensajes' },
-    { id: 'mas',       icon: MoreHorizontal,  label: 'Más' },
+    { id: 'mas',       icon: MoreHorizontal,  label: 'Más', badge: leadsNuevos },
   ]
   const verTab = (tab: Tab) => () => handleTabChange(tab)
   const SEARCH_ACTIONS = [
     ...(limitReached ? [] : [{ id: 'nuevo-cliente', title: 'Nuevo cliente', keywords: 'añadir crear alta', run: () => setShowAdd(true) }]),
+    { id: 'ir-contactos', title: 'Ir a Contactos', keywords: 'leads captacion pagina publica nuevos clientes formulario', run: verTab('contactos') },
     { id: 'ir-bandeja', title: 'Ir a la Bandeja', keywords: 'cola avisos pendientes urgente hoy', run: verTab('bandeja') },
     { id: 'ir-clientes', title: 'Ir a Clientes', keywords: 'lista alumnos', run: verTab('clients') },
     { id: 'ir-hoy', title: 'Ir a Hoy', keywords: 'resumen inicio dashboard', run: verTab('dashboard') },
@@ -539,6 +547,29 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               {/* Columna derecha */}
               <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-4">
 
+                {/* Contactos nuevos de tu página pública: es cómo llegan clientes nuevos, así que va arriba */}
+                {leadsNuevos > 0 && (
+                  <div className="bg-card rounded-2xl overflow-hidden border border-accent/40" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                    <button onClick={() => handleTabChange('contactos')}
+                      className="w-full px-4 py-3 border-b border-border/50 flex items-center gap-2 hover:bg-bg-alt/30 transition-colors">
+                      <UserPlus className="w-3.5 h-3.5 text-accent" />
+                      <h3 className="text-sm font-semibold">{leadsNuevos === 1 ? 'Un contacto nuevo' : `${leadsNuevos} contactos nuevos`}</h3>
+                      <span className="ml-auto text-xs font-semibold text-accent">Ver →</span>
+                    </button>
+                    <div className="divide-y divide-border/50">
+                      {leadsState.nuevos.slice(0, 3).map(l => (
+                        <button key={l.id} onClick={() => handleTabChange('contactos')} className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-alt/50 text-left">
+                          <div className="w-7 h-7 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">{l.name[0]?.toUpperCase()}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate">{l.name}</p>
+                            <p className="text-[11px] text-muted truncate">{contactoDe(l) || 'Sin datos de contacto'} · {haceCuanto(l.created_at)}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Bandeja unificada — sesiones, check-ins, dolor, vídeos sin
                     responder, borradores sin publicar y clientes en riesgo,
                     ordenados por urgencia. Sustituye a los antiguos
@@ -742,7 +773,12 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             </div>
           )}
 
-          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
+          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
+          {activeTab === 'contactos'  && (
+            <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
+              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} />
+            </Suspense>
+          )}
           {activeTab === 'exercises'  && (
             <Suspense fallback={<div className="space-y-2 max-w-4xl">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>}>
               <ExercisesTab key={`ex-${seed.nonce}`} initialSearch={seedFor('exercises')} exercises={library.exercises} archived={library.archivedExercises} trainerId={userProfile.uid} clients={clients}
@@ -755,7 +791,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
           {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
           {activeTab === 'programas'  && <ProgramasTab key={`pg-${seed.nonce}`} initialSearch={seedFor('programas')} trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
-          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} />}
+          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} contactos={{ nuevos: leadsNuevos, total: leadsState.leads.length, onVer: () => handleTabChange('contactos') }} />}
           {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
           {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
@@ -777,6 +813,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               <p className="text-muted text-sm mb-6">Lo que usas menos a diario, todo en un mismo sitio</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {([
+                  { id: 'contactos'  as Tab, icon: UserPlus,     label: 'Contactos',   desc: 'Quién te escribe desde tu página', badge: leadsNuevos },
                   { id: 'bandeja'    as Tab, icon: Inbox,        label: 'Bandeja',     desc: 'Sesiones y check-ins recientes' },
                   { id: 'calendario' as Tab, icon: CalendarDays, label: 'Calendario',  desc: 'Citas y sesiones programadas' },
                   { id: 'mensajes'   as Tab, icon: MessageCircle,label: 'Mensajes',    desc: 'Plantillas y envíos programados' },
@@ -787,12 +824,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'adherencia' as Tab, icon: TrendingUp,   label: 'Adherencia',  desc: 'Cumplimiento semanal' },
                   { id: 'negocio'    as Tab, icon: TrendingUp,   label: 'Mi negocio',  desc: 'Ingresos y métricas' },
                   { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
-                ]).map(({ id, icon: Icon, label, desc }) => (
+                ] as { id: Tab; icon: any; label: string; desc: string; badge?: number }[]).map(({ id, icon: Icon, label, desc, badge }) => (
                   <button key={id} onClick={() => setActiveTab(id)}
-                    className="flex flex-col items-start gap-2 p-4 bg-card border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
+                    className="relative flex flex-col items-start gap-2 p-4 bg-card border border-border rounded-2xl text-left hover:border-ink hover:shadow-sm transition-all">
                     <div className="w-9 h-9 rounded-xl bg-bg-alt flex items-center justify-center">
                       <Icon className="w-4 h-4 text-ink" />
                     </div>
+                    {badge !== undefined && badge > 0 && <span className="absolute top-3 right-3 text-[11px] font-bold bg-accent text-white px-1.5 py-0.5 rounded-full">{badge}</span>}
                     <div>
                       <p className="text-sm font-bold">{label}</p>
                       <p className="text-[11px] text-muted mt-0.5 leading-snug">{desc}</p>
@@ -948,7 +986,7 @@ const TEMAS = [
   { id: 'dorado',  nombre: 'Dorado',  color: '#b8860b', bg: '#fdfaf0' },
 ]
 
-function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProfile; realUid: string; onLogout: () => void }) {
+function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfile: UserProfile; realUid: string; onLogout: () => void; contactos?: { nuevos: number; total: number; onVer: () => void } }) {
   const LS_KEY = `pf_trainer_profile_${userProfile.uid}`
   const saved = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} } })()
   const [displayName, setDisplayName] = useState(saved.displayName || userProfile.displayName)
@@ -1131,7 +1169,9 @@ function SettingsTab({ userProfile, realUid, onLogout }: { userProfile: UserProf
         <p className="text-sm text-muted">Los mensajes de bienvenida, descanso y racha se editan ahora por cliente, en su pestaña <span className="font-semibold text-ink">Perfil</span> — así cada cliente puede tener un mensaje distinto en vez de uno único para todos.</p>
       </div>
       <div className="bg-card rounded-2xl p-6 shadow-sm">
-        <PublicPageEditor userProfile={userProfile} />
+        <Suspense fallback={<p className="text-sm text-muted">Cargando…</p>}>
+          <PublicPageEditor userProfile={userProfile} contactos={contactos} />
+        </Suspense>
       </div>
       <div className="bg-card rounded-2xl p-6 shadow-sm">
         <EquipoSection ownerId={realUid} />
