@@ -7,6 +7,7 @@ import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { fechaSesion } from '../../lib/fechasPlan'
 import { Modal } from '../shared/Modal'
 
 // El calendario solo se abre desde su botón: se descarga entonces.
@@ -143,6 +144,9 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
           const isComplete = pct === 100 || finishedEarly
           const warmup = day.warmup
           const warmupExercises = day.warmupExercises
+          // Cuándo toca (por los días que eligió o porque el entrenador la movió); sin fecha de inicio, nada.
+          const fecha = fechaSesion(plan, weekIdx, di)
+          const movida = !!plan.fechasSesion?.[dayKey]
 
           return (
             <div key={di} className={`bg-card border rounded-2xl overflow-hidden transition-all ${isComplete ? 'border-ok/40' : 'border-border'}`}>
@@ -153,6 +157,12 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                   {isComplete ? '✓' : di + 1}
                 </div>
                 <div className="flex-1 min-w-0" onClick={() => setOpenDays(p => ({ ...p, [dayKey]: !p[dayKey] }))}>
+                  {fecha && (
+                    <p className={`text-[11px] font-bold uppercase tracking-wider ${movida ? 'text-accent' : 'text-muted'}`}>
+                      {new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}
+                      {movida && ' · cambiada por tu entrenador'}
+                    </p>
+                  )}
                   <p className="font-semibold text-sm">{day.title}</p>
                   {day.focus && <p className="text-xs text-muted truncate">{day.focus}</p>}
                   <p className="text-[11px] text-muted mt-0.5">{total} ejercicios · {done > 0 ? `${done}/${total} completados` : 'Sin empezar'}</p>

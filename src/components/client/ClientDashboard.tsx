@@ -8,6 +8,7 @@ import { ParaHoy } from './ParaHoy'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const FechaClaveHoy = lazy(() => import('./FechaClaveHoy').then(m => ({ default: m.FechaClaveHoy })))
 import type { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
+import { getTodaySession } from '../../lib/sesionHoy'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { adherence28, streakDays, collectSessionBests, strengthChange, latestAchievement } from '../../lib/progressSummary'
 import { localDateKey } from '../../lib/dates'
@@ -39,50 +40,6 @@ interface Props {
   seriesTypes?: SeriesTypeDef[]
   /** Quien deja la nota de bienvenida (entrenador): se enseña su nombre de pila. */
   trainerName?: string
-}
-
-// Lunes=0 ... domingo=6, igual que Date.getDay() ajustado (domingo=0 -> 6).
-const WEEKDAY_NAMES = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
-function weekdayFromTitle(title: string): number | null {
-  const norm = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '') // quita acentos: "miércoles" -> "miercoles"
-  const idx = WEEKDAY_NAMES.findIndex(name => norm.includes(name))
-  return idx === -1 ? null : idx
-}
-
-function getTodaySession(plan: TrainingPlan, logs: TrainingLogs) {
-  const weekIdx = getEffectiveWeekIdx(plan, logs)
-  const currentWeek = plan.weeks?.[weekIdx]
-  if (!currentWeek?.days?.length) return null
-  const isDayDone = (di: number) => {
-    if (logs[`finished_w${weekIdx}_d${di}`]?.sessionFinished) return true
-    const dayExs = currentWeek.days[di].exercises || []
-    if (!dayExs.length) return true
-    return dayExs.every((_, ri) => logs[`ex_w${weekIdx}_d${di}_r${ri}`]?.done)
-  }
-
-  // 1) Si los títulos de los días llevan el nombre del día de la semana (p. ej.
-  //    "LUNES — EMPUJE", "JUEVES — BANCA"...), usar ESE como el de hoy siempre
-  //    que coincida con el día real — es como el propio cliente lo entiende, y
-  //    no depende de qué se haya entrenado antes.
-  const todayWeekday = (() => { const d = new Date().getDay(); return d === 0 ? 6 : d - 1 })()
-  const weekdayMatchIdx = currentWeek.days.findIndex(d => weekdayFromTitle(d.title) === todayWeekday)
-
-  // 2) Si no hay nombres de día (p. ej. "Día A/B/C"), no hay forma de saber a
-  //    qué día del calendario corresponde cada uno — en su lugar, "hoy" es el
-  //    siguiente día sin terminar de la semana actual, por orden, volviendo a
-  //    empezar por el primero si ya se completaron todos. ANTES se usaba el
-  //    índice del día de la semana natural directo sobre el array de días,
-  //    asumiendo 7 días exactos (uno por día del calendario) — con un split de
-  //    3-4 días eso se salía del hueco real (p. ej. un jueves con un plan de 4
-  //    días mostraba days[3] "Viernes" en vez del día que tocaba).
-  let dayIdx = weekdayMatchIdx
-  if (dayIdx === -1) {
-    dayIdx = currentWeek.days.findIndex((_, di) => !isDayDone(di))
-    if (dayIdx === -1) dayIdx = 0
-  }
-  const day = currentWeek.days[dayIdx]
-  if (!day) return null
-  return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
 }
 
 export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
