@@ -5,7 +5,7 @@ import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
-import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP } from '../lib/demo-data'
+import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
@@ -24,6 +24,8 @@ export interface ClientWithStats extends ClientData {
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   jumpDropTestName?: string | null
+  /** Plan y registros para los 7 puntos de cumplimiento de la lista (se calculan en un trozo aparte). */
+  semanaFuente?: { plan: any; logs: Record<string, any> }
 }
 
 const ACWR_HIGH_THRESHOLD = 1.5
@@ -143,6 +145,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           lastActive: dates[0],
           doneToday: dates[0] === hoy,
           hasPlan: true,
+          semanaFuente: { plan: DEMO_PLAN_MAP[c.id], logs },
           weeklyDays: dates.filter(d => new Date(d) >= haceUnaS).length,
           atRisk: computeAtRisk(true, dates[0], c.createdAt),
           highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
@@ -200,9 +203,11 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       const jumpByClient = groupJumpResultsByClient(testResultados || [], jumpTestNames)
 
       const planMap: Record<string, boolean> = {}
+      const planObjMap: Record<string, any> = {}
       const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean }> = {}
       ;(planes || []).forEach((p: any) => {
         planMap[p.clientId] = !!(p.plan?.P?.weeks?.length)
+        planObjMap[p.clientId] = p.plan?.P
         planEndMap[p.clientId] = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
       })
 
@@ -234,6 +239,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           highJumpDrop: jumpFatigue.isDrop,
           jumpDropPct: jumpFatigue.dropPct,
           jumpDropTestName: jumpFatigue.testName,
+          semanaFuente: { plan: planObjMap[c.id], logs },
           ...planEndMap[c.id],
         }
       }))

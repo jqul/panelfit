@@ -3,9 +3,12 @@ import { Flame, Calendar, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { localDateKey } from '../../lib/dates'
 import { streakDays } from '../../lib/progressSummary'
+import { sesionesPorFecha, cumplimientoDia, ETIQUETA_NIVEL, NivelCumplimiento } from '../../lib/cumplimiento'
+import { COLOR_NIVEL } from '../shared/PuntosSemana'
 
 function getExerciseName(key: string, plan?: TrainingPlan | null): string {
-  const m = key.match(/ex_w(d+)_d(d+)_r(d+)/)
+  // Antes le faltaban las \ de \d y nunca casaba: el detalle del día enseñaba "ex_w1_d0_r0" en vez del nombre.
+  const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m || !plan) return key
   return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || key
 }
@@ -57,6 +60,10 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
   const today = localDateKey()
 
   const selectedSession = selectedDay ? getDaySession(logs, selectedDay, plan) : null
+  // Cumplimiento de cada día frente a lo planificado (los colores del calendario).
+  const porFecha = useMemo(() => sesionesPorFecha(plan, logs), [plan, logs])
+  const dia = (fecha: string) => cumplimientoDia(fecha, porFecha, { diasElegidos: plan?.diasElegidos, desde: plan?.fechaInicio, hoy: today })
+  const selectedCumplimiento = selectedDay ? dia(selectedDay) : null
 
   return (
     <div className="space-y-4">
@@ -101,7 +108,8 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            const trained = trainingDates.has(dateStr)
+            const nivel: NivelCumplimiento = dateStr > today ? 'libre' : dia(dateStr).nivel
+            const marcado = nivel !== 'libre'
             const isToday = dateStr === today
             const isSelected = dateStr === selectedDay
             const isFuture = dateStr > today
@@ -112,24 +120,26 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                 disabled={isFuture}
                 className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold transition-all ${
                   isSelected ? 'ring-2 ring-accent scale-110' :
-                  trained ? 'bg-ok text-white shadow-sm' :
+                  marcado ? `${COLOR_NIVEL[nivel]} ${nivel === 'parcial' ? 'text-ink' : 'text-white'} shadow-sm` :
                   isToday ? 'bg-accent/20 text-accent border border-accent/40' :
                   isFuture ? 'text-muted/30 cursor-default' :
                   'text-muted hover:bg-bg-alt'
                 }`}
-                style={{ minHeight: '32px' }}>
-                {trained && !isSelected ? '✓' : day}
+                style={{ minHeight: '32px' }} aria-label={`${day}${marcado ? `: ${ETIQUETA_NIVEL[nivel]}` : ''}`}>
+                {nivel === 'completo' && !isSelected ? '✓' : day}
               </button>
             )
           })}
         </div>
 
         {/* Leyenda */}
-        <div className="flex items-center gap-4 mt-3 justify-center">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-ok" /><span className="text-[11px] text-muted">Entrenó</span></div>
+        <div className="flex items-center gap-x-4 gap-y-1.5 mt-3 justify-center flex-wrap">
+          {(['completo', 'parcial', 'bajo', 'fallado'] as NivelCumplimiento[]).map(n => (
+            <div key={n} className="flex items-center gap-1.5"><div className={`w-3 h-3 rounded ${COLOR_NIVEL[n]}`} /><span className="text-[11px] text-muted">{ETIQUETA_NIVEL[n]}</span></div>
+          ))}
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-accent/20 border border-accent/40" /><span className="text-[11px] text-muted">Hoy</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-bg-alt border border-border" /><span className="text-[11px] text-muted">Sin entreno</span></div>
         </div>
+        <p className="text-[11px] text-muted text-center mt-1.5">Completo = 80 % o más de los ejercicios del día; "No entrenó" solo en tus días de entreno.</p>
       </div>
 
       {/* Detalle del día seleccionado */}
@@ -140,7 +150,11 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
               {new Date(selectedDay + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
             {selectedSession && (
-              <p className="text-xs text-muted mt-0.5">{selectedSession.exercises.length} ejercicios · {selectedSession.volume.toLocaleString()} kg volumen</p>
+              <p className="text-xs text-muted mt-0.5">
+                {selectedCumplimiento && selectedCumplimiento.previstos > 0
+                  ? `${selectedCumplimiento.hechos} de ${selectedCumplimiento.previstos} ejercicios · ${ETIQUETA_NIVEL[selectedCumplimiento.nivel]}`
+                  : `${selectedSession.exercises.length} ejercicios`} · {selectedSession.volume.toLocaleString()} kg volumen
+              </p>
             )}
           </div>
           {selectedSession ? (
@@ -155,7 +169,8 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
                         <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
-                          {s.weight}kg×{s.reps}
+                          {/* "Peso corporal" no lleva kg detrás */}
+                          {isNaN(parseFloat(s.weight)) ? s.weight : `${s.weight}kg`}×{s.reps}
                         </span>
                       ))}
                     </div>
@@ -165,7 +180,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
               ))}
             </div>
           ) : (
-            <div className="px-4 py-6 text-center text-muted text-sm">Sin actividad registrada este día</div>
+            <div className="px-4 py-6 text-center text-muted text-sm">{selectedCumplimiento?.nivel === 'fallado' ? 'Era uno de tus días de entreno y no hay nada registrado' : 'Sin actividad registrada este día'}</div>
           )}
         </div>
       )}
@@ -183,15 +198,12 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                   const d = new Date(weekStart)
                   d.setDate(d.getDate() + di)
                   const dateStr = localDateKey(d)
-                  const trained = trainingDates.has(dateStr)
                   const isFuture = dateStr > today
+                  const nivel = isFuture ? 'libre' : dia(dateStr).nivel
                   return (
                     <div key={di}
-                      className={`w-full aspect-square rounded-sm ${
-                        isFuture ? 'bg-transparent' :
-                        trained ? 'bg-ok' : 'bg-bg-alt border border-border/50'
-                      }`}
-                      title={dateStr}
+                      className={`w-full aspect-square rounded-sm ${isFuture ? 'bg-transparent' : COLOR_NIVEL[nivel]}`}
+                      title={`${dateStr} · ${ETIQUETA_NIVEL[nivel]}`}
                     />
                   )
                 })}
