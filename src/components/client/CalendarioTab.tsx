@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Flame, Calendar, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { localDateKey } from '../../lib/dates'
 import { streakDays } from '../../lib/progressSummary'
-import { sesionesPorFecha, cumplimientoDia, ETIQUETA_NIVEL, NivelCumplimiento } from '../../lib/cumplimiento'
+import { sesionesPorFecha, cumplimientoDia, ETIQUETA_NIVEL, NivelCumplimiento, type TramoAusencia } from '../../lib/cumplimiento'
+import { supabase } from '../../lib/supabase'
+import { isDemoClientId } from '../../lib/demoIds'
 import { COLOR_NIVEL } from '../shared/PuntosSemana'
 
 function getExerciseName(key: string, plan?: TrainingPlan | null): string {
@@ -27,9 +29,17 @@ function getDaySession(logs: TrainingLogs, date: string, plan?: TrainingPlan | n
 
 // Calendario de entrenos del cliente: qué días entrenó y, al tocar uno, qué hizo.
 // Vive en la pestaña Entreno, junto a la semana en curso, no en Progreso.
-export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+export function CalendarioTab({ logs, plan, clientId }: { logs: TrainingLogs; plan?: TrainingPlan | null; clientId?: string }) {
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [monthOffset, setMonthOffset] = useState(0)
+  // Ausencias avisadas del último año: esos días salen como "Ausencia", no como "No entrenó".
+  const [ausencias, setAusencias] = useState<TramoAusencia[]>([])
+  useEffect(() => {
+    if (!clientId || isDemoClientId(clientId)) return
+    const haceUnAno = new Date(); haceUnAno.setFullYear(haceUnAno.getFullYear() - 1)
+    supabase.from('ausencias').select('desde,hasta').eq('client_id', clientId).gte('hasta', localDateKey(haceUnAno))
+      .then(({ data }) => setAusencias((data || []) as TramoAusencia[]))
+  }, [clientId])
 
   const trainingDates = useMemo(() => {
     const s = new Set<string>()
@@ -62,7 +72,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
   const selectedSession = selectedDay ? getDaySession(logs, selectedDay, plan) : null
   // Cumplimiento de cada día frente a lo planificado (los colores del calendario).
   const porFecha = useMemo(() => sesionesPorFecha(plan, logs), [plan, logs])
-  const dia = (fecha: string) => cumplimientoDia(fecha, porFecha, { diasElegidos: plan?.diasElegidos, desde: plan?.fechaInicio, hoy: today })
+  const dia = (fecha: string) => cumplimientoDia(fecha, porFecha, { diasElegidos: plan?.diasElegidos, desde: plan?.fechaInicio, hoy: today, ausencias })
   const selectedCumplimiento = selectedDay ? dia(selectedDay) : null
 
   return (
@@ -120,7 +130,7 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
                 disabled={isFuture}
                 className={`aspect-square rounded-lg flex items-center justify-center text-xs font-semibold transition-all ${
                   isSelected ? 'ring-2 ring-accent scale-110' :
-                  marcado ? `${COLOR_NIVEL[nivel]} ${nivel === 'parcial' ? 'text-ink' : 'text-white'} shadow-sm` :
+                  marcado ? `${COLOR_NIVEL[nivel]} ${nivel === 'parcial' || nivel === 'ausente' ? 'text-ink' : 'text-white'} shadow-sm` :
                   isToday ? 'bg-accent/20 text-accent border border-accent/40' :
                   isFuture ? 'text-muted/30 cursor-default' :
                   'text-muted hover:bg-bg-alt'
@@ -134,12 +144,12 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
 
         {/* Leyenda */}
         <div className="flex items-center gap-x-4 gap-y-1.5 mt-3 justify-center flex-wrap">
-          {(['completo', 'parcial', 'bajo', 'fallado'] as NivelCumplimiento[]).map(n => (
+          {(['completo', 'parcial', 'bajo', 'fallado', 'ausente'] as NivelCumplimiento[]).map(n => (
             <div key={n} className="flex items-center gap-1.5"><div className={`w-3 h-3 rounded ${COLOR_NIVEL[n]}`} /><span className="text-[11px] text-muted">{ETIQUETA_NIVEL[n]}</span></div>
           ))}
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-accent/20 border border-accent/40" /><span className="text-[11px] text-muted">Hoy</span></div>
         </div>
-        <p className="text-[11px] text-muted text-center mt-1.5">Completo = 80 % o más de los ejercicios del día; "No entrenó" solo en tus días de entreno.</p>
+        <p className="text-[11px] text-muted text-center mt-1.5">Completo = 80 % o más de los ejercicios del día; "No entrenó" solo en tus días de entreno y nunca durante una ausencia.</p>
       </div>
 
       {/* Detalle del día seleccionado */}
@@ -180,7 +190,9 @@ export function CalendarioTab({ logs, plan }: { logs: TrainingLogs; plan?: Train
               ))}
             </div>
           ) : (
-            <div className="px-4 py-6 text-center text-muted text-sm">{selectedCumplimiento?.nivel === 'fallado' ? 'Era uno de tus días de entreno y no hay nada registrado' : 'Sin actividad registrada este día'}</div>
+            <div className="px-4 py-6 text-center text-muted text-sm">{selectedCumplimiento?.nivel === 'fallado' ? 'Era uno de tus días de entreno y no hay nada registrado'
+              : selectedCumplimiento?.nivel === 'ausente' ? 'Avisaste de que no entrenabas: no cuenta como fallado'
+              : 'Sin actividad registrada este día'}</div>
           )}
         </div>
       )}

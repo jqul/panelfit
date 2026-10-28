@@ -77,7 +77,7 @@ export function ClientList({ clients, adherenciaMap, formatLastActive, onOpen, o
                   <div className="space-y-1.5">
                   {client.semanaFuente && (
                     <Suspense fallback={<span className="block h-2.5" aria-hidden />}>
-                      <PuntosSemanaCliente plan={client.semanaFuente.plan} logs={client.semanaFuente.logs} />
+                      <PuntosSemanaCliente plan={client.semanaFuente.plan} logs={client.semanaFuente.logs} ausencias={client.semanaFuente.ausencias} />
                     </Suspense>
                   )}
                   <div className="flex items-center gap-2.5">

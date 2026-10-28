@@ -46,4 +46,20 @@ describe('cumplimiento por día', () => {
     expect(dias[6].nivel).toBe('completo')
     expect(dias.filter(d => d.nivel === 'fallado')).toHaveLength(0) // el lunes 19 queda fuera de la ventana
   })
+it('un día de entreno dentro de una ausencia avisada es "ausencia", no "no entrenó"', () => {
+    const op = { diasElegidos: [0], hoy: '2026-10-26', ausencias: [{ desde: '2026-10-17', hasta: '2026-10-19' }] }
+    expect(cumplimientoDia('2026-10-19', {}, op).nivel).toBe('ausente')            // lunes, último día de la ausencia
+    expect(cumplimientoDia('2026-10-18', {}, op).nivel).toBe('ausente')            // aunque no tocara, se ve que estaba fuera
+    expect(cumplimientoDia('2026-10-12', {}, op).nivel).toBe('fallado')            // lunes anterior: sigue contando
+    // Si entrenó igualmente durante la ausencia, cuenta lo que hizo
+    expect(cumplimientoDia('2026-10-19', { '2026-10-19': { hechos: 5, previstos: 5 } }, op).nivel).toBe('completo')
+  })
+
+  it('los 7 puntos respetan las ausencias', () => {
+    const hoy = new Date('2026-10-27T10:00:00')
+    const dias = ultimos7Dias({ ...plan, diasElegidos: [0, 2] }, {}, hoy, [{ desde: '2026-10-25', hasta: '2026-10-30' }])
+    expect(dias.find(d => d.fecha === '2026-10-21')?.nivel).toBe('fallado')       // miércoles antes de irse
+    expect(dias.find(d => d.fecha === '2026-10-26')?.nivel).toBe('ausente')       // lunes, fuera
+    expect(dias.filter(d => d.nivel === 'ausente')).toHaveLength(3)                // 25, 26 y hoy 27
+  })
 })
