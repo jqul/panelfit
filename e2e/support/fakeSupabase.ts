@@ -241,6 +241,8 @@ export class FakeSupabase {
         if (c) c.plan_last_opened_at = new Date().toISOString()
         return empty(route)
       }
+      // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
+      case 'encuestas_pendientes': return json(route, 200, [])
       case 'get_trainer_referral_slug': return json(route, 200, null)
       case 'find_trainer_by_email': return json(route, 200, null)
       case 'delete_client_data': {

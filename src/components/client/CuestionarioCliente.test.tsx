@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
+
+// Solo se pinta: no hace falta Supabase (y en CI no hay .env).
+vi.mock('../../lib/supabase', () => ({ supabase: {} }))
 import { CuestionarioCliente, type CuestionarioPendiente } from './CuestionarioCliente'
 
 const cuestionario: CuestionarioPendiente = {
