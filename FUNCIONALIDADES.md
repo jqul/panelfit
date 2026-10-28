@@ -122,6 +122,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 - URL pública (`/p/slug`) tipo landing page con la marca del entrenador, bio, especialidades, botón de contacto por WhatsApp — para compartir en redes/bio de Instagram.
 - **Contactos** (los que rellenan el formulario de la página): tienen su propia pestaña (Más → Contactos) con Nuevos / Contactados / Descartados, enlace directo a WhatsApp (un móvil de 9 cifras se toma como +34) y al correo, y si vienen de «Invita a un amigo», quién los refirió. Los nuevos se ven también en Hoy (tarjeta arriba a la derecha), en la Bandeja (sección propia) y con un número en «Más»; Ajustes → Página pública enlaza a la pestaña. **Aviso al llegar uno**: notificación en la campanita (en directo; al pulsarla lleva a Contactos) y push al móvil si tienes las notificaciones activadas.
+- **Convertir en cliente** (en un toque, desde el contacto): abre el alta de cliente con su nombre, apellido y teléfono ya puestos, guarda su correo, su mensaje y quién lo refirió en las notas privadas del cliente, y el contacto pasa a «Clientes» (así ves cuántos de los que escriben acaban siéndolo).
 
 ## 15. Superadmin
 

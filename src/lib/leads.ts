@@ -1,10 +1,11 @@
 // Contactos que llegan por la página pública del entrenador (tabla `leads`): lo que se enseña de cada uno y cómo
 // responderle. Sin React ni red: se puede probar.
 
-export type EstadoLead = 'nuevo' | 'contactado' | 'descartado'
+export type EstadoLead = 'nuevo' | 'contactado' | 'convertido' | 'descartado'
 export const ESTADOS_LEAD: { id: EstadoLead; label: string }[] = [
   { id: 'nuevo', label: 'Nuevos' },
   { id: 'contactado', label: 'Contactados' },
+  { id: 'convertido', label: 'Clientes' },
   { id: 'descartado', label: 'Descartados' },
 ]
 
@@ -38,7 +39,7 @@ export const esNuevo = (l: Pick<Lead, 'status'>) => l.status === 'nuevo'
 
 /** Los nuevos primero y, dentro de cada estado, el más reciente arriba. */
 export function ordenarLeads(leads: Lead[]): Lead[] {
-  const rango = (l: Lead) => (esNuevo(l) ? 0 : l.status === 'contactado' ? 1 : 2)
+  const rango = (l: Lead) => (esNuevo(l) ? 0 : l.status === 'contactado' ? 1 : l.status === 'convertido' ? 2 : 3)
   return [...leads].sort((a, b) => rango(a) - rango(b) || b.created_at - a.created_at)
 }
 
@@ -58,3 +59,21 @@ export function haceCuanto(ts: number, ahora = Date.now()): string {
 /** Texto de WhatsApp para contestar a un contacto nuevo. */
 export const saludoParaLead = (nombre: string, miNombre?: string) =>
   `Hola ${nombre.split(/\s+/)[0]}, soy ${miNombre || 'tu entrenador'}. Vi que me escribiste desde mi página. ¿Hablamos?`
+
+/** Nombre y apellido para el alta de cliente: la primera palabra es el nombre y el resto el apellido. */
+export function partirNombre(nombre: string): { name: string; surname: string } {
+  const [name = '', ...resto] = nombre.trim().split(/\s+/)
+  return { name, surname: resto.join(' ') }
+}
+
+/** Lo que se guarda en las notas privadas del cliente al convertir un contacto: de dónde viene y qué dijo. */
+export function notasDeLead(l: Pick<Lead, 'email' | 'phone' | 'message' | 'created_at' | 'referrerName'>): string {
+  const dia = new Date(l.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+  return [
+    `Contacto desde la página pública (${dia}).`,
+    l.email && `Correo: ${l.email}`,
+    l.phone && `Teléfono: ${l.phone}`,
+    l.referrerName && `Referido por ${l.referrerName}.`,
+    l.message && `Mensaje: «${l.message}»`,
+  ].filter(Boolean).join('\n')
+}

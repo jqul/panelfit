@@ -4,7 +4,7 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
-import { contactoDe, haceCuanto } from '../../lib/leads'
+import { contactoDe, haceCuanto, notasDeLead, partirNombre, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
@@ -165,12 +165,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   // Contactos de la página pública: una sola carga para Hoy, la Bandeja y su pestaña
   const leadsState = useLeads(userProfile.uid, clients)
   const leadsNuevos = leadsState.nuevos.length
+  // Contacto que se está convirtiendo en cliente (el alta es el mismo formulario de «Nuevo cliente», con sus datos ya puestos)
+  const [leadAConvertir, setLeadAConvertir] = useState<Lead | null>(null)
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
     setAdding(true)
-    const ok = await addClient(newClient, newClientLabelIds)
+    const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: notasDeLead(leadAConvertir) } : {})
     if (ok) {
+      if (leadAConvertir) { void leadsState.cambiarEstado(leadAConvertir.id, 'convertido'); setLeadAConvertir(null) }
       if (clients.length === 0) track('first_client_created')
       setShowAdd(false)
       setNewClientLabelIds([])
@@ -179,6 +182,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       if (!demoClients) setWizard({ step: 'plan', clientId: ok })
     }
     setAdding(false)
+  }
+
+  const convertirContacto = (l: Lead) => {
+    setNewClient({ ...partirNombre(l.name), phone: l.phone ?? '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+    setNewClientLabelIds([])
+    setLeadAConvertir(l)
+    setShowAdd(true)
   }
 
   const handleDelete = async (id: string) => { await deleteClient(id) }
@@ -776,7 +786,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
           {activeTab === 'contactos'  && (
             <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
-              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} />
+              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} onConvertir={convertirContacto} />
             </Suspense>
           )}
           {activeTab === 'exercises'  && (
@@ -866,8 +876,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       )}
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente" variant="drawer">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
         <div className="space-y-4">
+          {leadAConvertir && (
+            <div className="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 text-xs space-y-1">
+              <p className="font-semibold text-accent">Viene de un contacto de tu página pública</p>
+              {leadAConvertir.email && <p className="text-muted">Correo: <span className="text-ink">{leadAConvertir.email}</span> (se guarda en sus notas privadas)</p>}
+              {leadAConvertir.message && <p className="text-ink/80 italic">"{leadAConvertir.message}"</p>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>
