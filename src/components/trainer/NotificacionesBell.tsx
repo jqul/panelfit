@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Bell, Check, CheckCheck, X, Dumbbell, AlertTriangle, Calendar, MessageCircle } from 'lucide-react'
+import { Bell, Check, CheckCheck, X, Dumbbell, AlertTriangle, Calendar, MessageCircle, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { isDemoTrainerId, buildDemoNotificaciones } from '../../lib/demo-data-extra'
 
@@ -7,7 +7,7 @@ interface Notificacion {
   id: string
   trainer_id: string
   client_id?: string
-  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina' | 'solicitud_borrado'
+  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina' | 'solicitud_borrado' | 'nuevo_contacto'
   titulo: string
   mensaje?: string
   leida: boolean
@@ -21,14 +21,17 @@ const TIPO_META: Record<string, { icon: any; color: string; bg: string }> = {
   mensaje:           { icon: MessageCircle,  color: '#3b82f6', bg: '#eff6ff' },
   nueva_rutina:      { icon: Dumbbell,       color: '#8b5cf6', bg: '#f5f3ff' },
   solicitud_borrado: { icon: AlertTriangle,  color: '#ef4444', bg: '#fef2f2' },
+  nuevo_contacto:    { icon: UserPlus,       color: '#6e5438', bg: '#f7f1ea' },
 }
 
 interface Props {
   trainerId: string
   onSelectClient?: (clientId: string) => void
+  /** Al pulsar un aviso de contacto nuevo (viene de la página pública): lleva a la pestaña Contactos. */
+  onVerContactos?: () => void
 }
 
-export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
+export function NotificacionesBell({ trainerId, onSelectClient, onVerContactos }: Props) {
   const [notifs, setNotifs] = useState<Notificacion[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -101,7 +104,7 @@ export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(o => !o)}
+      <button onClick={() => setOpen(o => !o)} aria-label={unread > 0 ? `Notificaciones (${unread} sin leer)` : 'Notificaciones'}
         className="relative p-2 rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors">
         <Bell className="w-5 h-5" />
         {unread > 0 && (
@@ -142,9 +145,10 @@ export function NotificacionesBell({ trainerId, onSelectClient }: Props) {
                   <div className="flex-1 min-w-0"
                     onClick={() => {
                       markRead(n.id)
-                      if (n.client_id && onSelectClient) { onSelectClient(n.client_id); setOpen(false) }
+                      if (n.tipo === 'nuevo_contacto' && onVerContactos) { onVerContactos(); setOpen(false) }
+                      else if (n.client_id && onSelectClient) { onSelectClient(n.client_id); setOpen(false) }
                     }}
-                    style={{ cursor: n.client_id ? 'pointer' : 'default' }}>
+                    style={{ cursor: n.client_id || n.tipo === 'nuevo_contacto' ? 'pointer' : 'default' }}>
                     <p className="text-xs font-semibold leading-snug">{n.titulo}</p>
                     {n.mensaje && <p className="text-[11px] text-muted mt-0.5 leading-snug">{n.mensaje}</p>}
                     <p className="text-[11px] text-muted/60 mt-1">{timeAgo(n.created_at)}</p>

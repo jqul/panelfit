@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Inbox, Mail, MessageCircle, Gift } from 'lucide-react'
+import { Inbox, Mail, MessageCircle, Gift, UserPlus } from 'lucide-react'
 import { toast } from '../shared/Toast'
 import { ESTADOS_LEAD, contactoDe, haceCuanto, saludoParaLead, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
 
 // Las personas que han escrito desde tu página pública: quién es, cómo contestarle y en qué punto está.
-export function ContactosTab({ leadsState, miNombre }: { leadsState: LeadsState; miNombre?: string }) {
+export function ContactosTab({ leadsState, miNombre, onConvertir }: { leadsState: LeadsState; miNombre?: string; onConvertir?: (lead: Lead) => void }) {
   const { leads, loading, cambiarEstado } = leadsState
   const [filtro, setFiltro] = useState<EstadoLead | 'todos'>('nuevo')
   const cuenta = (e: EstadoLead) => leads.filter(l => l.status === e).length
@@ -77,10 +77,17 @@ export function ContactosTab({ leadsState, miNombre }: { leadsState: LeadsState;
                       <Mail className="w-3.5 h-3.5" /> Escribir un correo
                     </a>
                   )}
+                  {onConvertir && l.status !== 'convertido' && l.status !== 'descartado' && (
+                    <button onClick={() => onConvertir(l)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ink text-white text-xs font-bold">
+                      <UserPlus className="w-3.5 h-3.5" /> Convertir en cliente
+                    </button>
+                  )}
                   <select value={l.status} onChange={e => marcar(l, e.target.value as EstadoLead)} aria-label={`Estado de ${l.name}`}
                     className="ml-auto text-xs font-semibold bg-bg border border-border rounded-lg px-2 py-2 outline-none">
                     <option value="nuevo">Nuevo</option>
                     <option value="contactado">Contactado</option>
+                    <option value="convertido">Cliente</option>
                     <option value="descartado">Descartado</option>
                   </select>
                 </div>

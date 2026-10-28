@@ -1,4 +1,4 @@
--- Prueba de migrations/20261028000002_tareas_cliente.sql
+-- Prueba de migrations/20261028000004_tareas_cliente.sql
 -- (el entrenador —o su equipo— pone tareas con fecha a SU cliente; el cliente las ve pero no las crea ni cambia;
 -- el cliente las marca hechas, solo las suyas; nadie más ve nada; sin sesión, nada; RGPD y cascada).
 --

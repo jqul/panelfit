@@ -4,7 +4,7 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
-import { contactoDe, haceCuanto } from '../../lib/leads'
+import { contactoDe, haceCuanto, notasDeLead, partirNombre, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
@@ -165,12 +165,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   // Contactos de la página pública: una sola carga para Hoy, la Bandeja y su pestaña
   const leadsState = useLeads(userProfile.uid, clients)
   const leadsNuevos = leadsState.nuevos.length
+  // Contacto que se está convirtiendo en cliente (el alta es el mismo formulario de «Nuevo cliente», con sus datos ya puestos)
+  const [leadAConvertir, setLeadAConvertir] = useState<Lead | null>(null)
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
     setAdding(true)
-    const ok = await addClient(newClient, newClientLabelIds)
+    const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: notasDeLead(leadAConvertir) } : {})
     if (ok) {
+      if (leadAConvertir) { void leadsState.cambiarEstado(leadAConvertir.id, 'convertido'); setLeadAConvertir(null) }
       if (clients.length === 0) track('first_client_created')
       setShowAdd(false)
       setNewClientLabelIds([])
@@ -179,6 +182,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       if (!demoClients) setWizard({ step: 'plan', clientId: ok })
     }
     setAdding(false)
+  }
+
+  const convertirContacto = (l: Lead) => {
+    setNewClient({ ...partirNombre(l.name), phone: l.phone ?? '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+    setNewClientLabelIds([])
+    setLeadAConvertir(l)
+    setShowAdd(true)
   }
 
   const handleDelete = async (id: string) => { await deleteClient(id) }
@@ -257,7 +267,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         <h1 className="text-lg font-serif font-bold tracking-tight">Panel<span className="text-accent italic">Fit</span></h1>
         <div className="flex items-center gap-1">
           <ThemeToggle />
-          <NotificacionesBell trainerId={userProfile.uid} onSelectClient={(clientId) => {
+          <NotificacionesBell trainerId={userProfile.uid} onVerContactos={() => handleTabChange('contactos')} onSelectClient={(clientId) => {
             const client = clients.find(c => c.id === clientId)
             if (client) onSelectClient(client)
           }} />
@@ -361,7 +371,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       <main className="flex-1 overflow-y-auto min-w-0 min-h-0">
         <div className="lg:hidden sticky top-0 z-20 bg-card border-b border-border flex items-center justify-between px-4 h-14"
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)', height: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}>
-          <button onClick={() => setSidebarOpen(true)} className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
+          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Menu className="w-5 h-5" /></button>
           <h1 className="text-lg font-serif font-bold">Panel<span className="text-accent italic">Fit</span></h1>
           <div className="flex items-center">
             <button onClick={openSearch} aria-label="Buscar" className="flex items-center justify-center rounded-xl hover:bg-bg-alt text-muted" style={{ minWidth: '44px', minHeight: '44px' }}><Search className="w-5 h-5" /></button>
@@ -776,7 +786,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
           {activeTab === 'contactos'  && (
             <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
-              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} />
+              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} onConvertir={convertirContacto} />
             </Suspense>
           )}
           {activeTab === 'exercises'  && (
@@ -866,8 +876,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       )}
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]) }} title="Nuevo cliente" variant="drawer">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
         <div className="space-y-4">
+          {leadAConvertir && (
+            <div className="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 text-xs space-y-1">
+              <p className="font-semibold text-accent">Viene de un contacto de tu página pública</p>
+              {leadAConvertir.email && <p className="text-muted">Correo: <span className="text-ink">{leadAConvertir.email}</span> (se guarda en sus notas privadas)</p>}
+              {leadAConvertir.message && <p className="text-ink/80 italic">"{leadAConvertir.message}"</p>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nombre *</label>

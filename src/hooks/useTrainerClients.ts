@@ -273,7 +273,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
   const addClient = async (newClient: {
     name: string; surname: string; phone: string; objetivo: string
     altura: string; peso: string; genero: string; fechanacimiento: string
-  }, labelIds: string[] = []): Promise<string | false> => {
+  }, labelIds: string[] = [], extra: { notas_privadas?: string } = {}): Promise<string | false> => {
     if (clients.length >= clientLimit) {
       toast(`Limite alcanzado: tu plan permite ${clientLimit} clientes.`, 'warn')
       return false
@@ -296,6 +296,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       fechanacimiento: newClient.fechanacimiento || null,
       fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '',
       label_ids: labelIds,
+      ...(extra.notas_privadas ? { notas_privadas: extra.notas_privadas } : {}),
     }).select('id').single()
     if (error) { toast('Error: ' + error.message, 'warn'); return false }
     toast('Cliente creado ✓', 'ok')

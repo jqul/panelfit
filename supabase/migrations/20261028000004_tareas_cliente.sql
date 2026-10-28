@@ -9,7 +9,7 @@
 --
 -- Nada es visible sin sesión. Las dos entran en la exportación y el borrado completo del RGPD (client_data_tables)
 -- y caen en cascada si se borra el cliente o la tarea.
--- Prueba: hardening/tests/bloque19_tareas.sql (run-pglite-tareas.mjs). Aplicada el 2026-10-28.
+-- Prueba: hardening/tests/bloque20_tareas.sql (run-pglite-tareas.mjs). Aplicada el 2026-10-28.
 
 create table if not exists public.tareas_cliente (
   id         uuid primary key default gen_random_uuid(),
