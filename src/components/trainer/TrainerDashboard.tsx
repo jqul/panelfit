@@ -786,7 +786,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
           {activeTab === 'contactos'  && (
             <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
-              <ContactosTab leadsState={leadsState} miNombre={userProfile.displayName} onConvertir={convertirContacto} />
+              <ContactosTab leadsState={leadsState} trainerId={userProfile.uid} miNombre={userProfile.displayName} onConvertir={convertirContacto} onIrAAjustes={() => setActiveTab('settings')} />
             </Suspense>
           )}
           {activeTab === 'exercises'  && (
