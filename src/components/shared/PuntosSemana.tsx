@@ -7,6 +7,7 @@ export const COLOR_NIVEL: Record<NivelCumplimiento, string> = {
   parcial: 'bg-attn/50',
   bajo: 'bg-attn',
   fallado: 'bg-warn',
+  ausente: 'bg-accent2/40',
   libre: 'bg-bg-alt border border-border',
 }
 

@@ -3,7 +3,10 @@ import { localDateKey } from './dates'
 
 // Cumplimiento por día, como los colores de TrainingPeaks: cuánto de lo planificado se hizo.
 // En PanelFit lo planificado de una sesión son sus ejercicios; lo hecho, los marcados como hechos.
-export type NivelCumplimiento = 'completo' | 'parcial' | 'bajo' | 'fallado' | 'libre'
+export type NivelCumplimiento = 'completo' | 'parcial' | 'bajo' | 'fallado' | 'ausente' | 'libre'
+
+/** Tramo en el que el cliente avisó de que no entrena (tabla `ausencias`); solo hacen falta las fechas. */
+export type TramoAusencia = { desde: string; hasta: string }
 
 export interface DiaCumplimiento {
   fecha: string
@@ -17,6 +20,7 @@ export const ETIQUETA_NIVEL: Record<NivelCumplimiento, string> = {
   parcial: 'A medias',
   bajo: 'Poco',
   fallado: 'No entrenó',
+  ausente: 'Ausencia',
   libre: 'Sin entreno',
 }
 
@@ -57,14 +61,16 @@ export function diaSemana(fecha: string): number {
 /**
  * Cumplimiento de un día. "Fallado" solo se dice cuando se sabe: era uno de los días de entreno que
  * eligió el cliente, ya ha pasado y no hay nada registrado. Sin días elegidos, un día vacío es "libre".
+ * Un día vacío dentro de una ausencia avisada es "ausente", nunca "fallado": no entrenar estaba previsto.
  */
 export function cumplimientoDia(
   fecha: string,
   porFecha: Record<string, { hechos: number; previstos: number }>,
-  opts: { diasElegidos?: number[]; desde?: string; hoy?: string } = {},
+  opts: { diasElegidos?: number[]; desde?: string; hoy?: string; ausencias?: TramoAusencia[] } = {},
 ): DiaCumplimiento {
   const s = porFecha[fecha]
   if (s && s.hechos > 0) return { fecha, nivel: nivelPorPorcentaje(s.hechos, s.previstos), ...s }
+  if (opts.ausencias?.some(a => a.desde <= fecha && fecha <= a.hasta)) return { fecha, nivel: 'ausente', hechos: 0, previstos: 0 }
   const hoy = opts.hoy ?? localDateKey()
   const tocaba = !!opts.diasElegidos?.includes(diaSemana(fecha))
   const fallado = tocaba && fecha < hoy && (!opts.desde || fecha >= opts.desde)
@@ -76,11 +82,12 @@ export function ultimos7Dias(
   plan: (Pick<TrainingPlan, 'weeks'> & { diasElegidos?: number[]; fechaInicio?: string }) | null | undefined,
   logs: TrainingLogs,
   hoy: Date = new Date(),
+  ausencias: TramoAusencia[] = [],
 ): DiaCumplimiento[] {
   const porFecha = sesionesPorFecha(plan, logs)
   const hoyKey = localDateKey(hoy)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(hoy); d.setDate(hoy.getDate() - (6 - i))
-    return cumplimientoDia(localDateKey(d), porFecha, { diasElegidos: plan?.diasElegidos, desde: plan?.fechaInicio, hoy: hoyKey })
+    return cumplimientoDia(localDateKey(d), porFecha, { diasElegidos: plan?.diasElegidos, desde: plan?.fechaInicio, hoy: hoyKey, ausencias })
   })
 }

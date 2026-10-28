@@ -28,7 +28,7 @@ export interface ClientWithStats extends ClientData {
   /** Ausencia que cubre hoy: la lista dice "De viaje hasta el 18 nov" y no lo cuenta como inactivo. */
   ausencia?: { texto: string; hasta: string }
   /** Plan y registros para los 7 puntos de cumplimiento de la lista (se calculan en un trozo aparte). */
-  semanaFuente?: { plan: any; logs: Record<string, any> }
+  semanaFuente?: { plan: any; logs: Record<string, any>; ausencias?: { desde: string; hasta: string }[] }
 }
 
 const ACWR_HIGH_THRESHOLD = 1.5
@@ -195,8 +195,9 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
         supabase.from('session_load').select('client_id,date,duration_min,rpe').in('client_id', ids),
         supabase.from('test_catalogo').select('id,categoria,nombre').eq('trainer_id', trainerId),
         supabase.from('test_resultados').select('client_id,test_id,valor,fecha').in('client_id', ids),
-        // Solo las que no han terminado: lo que cubra hoy cambia el estado del cliente en la lista.
-        supabase.from('ausencias').select('client_id,desde,hasta,motivo').in('client_id', ids).gte('hasta', localDateKey()),
+        // Las que siguen o acabaron esta semana: lo que cubra hoy cambia el estado del cliente en la lista,
+        // y los días de ausencia de los últimos 7 no se pintan como "no entrenó" en los puntos.
+        supabase.from('ausencias').select('client_id,desde,hasta,motivo').in('client_id', ids).gte('hasta', localDateKey(haceUnaS)),
       ])
       const loadByClient: Record<string, { date: string; duration_min: number; rpe: number }[]> = {}
       ;(sessionLoads || []).forEach((r: any) => {
@@ -227,7 +228,8 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
             .filter((l: any) => l.dateDone)
             .map((l: any) => l.dateDone as string)
         )].sort().reverse()
-        const ausencia = ausenciaActiva(((ausenciasRows || []) as { client_id: string; desde: string; hasta: string; motivo: MotivoAusencia }[]).filter(a => a.client_id === c.id))
+        const ausenciasCliente = ((ausenciasRows || []) as { client_id: string; desde: string; hasta: string; motivo: MotivoAusencia }[]).filter(a => a.client_id === c.id)
+        const ausencia = ausenciaActiva(ausenciasCliente)
         const hasPlan = planMap[c.id] || false
         const tonnageAcwr = computeACWR(logs)
         const srpeAcwr = computeSessionLoadACWR(loadByClient[c.id] || [])
@@ -246,7 +248,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           highJumpDrop: jumpFatigue.isDrop,
           jumpDropPct: jumpFatigue.dropPct,
           jumpDropTestName: jumpFatigue.testName,
-          semanaFuente: { plan: planObjMap[c.id], logs },
+          semanaFuente: { plan: planObjMap[c.id], logs, ausencias: ausenciasCliente },
           ...planEndMap[c.id],
         }
       }))

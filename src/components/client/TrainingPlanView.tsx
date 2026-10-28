@@ -18,6 +18,7 @@ interface Props {
   onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
   trainerId?: string
+  clientId?: string
   view?: 'semana' | 'calendario'
   onViewChange?: (v: 'semana' | 'calendario') => void
 }
@@ -56,7 +57,7 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, view = 'semana', onViewChange }: Props) {
+export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, clientId, view = 'semana', onViewChange }: Props) {
   usePrefetchActiveWorkout()
   const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
@@ -114,7 +115,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
       )}
 
       {view === 'calendario' ? (
-        <div className="px-4 pt-4"><Suspense fallback={<p className="py-6 text-sm text-muted">Cargando…</p>}><CalendarioTab logs={logs} plan={plan} /></Suspense></div>
+        <div className="px-4 pt-4"><Suspense fallback={<p className="py-6 text-sm text-muted">Cargando…</p>}><CalendarioTab logs={logs} plan={plan} clientId={clientId} /></Suspense></div>
       ) : (
       <>
       <div className="px-4 pt-5 pb-3">
