@@ -1,20 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag, Printer, UserPlus } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { summarizeSurvey, describeSchedule, groupSchedules } from '../../lib/surveyResults'
+import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, hojaImprimible, imprimir, type Pregunta } from '../../lib/cuestionarios'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
 import { TrainerLabel, LabelPill } from './labels'
 import { DEMO_TRAINER_ID, DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES, DEMO_SURVEY_SCHEDULES, DEMO_LABELS } from '../../lib/demo-data'
 
-interface Question {
-  id: string
-  type: 'scale' | 'text' | 'yesno' | 'choice'
-  label: string
-  options?: string[]
-  required: boolean
-}
+type Question = Pregunta
 
 interface SurveyTemplate {
   id: string
@@ -22,6 +17,8 @@ interface SurveyTemplate {
   name: string
   questions: Question[]
   created_at: number
+  /** Desde cuándo (ms) se asigna sola a los clientes que se den de alta; null = no. */
+  auto_nuevos_desde?: number | null
 }
 
 interface SurveySchedule {
@@ -68,16 +65,9 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
   const [name, setName] = useState(initial?.name || 'Encuesta semanal')
   const [questions, setQuestions] = useState<Question[]>(initial?.questions || DEFAULT_QUESTIONS)
   const [saving, setSaving] = useState(false)
-  const TYPE_ICONS = { scale: '📊', text: '✍️', yesno: '✅', choice: '🔘' }
-  const TYPE_LABELS = { scale: 'Escala 1-10', text: 'Texto libre', yesno: 'Sí / No', choice: 'Opción múltiple' }
+  const [autoNuevos, setAutoNuevos] = useState(!!initial?.auto_nuevos_desde)
 
-  const addQuestion = (type: Question['type']) => {
-    setQuestions(qs => [...qs, {
-      id: `q_${Date.now()}`, type, required: false,
-      label: type === 'scale' ? 'Nueva pregunta (1-10)' : type === 'yesno' ? 'Nueva pregunta (Sí/No)' : type === 'choice' ? 'Nueva pregunta de opción' : 'Nueva pregunta abierta',
-      options: type === 'choice' ? ['Opción A', 'Opción B'] : undefined,
-    }])
-  }
+  const addQuestion = (type: Question['type']) => setQuestions(qs => [...qs, nuevaPregunta(type)])
   const updateQ = (id: string, updates: Partial<Question>) => setQuestions(qs => qs.map(q => q.id === id ? { ...q, ...updates } : q))
   const deleteQ = (id: string) => setQuestions(qs => qs.filter(q => q.id !== id))
   const moveQ = (id: string, dir: -1 | 1) => {
@@ -89,10 +79,12 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
   const handleSave = async () => {
     if (!name.trim() || !questions.length) return
     setSaving(true)
-    const tmpl: SurveyTemplate = { id: initial?.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: name.trim(), questions, created_at: initial?.created_at || Date.now() }
+    // Al activar «cliente nuevo» se guarda desde cuándo: solo la reciben los que lleguen a partir de ahora.
+    const auto_nuevos_desde = autoNuevos ? (initial?.auto_nuevos_desde || Date.now()) : null
+    const tmpl: SurveyTemplate = { id: initial?.id || `tmpl_${Date.now()}`, trainer_id: trainerId, name: name.trim(), questions, created_at: initial?.created_at || Date.now(), auto_nuevos_desde }
     if (trainerId !== DEMO_TRAINER_ID) {
       const { error } = initial
-        ? await supabase.from('survey_templates').update({ name: tmpl.name, questions: tmpl.questions }).eq('id', tmpl.id)
+        ? await supabase.from('survey_templates').update({ name: tmpl.name, questions: tmpl.questions, auto_nuevos_desde }).eq('id', tmpl.id)
         : await supabase.from('survey_templates').insert(tmpl)
       if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
     }
@@ -116,7 +108,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
           {questions.map((q, i) => (
             <div key={q.id} className="bg-bg border border-border rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm flex-shrink-0">{TYPE_ICONS[q.type]}</span>
+                <span className="text-sm flex-shrink-0">{TIPO[q.type]?.icono}</span>
                 <input value={q.label} onChange={e => updateQ(q.id, { label: e.target.value })}
                   className="flex-1 text-sm bg-transparent outline-none font-medium" />
                 <div className="flex gap-1 flex-shrink-0">
@@ -129,7 +121,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
                   <button onClick={() => deleteQ(q.id)} className="p-1 text-muted hover:text-warn"><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
-              {q.type === 'choice' && q.options && (
+              {conOpciones(q.type) && q.options && (
                 <div className="flex flex-wrap gap-1 ml-6">
                   {q.options.map((opt, oi) => (
                     <input key={oi} value={opt}
@@ -140,18 +132,29 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
                     className="px-2 py-1 border border-dashed border-border rounded-lg text-xs text-muted hover:border-accent">+ Añadir</button>
                 </div>
               )}
-              <p className="text-[11px] text-muted ml-6">{TYPE_LABELS[q.type]}</p>
+              {q.type === 'number' && (
+                <input value={q.unit || ''} onChange={e => updateQ(q.id, { unit: e.target.value })} placeholder="Unidad (kg, h…)" aria-label="Unidad"
+                  className="ml-6 px-2 py-1 bg-bg-alt border border-border rounded-lg text-xs outline-none w-28" />
+              )}
+              <p className="text-[11px] text-muted ml-6">{TIPO[q.type]?.nombre}</p>
             </div>
           ))}
           <div className="flex gap-2 flex-wrap">
-            {(['scale', 'yesno', 'text', 'choice'] as const).map(type => (
-              <button key={type} onClick={() => addQuestion(type)}
+            {TIPOS.map(t => (
+              <button key={t.id} onClick={() => addQuestion(t.id)}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-border rounded-lg text-xs text-muted hover:border-accent hover:text-accent transition-colors">
-                <Plus className="w-3 h-3" /> {TYPE_ICONS[type]} {TYPE_LABELS[type]}
+                <Plus className="w-3 h-3" /> {t.icono} {t.nombre}
               </button>
             ))}
           </div>
         </div>
+        <label className="flex items-start gap-3 p-3 bg-bg border border-border rounded-xl cursor-pointer">
+          <input type="checkbox" checked={autoNuevos} onChange={e => setAutoNuevos(e.target.checked)} className="mt-0.5 w-4 h-4 flex-shrink-0" />
+          <span>
+            <span className="block text-sm font-semibold">Asignar a cada cliente nuevo</span>
+            <span className="block text-xs text-muted mt-0.5">Quien se dé de alta a partir de ahora la tendrá pendiente al entrar en su app (una vez). Ideal para el cuestionario inicial.</span>
+          </span>
+        </label>
         <div className="flex gap-2">
           <button onClick={onCancel} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !name.trim() || !questions.length}
@@ -245,6 +248,10 @@ function ScheduleEditor({ trainerId, templates, clients, initial, presetTemplate
 // ── Response viewer ───────────────────────────────────────
 function ResponseViewer({ response, template, clientName }: { response: SurveyResponse; template: SurveyTemplate; clientName: string }) {
   const [open, setOpen] = useState(false)
+  const imprimirEsta = () => {
+    if (!imprimir(hojaImprimible(template.name, template.questions, [{ cliente: clientName, fecha: response.completed_at, answers: response.answers }])))
+      toast('Permite las ventanas emergentes para imprimir', 'warn')
+  }
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-bg-alt/30" onClick={() => setOpen(!open)}>
@@ -253,13 +260,15 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
           <p className="text-sm font-semibold">{clientName}</p>
           <p className="text-xs text-muted">{new Date(response.completed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
+        <button onClick={e => { e.stopPropagation(); imprimirEsta() }} aria-label={`Imprimir la respuesta de ${clientName}`} title="Imprimir"
+          className="p-1.5 rounded-lg text-muted hover:text-ink hover:bg-bg-alt"><Printer className="w-4 h-4" /></button>
         {open ? <ChevronUp className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
       </div>
       {open && (
         <div className="border-t border-border divide-y divide-border/50">
           {template.questions.map(q => {
             const ans = response.answers[q.id]
-            if (ans === undefined || ans === '') return null
+            if (ans === undefined || ans === '' || (Array.isArray(ans) && !ans.length)) return null
             return (
               <div key={q.id} className="px-4 py-2.5">
                 <p className="text-xs text-muted mb-1">{q.label}</p>
@@ -276,8 +285,9 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
                     {ans ? '✓ Sí' : '✗ No'}
                   </span>
                 )}
-                {q.type === 'text' && <p className="text-sm">{ans}</p>}
-                {q.type === 'choice' && <p className="text-sm font-semibold">{ans}</p>}
+                {q.type !== 'scale' && q.type !== 'yesno' && (
+                  <p className={`text-sm whitespace-pre-wrap ${q.type === 'text' || q.type === 'short' ? '' : 'font-semibold'}`}>{textoRespuesta(q, ans)}</p>
+                )}
               </div>
             )
           })}
@@ -445,6 +455,9 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
                     ) : (
                       <p className="text-xs text-muted mt-1.5 flex items-center gap-1"><CalendarClock className="w-3 h-3" /> Sin envío programado</p>
                     )}
+                    {tmpl.auto_nuevos_desde ? (
+                      <p className="text-xs text-accent font-medium mt-1 flex items-center gap-1"><UserPlus className="w-3 h-3" /> Se asigna a cada cliente nuevo</p>
+                    ) : null}
                     {tmplLabels.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
@@ -560,14 +573,25 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
 
             {summary && selected && summary.responses > 0 && (
               <div className="bg-card border border-border rounded-2xl p-5">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Resultados</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Resultados</p>
+                  <button onClick={() => {
+                    const filas = visible.map(r => {
+                      const c = clients.find(x => x.id === r.client_id)
+                      return { cliente: c ? `${c.name} ${c.surname}` : '', fecha: r.completed_at, answers: r.answers }
+                    })
+                    if (!imprimir(hojaImprimible(selected.name, selected.questions, filas))) toast('Permite las ventanas emergentes para imprimir', 'warn')
+                  }} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink">
+                    <Printer className="w-3.5 h-3.5" /> Imprimir todas
+                  </button>
+                </div>
                 <h3 className="font-serif font-bold text-xl mt-0.5">{selected.name}</h3>
                 <p className="text-xs text-muted mt-0.5">
                   {summary.responses} {summary.responses === 1 ? 'respuesta' : 'respuestas'}
                   {summary.lastAt ? ` · última el ${new Date(summary.lastAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}` : ''}
                 </p>
                 <div className="mt-4 space-y-3.5">
-                  {summary.questions.filter(q => q.type !== 'text' && q.answered > 0).map(q => (
+                  {summary.questions.filter(q => q.type !== 'text' && q.type !== 'short' && q.type !== 'date' && q.answered > 0).map(q => (
                     <div key={q.id}>
                       <p className="text-xs text-muted mb-1">{q.label}</p>
                       {q.type === 'scale' && q.avg !== undefined && (
@@ -582,7 +606,12 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
                           <span className="text-sm font-bold text-ok w-14 text-right tabular-nums">{q.yesPct}% sí</span>
                         </div>
                       )}
-                      {q.type === 'choice' && q.counts && (
+                      {q.type === 'number' && q.avg !== undefined && (
+                        <p className="text-sm font-bold text-accent tabular-nums">
+                          Media: {String(q.avg).replace('.', ',')}{selected.questions.find(x => x.id === q.id)?.unit ? ` ${selected.questions.find(x => x.id === q.id)?.unit}` : ''}
+                        </p>
+                      )}
+                      {(q.type === 'choice' || q.type === 'multi') && q.counts && (
                         <div className="flex flex-wrap gap-1.5">
                           {q.counts.map(c => <span key={c.option} className="px-2.5 py-1 rounded-full bg-bg-alt text-xs font-semibold">{c.option} <span className="text-muted">· {c.n}</span></span>)}
                         </div>

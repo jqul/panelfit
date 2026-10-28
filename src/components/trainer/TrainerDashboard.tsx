@@ -24,7 +24,6 @@ import { ProgramasTab } from './ProgramasTab'
 import { MensajesTab } from './MensajesTab'
 import { InsightsTab } from './InsightsTab'
 import { AdherenciaTab } from './AdherenciaTab'
-import { EncuestasTab } from './EncuestasTab'
 import { BusinessDashboard } from './BusinessDashboard'
 import { CohortesTab } from './CohortesTab'
 import { BandejaTab } from './BandejaTab'
@@ -45,6 +44,8 @@ import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 // recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
 // La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
+// Encuestas: el editor, los resultados y la impresión solo se descargan al abrir la pestaña.
+const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m.EncuestasTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
 // La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
@@ -760,7 +761,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
           {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
-              <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />
+              <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando encuestas…</p>}>
+                <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />
+              </Suspense>
             </PlanGate>
           )}
           {activeTab === 'negocio' && (

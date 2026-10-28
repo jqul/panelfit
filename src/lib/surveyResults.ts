@@ -2,11 +2,14 @@
 // lista de respuestas sueltas sino la conclusión (cuánto de media, qué % dice
 // que sí, qué opción gana). Todo puro, para poder probarlo.
 
+import type { TipoPregunta } from './cuestionarios'
+
 export interface SurveyQuestion {
   id: string
-  type: 'scale' | 'text' | 'yesno' | 'choice'
+  type: TipoPregunta
   label: string
   options?: string[]
+  unit?: string
 }
 
 export interface SurveyAnswerSet {
@@ -20,11 +23,11 @@ export interface QuestionSummary {
   label: string
   type: SurveyQuestion['type']
   answered: number
-  /** Escala: media de las respuestas numéricas, con un decimal. */
+  /** Escala y número: media de las respuestas numéricas, con un decimal. */
   avg?: number
   /** Sí/No: porcentaje de síes, redondeado. */
   yesPct?: number
-  /** Opción múltiple: veces que se eligió cada opción, de más a menos. */
+  /** Una opción / varias opciones: veces que se eligió cada opción, de más a menos. */
   counts?: { option: string; n: number }[]
 }
 
@@ -41,15 +44,16 @@ export function summarizeSurvey(questions: SurveyQuestion[], responses: SurveyAn
   const summaries = questions.map((q): QuestionSummary => {
     const given = responses.map(r => r.answers?.[q.id]).filter(has)
     const base: QuestionSummary = { id: q.id, label: q.label, type: q.type, answered: given.length }
-    if (q.type === 'scale') {
+    if (q.type === 'scale' || q.type === 'number') {
       const nums = given.map(Number).filter(n => !isNaN(n))
       base.answered = nums.length
       if (nums.length) base.avg = Math.round((nums.reduce((a, n) => a + n, 0) / nums.length) * 10) / 10
     } else if (q.type === 'yesno') {
       if (given.length) base.yesPct = Math.round((given.filter(v => v === true || v === 'true' || v === 'Sí').length / given.length) * 100)
-    } else if (q.type === 'choice') {
+    } else if (q.type === 'choice' || q.type === 'multi') {
       const tally = new Map<string, number>()
-      given.forEach(v => tally.set(String(v), (tally.get(String(v)) || 0) + 1))
+      // En "varias opciones" cada respuesta es una lista: cuenta cada opción marcada.
+      given.flatMap(v => Array.isArray(v) ? v : [v]).forEach(v => tally.set(String(v), (tally.get(String(v)) || 0) + 1))
       base.counts = [...tally.entries()].map(([option, n]) => ({ option, n })).sort((a, b) => b.n - a.n || a.option.localeCompare(b.option, 'es'))
     }
     return base

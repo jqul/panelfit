@@ -2,10 +2,55 @@ import { useState, useEffect } from 'react'
 import { CheckCircle2, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { ClienteRow } from '../../lib/supabase-types'
+import { isDemoClientId } from '../../lib/demoIds'
+import { CuestionarioCliente, type CuestionarioPendiente } from './CuestionarioCliente'
 
 interface Props { client: ClienteRow }
 
+// Primero, los cuestionarios que le ha mandado su entrenador (envíos programados, etiquetas, «a cada cliente
+// nuevo»). Si no tiene ninguno pendiente, el check-in semanal de siempre.
 export function EncuestaClienteTab({ client }: Props) {
+  const [pendientes, setPendientes] = useState<CuestionarioPendiente[] | null>(null)
+  const [respondidas, setRespondidas] = useState(0)
+
+  useEffect(() => {
+    if (isDemoClientId(client.id)) { setPendientes([]); return }
+    supabase.rpc('encuestas_pendientes').then(({ data }) => setPendientes((data || []) as CuestionarioPendiente[]))
+  }, [client.id])
+
+  if (pendientes === null) return <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted">Cargando…</div>
+
+  if (pendientes.length) {
+    const actual = pendientes[0]
+    return (
+      <div className="max-w-xl mx-auto px-4 py-6 pb-24 space-y-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            De tu entrenador{pendientes.length > 1 ? ` · ${respondidas + 1} de ${respondidas + pendientes.length}` : ''}
+          </p>
+          <h3 className="font-serif font-bold text-xl mt-0.5">{actual.nombre}</h3>
+          <p className="text-sm text-muted mt-1">Tus respuestas le ayudan a ajustar tu plan.</p>
+        </div>
+        <CuestionarioCliente key={actual.template_id} cuestionario={actual} clientId={client.id}
+          onEnviado={() => { setRespondidas(n => n + 1); setPendientes(p => (p || []).slice(1)); window.scrollTo({ top: 0 }) }} />
+      </div>
+    )
+  }
+
+  if (respondidas > 0) return (
+    <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+      <div className="w-16 h-16 bg-ok/10 rounded-full flex items-center justify-center mx-auto">
+        <CheckCircle2 className="w-8 h-8 text-ok" />
+      </div>
+      <h3 className="font-serif font-bold text-xl">¡Enviado!</h3>
+      <p className="text-sm text-muted">Tu entrenador ya tiene tus respuestas.</p>
+    </div>
+  )
+
+  return <CheckinSemanal client={client} />
+}
+
+function CheckinSemanal({ client }: Props) {
   const LS_KEY = `pf_encuesta_${client.id}`
   const preguntas: string[] = (() => {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || [
