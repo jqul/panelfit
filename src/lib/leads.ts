@@ -77,3 +77,17 @@ export function notasDeLead(l: Pick<Lead, 'email' | 'phone' | 'message' | 'creat
     l.message && `Mensaje: «${l.message}»`,
   ].filter(Boolean).join('\n')
 }
+
+export type ContactoValidado = { ok: true; email: string | null; phone: string | null } | { ok: false; error: string }
+
+/** El campo único "correo o teléfono" del formulario de la página pública. Mismas reglas que la función de la base de datos. */
+export function validarContacto(texto: string): ContactoValidado {
+  const t = texto.trim()
+  if (!t) return { ok: false, error: 'Déjame un correo o un teléfono para poder contestarte' }
+  if (t.includes('@')) {
+    const e = t.toLowerCase()
+    return e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) ? { ok: true, email: e, phone: null } : { ok: false, error: 'El correo no parece válido' }
+  }
+  const digitos = t.replace(/\D/g, '').length
+  return /^[0-9+().\-\s]{8,25}$/.test(t) && digitos >= 8 && digitos <= 15 ? { ok: true, email: null, phone: t } : { ok: false, error: 'El teléfono no parece válido' }
+}

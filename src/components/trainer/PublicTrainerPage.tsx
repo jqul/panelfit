@@ -4,6 +4,7 @@ import { DEMO_TRAINER_PROFILE } from '../../lib/demo-data'
 import { DEMO_PUBLIC_PAGE, DEMO_PUBLIC_SLUG } from '../../lib/demo-data-extra'
 import { NotFound } from '../shared/NotFound'
 import { Check } from 'lucide-react'
+import { validarContacto } from '../../lib/leads'
 
 interface PublicPageData {
   bio: string
@@ -27,6 +28,8 @@ export function PublicTrainerPage({ slug }: Props) {
   const [leadMessage, setLeadMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [leadError, setLeadError] = useState('')
+  const [trampa, setTrampa] = useState('') // campo que una persona no ve y un robot rellena
 
   useEffect(() => {
     if (slug === DEMO_PUBLIC_SLUG) { setDisplayName(DEMO_TRAINER_PROFILE.displayName); setData(DEMO_PUBLIC_PAGE as PublicPageData); setLoading(false); return }
@@ -49,15 +52,20 @@ export function PublicTrainerPage({ slug }: Props) {
 
   const sendLead = async () => {
     if (!leadName.trim()) return
+    const contacto = validarContacto(leadContact)
+    if (!contacto.ok) { setLeadError(contacto.error); return }
+    setLeadError('')
+    if (trampa) { setSent(true); return } // un robot: se hace como que ha ido bien, sin enviar nada
     setSending(true)
     if (slug === DEMO_PUBLIC_SLUG) { setSending(false); setSent(true); return }
     const { error } = await supabase.rpc('submit_lead', {
-      p_slug: slug, p_name: leadName.trim(), p_email: leadContact.includes('@') ? leadContact.trim() : null,
-      p_phone: !leadContact.includes('@') ? leadContact.trim() || null : null, p_message: leadMessage.trim() || null,
-      p_ref: refCode || null,
+      p_slug: slug, p_name: leadName.trim(), p_email: contacto.email, p_phone: contacto.phone,
+      p_message: leadMessage.trim() || null, p_ref: refCode || null,
     })
     setSending(false)
-    if (!error) setSent(true)
+    if (!error) { setSent(true); return }
+    // Los avisos de la base de datos (datos no válidos, demasiados envíos) vienen ya en español y cortos
+    setLeadError(error.message && error.message.length < 140 ? error.message : 'No se pudo enviar. Inténtalo de nuevo en un momento.')
   }
 
   const waUrl = data.whatsapp
@@ -109,12 +117,15 @@ export function PublicTrainerPage({ slug }: Props) {
           </div>
         ) : showForm ? (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-2.5">
-            <input value={leadName} onChange={e => setLeadName(e.target.value)} placeholder="Tu nombre"
+            <input value={leadName} onChange={e => setLeadName(e.target.value)} placeholder="Tu nombre" maxLength={100} aria-label="Tu nombre"
               className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-            <input value={leadContact} onChange={e => setLeadContact(e.target.value)} placeholder="Email o teléfono"
+            <input value={leadContact} onChange={e => { setLeadContact(e.target.value); setLeadError('') }} placeholder="Email o teléfono" maxLength={254} aria-label="Email o teléfono"
               className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-            <textarea value={leadMessage} onChange={e => setLeadMessage(e.target.value)} rows={2} placeholder="Cuéntame qué buscas (opcional)"
+            <textarea value={leadMessage} onChange={e => setLeadMessage(e.target.value)} rows={2} placeholder="Cuéntame qué buscas (opcional)" maxLength={1000} aria-label="Mensaje"
               className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none resize-none" />
+            <input value={trampa} onChange={e => setTrampa(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" name="web"
+              style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }} />
+            {leadError && <p role="alert" className="text-xs text-warn font-medium">{leadError}</p>}
             <button onClick={sendLead} disabled={!leadName.trim() || sending}
               className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40">
               {sending ? 'Enviando...' : 'Enviar'}
