@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, CalendarRange, MoveHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarRange, MoveHorizontal, Plus } from 'lucide-react'
 import type { TrainingLogs, TrainingPlan } from '../../../types'
 import { lunesDe, sumarDias, lunesDeSemana } from '../../../lib/fechasPlan'
 import { sesionesDelPlan, moverSesion, type SesionFechada } from '../../../lib/moverSesiones'
+import { tareasDelDia, ICONO_TAREA, describirRepeticion, diaAnterior, type Tarea } from '../../../lib/tareas'
+import { useTareasCliente } from '../../../hooks/useTareasCliente'
+import { TareaForm } from './TareaForm'
 import { localDateKey } from '../../../lib/dates'
 import { supabase } from '../../../lib/supabase'
 import { isDemoClientId } from '../../../lib/demoIds'
@@ -10,6 +13,9 @@ import { isDemoClientId } from '../../../lib/demoIds'
 // El plan del cliente sobre un calendario de verdad: cada sesión en su fecha (hecha, a medias, sin hacer o por
 // venir) y las ausencias que ha avisado. Se mueve una sesión arrastrándola a otro día o tocándola y eligiendo
 // fecha (en el móvil no hay arrastrar). Mover solo guarda la excepción en el plan: lib/fechasPlan.ts.
+// Además, tareas sueltas con fecha y repetición ("Caminar 30 min" martes y jueves): el "+" de cada día.
+
+type PanelTarea = { modo: 'nueva' | 'ver' | 'editar'; fecha: string; id?: string }
 
 type Estado = 'hecha' | 'medias' | 'fallada' | 'futura'
 
@@ -40,6 +46,9 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
   const [nuevaFecha, setNuevaFecha] = useState('')
   const [encima, setEncima] = useState<string | null>(null)
   const [ausencias, setAusencias] = useState<{ desde: string; hasta: string }[]>([])
+  const [panelTarea, setPanelTarea] = useState<PanelTarea | null>(null)
+  const tareasCliente = useTareasCliente(clientId, sumarDias(hoy, -120))
+  const { tareas } = tareasCliente
 
   useEffect(() => {
     if (isDemoClientId(clientId)) return
@@ -70,6 +79,19 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
     onPlanChange(moverSesion(plan, s.w, s.d, fecha))
     setElegida(null)
   }
+  const abrirTarea = (p: PanelTarea) => { setElegida(null); setPanelTarea(p) }
+  const tareaAbierta: Tarea | null = (panelTarea?.id && tareas.find(t => t.id === panelTarea.id)) || null
+
+  const chipTarea = (t: Tarea, f: string) => {
+    const hecha = tareasCliente.estaHecha(t.id, f)
+    return (
+      <button key={t.id} type="button" onClick={() => abrirTarea({ modo: 'ver', fecha: f, id: t.id })}
+        aria-label={`Tarea: ${t.titulo}${hecha ? ', hecha' : ''}`}
+        className={`w-full text-left px-1 sm:px-1.5 py-0.5 rounded-full text-[11px] truncate bg-bg-alt ${hecha ? 'text-ok line-through' : 'text-ink'} ${panelTarea?.id === t.id && panelTarea.fecha === f ? 'ring-2 ring-accent' : ''}`}>
+        <span aria-hidden>{ICONO_TAREA[t.tipo]}</span><span className="hidden sm:inline"> {t.titulo}</span>
+      </button>
+    )
+  }
   const fuera = (f: string) => ausencias.some(a => a.desde <= f && f <= a.hasta)
 
   // 6 semanas desde el lunes de la semana del día 1 del mes
@@ -90,7 +112,7 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
     const fija = !!s.hechaEl
     return (
       <button key={s.clave} type="button" draggable={!fija} onDragStart={e => { e.dataTransfer.setData('text/plain', s.clave); e.dataTransfer.effectAllowed = 'move' }}
-        onClick={() => { setElegida(s.clave); setNuevaFecha(s.fecha || hoy) }}
+        onClick={() => { setPanelTarea(null); setElegida(s.clave); setNuevaFecha(s.fecha || hoy) }}
         aria-label={`${s.titulo}, semana ${s.w + 1}, ${ETIQUETA[estado]}${s.movida ? ', movida' : ''}${s.propuesta ? ', día propuesto' : ''}${fija ? '' : '. Mover'}`}
         className={`w-full text-left px-1 sm:px-1.5 py-0.5 rounded-md border text-[11px] font-semibold truncate ${fija ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} ${s.propuesta ? 'border-dashed' : ''} ${ESTILO[estado]} ${elegida === s.clave ? 'ring-2 ring-accent' : ''}`}>
         {s.movida && <MoveHorizontal className="inline w-3 h-3 mr-0.5 -mt-0.5" aria-hidden />}
@@ -123,10 +145,18 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
                     onDragOver={e => { e.preventDefault(); setEncima(f) }} onDragLeave={() => setEncima(x => x === f ? null : x)}
                     onDrop={e => { e.preventDefault(); setEncima(null); const s = sesiones.find(x => x.clave === e.dataTransfer.getData('text/plain')); if (s) mover(s, f) }}
                     className={`min-h-[64px] rounded-lg border p-1 space-y-0.5 transition-colors ${encima === f ? 'border-accent bg-accent/5' : 'border-border/60'} ${fuera(f) ? 'bg-accent2/15' : otroMes ? 'bg-bg/60' : 'bg-bg'}`}>
-                    <p className={`text-[11px] font-semibold ${f === hoy ? 'text-accent' : otroMes ? 'text-muted/50' : 'text-muted'}`}>
-                      {Number(f.slice(8))}{fuera(f) && <span className="sr-only"> (ausencia)</span>}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-[11px] font-semibold ${f === hoy ? 'text-accent' : otroMes ? 'text-muted/50' : 'text-muted'}`}>
+                        {Number(f.slice(8))}{fuera(f) && <span className="sr-only"> (ausencia)</span>}
+                      </p>
+                      <button type="button" onClick={() => abrirTarea({ modo: 'nueva', fecha: f })} title="Añadir tarea"
+                        aria-label={`Añadir tarea el ${fmt(f, { weekday: 'long', day: 'numeric', month: 'long' })}`}
+                        className="w-5 h-5 -mr-0.5 rounded flex items-center justify-center text-muted/60 hover:text-accent hover:bg-accent/10">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     {(porFecha[f] || []).map(chip)}
+                    {tareasDelDia(tareas, f).map(t => chipTarea(t, f))}
                   </div>
                 )
               }),
@@ -140,9 +170,45 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-accent2/30" />Ausencia</span>
           <span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3" />Movida</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded border border-dashed border-muted" />Día propuesto (el plan no lo fija)</span>
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded-full bg-bg-alt" />Tarea</span>
         </div>
-        <p className="text-[11px] text-muted mt-1.5">Arrastra una sesión a otro día, o tócala para elegir la fecha: el cliente la verá ese día en su app. Lo ya entrenado sale el día en que lo hizo.</p>
+        <p className="text-[11px] text-muted mt-1.5">Arrastra una sesión a otro día, o tócala para elegir la fecha: el cliente la verá ese día en su app. Lo ya entrenado sale el día en que lo hizo. Con el + de cada día añades una tarea (caminar, movilidad, un vídeo, una foto de progreso…), una vez o repetida.</p>
       </div>
+
+      {panelTarea && (panelTarea.modo === 'nueva' || (panelTarea.modo === 'editar' && tareaAbierta)) && (
+        <TareaForm key={`${panelTarea.modo}-${panelTarea.id || panelTarea.fecha}`} fecha={panelTarea.fecha} inicial={panelTarea.modo === 'editar' ? tareaAbierta! : undefined}
+          onGuardar={datos => tareasCliente.guardar(datos, panelTarea.modo === 'editar' ? panelTarea.id : undefined)}
+          onCancelar={() => setPanelTarea(null)} />
+      )}
+
+      {panelTarea?.modo === 'ver' && tareaAbierta && (() => {
+        const t = tareaAbierta
+        const hecha = tareasCliente.estaHecha(t.id, panelTarea.fecha)
+        const repite = t.repetir !== 'una'
+        return (
+          <div className="bg-card border border-accent/30 rounded-2xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold">{ICONO_TAREA[t.tipo]} {t.titulo}</p>
+              <p className="text-xs text-muted mt-0.5">
+                {fmt(panelTarea.fecha, { weekday: 'long', day: 'numeric', month: 'long' })} · {describirRepeticion(t)}
+                {panelTarea.fecha <= hoy && (hecha ? ' · hecha ✓' : ' · sin marcar')}
+              </p>
+              {t.nota && <p className="text-sm mt-2 whitespace-pre-wrap">{t.nota}</p>}
+              {t.enlace && <a href={t.enlace} target="_blank" rel="noreferrer" className="text-sm text-accent underline break-all">{t.enlace}</a>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setPanelTarea({ ...panelTarea, modo: 'editar' })} className="px-3 py-2 bg-ink text-white rounded-xl text-sm font-semibold">Editar</button>
+              {repite && panelTarea.fecha > t.fecha && (
+                <button onClick={async () => { if (await tareasCliente.guardar({ ...t, hasta: diaAnterior(panelTarea.fecha) }, t.id)) setPanelTarea(null) }}
+                  className="px-3 py-2 border border-border rounded-xl text-sm text-muted hover:text-ink">Terminar la serie aquí</button>
+              )}
+              <button onClick={() => { if (confirm(repite ? '¿Borrar la tarea entera (todos sus días)?' : '¿Borrar esta tarea?')) { tareasCliente.borrar(t.id); setPanelTarea(null) } }}
+                className="px-3 py-2 border border-border rounded-xl text-sm text-warn hover:bg-warn/5">{repite ? 'Borrar todos los días' : 'Borrar'}</button>
+              <button onClick={() => setPanelTarea(null)} className="px-3 py-2 text-sm text-muted hover:text-ink">Cerrar</button>
+            </div>
+          </div>
+        )
+      })()}
 
       {sel && (
         <div className="bg-card border border-accent/30 rounded-2xl p-4 space-y-3">

@@ -15,6 +15,7 @@ const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => (
 const ClientRegister = lazy(() => import('./ClientRegister').then(m => ({ default: m.ClientRegister })))
 const EncuestaClienteTab = lazy(() => import('./EncuestaClienteTab').then(m => ({ default: m.EncuestaClienteTab })))
 const CuestionarioAviso = lazy(() => import('./CuestionarioAviso').then(m => ({ default: m.CuestionarioAviso })))
+const TareasHoy = lazy(() => import('./TareasHoy').then(m => ({ default: m.TareasHoy })))
 const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PWAInstallBanner } from './PWAInstallBanner'
@@ -550,6 +551,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       seriesTypes={seriesTypes}
                     />
                     <Suspense fallback={null}><CuestionarioAviso clientId={client.id} onAbrir={() => setActiveTab('encuesta')} /></Suspense>
+                    <Suspense fallback={null}><TareasHoy clientId={client.id} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
                     <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
