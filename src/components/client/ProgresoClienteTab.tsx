@@ -22,6 +22,7 @@ import { DEMO_FOTO_SESSIONS_MAP, isDemoClientId } from '../../lib/demo-data-extr
 import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 import { Modal } from '../shared/Modal'
 import { ProgressRing } from '../shared/ProgressRing'
+import { FormaClienteCard } from './FormaClienteCard'
 
 
 interface Props {
@@ -147,12 +148,14 @@ const fmtKg = (n: number) => String(n).replace('.', ',')
 const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
 
 // ── Resumen: la conclusión primero, los datos después ──────
-function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso }: {
+function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso, formaClientId }: {
   logs: TrainingLogs; plan?: TrainingPlan | null
   pesoActual?: number; pesoCambio: number | null
   onGo: (t: 'records' | 'peso') => void
   onOpenCalendar?: () => void
   showRecords: boolean; showPeso: boolean
+  /** Si el entrenador comparte "Riesgo", el id del cliente para la tarjeta "Tu forma". */
+  formaClientId?: string
 }) {
   const s = useMemo(() => {
     const bests = collectSessionBests(logs, plan)
@@ -221,6 +224,8 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, 
         {s.racha >= 2 && <p className="text-sm text-accent font-semibold mt-1.5">🔥 {s.racha} días seguidos entrenando</p>}
         {onOpenCalendar && <button onClick={onOpenCalendar} className="mt-3 text-sm font-semibold text-accent hover:underline">Ver calendario →</button>}
       </div>
+
+      {formaClientId && <FormaClienteCard clientId={formaClientId} logs={logs} />}
 
       {showPeso && pesoActual !== undefined && (
         <div className="bg-card border border-border rounded-2xl p-5">
@@ -721,7 +726,8 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
 
       {currentLeaf === 'resumen'    && (
         <ResumenTab logs={logs} plan={plan} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab} onOpenCalendar={onOpenCalendar}
-          showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')} />
+          showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')}
+          formaClientId={metricasVisibles.includes('fatiga') ? clientId : undefined} />
       )}
       {currentLeaf === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
       {currentLeaf === 'records'    && <RecordsTab    logs={logs} plan={plan} />}

@@ -1178,11 +1178,12 @@ export const DEMO_SESSION_LOAD_LUCAS: DemoSessionLoadRow[] = LUCAS_SESSIONS.map(
   duration_min: s.duration, rpe: s.rpe,
 }))
 // Los demás: carga interna razonable (ACWR en zona óptima 0.8-1.3), salvo Carlos,
+// María y Diego con ~9 semanas de historial: la tendencia Fitness/Fatiga/Forma pide 6 para dar estado.
 // que cae en picado porque lleva días sin entrenar (ACWR bajo = desentrenamiento).
 const loadRows = (sessions: [number, number, number][]): DemoSessionLoadRow[] =>
   sessions.map(([offset, duration, rpe]) => ({ date: new Date(Date.now() - offset * 86400000).toISOString().split('T')[0], duration_min: duration, rpe }))
-export const DEMO_SESSION_LOAD_MARIA = loadRows([[1, 65, 7], [3, 60, 7], [5, 70, 8], [8, 60, 7], [10, 65, 7], [12, 60, 7], [15, 65, 7], [17, 60, 6], [19, 70, 7], [22, 60, 7], [24, 65, 7], [26, 60, 6], [29, 65, 7], [31, 60, 7]])
-export const DEMO_SESSION_LOAD_DIEGO = loadRows([[0, 85, 8], [1, 80, 8], [3, 90, 8], [5, 80, 7], [7, 85, 8], [8, 85, 8], [10, 90, 8], [12, 80, 7], [14, 85, 8], [15, 85, 8], [17, 90, 8], [19, 80, 7], [21, 85, 8], [22, 80, 8], [24, 90, 8], [26, 80, 7], [28, 85, 8]])
+export const DEMO_SESSION_LOAD_MARIA = loadRows([[1, 65, 7], [3, 60, 7], [5, 70, 8], [8, 60, 7], [10, 65, 7], [12, 60, 7], [15, 65, 7], [17, 60, 6], [19, 70, 7], [22, 60, 7], [24, 65, 7], [26, 60, 6], [29, 65, 7], [31, 60, 7], [33, 65, 7], [36, 60, 7], [38, 60, 6], [40, 65, 7], [43, 60, 7], [45, 65, 7], [47, 60, 6], [50, 60, 7], [52, 65, 7], [54, 60, 7], [57, 60, 6], [59, 65, 7], [61, 60, 7]])
+export const DEMO_SESSION_LOAD_DIEGO = loadRows([[0, 85, 8], [1, 80, 8], [3, 90, 8], [5, 80, 7], [7, 85, 8], [8, 85, 8], [10, 90, 8], [12, 80, 7], [14, 85, 8], [15, 85, 8], [17, 90, 8], [19, 80, 7], [21, 85, 8], [22, 80, 8], [24, 90, 8], [26, 80, 7], [28, 85, 8], [29, 80, 8], [31, 85, 8], [33, 80, 7], [35, 85, 8], [36, 80, 8], [38, 85, 8], [40, 80, 7], [42, 85, 8], [43, 80, 8], [45, 85, 8], [47, 80, 7], [49, 85, 8], [50, 80, 8], [52, 85, 8], [54, 80, 7], [56, 85, 8], [57, 80, 8], [59, 85, 8], [61, 80, 7]])
 export const DEMO_SESSION_LOAD_CARLOS = loadRows([[9, 70, 6], [12, 85, 8], [11, 90, 9], [13, 85, 8], [16, 90, 9], [18, 85, 8], [20, 90, 9], [23, 85, 8], [25, 90, 9], [27, 85, 8], [30, 90, 9], [32, 85, 8]])
 export const DEMO_SESSION_LOAD_MAP: Record<string, DemoSessionLoadRow[]> = {
   'demo-client-001': DEMO_SESSION_LOAD_MARIA,
