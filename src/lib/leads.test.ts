@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, type Lead } from './leads'
+import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, validarContacto, type Lead } from './leads'
 
 const lead = (id: string, status: string, created_at: number): Lead => ({ id, name: id, email: null, phone: null, message: null, status, created_at, referred_by_client_id: null })
 
@@ -70,5 +70,22 @@ describe('alta de cliente desde un contacto', () => {
     expect(n).toContain('Mensaje: «Quiero fuerza»')
     const minimo = notasDeLead({ email: null, phone: null, message: null, created_at: Date.now() })
     expect(minimo.split('\n')).toHaveLength(1)
+  })
+})
+
+describe('validarContacto', () => {
+  it('un correo o un teléfono válidos pasan (el correo en minúsculas)', () => {
+    expect(validarContacto(' Paula@Example.COM ')).toEqual({ ok: true, email: 'paula@example.com', phone: null })
+    expect(validarContacto('+34 622 11 22 33')).toEqual({ ok: true, email: null, phone: '+34 622 11 22 33' })
+    expect(validarContacto('622112233')).toEqual({ ok: true, email: null, phone: '622112233' })
+  })
+
+  it('vacío o con basura no pasa, y dice por qué', () => {
+    expect(validarContacto('')).toMatchObject({ ok: false, error: expect.stringContaining('correo o un teléfono') })
+    expect(validarContacto('paula@')).toMatchObject({ ok: false, error: 'El correo no parece válido' })
+    expect(validarContacto('a b@c.es')).toMatchObject({ ok: false, error: 'El correo no parece válido' })
+    expect(validarContacto('123')).toMatchObject({ ok: false, error: 'El teléfono no parece válido' })
+    expect(validarContacto('hola que tal')).toMatchObject({ ok: false, error: 'El teléfono no parece válido' })
+    expect(validarContacto('1234567890123456789')).toMatchObject({ ok: false }) // demasiadas cifras
   })
 })

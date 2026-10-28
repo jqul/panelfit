@@ -244,6 +244,21 @@ export class FakeSupabase {
       // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
       case 'encuestas_pendientes': return json(route, 200, [])
       case 'get_trainer_referral_slug': return json(route, 200, null)
+      // Página pública del entrenador y su formulario de contacto. La lógica de verdad (validación, duplicados, tope por hora)
+      // la prueba supabase/hardening/tests/bloque20; aquí solo lo justo para probar la página.
+      case 'get_public_trainer_page': {
+        const e = this.rows('entrenadores').find(x => x.slug === args.p_slug && x.public_page?.activa)
+        return json(route, 200, e ? [{ displayName: e.displayName, public_page: e.public_page }] : [])
+      }
+      case 'submit_lead': {
+        const e = this.rows('entrenadores').find(x => x.slug === args.p_slug && x.public_page?.activa)
+        if (!e) return json(route, 400, { code: 'P0001', message: 'Página no encontrada o inactiva' })
+        if (!args.p_email && !args.p_phone) return json(route, 400, { code: 'P0001', message: 'Déjame un correo o un teléfono para poder contestarte' })
+        const ultimaHora = this.rows('leads').filter(l => l.trainer_id === e.uid && l.created_at > Date.now() - 3600_000).length
+        if (ultimaHora >= 10) return json(route, 400, { code: 'P0001', message: 'Demasiados mensajes en poco tiempo. Inténtalo de nuevo más tarde.' })
+        this.rows('leads').push({ id: crypto.randomUUID(), trainer_id: e.uid, name: args.p_name, email: args.p_email ?? null, phone: args.p_phone ?? null, message: args.p_message ?? null, status: 'nuevo', created_at: Date.now(), referred_by_client_id: null })
+        return empty(route)
+      }
       case 'find_trainer_by_email': return json(route, 200, null)
       case 'delete_client_data': {
         const id = args.p_client_id as string
