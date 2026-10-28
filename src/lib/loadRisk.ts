@@ -125,21 +125,43 @@ export function worseAcwr(a: ACWRSignal, b: ACWRSignal): ACWRSignal {
 
 export interface LoadTrendPoint { date: string; fitness: number; fatigue: number; form: number }
 
+/** Ventana de la carga crónica en la tendencia Fitness / Fatiga / Forma. */
+export const FITNESS_DIAS = 42
+
 /**
- * Serie temporal de Fitness (carga crónica 28d) / Fatiga (carga aguda 7d) /
+ * Serie temporal de Fitness (carga crónica 42d) / Fatiga (carga aguda 7d) /
  * Forma (fitness - fatiga), muestreada semana a semana — el mismo concepto
  * del Performance Management Chart de TrainingPeaks (CTL/ATL/TSB), aplicado
  * aquí al tonelaje de fuerza en vez de al Training Stress Score.
  */
 export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
-  const dayTonnage = buildDayTonnage(logs)
-  const firstDate = firstLoggedDate(dayTonnage)
+  return trendFromDaily(buildDayTonnage(logs), weeks, today)
+}
+
+/**
+ * La misma tendencia sobre la carga de sesión (sRPE: minutos × RPE). Ve también el
+ * cardio, la pista y la técnica, que el tonelaje no cuenta.
+ */
+export function computeSessionLoadTrend(rows: SessionLoadRow[], weeks = 12, today: Date = new Date()): LoadTrendPoint[] {
+  const dayLoad: Record<string, number> = {}
+  rows.forEach(r => { dayLoad[r.date] = (dayLoad[r.date] || 0) + r.duration_min * r.rpe })
+  return trendFromDaily(dayLoad, weeks, today)
+}
+
+function trendFromDaily(dayLoad: Record<string, number>, weeks: number, today: Date): LoadTrendPoint[] {
+  const firstDate = firstLoggedDate(dayLoad)
   if (!firstDate) return []
   const points: LoadTrendPoint[] = []
   for (let w = weeks - 1; w >= 0; w--) {
     const endDate = new Date(today); endDate.setDate(today.getDate() - w * 7)
-    const fitness = ewmaFrom(dayTonnage, endDate, firstDate, 28)
-    const fatigue = ewmaFrom(dayTonnage, endDate, firstDate, 7)
+    // Antes del primer registro no hay carga. ewmaFrom con una fecha final anterior al primer
+    // día devolvía la carga de ese primer día: rellenaba hacia atrás semanas inexistentes con
+    // una línea plana y la "rampa" de la semana siguiente salía disparada.
+    const antes = endDate.toISOString().slice(0, 10) < firstDate.toISOString().slice(0, 10)
+    // Fitness a 42 días (modelo de Banister y el de TrainingPeaks): más estable que 28, que se
+    // queda para el ACWR, donde es la ventana de la literatura de riesgo de lesión.
+    const fitness = antes ? 0 : ewmaFrom(dayLoad, endDate, firstDate, FITNESS_DIAS)
+    const fatigue = antes ? 0 : ewmaFrom(dayLoad, endDate, firstDate, 7)
     points.push({
       date: endDate.toISOString().slice(0, 10),
       fitness: Math.round(fitness),
@@ -150,6 +172,7 @@ export function computeLoadTrend(logs: TrainingLogs, weeks = 12, today: Date = n
   const firstNonZero = points.findIndex(p => p.fitness > 0 || p.fatigue > 0)
   return firstNonZero === -1 ? [] : points.slice(firstNonZero)
 }
+
 
 /** Señal de carga de entrenamiento: RIR semanal, cambio de volumen, sesiones. */
 export function computeTrainingSignal(logs: TrainingLogs): TrainingSignal {
