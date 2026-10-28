@@ -7,7 +7,9 @@ import { nombreDePila } from '../../lib/hoyResumen'
 import { isDemoClientId } from '../../lib/demoIds'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
-import { TrainingPlanView } from './TrainingPlanView'
+// Entreno, Dieta, consentimiento e instalar la app no hacen falta para enseñar Hoy: van aparte (y Entreno y Dieta
+// se precargan en cuanto el navegador está libre, para que funcionen sin conexión).
+import { TrainingPlanView, DietEditor, ConsentGate, PWAInstallBanner, usePrecargarPestanas, PestanaSinDescargar } from './client-view/pestanasDiferidas'
 // Carga perezosa: recharts es pesado (~500kb) y solo hace falta al entrar de
 // verdad en la pestaña de progreso, no con solo abrir la app.
 const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => ({ default: m.ProgresoClienteTab })))
@@ -18,8 +20,6 @@ const CuestionarioAviso = lazy(() => import('./CuestionarioAviso').then(m => ({ 
 const TareasHoy = lazy(() => import('./TareasHoy').then(m => ({ default: m.TareasHoy })))
 const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
-import { PWAInstallBanner } from './PWAInstallBanner'
-import { DietEditor } from '../shared/DietEditor'
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 import { weekIdxFromStart } from '../../lib/planWeek'
@@ -39,7 +39,6 @@ import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
-import { ConsentGate } from './ConsentGate'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -67,6 +66,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     setPendingCount(p === null ? 0 : p === 'all' ? Math.max(1, Object.keys(logsRef.current).length) : p.length)
   }, [])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
+  usePrecargarPestanas()
   const [tieneDieta, setTieneDieta] = useState(true) // hasta saber lo contrario, la pestaña está (como siempre)
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
@@ -471,9 +471,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   // Sin consentimiento vigente para datos de salud no se enseña ni se guarda nada.
   if (consent.status === 'needed' || consent.status === 'withdrawn') {
     return (
-      <ConsentGate withdrawn={consent.status === 'withdrawn'}
-        trainerName={trainerProfile.brandName || trainerProfile.displayName || 'Tu entrenador'}
-        brandColor={brandColor} onGrant={consent.grant} onLogout={logoutClient} />
+      <Suspense fallback={<Cargando />}>
+        <ConsentGate withdrawn={consent.status === 'withdrawn'}
+          trainerName={trainerProfile.brandName || trainerProfile.displayName || 'Tu entrenador'}
+          brandColor={brandColor} onGrant={consent.grant} onLogout={logoutClient} />
+      </Suspense>
     )
   }
 
@@ -529,7 +531,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       </header>
 
       <SyncIndicator syncState={syncState} pendingCount={pendingCount} onRetry={() => trySyncPendingLogs(client.id)} />
-      <PWAInstallBanner />
+      <Suspense fallback={null}><PWAInstallBanner /></Suspense>
 
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
         style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', WebkitOverflowScrolling: 'touch' }}>
@@ -564,8 +566,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'entreno' && (
               plan
-                ? <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} clientId={client.id}
-                    view={entrenoView} onViewChange={setEntrenoView} />
+                ? <PestanaSinDescargar><Suspense fallback={<Cargando />}>
+                    <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} clientId={client.id}
+                      view={entrenoView} onViewChange={setEntrenoView} />
+                  </Suspense></PestanaSinDescargar>
                 : <NoPlanView />
             )}
             {activeTab === 'progreso' && (
@@ -575,7 +579,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                   onOpenCalendar={() => { setEntrenoView('calendario'); setActiveTab('entreno') }} />
               </Suspense>
             )}
-            {activeTab === 'dieta' && <DietEditor clientId={client.id} isTrainer={false} />}
+            {activeTab === 'dieta' && (
+              <PestanaSinDescargar><Suspense fallback={<Cargando />}><DietEditor clientId={client.id} isTrainer={false} /></Suspense></PestanaSinDescargar>
+            )}
             {activeTab === 'encuesta' && <Suspense fallback={<Cargando />}><EncuestaClienteTab client={client} /></Suspense>}
             {activeTab === 'mas' && (
               <Suspense fallback={<Cargando />}>
