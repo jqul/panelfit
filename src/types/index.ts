@@ -81,6 +81,7 @@ export interface TrainingPlan {
   autoInactividad?: boolean
   diasSemana?: number  // cuántos días entrena por semana
   diasElegidos?: number[]  // 0=lun,1=mar...6=dom (elegidos por cliente)
+  fechasSesion?: Record<string, string>  // sesiones que el entrenador ha movido: "w1_d2" → "2026-11-05" (lib/fechasPlan.ts)
   macros?: { kcal: number; protein: number; carbs: number; fats: number; notaMacros?: string }
   weeks: WeekPlan[]
   programId?: string; programName?: string  // programa de plantilla asignado, si lo hay

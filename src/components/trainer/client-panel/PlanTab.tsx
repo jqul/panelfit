@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { X, Check } from 'lucide-react'
 import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs } from '../../../types'
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
@@ -9,6 +9,9 @@ import { saveHistoryCopy } from '../../../lib/planSnapshot'
 import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan'
 import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
+
+// El calendario del plan solo se descarga al abrirlo.
+const PlanCalendario = lazy(() => import('./PlanCalendario').then(m => ({ default: m.PlanCalendario })))
 
 interface ProgramTask { id: string; type: string; title: string; data?: Record<string, any> }
 interface ProgramDay { tasks: ProgramTask[] }
@@ -33,6 +36,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   const [filterTipo, setFilterTipo] = useState<string | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
+  const [vista, setVista] = useState<'semanas' | 'calendario'>('semanas')
 
   // Etiquetas del cliente
   const clientLabelIds: string[] = client.label_ids || []
@@ -258,7 +262,25 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
           </Modal>
       )}
 
-      {/* Editor del plan */}
+      {/* Semanas (el editor) o Calendario (cada sesión en su fecha, y moverlas) */}
+      {plan.weeks?.length > 0 && (
+        <div className="flex-shrink-0 mb-3 grid grid-cols-2 gap-1 p-1 bg-bg-alt rounded-xl w-full sm:w-72" role="tablist" aria-label="Vista del plan">
+          {([{ id: 'semanas', label: 'Semanas' }, { id: 'calendario', label: 'Calendario' }] as const).map(v => (
+            <button key={v.id} role="tab" aria-selected={vista === v.id} onClick={() => setVista(v.id)}
+              className={`py-1.5 rounded-lg text-sm font-semibold transition-all ${vista === v.id ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {vista === 'calendario' && plan.weeks?.length > 0 ? (
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <Suspense fallback={<p className="py-6 text-sm text-muted">Cargando calendario…</p>}>
+            <PlanCalendario plan={plan} logs={logs} clientId={client.id} onPlanChange={onPlanChange} />
+          </Suspense>
+        </div>
+      ) : (
       <div className="flex-1 overflow-hidden min-h-0">
         <TrainingPlanEditor plan={plan} onChange={onPlanChange}
           allClients={otherClients} library={library}
@@ -266,6 +288,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
           clientName={`${client.name} ${client.surname}`}
           trainerId={trainerId} />
       </div>
+      )}
     </div>
   )
 }
