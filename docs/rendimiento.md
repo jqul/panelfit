@@ -29,6 +29,14 @@ El panel del cliente había vuelto a subir con las funciones nuevas (183 de 185 
 - **Bajo demanda**: el registro/acceso (`ClientRegister`), la pestaña Más, la encuesta y el calendario se descargan al llegar a ellos. Quien ya ha entrado no los baja nunca si no los abre.
 - Presupuesto del cliente: **175 kB** (antes 185). El mayor trozo que queda es la entrada compartida: Supabase pesa ~66 kB gzip ahí dentro (Realtime y Phoenix ~16 kB, que solo usa el panel del entrenador); sacarlos exigiría una capa propia sobre el cliente de Supabase y no se ha hecho.
 
+## Tercera pasada (2026-10-28): el cliente, de 174 a 161 kB
+
+Con los cuestionarios, el calendario y las tareas el cliente volvió a rozar el límite (174 de 175 kB). Se sacaron de la carga inicial las pestañas que no hacen falta para enseñar Hoy:
+
+- **Entreno y Dieta** (`TrainingPlanView`, `DietEditor`) se descargan aparte y se precargan cuando el navegador está libre (no sin conexión ni con el ahorro de datos), como el entreno en vivo, para que estén en la caché del service worker. Si no se pudieron descargar y no hay conexión, la pestaña avisa con un botón de Reintentar en vez de romper la app (`client-view/pestanasDiferidas.tsx`).
+- **Consentimiento e instalar la app** (`ConsentGate`, `PWAInstallBanner`): casi nadie los ve, se bajan al mostrarlos.
+- Presupuesto del cliente: **165 kB** (antes 175).
+
 ## Qué se hizo
 
 - **Tipografías alojadas en el propio dominio** (`public/fonts/`, 3 ficheros `.woff2` latinos, 81 kB en total, de Google Fonts con licencia SIL OFL): estaban en un `@import` del CSS que bloquea el pintado hasta bajar otra hoja de otro dominio, y cada visita enviaba la IP del visitante a Google. Ahora no hay ninguna conexión externa, las dos de la primera pantalla se precargan y el service worker las guarda (caché primero), así que también salen sin conexión. `font-display: swap`. Si se sustituye un fichero hay que cambiarle el nombre.
