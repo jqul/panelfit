@@ -150,6 +150,9 @@ export function buildDemoNotificaciones() {
     n(6, 'demo-client-005', 'nueva_rutina', 'Plan visto por la cliente', 'Marta abrió la nueva fase de readaptación de rodilla', ago(1 * DAY + 6 * HOUR), true),
     n(7, 'demo-client-003', 'alerta_vencida', 'Recordatorio vencido', 'Laura — "Revisar medidas del mes" venció hace 2 días', ago(2 * DAY), true),
     n(8, 'demo-client-001', 'mensaje', 'Mensaje de María', '"Gracias por los ajustes del plan, ¡me noto mucho más fuerte!"', ago(3 * DAY), true),
+    // Contactos de la página pública: el aviso de uno nuevo y el recordatorio de uno que lleva más de un día esperando
+    n(9, '', 'nuevo_contacto', 'Nuevo contacto: Paula Navarro', 'Quiero empezar a entrenar fuerza, nunca he pisado un gimnasio. ¿Cómo funciona el plan online?', ago(5 * HOUR)),
+    n(10, '', 'nuevo_contacto', 'Sin contestar: Marta Díaz', 'Lleva más de un día esperando tu respuesta', ago(1 * HOUR)),
   ]
 }
 
@@ -413,8 +416,10 @@ export function buildDemoLeads() {
     l(1, 'Paula Navarro', 'paula.navarro@example.com', null, 'Quiero empezar a entrenar fuerza, nunca he pisado un gimnasio. ¿Cómo funciona el plan online?', 'nuevo', 5),
     l(2, 'Javier Ortega', null, '+34 622 11 22 33', 'Me recomendó Carlos. Me preparo para mi primer press banca en competición.', 'nuevo', 20, 'demo-client-002'),
     l(3, 'Elena Ruiz', 'elena.ruiz@example.com', '+34 633 44 55 66', 'Operada del menisco hace 3 meses, busco readaptación como la de Marta.', 'contactado', 52, 'demo-client-005'),
-    l(4, 'Sergio Blanco', 'sergio.blanco@example.com', null, '¿Precios de seguimiento mensual?', 'contactado', 120),
+    l(4, 'Sergio Blanco', 'sergio.blanco@example.com', null, '¿Precios de seguimiento mensual?', 'convertido', 120),
     l(5, 'Irene Castro', null, '+34 644 77 88 99', null, 'descartado', 240),
+    // Lleva más de un día sin contestar: la demo enseña cómo se marca (y el recordatorio que le llega al entrenador)
+    l(6, 'Marta Díaz', null, '+34 655 12 34 56', 'Vi tu página en Instagram. ¿Haces seguimiento online para powerlifting? Quiero preparar mi primera competición.', 'nuevo', 30),
   ]
 }
 

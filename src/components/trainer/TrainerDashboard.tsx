@@ -170,6 +170,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
+    if (demoClients) {
+      // La demo no escribe nada: se enseña el flujo (el contacto pasa a «Clientes») y se avisa de que no es real
+      if (leadAConvertir) { void leadsState.cambiarEstado(leadAConvertir.id, 'convertido'); setLeadAConvertir(null) }
+      setShowAdd(false)
+      toast('En la demostración no se crean clientes de verdad. En tu cuenta, aquí empezaría su plan y su acceso.', 'ok')
+      return
+    }
     setAdding(true)
     const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: notasDeLead(leadAConvertir) } : {})
     if (ok) {
