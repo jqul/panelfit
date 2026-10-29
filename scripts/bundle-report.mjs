@@ -16,7 +16,7 @@ const CHECK = process.argv.includes('--check')
 const MBIT = 1.6
 
 // Presupuestos en kB gzip. Se ajustan hacia abajo cuando se mejora; subirlos tiene que ser una decisión consciente.
-const BUDGET = { 'Landing y blog': 135, 'Cliente (/?c=token)': 165, 'Entrenador (panel)': 295 }
+const BUDGET = { 'Landing y blog': 135, 'Cliente (/?c=token)': 165, 'Entrenador (panel)': 240 }
 
 const read = f => fs.readFileSync(path.join(DIST, f))
 const gz = f => zlib.gzipSync(read(f), { level: 9 }).length

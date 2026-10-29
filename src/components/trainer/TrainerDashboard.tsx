@@ -21,19 +21,10 @@ import { ClientData, UserProfile } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
-import { TemplatesTab } from './TemplatesTab'
-import { ProgramasTab } from './ProgramasTab'
-import { MensajesTab } from './MensajesTab'
-import { InsightsTab } from './InsightsTab'
-import { AdherenciaTab } from './AdherenciaTab'
-import { BusinessDashboard } from './BusinessDashboard'
-import { CohortesTab } from './CohortesTab'
 import { BandejaTab } from './BandejaTab'
 import { ClientList } from './ClientList'
 import { useClientSelection } from './bulk/useClientSelection'
 import { sortClients, ClientSort } from '../../lib/clientStatus'
-import { EtiquetasTab } from './EtiquetasTab'
-import { CalendarTab } from './CalendarTab'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
 import { OnboardingChecklist } from './OnboardingChecklist'
@@ -43,6 +34,37 @@ import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
 
 // recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
+// Pestañas que no hacen falta para abrir el Resumen: se descargan al entrar en ellas (el panel abre antes).
+// Se precargan cuando el navegador está libre (no con el ahorro de datos): al tocarlas ya están.
+const PESTANAS = {
+  TemplatesTab: () => import('./TemplatesTab'),
+  ProgramasTab: () => import('./ProgramasTab'),
+  MensajesTab: () => import('./MensajesTab'),
+  InsightsTab: () => import('./InsightsTab'),
+  AdherenciaTab: () => import('./AdherenciaTab'),
+  BusinessDashboard: () => import('./BusinessDashboard'),
+  CohortesTab: () => import('./CohortesTab'),
+  EtiquetasTab: () => import('./EtiquetasTab'),
+  CalendarTab: () => import('./CalendarTab'),
+}
+const TemplatesTab = lazy(() => PESTANAS.TemplatesTab().then(m => ({ default: m.TemplatesTab })))
+const ProgramasTab = lazy(() => PESTANAS.ProgramasTab().then(m => ({ default: m.ProgramasTab })))
+const MensajesTab = lazy(() => PESTANAS.MensajesTab().then(m => ({ default: m.MensajesTab })))
+const InsightsTab = lazy(() => PESTANAS.InsightsTab().then(m => ({ default: m.InsightsTab })))
+const AdherenciaTab = lazy(() => PESTANAS.AdherenciaTab().then(m => ({ default: m.AdherenciaTab })))
+const BusinessDashboard = lazy(() => PESTANAS.BusinessDashboard().then(m => ({ default: m.BusinessDashboard })))
+const CohortesTab = lazy(() => PESTANAS.CohortesTab().then(m => ({ default: m.CohortesTab })))
+const EtiquetasTab = lazy(() => PESTANAS.EtiquetasTab().then(m => ({ default: m.EtiquetasTab })))
+const CalendarTab = lazy(() => PESTANAS.CalendarTab().then(m => ({ default: m.CalendarTab })))
+function usePrecargarPestanas() {
+  useEffect(() => {
+    if ((navigator as { connection?: { saveData?: boolean } }).connection?.saveData) return
+    const run = () => { Object.values(PESTANAS).forEach(cargar => cargar().catch(() => { /* se intentará al abrirla */ })) }
+    if ('requestIdleCallback' in window) { const id = window.requestIdleCallback(run, { timeout: 5000 }); return () => window.cancelIdleCallback(id) }
+    const t = setTimeout(run, 2500)
+    return () => clearTimeout(t)
+  }, [])
+}
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
 // La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
 // Encuestas: el editor, los resultados y la impresión solo se descargan al abrir la pestaña.
@@ -84,6 +106,7 @@ interface Props {
 
 export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
+  usePrecargarPestanas()
   const clientLimit = userProfile.clientLimit ?? 999
   const { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
@@ -804,15 +827,17 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 onArchive={library.archiveExercise} onRestore={library.restoreExercise} onImport={library.addExercises} />
             </Suspense>
           )}
-          {activeTab === 'templates'  && <TemplatesTab key={`tp-${seed.nonce}`} initialSearch={seedFor('templates')} trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
-          {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
-          {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
-          {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
-          {activeTab === 'programas'  && <ProgramasTab key={`pg-${seed.nonce}`} initialSearch={seedFor('programas')} trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
-          {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} contactos={{ nuevos: leadsNuevos, total: leadsState.leads.length, onVer: () => handleTabChange('contactos') }} />}
-          {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
-          {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
-          {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
+          <Suspense fallback={<div className="space-y-2 max-w-4xl">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>}>
+            {activeTab === 'templates'  && <TemplatesTab key={`tp-${seed.nonce}`} initialSearch={seedFor('templates')} trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
+            {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
+            {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
+            {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
+            {activeTab === 'programas'  && <ProgramasTab key={`pg-${seed.nonce}`} initialSearch={seedFor('programas')} trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
+            {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} contactos={{ nuevos: leadsNuevos, total: leadsState.leads.length, onVer: () => handleTabChange('contactos') }} />}
+            {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
+            {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
+            {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
+          </Suspense>
           {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
               <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando encuestas…</p>}>
@@ -822,7 +847,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           )}
           {activeTab === 'negocio' && (
             <PlanGate feature="business_dashboard" planName={userProfile.planName}>
-              <BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} />
+              <Suspense fallback={null}><BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} /></Suspense>
             </PlanGate>
           )}
           {activeTab === 'mas' && (

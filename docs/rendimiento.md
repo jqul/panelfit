@@ -37,6 +37,13 @@ Con los cuestionarios, el calendario y las tareas el cliente volvió a rozar el 
 - **Consentimiento e instalar la app** (`ConsentGate`, `PWAInstallBanner`): casi nadie los ve, se bajan al mostrarlos.
 - Presupuesto del cliente: **165 kB** (antes 175).
 
+## Cuarta pasada (2026-10-29): el panel del entrenador, de 293 a 224 kB
+
+El panel estaba a 2 kB de su límite (293 de 295). Las pestañas que no hacen falta para abrir el Resumen (Workouts, Programas, Mensajes, Insights, Adherencia, Negocio, Grupos, Etiquetas, Calendario) se descargan aparte y se precargan cuando el navegador está libre (no con el ahorro de datos), así que al tocarlas ya están.
+
+- Presupuesto del panel: **240 kB** (antes 295).
+- Efecto secundario: al cambiar cómo se reparten los trozos compartidos, el cliente pasa de 161,0 a 162,6 kB (sigue bajo sus 165).
+
 ## Qué se hizo
 
 - **Tipografías alojadas en el propio dominio** (`public/fonts/`, 3 ficheros `.woff2` latinos, 81 kB en total, de Google Fonts con licencia SIL OFL): estaban en un `@import` del CSS que bloquea el pintado hasta bajar otra hoja de otro dominio, y cada visita enviaba la IP del visitante a Google. Ahora no hay ninguna conexión externa, las dos de la primera pantalla se precargan y el service worker las guarda (caché primero), así que también salen sin conexión. `font-display: swap`. Si se sustituye un fichero hay que cambiarle el nombre.
