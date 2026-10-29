@@ -33,7 +33,7 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 - **Conditioning Library**: bloques reutilizables de acondicionamiento (EMOM, AMRAP, Tabata, For Time, circuito) con su lista de ejercicios y objetivo, añadibles a la semana con un clic.
 - **Calentamiento**: sección de calentamiento por día, independiente de los ejercicios principales.
 - **Plantillas de workout**: guardar un plan como plantilla reutilizable para otros clientes, con tipo/etiquetas.
-- **Marketplace de plantillas**: marcar una plantilla como pública la publica en una galería visible a todos los entrenadores de PanelFit; cualquiera puede añadirla a su propia librería con un clic (duplica, no enlaza). Sin pagos todavía — solo el mecanismo de compartir.
+- **Marketplace de plantillas**: marcar una plantilla como pública la publica en una galería visible a todos los entrenadores de PanelFit; cualquiera puede añadirla a su propia librería con un clic (duplica, no enlaza). Sin pagos todavía — solo el mecanismo de compartir. **Antes de compartir se avisa de lo que se verá**: se publica la plantilla entera, así que el aviso cuenta los ejercicios de todas las semanas y los comentarios y cargas (kg o RIR) escritos, por si hay datos de un cliente o personales; hay que confirmar. Dejar de compartir no pregunta.
 - **Programas**: plantillas de varias semanas que asignan un workout distinto a cada día de la semana.
 
 ## 4. Librería de ejercicios
