@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { programToPlanWeeks, workoutTemplateIds, type ProgramWeekLike, type TemplatesById } from './programPlan'
-import type { WeekPlan, Exercise } from '../types'
+import type { WeekPlan, Exercise, DayPlan } from '../types'
 
 const ex = (name: string): Exercise => ({ name, sets: '3x8', weight: '', isMain: false, comment: '' })
-const tday = (title: string, ...names: string[]) => ({ title, focus: '', exercises: names.map(ex) })
+const tday = (title: string, ...names: string[]): DayPlan => ({ title, focus: '', exercises: names.map(ex) })
 const tweek = (days: ReturnType<typeof tday>[], extra: Partial<WeekPlan> = {}): WeekPlan => ({ label: 'S', rpe: '', isCurrent: false, days, ...extra })
 const task = (type: string, title: string, data?: Record<string, any>) => ({ type, title, data })
 const pweek = (label: string, ...days: ReturnType<typeof task>[][]): ProgramWeekLike => ({ label, days: days.map(tasks => ({ tasks })) })
@@ -88,5 +88,12 @@ describe('programToPlanWeeks', () => {
     const { weeks } = programToPlanWeeks([pweek('S1'), pweek('S2')], power)
     expect(weeks.map(w => w.isCurrent)).toEqual([true, false])
     expect(programToPlanWeeks(undefined, power)).toEqual({ weeks: [], missing: [] })
+  })
+
+  it('copia el calentamiento y la vuelta a la calma del día de la plantilla', () => {
+    const conExtras: TemplatesById = { c: { weeks: [tweek([{ ...tday('DÍA 1', 'Sentadilla'), warmupExercises: [ex('Bici')], cooldownExercises: [ex('Estirar isquios')] }])] } }
+    const dia = programToPlanWeeks([pweek('S1', [wk('c')])], conExtras).weeks[0].days[0]
+    expect(dia.warmupExercises?.map(e => e.name)).toEqual(['Bici'])
+    expect(dia.cooldownExercises?.map(e => e.name)).toEqual(['Estirar isquios'])
   })
 })

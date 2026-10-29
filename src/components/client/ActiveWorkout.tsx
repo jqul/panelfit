@@ -38,6 +38,8 @@ import { FinishedScreen } from './active-workout/FinishedScreen'
 import { semanaResumen, semanasCompletasSeguidas } from '../../lib/hoyResumen'
 import { mantenerPantallaEncendida } from '../../lib/pantallaEncendida'
 import { FocusWorkout } from './active-workout/FocusWorkout'
+import { VueltaCalma } from './active-workout/VueltaCalma'
+import { NotaAntes } from './active-workout/NotaAntes'
 
 interface Props {
   day: DayPlan
@@ -756,8 +758,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       </div>
     </div>
   ) : null
-  const topExtras = warmupBlock || dayTests.length > 0 ? (
-    <div>{warmupBlock}<DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} /></div>
+  const notaAntes = trainerMode ? null : <div className="p-3 border-b border-border"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>
+  const topExtras = notaAntes || warmupBlock || dayTests.length > 0 ? (
+    <div>{notaAntes}{warmupBlock}<DayTestsCard tests={dayTests} resultadosHoy={testResultadosHoy} onSubmit={submitTestResult} /></div>
   ) : undefined
 
   return (
@@ -779,6 +782,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
           onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
           renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
+          cooldown={(day.cooldownExercises?.length || 0) > 0 ? <VueltaCalma ejercicios={day.cooldownExercises} /> : undefined}
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
         />
       ) : (
@@ -801,6 +805,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         prevSessionVolume={prevSessionVolume}
         onToggleView={toggleView}
       />
+
+      {!trainerMode && <div className="px-4 pt-3"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (
@@ -1050,6 +1056,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
             </div>
           )
         })}
+
+        {(day.cooldownExercises?.length || 0) > 0 && <div className="px-4 pt-4"><VueltaCalma ejercicios={day.cooldownExercises} /></div>}
 
         {/* Botón finalizar flotante al fondo — siempre visible */}
         <div className="px-4 py-6">

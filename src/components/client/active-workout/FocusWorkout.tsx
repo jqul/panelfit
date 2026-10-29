@@ -38,6 +38,8 @@ interface Props {
   renderMore: (ri: number) => ReactNode
   renderRun: (ri: number) => ReactNode
   topExtras?: ReactNode
+  /** Vuelta a la calma: se enseña al tener todo hecho, justo antes de terminar. */
+  cooldown?: ReactNode
   allComplete: boolean
   /** Fondo oscuro (el del gimnasio): se decide en ActiveWorkout para pintar también las franjas de seguridad. */
   oscuro: boolean
@@ -208,7 +210,7 @@ export function FocusWorkout(p: Props) {
           <div className="px-4 pt-3">
             <button onClick={() => setShowExtras(s => !s)}
               className="w-full flex items-center justify-between px-4 py-2.5 bg-card border border-border rounded-xl text-sm font-semibold text-muted">
-              <span className="flex items-center gap-2"><Flame className="w-4 h-4 text-warn" /> Calentamiento y pruebas</span>
+              <span className="flex items-center gap-2"><Flame className="w-4 h-4 text-warn" /> Antes de empezar</span>
               {showExtras ? <ChevronUp className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             {showExtras && <div className="mt-2 rounded-xl overflow-hidden border border-border">{p.topExtras}</div>}
@@ -345,6 +347,7 @@ export function FocusWorkout(p: Props) {
             </div>
 
             {/* Con todo hecho, cerrar la sesión es lo siguiente: botón grande, verde */}
+            {p.allComplete && p.cooldown && <div className="px-4 mt-3">{p.cooldown}</div>}
             {p.allComplete && (
               <div className="px-4 mt-3">
                 <button onClick={p.onFinishClick}

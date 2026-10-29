@@ -76,6 +76,7 @@ export function TrainingPlanEditor({
   const [showSeriesInfo, setShowSeriesInfo] = useState(false)
   const [showSeriesManager, setShowSeriesManager] = useState(false)
   const [openWarmup, setOpenWarmup] = useState<Record<number, boolean>>({})
+  const [openCooldown, setOpenCooldown] = useState<Record<number, boolean>>({})
   const [showBlockPicker, setShowBlockPicker] = useState(false)
   const [showBlockManager, setShowBlockManager] = useState(false)
   const [dragEx, setDragEx] = useState<{ di: number; ri: number } | null>(null)
@@ -769,6 +770,28 @@ export function TrainingPlanEditor({
                           🏃 Añadir carrera
                         </button>
                       </div>
+
+                      {/* VUELTA A LA CALMA — al final, con la misma lista que el calentamiento */}
+                      <WarmupSection
+                        tipo="vuelta"
+                        warmupExercises={day.cooldownExercises || []}
+                        isOpen={!!openCooldown[di]}
+                        onToggle={() => setOpenCooldown(p => ({ ...p, [di]: !p[di] }))}
+                        library={library}
+                        onAdd={(ex) => updateDay(activeWeek, di, { cooldownExercises: [...(day.cooldownExercises || []), ex] })}
+                        onUpdate={(ri, u) => {
+                          const cooldownExercises = [...(day.cooldownExercises || [])]
+                          cooldownExercises[ri] = { ...cooldownExercises[ri], ...u }
+                          updateDay(activeWeek, di, { cooldownExercises })
+                        }}
+                        onDelete={(ri) => updateDay(activeWeek, di, { cooldownExercises: (day.cooldownExercises || []).filter((_, i) => i !== ri) })}
+                        onMove={(fromRi, toRi) => {
+                          const cooldownExercises = [...(day.cooldownExercises || [])]
+                          const [moved] = cooldownExercises.splice(fromRi, 1)
+                          cooldownExercises.splice(toRi, 0, moved)
+                          updateDay(activeWeek, di, { cooldownExercises })
+                        }}
+                      />
 
                       <DayTestsSection
                         testIds={day.testIds || []}
