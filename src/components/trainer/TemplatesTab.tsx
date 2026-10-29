@@ -5,13 +5,14 @@ import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
 import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
+import { Modal } from '../shared/Modal'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 import { parseWorkoutExcel } from '../../lib/importWorkout'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural } from '../../lib/workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, contenidoQueSePublica } from '../../lib/workoutList'
 
 interface Props {
   trainerId: string
@@ -146,8 +147,15 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
     if (trainerId !== DEMO_TRAINER_ID) localStorage.setItem(LS_KEY(trainerId), JSON.stringify(updated))
   }
 
+  // Compartir publica la plantilla entera (comentarios y cargas incluidos): antes de hacerlo se enseña qué se verá.
+  const [aCompartir, setACompartir] = useState<TrainingTemplate | null>(null)
   const togglePublic = async (tmpl: TrainingTemplate) => {
-    const updated = { ...tmpl, isPublic: !tmpl.isPublic }
+    if (!tmpl.isPublic) { setACompartir(tmpl); return }
+    await publicar(tmpl, false)
+  }
+  const publicar = async (tmpl: TrainingTemplate, publico: boolean) => {
+    setACompartir(null)
+    const updated = { ...tmpl, isPublic: publico }
     await persist(updated)
     toast(updated.isPublic ? `"${tmpl.name}" ahora es público ✓` : `"${tmpl.name}" ya no es público`, 'ok')
   }
@@ -403,14 +411,14 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
                     <p className="font-semibold truncate">{tmpl.name}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {tmpl.type && <span className="text-[11px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
-                      <p className="text-xs text-muted">{plural(stats.exercises, 'ejercicio', 'ejercicios')} · {plural(stats.days, 'día', 'días')}{stats.weeks > 1 ? ` · ${stats.weeks} sem` : ''}{upd ? ` · ${upd}` : ''}</p>
+                      <p className="text-xs text-muted">{plural(stats.exercises, 'ejercicio', 'ejercicios')}{stats.weeks > 1 ? ' por semana' : ''} · {plural(stats.days, 'día', 'días')}{stats.weeks > 1 ? ` · ${stats.weeks} sem` : ''}{upd ? ` · ${upd}` : ''}</p>
                       {tmpl.isPublic && <span className="text-[11px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => startEdit(tmpl)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
-                    <ActionMenu>
+                    <ActionMenu title={`Acciones de ${tmpl.name}`}>
                       <button onClick={() => togglePublic(tmpl)}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
                         <Globe className={`w-3.5 h-3.5 flex-shrink-0 ${tmpl.isPublic ? 'text-ok' : 'text-muted'}`} />
@@ -458,6 +466,35 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
         </div>
       )}
       {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onImported={() => { setShowGallery(false); loadAll() }} />}
+      {aCompartir && (() => {
+        const c = contenidoQueSePublica(aCompartir)
+        const avisos = [
+          c.comentarios > 0 && plural(c.comentarios, 'comentario', 'comentarios'),
+          c.cargas > 0 && `${plural(c.cargas, 'carga', 'cargas')} (kg o RIR)`,
+          c.descripcion && 'la descripción',
+        ].filter(Boolean) as string[]
+        return (
+          <Modal open onClose={() => setACompartir(null)} title="¿Compartir en la galería?" maxWidth="max-w-md"
+            footer={
+              <div className="flex gap-2">
+                <button onClick={() => setACompartir(null)} className="flex-1 py-3 border border-border rounded-xl text-sm font-semibold">Cancelar</button>
+                <button onClick={() => publicar(aCompartir, true)} className="flex-1 py-3 bg-ink text-white rounded-xl text-sm font-bold">Compartir</button>
+              </div>
+            }>
+            <div className="space-y-3 text-sm">
+              <p>Se publica <strong>"{aCompartir.name}"</strong> entera, con sus {plural(c.ejercicios, 'ejercicio', 'ejercicios')} en todas las semanas. Lo verá cualquier entrenador de la galería.</p>
+              {avisos.length > 0 ? (
+                <p className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3 py-2 text-xs">
+                  Ojo: también se verá {avisos.join(', ')}. Si ahí hay datos de un cliente o tuyos, quítalos antes de compartir.
+                </p>
+              ) : (
+                <p className="text-xs text-muted">No lleva comentarios ni cargas escritas, así que solo se ve la estructura.</p>
+              )}
+              <p className="text-xs text-muted">Puedes dejar de compartirlo cuando quieras desde el mismo menú.</p>
+            </div>
+          </Modal>
+        )
+      })()}
     </div>
   )
 }

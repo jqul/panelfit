@@ -6,6 +6,7 @@ import { WeekPlan } from '../types'
 interface TemplateLike {
   name: string
   type?: string
+  description?: string
   weeks?: WeekPlan[]
   label_ids?: string[]
   updatedAt?: number
@@ -60,4 +61,24 @@ export function updatedLabel(updatedAt: number | undefined, now: Date = new Date
 
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
+}
+
+const hay = (s?: string) => !!s && s.trim() !== '' && s.trim() !== '-'
+
+/**
+ * Lo que se hace visible para toda la galería al compartir un workout: se publica la plantilla entera, así que sus
+ * comentarios y sus cargas (con el RIR) también. Se cuenta en TODAS las semanas, calentamiento incluido.
+ */
+export function contenidoQueSePublica(t: Pick<TemplateLike, 'weeks' | 'description'>): { ejercicios: number; comentarios: number; cargas: number; descripcion: boolean } {
+  let ejercicios = 0, comentarios = 0, cargas = 0
+  for (const w of t.weeks || []) {
+    for (const d of w.days || []) {
+      for (const e of [...(d.exercises || []), ...(d.warmupExercises || [])]) {
+        ejercicios++
+        if (hay(e.comment)) comentarios++
+        if (hay(e.weight)) cargas++
+      }
+    }
+  }
+  return { ejercicios, comentarios, cargas, descripcion: hay(t.description) }
 }

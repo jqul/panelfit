@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery } from './workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery, contenidoQueSePublica } from './workoutList'
 import { WeekPlan } from '../types'
 
 const ex = (n: string) => ({ name: n, sets: '3×10', weight: '', isMain: false, comment: '' })
@@ -72,5 +72,26 @@ describe('matchesQuery', () => {
   it('una búsqueda vacía acepta todo', () => {
     expect(matchesQuery('Lo que sea', '')).toBe(true)
     expect(matchesQuery('Lo que sea', '   ')).toBe(true)
+  })
+})
+
+describe('contenidoQueSePublica', () => {
+  const ej = (name: string, comment = '', weight = '') => ({ name, sets: '3x5', weight, comment, isMain: false })
+  const semanas = [
+    { label: 'S1', rpe: '', isCurrent: false, days: [{ title: 'A', focus: '', exercises: [ej('Sentadilla', '🎯 Semana 1: 90 kg x 5 a RIR 3. Última vez: 85 x 5', '90kg'), ej('Press', '', ''), ej('Remo', '', '-')], warmupExercises: [ej('Movilidad', 'Sin dolor', '')] }] },
+    { label: 'S2', rpe: '', isCurrent: false, days: [{ title: 'A', focus: '', exercises: [ej('Sentadilla', '', '92.5kg')] }] },
+  ]
+
+  it('cuenta en todas las semanas, con el calentamiento, los comentarios y las cargas que se verían', () => {
+    expect(contenidoQueSePublica({ weeks: semanas, description: '' })).toEqual({ ejercicios: 5, comentarios: 2, cargas: 2, descripcion: false })
+  })
+
+  it('un guion o un espacio no cuentan como carga ni como comentario, y la descripción se avisa', () => {
+    expect(contenidoQueSePublica({ weeks: [{ ...semanas[0], days: [{ title: 'A', focus: '', exercises: [ej('Remo', '  ', '-')] }] }], description: 'Plan de Javier' }))
+      .toEqual({ ejercicios: 1, comentarios: 0, cargas: 0, descripcion: true })
+  })
+
+  it('sin semanas no rompe', () => {
+    expect(contenidoQueSePublica({})).toEqual({ ejercicios: 0, comentarios: 0, cargas: 0, descripcion: false })
   })
 })
