@@ -13,6 +13,8 @@ export interface ClienteRow {
   token: string
   auth_user_id?: string | null  // la cuenta (Auth) del cliente; null mientras no se ha registrado
   objetivo?: string
+  /** Aviso de las 18:00 con lo que le queda del día (lo enciende y apaga el propio cliente). */
+  recordatorio_diario?: boolean
   createdAt: number
 }
 
