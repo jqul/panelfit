@@ -1,35 +1,42 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
-import { getExName } from './helpers'
+import { mejoresMarcas } from '../../../lib/mejoresMarcas'
+
+// Mejores marcas por ejercicio con su podio (🥇🥈🥉: las tres mejores sesiones), de este año o de siempre.
+const MEDALLAS = ['🥇', '🥈', '🥉']
+const fecha = (f: string) => new Date(f + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
-  const records = useMemo(() => {
-    const r: Record<string, { best: number; date: string; reps: string }> = {}
-    Object.entries(logs).forEach(([key, log]) => {
-      if (!log.done) return
-      const name = getExName(key, plan)
-      if (!name) return
-      Object.values(log.sets || {}).forEach((s: any) => {
-        const w = parseFloat(s.weight) || 0
-        if (!r[name] || w > r[name].best) r[name] = { best: w, date: log.dateDone || '', reps: s.reps || '?' }
-      })
-    })
-    return Object.entries(r).filter(([, v]) => v.best > 0).sort((a, b) => b[1].best - a[1].best)
-  }, [logs, plan])
+  const anio = new Date().getFullYear()
+  const [periodo, setPeriodo] = useState<'anio' | 'siempre'>('anio')
+  const marcas = useMemo(() => mejoresMarcas(logs, plan, periodo === 'anio' ? `${anio}-01-01` : undefined), [logs, plan, periodo, anio])
 
-  if (!records.length) return <div className="text-center py-8 text-muted text-sm">Sin marcas personales registradas aún</div>
+  const chip = (activo: boolean) => `px-3 min-h-[36px] rounded-full text-xs font-semibold border transition-all ${activo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`
   return (
-    <div className="divide-y divide-border rounded-2xl border border-border overflow-hidden bg-card">
-      {records.map(([name, rec], i) => (
-        <div key={name} className="flex items-center gap-3 px-4 py-2.5">
-          <span className="text-sm w-6 text-center flex-shrink-0">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : <span className="text-xs text-muted">{i+1}</span>}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{name}</p>
-            {rec.date && <p className="text-[11px] text-muted">{new Date(rec.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>}
-          </div>
-          <div className="text-right flex-shrink-0"><p className="text-sm font-bold text-accent">{rec.best} kg</p><p className="text-[11px] text-muted">×{rec.reps}</p></div>
+    <div className="space-y-3">
+      <div className="flex gap-2" role="group" aria-label="Periodo">
+        <button onClick={() => setPeriodo('anio')} aria-pressed={periodo === 'anio'} className={chip(periodo === 'anio')}>Este año ({anio})</button>
+        <button onClick={() => setPeriodo('siempre')} aria-pressed={periodo === 'siempre'} className={chip(periodo === 'siempre')}>Siempre</button>
+      </div>
+      {!marcas.length ? (
+        <div className="text-center py-8 text-muted text-sm">{periodo === 'anio' ? `Sin marcas registradas en ${anio}` : 'Sin marcas personales registradas aún'}</div>
+      ) : (
+        <div className="divide-y divide-border rounded-2xl border border-border overflow-hidden bg-card">
+          {marcas.map(({ nombre, podio }) => (
+            <div key={nombre} className="px-4 py-3">
+              <p className="text-sm font-semibold mb-1.5">{nombre}</p>
+              <ol className="grid grid-cols-3 gap-2" aria-label={`Mejores marcas de ${nombre}`}>
+                {podio.map((m, i) => (
+                  <li key={m.fecha} className={`rounded-xl px-2 py-1.5 text-center ${i === 0 ? 'bg-accent/10' : 'bg-bg-alt/50'}`}>
+                    <p className="text-xs"><span aria-hidden>{MEDALLAS[i]} </span><span className="font-bold">{m.peso.toLocaleString('es-ES')} kg</span>{m.reps ? ` ×${m.reps}` : ''}</p>
+                    <p className="text-[11px] text-muted">{fecha(m.fecha)}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

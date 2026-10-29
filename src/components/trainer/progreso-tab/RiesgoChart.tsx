@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { computeTrainingSignal, computeReadinessSignal, combineRisk, computeACWR, computeSessionLoadACWR, worseAcwr, SessionLoadRow } from '../../../lib/loadRisk'
 import { EmptyState } from './helpers'
 import { CargaTrendChart } from './CargaTrendChart'
+import { SensacionesCard, type FilaBienestar } from './SensacionesCard'
 import { HoloRangeBar } from '../../shared/HoloRangeBar'
 import { DEMO_READINESS_MAP, DEMO_SESSION_LOAD_MAP } from '../../../lib/demo-data'
 import { localDateKey } from '../../../lib/dates'
@@ -16,31 +17,36 @@ const RISK_META = {
 }
 
 export function RiesgoChart({ clientId, logs }: { clientId: string; logs: TrainingLogs }) {
-  const [readinessRows, setReadinessRows] = useState<{ sleep: number; soreness: number; stress: number; motivation: number }[]>([])
+  // 14 días de check-ins: los 7 últimos alimentan el semáforo; los 14, la comparación de "Esfuerzo y sensaciones".
+  const [bienestar, setBienestar] = useState<FilaBienestar[]>([])
   const [loadingReadiness, setLoadingReadiness] = useState(true)
   const [sessionLoadRows, setSessionLoadRows] = useState<SessionLoadRow[]>([])
 
   useEffect(() => {
     if (clientId.startsWith('demo-client-')) {
-      setReadinessRows(DEMO_READINESS_MAP[clientId] || [])
+      setBienestar((DEMO_READINESS_MAP[clientId] || []) as FilaBienestar[])
       setSessionLoadRows(DEMO_SESSION_LOAD_MAP[clientId] || [])
       setLoadingReadiness(false)
       return
     }
-    const since = new Date(); since.setDate(since.getDate() - 7)
+    const since = new Date(); since.setDate(since.getDate() - 13)
     Promise.all([
-      supabase.from('readiness_checkins').select('sleep, soreness, stress, motivation')
+      supabase.from('readiness_checkins').select('date, sleep, soreness, stress, motivation')
         .eq('clientId', clientId).gte('date', localDateKey(since)),
       supabase.from('session_load').select('date, duration_min, rpe').eq('client_id', clientId),
     ]).then(([readinessRes, loadRes]) => {
-      setReadinessRows(readinessRes.data || [])
+      setBienestar(readinessRes.data || [])
       setSessionLoadRows(loadRes.data || [])
       setLoadingReadiness(false)
     })
   }, [clientId])
 
   const training = useMemo(() => computeTrainingSignal(logs), [logs])
-  const readiness = useMemo(() => computeReadinessSignal(readinessRows), [readinessRows])
+  const readiness = useMemo(() => {
+    const desde = new Date(); desde.setDate(desde.getDate() - 7)
+    const d = localDateKey(desde)
+    return computeReadinessSignal(bienestar.filter(b => !b.date || b.date >= d))
+  }, [bienestar])
   const tonnageAcwr = useMemo(() => computeACWR(logs), [logs])
   const srpeAcwr = useMemo(() => computeSessionLoadACWR(sessionLoadRows), [sessionLoadRows])
   const acwr = useMemo(() => worseAcwr(tonnageAcwr, srpeAcwr), [tonnageAcwr, srpeAcwr])
@@ -59,9 +65,12 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
     </div>
   )
 
+  const sensaciones = <SensacionesCard cargas={sessionLoadRows} bienestar={bienestar} />
+
   if (!training.hasData && !readiness.hasData && !srpeAcwr.hasData) return (
     <div className="space-y-4">
       {trendChart}
+      {sensaciones}
       <EmptyState icon={<AlertTriangle className="w-8 h-8 opacity-30" />} text="Semáforo sin datos suficientes"
         sub="Necesita RIR registrado, check-ins de readiness o RPE de sesión en la última semana" />
     </div>
@@ -72,6 +81,7 @@ export function RiesgoChart({ clientId, logs }: { clientId: string; logs: Traini
   return (
     <div className="space-y-4">
       {trendChart}
+      {sensaciones}
 
       <div className="rounded-2xl p-5 text-center" style={{ backgroundColor: meta.bg }}>
         <p className="text-3xl mb-1">{meta.emoji}</p>
