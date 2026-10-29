@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION } from '../../lib/intakeQuestions'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION, respuestasDeAdmision } from '../../lib/intakeQuestions'
 import { recordConsent } from '../../lib/consent'
 import { ConsentFields } from './ConsentFields'
 
@@ -133,12 +133,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     setLoading(true)
     // Primero el consentimiento: el cuestionario de salud no se guarda sin él.
     await recordConsent(clientId, true, consentFotos)
-    const respuestas = [
-      ...PARQ_QUESTIONS.map((pregunta, i) => ({
-        pregunta, respuesta: parqAnswers[i] === true ? 'Sí' : parqAnswers[i] === false ? 'No' : 'Sin responder'
-      })),
-      ...INTAKE_FREE_QUESTIONS.map(q => ({ pregunta: q.label, respuesta: freeAnswers[q.key]?.trim() || 'Sin responder' })),
-    ]
+    const respuestas = respuestasDeAdmision(parqAnswers, freeAnswers)
     await supabase.from('checkins').insert({
       id: crypto.randomUUID().replace(/-/g, ''),
       clientId, respuestas, tipo: 'intake', createdAt: Date.now(),
@@ -237,7 +232,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
             {INTAKE_FREE_QUESTIONS.map(q => (
               <div key={q.key}>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">{q.label}</label>
-                <textarea value={freeAnswers[q.key] || ''} onChange={e => setFreeAnswers(a => ({ ...a, [q.key]: e.target.value }))}
+                <textarea aria-label={q.label} value={freeAnswers[q.key] || ''} onChange={e => setFreeAnswers(a => ({ ...a, [q.key]: e.target.value }))}
                   rows={2} placeholder="Opcional..."
                   className="w-full px-3.5 py-2.5 bg-card border border-border rounded-xl text-sm outline-none resize-none focus:ring-2 focus:ring-accent/20" />
               </div>

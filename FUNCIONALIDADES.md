@@ -58,7 +58,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 ## 6. Bienestar y salud del cliente
 
-- **PAR-Q + intake**: cuestionario de salud estándar (7 preguntas sí/no) más preguntas libres (lesiones, disponibilidad horaria) al darse de alta el cliente.
+- **PAR-Q + intake**: cuestionario de salud estándar (7 preguntas sí/no) más preguntas libres (lesiones, objetivo, disponibilidad horaria) al darse de alta el cliente. Tres preguntas **opcionales** ayudan a ajustar la carga desde la primera semana: tiempo y tipo de entrenamiento previo, marcas o pesos actuales y horas de sueño; solo aparecen en la ficha de admisión si el cliente las contesta (no llenan la ficha de «Sin responder»).
 - **Check-in diario de bienestar**: sueño, dolor muscular, estrés, motivación (escala 1-5), alimenta el semáforo de Riesgo.
 - **Valoraciones físicas**: ficha completa de medidas (peso, IMC, grasa corporal, masa muscular, perímetros de cintura/cadera/pecho/brazos/muslos) con histórico y notas.
 - **Hábitos**: lista de hábitos diarios por cliente (ej. "Beber 2L de agua"), con check-in diario y racha.
