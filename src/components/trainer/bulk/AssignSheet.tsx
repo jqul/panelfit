@@ -5,6 +5,8 @@ import { toast } from '../../shared/Toast'
 import { assignProgramToClients, assignWorkoutToClients, abortMessage, restoreSnapshots, type AssignOutcome, type ProgramLike, type WorkoutLike } from '../../../lib/bulkAssign'
 import { norm } from '../../../lib/globalSearch'
 import { AffectedClients, ResultView, loadPrograms, loadWorkouts } from './parts'
+import { localDateKey } from '../../../lib/dates'
+import { FechaInicioCampo } from '../FechaInicioCampo'
 import type { SheetProps } from './types'
 
 type Kind = 'programa' | 'workout'
@@ -19,6 +21,7 @@ export function AssignSheet({ trainerId, clients, onClose, onChanged, onNotify }
   const [running, setRunning] = useState(false)
   const [outcome, setOutcome] = useState<AssignOutcome | null>(null)
   const [undone, setUndone] = useState(false)
+  const [fechaInicio, setFechaInicio] = useState(localDateKey())
 
   useEffect(() => { loadPrograms(trainerId).then(setPrograms); loadWorkouts(trainerId).then(setWorkouts) }, [trainerId])
 
@@ -35,8 +38,8 @@ export function AssignSheet({ trainerId, clients, onClose, onChanged, onNotify }
     setRunning(true)
     const ids = clients.map(c => c.id)
     const res = kind === 'programa'
-      ? await assignProgramToClients(picked as ProgramLike, ids, trainerId, { skipDrafts: true })
-      : await assignWorkoutToClients(picked as WorkoutLike, ids, trainerId, { skipDrafts: true })
+      ? await assignProgramToClients(picked as ProgramLike, ids, trainerId, { skipDrafts: true, fechaInicio })
+      : await assignWorkoutToClients(picked as WorkoutLike, ids, trainerId, { skipDrafts: true, fechaInicio })
     setRunning(false)
     if (res.aborted) { toast(abortMessage(res.aborted), 'warn'); setConfirming(false); return }
     setOutcome(res)
@@ -106,6 +109,7 @@ export function AssignSheet({ trainerId, clients, onClose, onChanged, onNotify }
               </button>
             ))}
           </div>
+          <div className="px-5 sm:px-6 pt-3"><FechaInicioCampo value={fechaInicio} onChange={setFechaInicio} /></div>
           <div className="px-5 sm:px-6 py-4">
             <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />

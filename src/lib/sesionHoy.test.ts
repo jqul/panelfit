@@ -38,4 +38,15 @@ describe('sesión de hoy', () => {
     const plan = { ...base, weeks: [base.weeks[0], { ...base.weeks[1], days: [dia('Lunes'), dia('Miércoles'), dia('Viernes')] }], fechasSesion: { w1_d1: '2026-10-29' } }
     expect(getTodaySession(plan, {}, miercoles28)?.dayKey).toBe('w1_d0')
   })
+
+  it('un plan que empieza más adelante no ofrece nada todavía', () => {
+    expect(getTodaySession({ ...base, fechaInicio: '2026-11-02' }, {}, miercoles28)).toBeNull()
+    // el mismo día de inicio, sí
+    expect(getTodaySession({ ...base, fechaInicio: '2026-10-28' }, {}, miercoles28)?.dayKey).toBe('w0_d0')
+  })
+
+  it('aunque no haya empezado, una sesión movida a hoy a mano sí se ofrece', () => {
+    const plan = { ...base, fechaInicio: '2026-11-02', fechasSesion: { w0_d0: '2026-10-28' } }
+    expect(getTodaySession(plan, {}, miercoles28)?.dayKey).toBe('w0_d0')
+  })
 })

@@ -9,6 +9,7 @@ import { saveHistoryCopy } from '../../../lib/planSnapshot'
 import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan'
 import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
+import { FechaInicioCampo } from '../FechaInicioCampo'
 
 // El calendario del plan solo se descarga al abrirlo.
 const PlanCalendario = lazy(() => import('./PlanCalendario').then(m => ({ default: m.PlanCalendario })))
@@ -33,6 +34,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   borradorActivo: boolean
 }) {
   const [showProgramSelector, setShowProgramSelector] = useState(false)
+  const [fechaPrograma, setFechaPrograma] = useState(localDateKey())
   const [filterTipo, setFilterTipo] = useState<string | null>(null)
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
@@ -75,7 +77,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       weeks,
       programId: prog.id,
       programName: prog.name,
-      fechaInicio: localDateKey(),
+      fechaInicio: fechaPrograma,
+      fechasSesion: undefined, // las sesiones movidas eran del plan anterior
     }
 
     // Con el plan vivo (sin borrador) el cambio llega al cliente en cuanto se autoguarda: antes se deja
@@ -175,6 +178,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              <div className="mt-3"><FechaInicioCampo value={fechaPrograma} onChange={setFechaPrograma} /></div>
 
               {/* Filtros */}
               <div className="mt-4 space-y-2">

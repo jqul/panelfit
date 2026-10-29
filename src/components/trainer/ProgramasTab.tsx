@@ -15,6 +15,8 @@ import type { ClientData } from '../../types'
 import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES, DEMO_COHORTE_CLIENTES } from '../../lib/demo-data'
 import { restoreSnapshots } from '../../lib/planSnapshot'
 import { assignProgramToClients, abortMessage } from '../../lib/bulkAssign'
+import { localDateKey } from '../../lib/dates'
+import { FechaInicioCampo } from './FechaInicioCampo'
 
 // Solo aparece al guardar un programa que alguien tiene asignado: se descarga entonces.
 const ActualizarProgramaSheet = lazy(() => import('./bulk/ActualizarProgramaSheet').then(m => ({ default: m.ActualizarProgramaSheet })))
@@ -467,10 +469,14 @@ function ProgramEditor({ program: initial, labels, surveyTemplates, planTemplate
 }
 
 // ── Asignación masiva ───────────────────────────────────────
-function BulkAssignModal({ program, clients, trainerId, onClose }: {
-  program: Program; clients: ClientData[]; trainerId: string; onClose: () => void
+function BulkAssignModal({ program, clients, labels, trainerId, onClose }: {
+  program: Program; clients: ClientData[]; labels: TrainerLabel[]; trainerId: string; onClose: () => void
 }) {
-  const [mode, setMode] = useState<'clients' | 'group'>('clients')
+  const [mode, setMode] = useState<'clients' | 'label' | 'group'>('clients')
+  const [fechaInicio, setFechaInicio] = useState(localDateKey())
+  const [selectedLabel, setSelectedLabel] = useState('')
+  const conEtiqueta = (id: string) => clients.filter(c => c.label_ids?.includes(id))
+  const etiquetasUsadas = labels.filter(l => conEtiqueta(l.id).length > 0)
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [cohortes, setCohortes] = useState<{ id: string; name: string }[]>([])
@@ -499,6 +505,9 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
         const { data } = await supabase.from('cohorte_clientes').select('client_id').eq('cohorte_id', selectedCohorte)
         targetIds = (data || []).map(r => r.client_id)
       }
+    } else if (mode === 'label') {
+      if (!selectedLabel) { toast('Elige una etiqueta', 'warn'); return }
+      targetIds = conEtiqueta(selectedLabel).map(c => c.id)
     } else {
       targetIds = [...selectedIds]
     }
@@ -506,7 +515,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
 
     setAssigning(true)
     // El modal descarta un borrador abierto (con copia y "Deshacer"); la barra de Clientes, en cambio, lo respeta.
-    const { aborted, result, missing, undoable } = await assignProgramToClients(program, targetIds, trainerId, { skipDrafts: false })
+    const { aborted, result, missing, undoable } = await assignProgramToClients(program, targetIds, trainerId, { skipDrafts: false, fechaInicio })
     setAssigning(false)
     if (aborted) { toast(abortMessage(aborted), 'warn'); return }
     const ok = result.ok.length
@@ -524,6 +533,7 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
 
   const targetCount = mode === 'group'
     ? (selectedCohorte ? undefined : 0)
+    : mode === 'label' ? (selectedLabel ? conEtiqueta(selectedLabel).length : 0)
     : selectedIds.size
 
   return (
@@ -532,14 +542,16 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
         <button onClick={confirm} disabled={assigning || targetCount === 0}
             className="w-full py-3 bg-ink text-white rounded-xl text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-2">
             <Users className="w-4 h-4" />
-            {assigning ? 'Asignando...' : mode === 'clients' ? `Asignar a ${selectedIds.size} cliente${selectedIds.size !== 1 ? 's' : ''}` : 'Asignar a todo el grupo'}
+            {assigning ? 'Asignando...' : mode === 'group' ? 'Asignar a todo el grupo' : `Asignar a ${targetCount} cliente${targetCount !== 1 ? 's' : ''}`}
           </button>
       }>
       <p className="px-6 pt-4 text-xs text-muted">{program.name} — se publica de inmediato, sin borrador y sustituye el plan actual de cada cliente. Se guarda una copia del plan anterior en su historial y podrás deshacerlo desde el aviso.</p>
         <div className="px-6 pt-4 flex gap-2 flex-shrink-0">
           <button onClick={() => setMode('clients')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'clients' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Elegir clientes</button>
+          <button onClick={() => setMode('label')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'label' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Por etiqueta</button>
           <button onClick={() => setMode('group')} className={`flex-1 py-2 rounded-xl text-sm font-semibold border transition-all ${mode === 'group' ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>Grupo completo</button>
         </div>
+        <div className="px-6 pt-3"><FechaInicioCampo value={fechaInicio} onChange={setFechaInicio} /></div>
 
         <div className="overflow-y-auto flex-1 px-6 py-4">
           {mode === 'clients' ? (
@@ -562,6 +574,20 @@ function BulkAssignModal({ program, clients, trainerId, onClose }: {
                 ))}
               </div>
             </>
+          ) : mode === 'label' ? (
+            etiquetasUsadas.length === 0 ? (
+              <p className="text-sm text-muted text-center py-6">Ninguno de tus clientes tiene etiquetas todavía.</p>
+            ) : (
+              <div className="space-y-1" role="radiogroup" aria-label="Etiquetas">
+                {etiquetasUsadas.map(l => (
+                  <label key={l.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${selectedLabel === l.id ? 'bg-accent/10 border-accent' : 'border-border'}`}>
+                    <input type="radio" name="etiqueta" checked={selectedLabel === l.id} onChange={() => setSelectedLabel(l.id)} className="accent-accent" />
+                    <span className="text-sm flex-1">{l.emoji} {l.name}</span>
+                    <span className="text-xs text-muted">{plural(conEtiqueta(l.id).length, 'cliente', 'clientes')}</span>
+                  </label>
+                ))}
+              </div>
+            )
           ) : (
             cohortes.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">No tienes grupos creados todavía (pestaña Grupos).</p>
@@ -825,7 +851,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients, initialSearch
       )}
 
       {bulkAssignFor && (
-        <BulkAssignModal program={bulkAssignFor} clients={clients} trainerId={trainerId} onClose={() => setBulkAssignFor(null)} />
+        <BulkAssignModal program={bulkAssignFor} clients={clients} labels={labels} trainerId={trainerId} onClose={() => setBulkAssignFor(null)} />
       )}
       {actualizar && (
         <Suspense fallback={null}>

@@ -24,6 +24,8 @@ export function getTodaySession(plan: TrainingPlan, logs: TrainingLogs, now: Dat
     const day = plan.weeks?.[w]?.days?.[di]
     if (day && !isDone(w, di)) return { day, weekIdx: w, dayIdx: di, dayKey: `w${w}_d${di}` }
   }
+  // Plan que aún no ha empezado (se asignó con fecha de inicio futura): nada que entrenar todavía.
+  if (plan.fechaInicio && plan.fechaInicio > hoy) return null
   const movidaAOtroDia = (di: number) => { const f = movidas[`w${weekIdx}_d${di}`]; return !!f && f !== hoy }
 
   const currentWeek = plan.weeks?.[weekIdx]
