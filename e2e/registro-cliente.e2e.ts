@@ -25,6 +25,8 @@ test('un cliente nuevo se registra, da su consentimiento y entra a su panel', as
   await salud.check()
   await page.getByLabel(/He leído y acepto el descargo/).check()
   await page.getByLabel('Firma: nombre completo').fill('María García')
+  await page.getByLabel(/Marcas o pesos actuales/).fill('Sentadilla 80 kg x 5')
+  await page.getByLabel(/Cuántas horas duermes/).fill('6')
   await expect(continuar).toBeEnabled()
   await continuar.click()
 
@@ -36,6 +38,11 @@ test('un cliente nuevo se registra, da su consentimiento y entra a su panel', as
   expect(client.auth_user_id).toBeTruthy()
   expect(fake.rows('consentimientos')).toMatchObject([{ clientId: ids.client, salud: true, fotos: false, version: '2026-10' }])
   expect(fake.rows('checkins')).toMatchObject([{ clientId: ids.client, tipo: 'intake' }])
+  // Las opcionales contestadas se guardan; la que dejó en blanco (experiencia) no aparece como «Sin responder»
+  const respuestas = (fake.rows('checkins')[0].respuestas as { pregunta: string; respuesta: string }[])
+  expect(respuestas[respuestas.length - 2]).toMatchObject({ pregunta: expect.stringMatching(/Marcas o pesos actuales/), respuesta: 'Sentadilla 80 kg x 5' })
+  expect(respuestas[respuestas.length - 1]).toMatchObject({ pregunta: expect.stringMatching(/Cuántas horas duermes/), respuesta: '6' })
+  expect(respuestas.some(r => /Cuánto tiempo llevas entrenando/.test(r.pregunta))).toBe(false)
   expect(fake.rows('waivers')).toMatchObject([{ clientId: ids.client, signed_name: 'María García' }])
 })
 
