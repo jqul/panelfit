@@ -4,7 +4,7 @@ import { toast } from '../shared/Toast'
 import {
   Plus, Trash2, Copy, ChevronDown, ChevronUp, ArrowLeft,
   Save, X, Check, Dumbbell, Timer, Camera, ClipboardList,
-  MessageSquare, Video, Calendar, Tag, Users, Search, MoreHorizontal
+  MessageSquare, Video, FileText, Calendar, Tag, Users, Search, MoreHorizontal
 } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { Modal } from '../shared/Modal'
@@ -24,7 +24,7 @@ const ActualizarProgramaSheet = lazy(() => import('./bulk/ActualizarProgramaShee
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
   id: string
-  type: 'workout' | 'cardio' | 'evolucion' | 'formulario' | 'mensaje' | 'video'
+  type: 'workout' | 'cardio' | 'evolucion' | 'formulario' | 'mensaje' | 'video' | 'documento'
   title: string
   data: Record<string, any>
 }
@@ -57,6 +57,7 @@ const TASK_TYPES = [
   { id: 'formulario', label: 'Formulario', color: '#7d7468', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: ClipboardList },
   { id: 'mensaje', label: 'Mensaje', color: '#5a4a38', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: MessageSquare },
   { id: 'video', label: 'Vídeo', color: '#b39d82', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Video },
+  { id: 'documento', label: 'Documento', color: '#8f7a62', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: FileText },
 ] as const
 
 const TIPOS_DEFAULT = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
@@ -112,6 +113,8 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
   const [mensaje, setMensaje] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
   const [videoTitle, setVideoTitle] = useState('')
+  const [docUrl, setDocUrl] = useState('')
+  const [docTitle, setDocTitle] = useState('')
 
   const saveTask = (type: string) => {
     let task: ProgramTask | null = null
@@ -133,6 +136,10 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
     else if (type === 'video') {
       if (!videoUrl.trim()) return
       task = { id: `t_${Date.now()}`, type: 'video', title: videoTitle || 'Vídeo', data: { url: videoUrl, title: videoTitle } }
+    }
+    else if (type === 'documento') {
+      if (!/^https:\/\//i.test(docUrl.trim()) || !docTitle.trim()) return
+      task = { id: `t_${Date.now()}`, type: 'documento', title: docTitle.trim(), data: { url: docUrl.trim() } }
     }
     if (task) { onAdd(task); onClose() }
   }
@@ -282,6 +289,18 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
                         <button onClick={() => saveTask('video')} disabled={!videoUrl.trim()}
                           className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir vídeo</button>
+                      </div>
+                    )}
+                    {type.id === 'documento' && (
+                      <div className="space-y-2">
+                        <input value={docTitle} onChange={e => setDocTitle(e.target.value)} maxLength={80}
+                          placeholder="Qué es (p. ej. Guía de movilidad)" aria-label="Título del documento"
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                        <input value={docUrl} onChange={e => setDocUrl(e.target.value)} type="url"
+                          placeholder="Enlace https:// (PDF, Google Drive…)" aria-label="Enlace del documento"
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                        <button onClick={() => saveTask('documento')} disabled={!docTitle.trim() || !/^https:\/\//i.test(docUrl.trim())}
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir documento</button>
                       </div>
                     )}
                   </div>
@@ -515,7 +534,7 @@ function BulkAssignModal({ program, clients, labels, trainerId, onClose }: {
 
     setAssigning(true)
     // El modal descarta un borrador abierto (con copia y "Deshacer"); la barra de Clientes, en cambio, lo respeta.
-    const { aborted, result, missing, undoable } = await assignProgramToClients(program, targetIds, trainerId, { skipDrafts: false, fechaInicio })
+    const { aborted, result, missing, undoable, deshacerTareas } = await assignProgramToClients(program, targetIds, trainerId, { skipDrafts: false, fechaInicio })
     setAssigning(false)
     if (aborted) { toast(abortMessage(aborted), 'warn'); return }
     const ok = result.ok.length
@@ -524,6 +543,7 @@ function BulkAssignModal({ program, clients, labels, trainerId, onClose }: {
       undoable.length ? {
         label: 'Deshacer',
         onClick: async () => {
+          await deshacerTareas?.()
           const n = await restoreSnapshots(undoable)
           toast(n === undoable.length ? `Plan anterior restaurado en ${n} cliente${n > 1 ? 's' : ''} ✓` : `Solo se pudo restaurar ${n}/${undoable.length}; el resto está en el historial del plan`, n === undoable.length ? 'ok' : 'warn')
         },
@@ -564,11 +584,13 @@ function BulkAssignModal({ program, clients, labels, trainerId, onClose }: {
               <div className="space-y-1 border border-border rounded-xl p-2 max-h-64 overflow-y-auto">
                 {filteredClients.length === 0 && <p className="text-sm text-muted text-center py-3">Sin resultados</p>}
                 {filteredClients.map(c => (
+                  // Toda la fila marca (antes solo el cuadradito: tocar el nombre no hacía nada)
                   <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-bg-alt cursor-pointer">
-                    <div onClick={() => toggle(c.id)}
-                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-border'}`}>
+                    <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggle(c.id)} className="sr-only peer" />
+                    <span aria-hidden
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all peer-focus-visible:ring-2 peer-focus-visible:ring-accent ${selectedIds.has(c.id) ? 'border-accent bg-accent' : 'border-border'}`}>
                       {selectedIds.has(c.id) && <Check className="w-3 h-3 text-white" />}
-                    </div>
+                    </span>
                     <span className="text-sm truncate">{c.name} {c.surname}</span>
                   </label>
                 ))}

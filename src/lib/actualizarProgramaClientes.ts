@@ -6,6 +6,8 @@ import { loadProgramTemplates } from './programTemplates'
 import { isDemoTrainerId } from './demoIds'
 import { assign, readPlanRows, type AssignOutcome, type ProgramLike } from './bulkAssign'
 import { mezclarPrograma, tieneCambiosPropios } from './actualizarPrograma'
+import { tareasDePrograma } from './tareasPrograma'
+import { sincronizarTareasPrograma } from './sincronizarTareasPrograma'
 import type { TrainingLogs, WeekPlan } from '../types'
 
 // Actualizar un programa ya asignado.
@@ -64,8 +66,16 @@ export async function clientesDelPrograma(antes: ProgramLike, ahora: ProgramLike
 
 /** Escribe el programa actualizado a los clientes elegidos (los que tienen borrador se omiten). */
 export async function actualizarProgramaEnClientes(program: ProgramLike, d: Destinatarios, ids: string[], trainerId: string, hoy = localDateKey()): Promise<AssignOutcome> {
-  return assign(`${program.name} (actualizado)`, ids, isDemoTrainerId(trainerId), { skipDrafts: true }, (clientId, existing) => {
+  const inicio: Record<string, string> = {} // fecha de inicio de cada cliente, para fechar sus tareas
+  const demo = isDemoTrainerId(trainerId)
+  const out = await assign(`${program.name} (actualizado)`, ids, demo, { skipDrafts: true }, (clientId, existing) => {
+    inicio[clientId] = existing?.fechaInicio || hoy
     if (!existing) return { clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30, weeks: JSON.parse(JSON.stringify(d.nuevas)) as WeekPlan[], programId: program.id, programName: program.name, fechaInicio: hoy }
     return mezclarPrograma(existing, d.nuevas, d.logs[clientId], hoy, program.name).plan
   }, d.missing)
+  // Las tareas con fecha del programa por venir se rehacen con el programa nuevo (las hechas o pasadas no se tocan).
+  if (!demo && out.result.ok.length) {
+    out.deshacerTareas = await sincronizarTareasPrograma(out.result.ok.map(clientId => ({ clientId, tareas: tareasDePrograma(program.weeks, inicio[clientId] || hoy, program.id) })), hoy)
+  }
+  return out
 }

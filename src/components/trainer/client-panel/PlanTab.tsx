@@ -10,6 +10,8 @@ import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan
 import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
 import { FechaInicioCampo } from '../FechaInicioCampo'
+import { tareasDePrograma } from '../../../lib/tareasPrograma'
+import { sincronizarTareasPrograma } from '../../../lib/sincronizarTareasPrograma'
 
 // El calendario del plan solo se descarga al abrirlo.
 const PlanCalendario = lazy(() => import('./PlanCalendario').then(m => ({ default: m.PlanCalendario })))
@@ -87,12 +89,15 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
     if (!borradorActivo && trainerId !== DEMO_TRAINER_ID) await saveHistoryCopy(client.id, { P: previous }, prog.name)
 
     onPlanChange(newPlan)
+    // Cardio, vídeos, documentos… del programa, como tareas con fecha (las del programa anterior por venir, fuera)
+    const deshacerTareas = trainerId === DEMO_TRAINER_ID ? null
+      : await sincronizarTareasPrograma([{ clientId: client.id, tareas: tareasDePrograma(prog.weeks, fechaPrograma, prog.id) }])
     setShowProgramSelector(false)
     setAssigning(false)
     if (missing.length) toast(`${missing.length === 1 ? 'Un workout del programa ya no existe' : `${missing.length} workouts del programa ya no existen`} (${missing.join(', ')}): esos días quedan sin ejercicios`, 'warn')
     toast(`Programa "${prog.name}" asignado ✓`, 'ok', {
       label: 'Deshacer',
-      onClick: () => { onPlanChange(previous); toast('Plan anterior restaurado ✓', 'ok') },
+      onClick: async () => { await deshacerTareas?.(); onPlanChange(previous); toast('Plan anterior restaurado ✓', 'ok') },
     })
   }
 

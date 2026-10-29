@@ -6,6 +6,8 @@ import { programToPlanWeeks, workoutTemplateIds, type ProgramWeekLike } from './
 import { loadProgramTemplates } from './programTemplates'
 import { DEMO_PLAN_MAP, DEMO_PLAN_TEMPLATES } from './demo-data'
 import { isDemoTrainerId } from './demoIds'
+import { tareasDePrograma } from './tareasPrograma'
+import { sincronizarTareasPrograma } from './sincronizarTareasPrograma'
 import { buildWorkoutPlan, partitionByDraft, emptyResult, DRAFT_SKIP_REASON, type BulkResult, type PlanRowLite } from './bulkActions'
 import type { TrainingPlan, WeekPlan } from '../types'
 
@@ -33,6 +35,8 @@ export interface AssignOutcome {
   missing: string[]
   /** Lo que hay que restaurar para deshacer lo asignado. */
   undoable: PlanRowSnapshot[]
+  /** Deshace las tareas con fecha que trajo (o quitó) la asignación (lib/sincronizarTareasPrograma.ts). */
+  deshacerTareas?: () => Promise<void>
 }
 
 const ABORT_MESSAGE: Record<NonNullable<AssignOutcome['aborted']>, string> = {
@@ -106,11 +110,17 @@ export async function assignProgramToClients(program: ProgramLike, targetIds: st
   if (templates === null) return aborted('workouts')
   const { weeks, missing } = programToPlanWeeks(program.weeks, templates)
   const fechaInicio = opts.fechaInicio || localDateKey()
-  return assign(program.name, targetIds, demo, opts, clientId => ({
+  const out = await assign(program.name, targetIds, demo, opts, clientId => ({
     clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
     weeks: JSON.parse(JSON.stringify(weeks)) as WeekPlan[],
     programId: program.id, programName: program.name, fechaInicio,
   }), missing)
+  // Cardio, vídeos, documentos… del programa llegan como tareas con fecha (las del programa anterior por venir, fuera).
+  if (!demo && out.result.ok.length) {
+    const tareas = tareasDePrograma(program.weeks, fechaInicio, program.id)
+    out.deshacerTareas = await sincronizarTareasPrograma(out.result.ok.map(clientId => ({ clientId, tareas })))
+  }
+  return out
 }
 
 export interface WorkoutLike { id: string; name: string; type: string; weeks: WeekPlan[] }
@@ -118,8 +128,12 @@ export interface WorkoutLike { id: string; name: string; type: string; weeks: We
 export async function assignWorkoutToClients(workout: WorkoutLike, targetIds: string[], trainerId: string, opts: AssignOptions): Promise<AssignOutcome> {
   if (!workout.weeks?.length) return aborted('sin-semanas')
   const fechaInicio = opts.fechaInicio || localDateKey()
-  return assign(workout.name, targetIds, isDemoTrainerId(trainerId), opts,
+  const demo = isDemoTrainerId(trainerId)
+  const out = await assign(workout.name, targetIds, demo, opts,
     (clientId, existing) => buildWorkoutPlan(clientId, workout, existing, fechaInicio), [])
+  // Ya no siguen un programa: sus tareas de programa por venir se quitan.
+  if (!demo && out.result.ok.length) out.deshacerTareas = await sincronizarTareasPrograma(out.result.ok.map(clientId => ({ clientId, tareas: [] })))
+  return out
 }
 
 export { restoreSnapshots }
