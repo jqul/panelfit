@@ -243,6 +243,11 @@ export class FakeSupabase {
       }
       // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
       case 'encuestas_pendientes': return json(route, 200, [])
+      case 'recordatorio_diario_cliente': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        if (c) c.recordatorio_diario = !!args.p_activo
+        return json(route, 200, !!c)
+      }
       case 'get_trainer_referral_slug': return json(route, 200, null)
       // Página pública del entrenador y su formulario de contacto. La lógica de verdad (validación, duplicados, tope por hora)
       // la prueba supabase/hardening/tests/bloque20; aquí solo lo justo para probar la página.
