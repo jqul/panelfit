@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   exerciseOrigin, inferMaterial, materialOf, huecos, estadoFicha, filtrar, recomendados, resumen, materialCounts, nombreDeCopia, esPendiente,
-  porRelevancia, type LibEx,
+  porRelevancia, type LibEx, coincideEtiquetas,
 } from './exerciseLibrary'
 
 const ex = (id: string, name: string, extra: Partial<LibEx> = {}): LibEx => ({ id, name, ...extra })
@@ -112,5 +112,20 @@ describe('duplicar', () => {
     expect(nombreDeCopia('Press militar', ['Press militar', 'press MILITAR (copia)'])).toBe('Press militar (copia 2)')
     expect(nombreDeCopia('Press militar (copia)', ['Press militar', 'Press militar (copia)'])).toBe('Press militar (copia 2)')
     expect(nombreDeCopia('Jalón', [])).toBe('Jalón (copia)')
+  })
+})
+
+describe('coincideEtiquetas', () => {
+  it('sin etiquetas elegidas no filtra', () => {
+    expect(coincideEtiquetas(undefined, [], 'todas')).toBe(true)
+  })
+  it('«alguna»: basta con una de las elegidas', () => {
+    expect(coincideEtiquetas(['rodilla', 'casa'], ['casa', 'gym'], 'cualquiera')).toBe(true)
+    expect(coincideEtiquetas(['rodilla'], ['casa', 'gym'], 'cualquiera')).toBe(false)
+  })
+  it('«todas»: tiene que tenerlas todas', () => {
+    expect(coincideEtiquetas(['rodilla', 'casa', 'gym'], ['casa', 'gym'], 'todas')).toBe(true)
+    expect(coincideEtiquetas(['casa'], ['casa', 'gym'], 'todas')).toBe(false)
+    expect(coincideEtiquetas(undefined, ['casa'], 'todas')).toBe(false)
   })
 })

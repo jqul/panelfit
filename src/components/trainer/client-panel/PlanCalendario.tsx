@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, CalendarRange, MoveHorizontal, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarRange, MoveHorizontal, Plus, Copy } from 'lucide-react'
 import type { TrainingLogs, TrainingPlan } from '../../../types'
 import { lunesDe, sumarDias, lunesDeSemana } from '../../../lib/fechasPlan'
-import { sesionesDelPlan, moverSesion, type SesionFechada } from '../../../lib/moverSesiones'
+import { sesionesDelPlan, moverSesion, copiarSesion, semanaDeFecha, type SesionFechada } from '../../../lib/moverSesiones'
 import { tareasDelDia, ICONO_TAREA, describirRepeticion, diaAnterior, type Tarea } from '../../../lib/tareas'
 import { useTareasCliente } from '../../../hooks/useTareasCliente'
 import { TareaForm } from './TareaForm'
 import { localDateKey } from '../../../lib/dates'
 import { supabase } from '../../../lib/supabase'
 import { isDemoClientId } from '../../../lib/demoIds'
+import { toast } from '../../shared/Toast'
 
 // El plan del cliente sobre un calendario de verdad: cada sesión en su fecha (hecha, a medias, sin hacer o por
 // venir) y las ausencias que ha avisado. Se mueve una sesión arrastrándola a otro día o tocándola y eligiendo
@@ -78,6 +79,14 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
   const mover = (s: SesionFechada, fecha: string | null) => {
     onPlanChange(moverSesion(plan, s.w, s.d, fecha))
     setElegida(null)
+  }
+  // Copiar: la misma sesión otro día más (repetir un entreno, añadir uno extra). Solo dentro de las semanas del plan.
+  const copiar = (s: SesionFechada, fecha: string) => {
+    const nuevo = copiarSesion(plan, s.w, s.d, fecha)
+    if (!nuevo) return
+    onPlanChange(nuevo)
+    setElegida(null)
+    toast(`«${s.titulo}» copiada al ${fmt(fecha, { weekday: 'long', day: 'numeric', month: 'long' })} ✓`, 'ok')
   }
   const abrirTarea = (p: PanelTarea) => { setElegida(null); setPanelTarea(p) }
   const tareaAbierta: Tarea | null = (panelTarea?.id && tareas.find(t => t.id === panelTarea.id)) || null
@@ -216,17 +225,23 @@ export function PlanCalendario({ plan, logs, clientId, onPlanChange }: {
             <p className="text-sm font-semibold">{sel.titulo} <span className="text-muted font-normal">· {plan.weeks[sel.w]?.label || `Semana ${sel.w + 1}`}</span></p>
             <p className="text-xs text-muted mt-0.5">{sel.hechaEl ? `La hizo el ${fmt(sel.hechaEl, { weekday: 'long', day: 'numeric', month: 'long' })}` : sel.fecha ? `${sel.propuesta ? 'Propuesta' : 'Ahora'}: ${fmt(sel.fecha, { weekday: 'long', day: 'numeric', month: 'long' })}${sel.movida ? ' (movida)' : ''}${sel.propuesta ? ' — fíjala para que el cliente la vea con fecha' : ''}` : 'Sin fecha en el plan'}</p>
           </div>
-          {sel.hechaEl ? (
-            <button onClick={() => setElegida(null)} className="px-3 py-2 border border-border rounded-xl text-sm text-muted hover:text-ink">Cerrar</button>
-          ) : (
           <div className="flex flex-wrap items-center gap-2">
             <input type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} aria-label="Nueva fecha"
               className="px-3 py-2 bg-bg border border-border rounded-xl text-sm" />
-            <button onClick={() => nuevaFecha && mover(sel, nuevaFecha)} disabled={!nuevaFecha || (nuevaFecha === sel.fecha && !sel.propuesta)}
-              className="px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Mover aquí</button>
-            {sel.movida && <button onClick={() => mover(sel, null)} className="px-3 py-2 border border-border rounded-xl text-sm text-muted hover:text-ink">Volver a su día</button>}
-            <button onClick={() => setElegida(null)} className="px-3 py-2 text-sm text-muted hover:text-ink">Cancelar</button>
+            {/* Lo ya entrenado no se mueve (se queda en el día en que se hizo), pero sí se puede repetir otro día */}
+            {!sel.hechaEl && (
+              <button onClick={() => nuevaFecha && mover(sel, nuevaFecha)} disabled={!nuevaFecha || (nuevaFecha === sel.fecha && !sel.propuesta)}
+                className="px-4 py-2 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Mover aquí</button>
+            )}
+            <button onClick={() => nuevaFecha && copiar(sel, nuevaFecha)} disabled={!nuevaFecha || semanaDeFecha(plan, nuevaFecha) === null}
+              className={`px-3 py-2 rounded-xl text-sm font-semibold disabled:opacity-40 ${sel.hechaEl ? 'bg-ink text-white' : 'border border-border text-ink hover:border-ink'}`}>
+              <Copy className="inline w-3.5 h-3.5 mr-1 -mt-0.5" aria-hidden />Copiar a esta fecha
+            </button>
+            {!sel.hechaEl && sel.movida && <button onClick={() => mover(sel, null)} className="px-3 py-2 border border-border rounded-xl text-sm text-muted hover:text-ink">Volver a su día</button>}
+            <button onClick={() => setElegida(null)} className="px-3 py-2 text-sm text-muted hover:text-ink">{sel.hechaEl ? 'Cerrar' : 'Cancelar'}</button>
           </div>
+          {nuevaFecha && semanaDeFecha(plan, nuevaFecha) === null && (
+            <p className="text-xs text-muted">Esa fecha queda fuera de las semanas del plan: para copiar ahí, añade antes la semana.</p>
           )}
         </div>
       )}
