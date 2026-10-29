@@ -21,6 +21,8 @@ import type { TrainingPlan, WeekPlan } from '../types'
 export interface AssignOptions {
   /** true: los clientes con borrador sin publicar se omiten. false: el borrador se descarta (con copia y deshacer). */
   skipDrafts: boolean
+  /** Día en que empieza el plan (YYYY-MM-DD). Por defecto, hoy. */
+  fechaInicio?: string
 }
 
 export interface AssignOutcome {
@@ -103,7 +105,7 @@ export async function assignProgramToClients(program: ProgramLike, targetIds: st
     : await loadProgramTemplates(trainerId, workoutTemplateIds(program.weeks))
   if (templates === null) return aborted('workouts')
   const { weeks, missing } = programToPlanWeeks(program.weeks, templates)
-  const fechaInicio = localDateKey()
+  const fechaInicio = opts.fechaInicio || localDateKey()
   return assign(program.name, targetIds, demo, opts, clientId => ({
     clientId, type: program.tipo, restMain: 180, restAcc: 90, restWarn: 30,
     weeks: JSON.parse(JSON.stringify(weeks)) as WeekPlan[],
@@ -115,7 +117,7 @@ export interface WorkoutLike { id: string; name: string; type: string; weeks: We
 
 export async function assignWorkoutToClients(workout: WorkoutLike, targetIds: string[], trainerId: string, opts: AssignOptions): Promise<AssignOutcome> {
   if (!workout.weeks?.length) return aborted('sin-semanas')
-  const fechaInicio = localDateKey()
+  const fechaInicio = opts.fechaInicio || localDateKey()
   return assign(workout.name, targetIds, isDemoTrainerId(trainerId), opts,
     (clientId, existing) => buildWorkoutPlan(clientId, workout, existing, fechaInicio), [])
 }

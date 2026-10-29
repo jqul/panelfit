@@ -59,6 +59,10 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
   const streak = streakDays(logs, new Date(), false, true)
   const todaySession = getTodaySession(plan, logs)
+  // Plan asignado con fecha de inicio futura: en vez de "Día de descanso", cuándo empieza.
+  const empiezaEl = plan.fechaInicio && plan.fechaInicio > localDateKey()
+    ? new Date(plan.fechaInicio + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
+    : null
   const weekIdx = getEffectiveWeekIdx(plan, logs)
   const weekLabel = plan.weeks?.[weekIdx]?.label
   const semana = semanaResumen(plan, logs, weekIdx)
@@ -285,8 +289,13 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             <div className="w-14 h-14 bg-bg-alt rounded-full flex items-center justify-center mx-auto mb-3">
               <Dumbbell className="w-7 h-7 text-muted opacity-40" />
             </div>
-            <h3 className="font-serif font-bold text-lg">Día de descanso</h3>
-            <p className="text-sm text-muted mt-1">{motivMsg || "Hoy toca descansar y recuperar. ¡Tu cuerpo lo necesita!"}</p>
+            {empiezaEl ? (<>
+              <h3 className="font-serif font-bold text-lg">Tu plan empieza el {empiezaEl}</h3>
+              <p className="text-sm text-muted mt-1">Ya puedes ver lo que te espera en Entreno. Hasta entonces, nada que hacer aquí.</p>
+            </>) : (<>
+              <h3 className="font-serif font-bold text-lg">Día de descanso</h3>
+              <p className="text-sm text-muted mt-1">{motivMsg || "Hoy toca descansar y recuperar. ¡Tu cuerpo lo necesita!"}</p>
+            </>)}
           </div>
         )}
 
