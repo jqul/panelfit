@@ -4,7 +4,7 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
-import { contactoDe, haceCuanto, notasDeLead, partirNombre, type Lead } from '../../lib/leads'
+import { contactoDe, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
@@ -564,6 +564,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       className="w-full px-4 py-3 border-b border-border/50 flex items-center gap-2 hover:bg-bg-alt/30 transition-colors">
                       <UserPlus className="w-3.5 h-3.5 text-accent" />
                       <h3 className="text-sm font-semibold">{leadsNuevos === 1 ? 'Un contacto nuevo' : `${leadsNuevos} contactos nuevos`}</h3>
+                      {leadsState.nuevos.some(l => llevaEsperando(l)) && <span className="text-[11px] font-bold text-warn">· sin contestar</span>}
                       <span className="ml-auto text-xs font-semibold text-accent">Ver →</span>
                     </button>
                     <div className="divide-y divide-border/50">
@@ -572,7 +573,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                           <div className="w-7 h-7 rounded-full bg-accent/10 text-accent flex items-center justify-center text-xs font-bold flex-shrink-0">{l.name[0]?.toUpperCase()}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold truncate">{l.name}</p>
-                            <p className="text-[11px] text-muted truncate">{contactoDe(l) || 'Sin datos de contacto'} · {haceCuanto(l.created_at)}</p>
+                            <p className={`text-[11px] truncate ${textoEspera(l) ? 'text-warn font-medium' : 'text-muted'}`}>{contactoDe(l) || 'Sin datos de contacto'} · {textoEspera(l) || haceCuanto(l.created_at)}</p>
                           </div>
                         </button>
                       ))}

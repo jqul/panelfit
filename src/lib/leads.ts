@@ -91,3 +91,15 @@ export function validarContacto(texto: string): ContactoValidado {
   const digitos = t.replace(/\D/g, '').length
   return /^[0-9+().\-\s]{8,25}$/.test(t) && digitos >= 8 && digitos <= 15 ? { ok: true, email: null, phone: t } : { ok: false, error: 'El teléfono no parece válido' }
 }
+
+const DIA = 86400000
+
+/** Un contacto nuevo que lleva más de un día sin contestar: se enfría. */
+export const llevaEsperando = (l: Pick<Lead, 'status' | 'created_at'>, ahora = Date.now()) => esNuevo(l) && ahora - l.created_at > DIA
+
+/** "Lleva más de un día sin contestar" / "Lleva 3 días sin contestar"; vacío si aún no toca avisar. */
+export function textoEspera(l: Pick<Lead, 'status' | 'created_at'>, ahora = Date.now()): string {
+  if (!llevaEsperando(l, ahora)) return ''
+  const dias = Math.floor((ahora - l.created_at) / DIA)
+  return dias <= 1 ? 'Lleva más de un día sin contestar' : `Lleva ${dias} días sin contestar`
+}

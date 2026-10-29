@@ -1,10 +1,13 @@
-import { test, expect } from './support/test'
+import { test, expect as expectBase } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoEntrenador } from './support/flows'
 import type { FakeSupabase } from './support/fakeSupabase'
 
 // Los contactos que llegan por la página pública se ven donde el entrenador mira (Hoy, Bandeja, su propia pestaña), no
 // solo escondidos en Ajustes.
+
+test.setTimeout(120_000) // la primera carga compila los trozos diferidos del panel
+const expect = expectBase.configure({ timeout: 30_000 })
 
 const hace = (horas: number) => Date.now() - horas * 3600_000
 const lead = (id: string, name: string, over: Record<string, unknown> = {}) => ({
@@ -133,4 +136,27 @@ test('sin página pública activa, Contactos explica qué falta y lleva a Ajuste
   await expect(page.getByText('Aún no tienes página pública activa')).toBeVisible()
   await page.getByRole('button', { name: 'Configurar mi página' }).click()
   await expect(page.getByRole('heading', { name: 'Personalización' })).toBeVisible() // Ajustes
+})
+
+test('un contacto que lleva más de un día sin contestar se marca en Hoy, en Bandeja y en su tarjeta', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  fake.seed('leads',
+    lead('viejo', 'Marta Díaz', { phone: '633 44 55 66', created_at: hace(30) }),
+    lead('reciente', 'Luis Pardo', { phone: '644 77 88 99', created_at: hace(3) }),
+  )
+  await entrarComoEntrenador(page)
+
+  // Hoy: la tarjeta avisa de que hay alguno esperando
+  await expect(page.getByText('2 contactos nuevos')).toBeVisible()
+  await expect(page.getByText('· sin contestar')).toBeVisible()
+  await expect(page.getByText(/Lleva más de un día sin contestar/).first()).toBeVisible()
+
+  // Su pestaña: solo el viejo lleva la marca
+  await page.keyboard.press('Control+K')
+  await page.getByRole('combobox', { name: 'Buscar' }).fill('ir a contactos')
+  await page.keyboard.press('Enter')
+  const viejo = page.getByRole('listitem').filter({ hasText: 'Marta Díaz' })
+  const reciente = page.getByRole('listitem').filter({ hasText: 'Luis Pardo' })
+  await expect(viejo.getByText('Lleva más de un día sin contestar')).toBeVisible()
+  await expect(reciente.getByText(/sin contestar/)).toHaveCount(0)
 })

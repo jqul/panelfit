@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, validarContacto, type Lead } from './leads'
+import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, validarContacto, llevaEsperando, textoEspera, type Lead } from './leads'
 
 const lead = (id: string, status: string, created_at: number): Lead => ({ id, name: id, email: null, phone: null, message: null, status, created_at, referred_by_client_id: null })
 
@@ -87,5 +87,23 @@ describe('validarContacto', () => {
     expect(validarContacto('123')).toMatchObject({ ok: false, error: 'El teléfono no parece válido' })
     expect(validarContacto('hola que tal')).toMatchObject({ ok: false, error: 'El teléfono no parece válido' })
     expect(validarContacto('1234567890123456789')).toMatchObject({ ok: false }) // demasiadas cifras
+  })
+})
+
+describe('contactos que llevan esperando', () => {
+  const ahora = new Date('2026-10-29T12:00:00').getTime()
+  const h = (horas: number, status = 'nuevo') => ({ status, created_at: ahora - horas * 3600000 })
+
+  it('solo un contacto nuevo con más de 24 h cuenta como "esperando"', () => {
+    expect(llevaEsperando(h(23), ahora)).toBe(false)
+    expect(llevaEsperando(h(25), ahora)).toBe(true)
+    expect(llevaEsperando(h(100, 'contactado'), ahora)).toBe(false)
+    expect(llevaEsperando(h(100, 'descartado'), ahora)).toBe(false)
+  })
+
+  it('el texto dice cuánto lleva, y nada si aún no toca', () => {
+    expect(textoEspera(h(5), ahora)).toBe('')
+    expect(textoEspera(h(30), ahora)).toBe('Lleva más de un día sin contestar')
+    expect(textoEspera(h(80), ahora)).toBe('Lleva 3 días sin contestar')
   })
 })

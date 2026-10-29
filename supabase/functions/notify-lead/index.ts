@@ -1,6 +1,7 @@
-// Avisa por push al entrenador de que ha entrado un contacto nuevo por su página pública.
-// Solo lo dispara el trigger `leads_notify` de la base de datos: el secreto 'new_lead' vive únicamente en la tabla
-// internal_webhook_secrets (nunca en el código). Usa los mismos secrets VAPID que send-push.
+// Avisa por push al entrenador de un contacto de su página pública: uno nuevo, o (con `recordatorio`) uno que lleva
+// más de un día sin contestar. Solo lo disparan el trigger `leads_notify` y la tarea programada de la base de datos:
+// el secreto 'new_lead' vive únicamente en la tabla internal_webhook_secrets (nunca en el código).
+// Usa los mismos secrets VAPID que send-push.
 import webpush from "npm:web-push@3.6.7"
 import { createClient } from "npm:@supabase/supabase-js@2"
 
@@ -42,7 +43,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { trainer_id, name } = await req.json()
+    const { trainer_id, name, recordatorio } = await req.json()
     if (typeof trainer_id !== "string" || !UUID.test(trainer_id)) {
       return new Response(JSON.stringify({ error: "trainer_id required" }), { status: 400 })
     }
@@ -52,8 +53,8 @@ Deno.serve(async (req: Request) => {
     if (error) throw error
 
     const payload = JSON.stringify({
-      title: "Nuevo contacto",
-      body: `${quien} te ha escrito desde tu página pública`,
+      title: recordatorio ? "Contacto sin contestar" : "Nuevo contacto",
+      body: recordatorio ? `${quien} lleva más de un día esperando tu respuesta` : `${quien} te ha escrito desde tu página pública`,
       url: "/",
     })
 
