@@ -45,14 +45,14 @@ const aborted = (why: NonNullable<AssignOutcome['aborted']>): AssignOutcome => (
 
 type PlanRow = PlanRowLite & { plan: { P?: TrainingPlan } | null }
 
-async function readPlanRows(ids: string[]): Promise<PlanRow[] | null> {
+export async function readPlanRows(ids: string[]): Promise<PlanRow[] | null> {
   const { data, error } = await supabase.from('planes').select('clientId, plan, plan_borrador, borrador_activo').in('clientId', ids)
   if (error) { logError('bulkAssign:read', error); return null }
   return (data || []) as PlanRow[]
 }
 
 /** Núcleo común: decide a quién, deja copia, y escribe un plan por cliente construido por `planFor`. */
-async function assign(
+export async function assign(
   name: string, targetIds: string[], demo: boolean, opts: AssignOptions,
   planFor: (clientId: string, existing: TrainingPlan | null) => TrainingPlan, missing: string[],
 ): Promise<AssignOutcome> {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
@@ -15,6 +15,9 @@ import type { ClientData } from '../../types'
 import { DEMO_TRAINER_ID, DEMO_PROGRAMS, DEMO_LABELS, DEMO_PLAN_TEMPLATES, DEMO_COHORTES, DEMO_COHORTE_CLIENTES } from '../../lib/demo-data'
 import { restoreSnapshots } from '../../lib/planSnapshot'
 import { assignProgramToClients, abortMessage } from '../../lib/bulkAssign'
+
+// Solo aparece al guardar un programa que alguien tiene asignado: se descarga entonces.
+const ActualizarProgramaSheet = lazy(() => import('./bulk/ActualizarProgramaSheet').then(m => ({ default: m.ActualizarProgramaSheet })))
 
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
@@ -591,6 +594,7 @@ export function ProgramasTab({ trainerId, onManageLabels, clients, initialSearch
   const [filterTipo, setFilterTipo]   = useState<string | null>(null)
   const [query, setQuery]             = useState(initialSearch)
   const [bulkAssignFor, setBulkAssignFor] = useState<Program | null>(null)
+  const [actualizar, setActualizar] = useState<{ antes: Program; ahora: Program } | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
 
@@ -622,6 +626,9 @@ export function ProgramasTab({ trainerId, onManageLabels, clients, initialSearch
       const { error } = await supabase.from('programs').upsert(prog, { onConflict: 'id' })
       if (error) { toast('Error al guardar', 'warn'); return }
     }
+    // Si cambió el contenido de un programa que ya existía, se ofrece llevar el cambio a quien lo tiene asignado.
+    const antes = programs.find(p => p.id === prog.id)
+    if (antes && JSON.stringify(antes.weeks) !== JSON.stringify(prog.weeks)) setActualizar({ antes, ahora: prog })
     setPrograms(ps => ps.find(p => p.id === prog.id) ? ps.map(p => p.id === prog.id ? prog : p) : [prog, ...ps])
     setEditing(null)
     toast('Programa guardado ✓', 'ok')
@@ -819,6 +826,11 @@ export function ProgramasTab({ trainerId, onManageLabels, clients, initialSearch
 
       {bulkAssignFor && (
         <BulkAssignModal program={bulkAssignFor} clients={clients} trainerId={trainerId} onClose={() => setBulkAssignFor(null)} />
+      )}
+      {actualizar && (
+        <Suspense fallback={null}>
+          <ActualizarProgramaSheet antes={actualizar.antes} ahora={actualizar.ahora} trainerId={trainerId} onClose={() => setActualizar(null)} />
+        </Suspense>
       )}
     </div>
   )
