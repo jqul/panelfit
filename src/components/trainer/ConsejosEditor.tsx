@@ -20,8 +20,11 @@ export function ConsejosEditor({ trainerId }: { trainerId: string }) {
   const demo = isDemoTrainerId(trainerId)
 
   useEffect(() => {
-    if (demo) { setCargado(true); return }
     let vigente = true
+    if (demo) {
+      import('../../lib/demo-data').then(m => { if (vigente) { setLista(limpiarConsejos(m.DEMO_TRAINER_PROFILE.consejos)); setCargado(true) } })
+      return () => { vigente = false }
+    }
     supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle().then(({ data }) => {
       if (!vigente) return
       setLista(limpiarConsejos((data?.profile as { consejos?: unknown } | null)?.consejos))

@@ -274,11 +274,14 @@ function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number, last
 }
 
 // ── PERFIL ENTRENADOR DEMO ─────────────────────────────
+// Avatar de la demo (iniciales sobre el color de la marca): sale junto a la nota de bienvenida del cliente y en Ajustes.
+const DEMO_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' fill='#1a6038'/><text x='48' y='60' font-family='Georgia,serif' font-size='40' font-weight='700' fill='#fff' text-anchor='middle'>AM</text></svg>")
+
 export const DEMO_TRAINER_PROFILE = {
   displayName: 'Alex Martínez',
   brandName: 'AlexFit Training',
   brandColor: '#1a6038',
-  brandLogo: '',
+  brandLogo: DEMO_AVATAR,
   brandBg: '',
   phone: '+34 600 000 000',
   bio: 'Entrenador personal especializado en hipertrofia y fuerza. +200 clientes transformados.',
@@ -391,6 +394,8 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
             { name: 'Elevaciones laterales', sets: '4×15', weight: '11kg', isMain: false, comment: 'Superserie con facepull: sin descanso entre los dos', videoUrl: '', restSets: 60, restAfter: 60, supersetId: 'ss-hombro', seriesType: 'superserie' },
             { name: 'Facepull', sets: '3×15', weight: '27.5kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60, supersetId: 'ss-hombro', seriesType: 'superserie' },
             { name: 'Rueda abdominal', sets: '3×10', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
+            { name: 'Press Arnold', sets: '3×10', weight: '12kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 90 },
+            { name: 'Elevaciones frontales', sets: '3×12', weight: '8kg', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
           ]
         },
       ]

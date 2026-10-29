@@ -127,6 +127,8 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 - **Formulario a prueba de basura**: pide un correo o teléfono válido (en la página y en el servidor), dice claro lo que falla, no duplica al mismo contacto en 24 h, admite como mucho 10 por hora y entrenador y tiene un campo trampa que los robots rellenan y las personas no ven.
 - **Compartir tu página**: en Contactos, la tarjeta «Tu página pública» da el enlace para copiar, el menú de compartir del móvil (WhatsApp, Instagram…) y un **código QR** para tu perfil, un cartel o una tarjeta (se descarga como SVG; se genera en el dispositivo, sin servicios externos). Si la página no está activa, dice qué falta y lleva a Ajustes.
 
+- **Modo demo** (`/?demo=1` para el panel del entrenador, `/?c=demo-maria-001` para el del cliente): datos de ejemplo, sin escribir nada. Enseña lo último: contactos de la página pública (nuevo, sin contestar desde hace más de un día y ya convertido) con sus avisos en la campanita, el flujo de «Convertir en cliente» (sin crear nada de verdad), la tarjeta de la página pública con su QR, los consejos del entrenador, el uso real de cada ejercicio en la ficha, la foto de perfil de Alex y, en el cliente, la tarjeta de hoy con anillos, «¿Poco tiempo?», modo foco oscuro y pantalla final con celebraciones.
+
 ## 15. Superadmin
 
 - Aprobar/rechazar entrenadores nuevos, asignar plan (límite de clientes) y nivel (básico/alto rendimiento).
