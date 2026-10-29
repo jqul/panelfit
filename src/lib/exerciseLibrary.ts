@@ -102,6 +102,18 @@ export function filtrar<T extends LibEx>(all: T[], f: Filtros): T[] {
   })
 }
 
+export type ModoEtiquetas = 'cualquiera' | 'todas'
+
+/**
+ * Filtro por etiquetas con varias a la vez: "cualquiera" (tiene al menos una de las elegidas) o "todas" (las tiene
+ * todas). Sin etiquetas elegidas, no filtra.
+ */
+export function coincideEtiquetas(delEjercicio: readonly string[] | undefined, elegidas: readonly string[], modo: ModoEtiquetas): boolean {
+  if (!elegidas.length) return true
+  const tiene = new Set(delEjercicio || [])
+  return modo === 'todas' ? elegidas.every(t => tiene.has(t)) : elegidas.some(t => tiene.has(t))
+}
+
 /** Más usados primero; a igualdad, favoritos y luego alfabético. */
 export function porRelevancia<T extends LibEx>(list: T[], favs: ReadonlySet<string> = new Set()): T[] {
   return [...list].sort((a, b) =>

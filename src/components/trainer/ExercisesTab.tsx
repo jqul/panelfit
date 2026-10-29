@@ -7,7 +7,7 @@ import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
 import { categoryCounts } from '../../lib/exerciseRow'
 import {
-  filtrar, recomendados, resumen, materialCounts, porRelevancia, nombreDeCopia, type Chip,
+  filtrar, recomendados, resumen, materialCounts, porRelevancia, nombreDeCopia, type Chip, coincideEtiquetas, type ModoEtiquetas,
 } from '../../lib/exerciseLibrary'
 import type { NewExercise } from '../../hooks/useExerciseLibrary'
 import { FAV_KEY, CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TagBadge, load, save, type CustomTag } from './exercises/classification'
@@ -48,7 +48,9 @@ export function ExercisesTab({ exercises, archived, trainerId, clients, initialS
   const [filterCat, setFilterCat] = useState('')
   const [filterMat, setFilterMat] = useState('')
   const [filterEsp, setFilterEsp] = useState('')
-  const [filterTag, setFilterTag] = useState('')
+  const [filterTags, setFilterTags] = useState<string[]>([])
+  const [modoTags, setModoTags] = useState<ModoEtiquetas>('cualquiera')
+  const alternarTag = (id: string) => setFilterTags(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
   const [showMoreFilters, setShowMoreFilters] = useState(false)
   const [favs, setFavs] = useState<Set<string>>(() => new Set(load(FAV_KEY(trainerId), [] as string[])))
   const [editing, setEditing]     = useState<LibraryExercise | null>(null)
@@ -106,27 +108,27 @@ export function ExercisesTab({ exercises, archived, trainerId, clients, initialS
   const stats = useMemo(() => resumen(all, favs), [all, favs])
   const catChips = useMemo(() => categoryCounts(exercises), [exercises])
   const matChips = useMemo(() => materialCounts(exercises), [exercises])
-  const extraFilters = [filterEsp, filterTag].filter(Boolean).length
+  const extraFilters = (filterEsp ? 1 : 0) + filterTags.length
 
   const filtered = useMemo(() => {
     let list = filtrar(all, { query: search, chip, category: filterCat, material: filterMat, favs })
     if (filterEsp) list = list.filter(e => (e.especialidades || []).includes(filterEsp))
-    if (filterTag) list = list.filter(e => (e.tags || []).includes(filterTag))
+    if (filterTags.length) list = list.filter(e => coincideEtiquetas(e.tags, filterTags, modoTags))
     // Los favoritos primero (como antes); en "Más usados", por uso.
     return chip === 'usados' ? porRelevancia(list, favs) : [...list].sort((a, b) => (favs.has(b.id) ? 1 : 0) - (favs.has(a.id) ? 1 : 0))
-  }, [all, search, chip, filterCat, filterMat, filterEsp, filterTag, favs])
+  }, [all, search, chip, filterCat, filterMat, filterEsp, filterTags, modoTags, favs])
 
   // Con una biblioteca de 1500+ ejercicios, pintar la lista sin filtrar de golpe bloquea el hilo principal varios
   // segundos en un móvil de gama media: se muestran de 60 en 60 y el contador vuelve a 60 al cambiar cualquier filtro.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, chip, filterCat, filterMat, filterEsp, filterTag])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search, chip, filterCat, filterMat, filterEsp, filterTags, modoTags])
   const visible = filtered.slice(0, visibleCount)
 
   const sinFiltros = chip === 'todos' && !search.trim() && !filterCat && !filterMat && !extraFilters
   const recomendadosHoy = useMemo(() => sinFiltros ? recomendados(exercises, favs, 4) : [], [sinFiltros, exercises, favs])
   const hayHuecos = stats.muyUsadosSinVideo > 0 || stats.muyUsadosSinAlternativa > 0
 
-  const clearAll = () => { setSearch(''); setChip('todos'); setFilterCat(''); setFilterMat(''); setFilterEsp(''); setFilterTag('') }
+  const clearAll = () => { setSearch(''); setChip('todos'); setFilterCat(''); setFilterMat(''); setFilterEsp(''); setFilterTags([]) }
 
   // ── Acciones ──────────────────────────────────────────
   const create = async (f: { name: string; material: string; category: string }, completar: boolean) => {
@@ -219,11 +221,28 @@ export function ExercisesTab({ exercises, archived, trainerId, clients, initialS
               {allEsps.map(e => <option key={e.id} value={e.id}>{e.emoji} {e.label}</option>)}
             </select>
             {tags.length > 0 && (
-              <select value={filterTag} onChange={e => setFilterTag(e.target.value)} aria-label="Filtrar por etiqueta"
-                className="px-3 py-2 bg-card border border-border rounded-lg text-sm outline-none text-muted">
-                <option value="">Todas las etiquetas</option>
-                {tags.map(t => <option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
-              </select>
+              <div className="w-full space-y-2" role="group" aria-label="Filtrar por etiquetas">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-muted">Etiquetas</span>
+                  {filterTags.length > 1 && (
+                    <div className="flex rounded-lg border border-border overflow-hidden text-xs" role="group" aria-label="Cómo combinar las etiquetas">
+                      {(['cualquiera', 'todas'] as const).map(m => (
+                        <button key={m} onClick={() => setModoTags(m)} aria-pressed={modoTags === m}
+                          className={`px-2.5 py-1 font-semibold ${modoTags === m ? 'bg-ink text-white' : 'bg-card text-muted'}`}>
+                          {m === 'cualquiera' ? 'Alguna' : 'Todas'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {tags.map(t => (
+                    <button key={t.id} onClick={() => alternarTag(t.id)} aria-pressed={filterTags.includes(t.id)} className={chipCls(filterTags.includes(t.id))}>
+                      {t.emoji} {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

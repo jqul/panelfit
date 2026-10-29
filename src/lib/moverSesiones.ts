@@ -59,3 +59,24 @@ export function moverSesion<P extends TrainingPlan>(plan: P, w: number, d: numbe
   const { fechasSesion: _, ...sinFechas } = plan
   return (Object.keys(resto).length ? { ...sinFechas, fechasSesion: resto } : sinFechas) as P
 }
+
+/** Semana del plan en la que cae una fecha (null si el plan no tiene fecha de inicio o la fecha cae fuera). */
+export function semanaDeFecha(plan: TrainingPlan, fecha: string): number | null {
+  const l0 = lunesDeSemana(plan, 0)
+  if (!l0) return null
+  const w = Math.floor((new Date(fecha + 'T12:00:00').getTime() - new Date(l0 + 'T12:00:00').getTime()) / (7 * 86400000))
+  return w >= 0 && w < (plan.weeks || []).length ? w : null
+}
+
+/**
+ * Copia una sesión (sus ejercicios, calentamiento, vuelta a la calma…) a otra fecha: se añade como un día más al final
+ * de la semana del plan en que cae esa fecha, fijado a ese día. Al final, para no cambiar el número de los días que
+ * ya existen (los registros van por posición: `ex_w1_d2_r0`). Devuelve null si la fecha cae fuera del plan.
+ */
+export function copiarSesion<P extends TrainingPlan>(plan: P, w: number, d: number, fecha: string): P | null {
+  const origen = plan.weeks?.[w]?.days?.[d]
+  const destino = semanaDeFecha(plan, fecha)
+  if (!origen || destino === null) return null
+  const weeks = plan.weeks.map((semana, i) => i === destino ? { ...semana, days: [...semana.days, JSON.parse(JSON.stringify(origen))] } : semana)
+  return moverSesion({ ...plan, weeks }, destino, weeks[destino].days.length - 1, fecha)
+}
