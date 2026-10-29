@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Flame, ChevronUp, ChevronDown, Plus, Trash2 } from 'lucide-react'
+import { Flame, Wind, ChevronUp, ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { Exercise, LibraryExercise } from '../../../types'
 import { Modal } from '../../shared/Modal'
 import { ExercisePicker } from '../ExercisePicker'
@@ -13,19 +13,28 @@ interface WarmupSectionProps {
   onUpdate: (ri: number, updates: Partial<Exercise>) => void
   onDelete: (ri: number) => void
   onMove: (fromRi: number, toRi: number) => void
+  /** La misma lista sirve para el calentamiento (antes) y la vuelta a la calma (al final). */
+  tipo?: 'calentamiento' | 'vuelta'
 }
 
-export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAdd, onUpdate, onDelete, onMove }: WarmupSectionProps) {
+const TEXTOS = {
+  calentamiento: { titulo: 'Calentamiento', anadir: 'Añadir ejercicio de calentamiento', pista: 'El cliente lo verá antes de empezar los ejercicios principales' },
+  vuelta: { titulo: 'Vuelta a la calma', anadir: 'Añadir ejercicio de vuelta a la calma', pista: 'El cliente lo verá al terminar los ejercicios principales' },
+}
+
+export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAdd, onUpdate, onDelete, onMove, tipo = 'calentamiento' }: WarmupSectionProps) {
   const [showPicker, setShowPicker] = useState(false)
+  const t = TEXTOS[tipo]
+  const Icono = tipo === 'vuelta' ? Wind : Flame
 
   return (
-    <div className="border-b border-border/30 bg-accent/5">
+    <div className={tipo === 'vuelta' ? 'border-t border-border/30 bg-ok/5' : 'border-b border-border/30 bg-accent/5'}>
       {/* Header */}
       <button
         onClick={onToggle}
         className="flex items-center gap-2 text-xs font-semibold text-accent hover:opacity-80 transition-colors w-full text-left px-4 py-2.5">
-        <Flame className="w-3.5 h-3.5 flex-shrink-0" />
-        <span>Calentamiento</span>
+        <Icono className="w-3.5 h-3.5 flex-shrink-0" />
+        <span>{t.titulo}</span>
         {warmupExercises.length > 0
           ? <span className="ml-1 text-[11px] bg-accent/10 text-accent px-1.5 py-0.5 rounded-full font-bold">{warmupExercises.length} ejerc.</span>
           : <span className="ml-auto text-[11px] text-muted font-normal">Sin definir</span>
@@ -98,16 +107,16 @@ export function WarmupSection({ warmupExercises, isOpen, onToggle, library, onAd
           <button
             onClick={() => setShowPicker(true)}
             className="w-full flex items-center justify-center gap-1.5 py-2 border border-dashed border-accent/30 rounded-xl text-[11px] text-muted hover:border-accent hover:text-accent transition-all">
-            <Plus className="w-3.5 h-3.5" /> Añadir ejercicio de calentamiento
+            <Plus className="w-3.5 h-3.5" /> {t.anadir}
           </button>
           <p className="text-[11px] text-muted text-center">
-            El cliente lo verá antes de empezar los ejercicios principales
+            {t.pista}
           </p>
         </div>
       )}
 
       {/* Picker de ejercicios de la librería */}
-      <Modal open={showPicker} onClose={() => setShowPicker(false)} title="Añadir ejercicio de calentamiento" maxWidth="max-w-2xl" variant="drawer">
+      <Modal open={showPicker} onClose={() => setShowPicker(false)} title={t.anadir} maxWidth="max-w-2xl" variant="drawer">
         <ExercisePicker
           library={library}
           onSelect={ex => { onAdd(ex); setShowPicker(false) }}

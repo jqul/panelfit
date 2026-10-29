@@ -32,7 +32,7 @@ const congelado = (plan: TrainingPlan, logs: TrainingLogs | null | undefined, w:
   diaRegistrado(logs, w, d) || diaPasado(plan, w, d, hoy)
 
 /** Lo que importa de un día para saber si el entrenador lo cambió a mano. */
-const huella = (d: DayPlan | undefined) => d ? JSON.stringify([d.title, d.focus, d.exercises, d.warmup || '', d.warmupExercises || []]) : ''
+const huella = (d: DayPlan | undefined) => d ? JSON.stringify([d.title, d.focus, d.exercises, d.warmup || '', d.warmupExercises || [], d.cooldownExercises || []]) : ''
 
 /**
  * El cliente tiene cambios propios en lo que está por venir: algún día sin congelar que no coincide con lo que

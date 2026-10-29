@@ -9,6 +9,7 @@ import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-pl
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { fechaSesion } from '../../lib/fechasPlan'
 import { Modal } from '../shared/Modal'
+import { VueltaCalma } from './active-workout/VueltaCalma'
 
 // El calendario solo se abre desde su botón: se descarga entonces.
 const CalendarioTab = lazy(() => import('./CalendarioTab').then(m => ({ default: m.CalendarioTab })))
@@ -314,6 +315,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                       )
                     })}
                   </div>
+                  {(day.cooldownExercises?.length || 0) > 0 && <div className="p-4 border-t border-border"><VueltaCalma ejercicios={day.cooldownExercises} /></div>}
                 </div>
               )}
             </div>

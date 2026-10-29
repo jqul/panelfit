@@ -64,6 +64,7 @@ export function programToPlanWeeks(weeks: ProgramWeekLike[] | undefined, templat
           tplFocus = day.focus || ''
           if (day.warmup) extra.warmup = day.warmup
           if (day.warmupExercises?.length) extra.warmupExercises = clone(day.warmupExercises)
+          if (day.cooldownExercises?.length) extra.cooldownExercises = clone(day.cooldownExercises)
           if (day.testIds?.length) extra.testIds = [...day.testIds]
           first = false
         }

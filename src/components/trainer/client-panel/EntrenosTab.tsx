@@ -46,6 +46,7 @@ interface SessionReaction { date: string; emoji: string; comment: string | null 
 
 export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan: TrainingPlan | null; clientId?: string }) {
   const [reactions, setReactions] = useState<Record<string, SessionReaction>>({})
+  const [notasAntes, setNotasAntes] = useState<Record<string, string>>({}) // fecha → "¿cómo llegas hoy?"
   const [expandedEx, setExpandedEx] = useState<string | null>(null)
 
   useEffect(() => {
@@ -56,6 +57,8 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
       setReactions(byDate)
       return
     }
+    supabase.from('notas_antes_sesion').select('fecha, nota').eq('client_id', clientId)
+      .then(({ data }) => setNotasAntes(Object.fromEntries((data || []).map((r: { fecha: string; nota: string }) => [r.fecha, r.nota]))))
     supabase.from('session_reactions').select('date, emoji, comment').eq('clientId', clientId)
       .then(({ data }) => {
         const byDate: Record<string, SessionReaction> = {}
@@ -103,6 +106,9 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
             <p className="text-sm font-semibold capitalize flex-1">{new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
             <span className="text-xs text-muted">{byDate[fecha].length} ejercicios</span>
           </div>
+          {notasAntes[fecha] && (
+            <p className="px-4 py-2.5 text-xs border-b border-border bg-bg-alt/20"><span className="font-semibold">Antes de empezar:</span> <span className="italic text-ink/80">"{notasAntes[fecha]}"</span></p>
+          )}
           {reactions[fecha] && (
             <div className="flex items-start gap-2 px-4 py-2.5 bg-accent/5 border-b border-border">
               <span className="text-lg flex-shrink-0">{reactions[fecha].emoji}</span>
