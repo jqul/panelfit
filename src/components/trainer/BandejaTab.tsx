@@ -7,7 +7,7 @@ import { localDateKey } from '../../lib/dates'
 import { nextMonday, tomorrow, type QueueRow, type QueueTier } from '../../lib/dailyQueue'
 import { DEMO_TRAINER_ID } from '../../lib/demoIds'
 import { toast } from '../shared/Toast'
-import { contactoDe, haceCuanto } from '../../lib/leads'
+import { contactoDe, haceCuanto, llevaEsperando, textoEspera } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
 
 const DAYS_BACK = 14
@@ -153,8 +153,8 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient, leadsS
         {leadsNuevos.length > 0 && (
           <section aria-label="Contactos nuevos">
             <div className="flex items-baseline gap-2 mb-2 px-1">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-accent">Contactos nuevos</h3>
-              <span className="text-xs text-muted">{leadsNuevos.length} · Gente que te ha escrito desde tu página</span>
+              <h3 className={`text-sm font-bold uppercase tracking-wider ${leadsNuevos.some(l => llevaEsperando(l)) ? 'text-warn' : 'text-accent'}`}>Contactos nuevos</h3>
+              <span className="text-xs text-muted">{leadsNuevos.length} · {leadsNuevos.some(l => llevaEsperando(l)) ? `${leadsNuevos.filter(l => llevaEsperando(l)).length} sin contestar desde hace más de un día` : 'Gente que te ha escrito desde tu página'}</span>
             </div>
             <div className="bg-card rounded-2xl overflow-hidden divide-y divide-border/50 border border-accent/40" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
               {leadsNuevos.slice(0, PRIMERAS).map(l => (
@@ -162,7 +162,7 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient, leadsS
                   <div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center flex-shrink-0"><UserPlus className="w-3.5 h-3.5" /></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{l.name}</p>
-                    <p className="text-xs text-muted truncate">{[contactoDe(l) || 'Sin datos de contacto', haceCuanto(l.created_at)].join(' · ')}</p>
+                    <p className={`text-xs truncate ${textoEspera(l) ? 'text-warn font-medium' : 'text-muted'}`}>{[contactoDe(l) || 'Sin datos de contacto', textoEspera(l) || haceCuanto(l.created_at)].join(' · ')}</p>
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-muted flex-shrink-0" />
                 </button>

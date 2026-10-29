@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Inbox, Mail, MessageCircle, Gift, UserPlus } from 'lucide-react'
 import { toast } from '../shared/Toast'
-import { ESTADOS_LEAD, contactoDe, haceCuanto, saludoParaLead, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
+import { ESTADOS_LEAD, contactoDe, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
 import { PaginaPublicaCard } from './PaginaPublicaCard'
 
@@ -57,7 +57,7 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
           {visibles.map(l => {
             const wa = whatsappDe(l.phone, saludoParaLead(l.name, miNombre))
             return (
-              <li key={l.id} className={`bg-card rounded-2xl p-4 space-y-3 ${l.status === 'nuevo' ? 'border border-accent/40' : 'border border-border/50'}`} style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+              <li key={l.id} className={`bg-card rounded-2xl p-4 space-y-3 ${textoEspera(l) ? 'border border-warn/50' : l.status === 'nuevo' ? 'border border-accent/40' : 'border border-border/50'}`} style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold">{l.name}</p>
@@ -65,6 +65,7 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
                   </div>
                   <span className="text-[11px] text-muted flex-shrink-0">{haceCuanto(l.created_at)}</span>
                 </div>
+                {textoEspera(l) && <p className="text-xs font-semibold text-warn">{textoEspera(l)}</p>}
                 {l.message && <p className="text-sm text-ink/80 italic leading-relaxed">"{l.message}"</p>}
                 {l.referrerName && (
                   <p className="flex items-center gap-1.5 text-xs text-accent font-semibold"><Gift className="w-3.5 h-3.5" /> Referido por {l.referrerName}</p>
