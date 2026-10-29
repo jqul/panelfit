@@ -41,6 +41,7 @@ export function ActualizarProgramaSheet({ antes, ahora, trainerId, onClose }: { 
 
   const undo = async () => {
     if (!outcome) return
+    await outcome.deshacerTareas?.()
     const restored = await restoreSnapshots(outcome.undoable)
     const all = restored === outcome.undoable.length
     toast(all ? `Plan anterior restaurado en ${restored} cliente${restored === 1 ? '' : 's'} ✓` : `Solo se pudo restaurar ${restored}/${outcome.undoable.length}; el resto está en el historial del plan`, all ? 'ok' : 'warn')

@@ -9,6 +9,8 @@ import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP, DEMO_P
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
+import { tareasDePrograma } from '../lib/tareasPrograma'
+import { sincronizarTareasPrograma } from '../lib/sincronizarTareasPrograma'
 import { eraseClient } from '../lib/clientData'
 import { ausenciaActiva, MOTIVO_LABEL, MotivoAusencia } from '../lib/ausenciaHoy'
 
@@ -326,7 +328,10 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     }
     const { error: planError } = await supabase.from('planes')
       .upsert({ clientId, plan: { P: newPlan }, updatedAt: Date.now() }, { onConflict: 'clientId' })
-    if (!planError) toast(`Programa "${prog.name}" asignado automáticamente ✓`, 'ok')
+    if (!planError) {
+      await sincronizarTareasPrograma([{ clientId, tareas: tareasDePrograma(prog.weeks, newPlan.fechaInicio, prog.id) }])
+      toast(`Programa "${prog.name}" asignado automáticamente ✓`, 'ok')
+    }
   }
 
   // Borrado completo (art. 17 RGPD): ficheros de Storage, todas las tablas con datos del cliente y su
