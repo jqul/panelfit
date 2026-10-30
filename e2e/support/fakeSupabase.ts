@@ -135,6 +135,7 @@ export class FakeSupabase {
       const dot = spec.indexOf('.'); const op = spec.slice(0, dot); const val = spec.slice(dot + 1)
       const cell = row[col]
       switch (op) {
+        case 'not': return !this.matches(row, [[col, val]]) // not.is.null, not.eq.x…
         case 'eq': return String(cell) === val
         case 'neq': return String(cell) !== val
         case 'is': return val === 'null' ? cell === null || cell === undefined : String(cell) === val
