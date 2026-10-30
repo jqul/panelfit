@@ -107,6 +107,8 @@ interface Props {
 
 export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
+  // Trabajando en el equipo de otro: sus permisos (los pone el dueño en Ajustes → Equipo)
+  const misPermisos = useMisPermisosEquipo(userProfile.uid, realUid)
   usePrecargarPestanas()
   const clientLimit = userProfile.clientLimit ?? 999
   const { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached } =
@@ -284,7 +286,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'ir-adherencia', title: 'Ir a Adherencia', keywords: 'cumplimiento', run: verTab('adherencia') },
     { id: 'ir-insights', title: 'Ir a Insights', keywords: 'estadisticas analisis', run: verTab('insights') },
     { id: 'ir-cohortes', title: 'Ir a Grupos', keywords: 'cohortes', run: verTab('cohortes') },
-    { id: 'ir-negocio', title: 'Ir a Mi negocio', keywords: 'ingresos facturacion', run: verTab('negocio') },
+    ...(misPermisos.ver_negocio ? [{ id: 'ir-negocio', title: 'Ir a Mi negocio', keywords: 'ingresos facturacion', run: verTab('negocio') }] : []),
     { id: 'ir-ajustes', title: 'Ir a Ajustes', keywords: 'configuracion cuenta perfil settings', run: verTab('settings') },
     ...(demoClients ? [] : [{ id: 'primeros-pasos', title: 'Primeros pasos', keywords: 'empezar onboarding guia checklist ayuda', run: () => { onboarding.show(); handleTabChange('dashboard') } }]),
   ]
@@ -761,6 +763,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   </button>
                 ))}
               </div>
+              {misPermisos.solo_asignados && (
+                <p className="text-xs text-muted">Ves solo los clientes asignados a ti en este equipo. Los que añadas quedan asignados a ti.</p>
+              )}
               {clientView === 'active' && <div className="flex gap-2 flex-wrap">
                 {([
                   { id: 'all', label: 'Todos', n: clients.length, always: true },
@@ -875,7 +880,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               </Suspense>
             </PlanGate>
           )}
-          {activeTab === 'negocio' && (
+          {activeTab === 'negocio' && misPermisos.ver_negocio && (
             <PlanGate feature="business_dashboard" planName={userProfile.planName}>
               <Suspense fallback={null}><BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} /></Suspense>
             </PlanGate>
@@ -895,7 +900,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'etiquetas'  as Tab, icon: TagIcon,      label: 'Etiquetas',   desc: 'Organiza tus clientes' },
                   { id: 'insights'   as Tab, icon: BarChart2,    label: 'Insights',    desc: 'Actividad y especialidad' },
                   { id: 'adherencia' as Tab, icon: TrendingUp,   label: 'Adherencia',  desc: 'Cumplimiento semanal' },
-                  { id: 'negocio'    as Tab, icon: TrendingUp,   label: 'Mi negocio',  desc: 'Ingresos y métricas' },
+                  ...(misPermisos.ver_negocio ? [{ id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio', desc: 'Ingresos y métricas' }] : []),
                   { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
                 ] as { id: Tab; icon: any; label: string; desc: string; badge?: number }[]).map(({ id, icon: Icon, label, desc, badge }) => (
                   <button key={id} onClick={() => setActiveTab(id)}
@@ -1267,4 +1272,15 @@ function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfil
       </div>
     </div>
   )
+}
+
+// Permisos de quien trabaja en el equipo de otro (team_members). El dueño (o sin equipo) lo tiene todo.
+function useMisPermisosEquipo(ownerId: string, miUid: string) {
+  const [permisos, setPermisos] = useState({ solo_asignados: false, ver_negocio: true })
+  useEffect(() => {
+    if (!ownerId || ownerId === miUid) { setPermisos({ solo_asignados: false, ver_negocio: true }); return }
+    supabase.from('team_members').select('solo_asignados, ver_negocio').eq('owner_id', ownerId).eq('member_uid', miUid).maybeSingle()
+      .then(({ data }) => setPermisos({ solo_asignados: !!data?.solo_asignados, ver_negocio: data?.ver_negocio !== false }))
+  }, [ownerId, miUid])
+  return permisos
 }
