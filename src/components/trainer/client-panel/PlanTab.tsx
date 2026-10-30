@@ -101,6 +101,21 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
     })
   }
 
+  // Quitar el programa: el cliente sigue con el plan que tiene (semanas, ejercicios y registros intactos) pero deja de
+  // seguir un programa. Se quitan sus tareas de programa por venir y sin hacer; las hechas o pasadas son historial.
+  const quitarPrograma = async () => {
+    const previous = plan
+    const nombre = plan.programName || 'programa'
+    if (!borradorActivo && trainerId !== DEMO_TRAINER_ID) await saveHistoryCopy(client.id, { P: previous }, `Antes de quitar ${nombre}`)
+    onPlanChange({ ...plan, programId: undefined, programName: undefined })
+    const deshacerTareas = trainerId === DEMO_TRAINER_ID ? null
+      : await sincronizarTareasPrograma([{ clientId: client.id, tareas: [] }])
+    toast(`Programa "${nombre}" quitado: el plan y lo ya hecho se conservan`, 'ok', {
+      label: 'Deshacer',
+      onClick: async () => { await deshacerTareas?.(); onPlanChange(previous); toast('Programa restaurado ✓', 'ok') },
+    })
+  }
+
   // Bloque terminando/terminado — calculado en local a partir de inicio + nº semanas
   const blockEnd = (() => {
     if (!plan.fechaInicio || !plan.weeks?.length) return null
@@ -147,6 +162,10 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
               <p className="text-sm font-semibold text-ink truncate">{plan.programName}</p>
               <p className="text-xs text-muted">Tipo: {plan.type} · Inicio: {plan.fechaInicio || '—'}</p>
             </div>
+            <button onClick={quitarPrograma}
+              className="flex-shrink-0 px-3 py-1.5 border border-border rounded-xl text-xs font-semibold text-muted hover:border-warn hover:text-warn transition-colors">
+              Quitar
+            </button>
             <button onClick={() => setShowProgramSelector(true)}
               className="flex-shrink-0 px-3 py-1.5 border border-border rounded-xl text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">
               Cambiar
