@@ -6,6 +6,7 @@ import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
 import { contactoDe, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
+import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
@@ -122,6 +123,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
   const [labelFilter, setLabelFilter] = useState<string | null>(null)
+  // Por profesional del equipo: null = todos; '' = sin asignar; un uid = los suyos
+  const [profFilter, setProfFilter] = useState<string | null>(null)
   const [clientSort, setClientSort] = useState<ClientSort>('attention')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
@@ -172,7 +175,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter, labelId: labelFilter })
-  const sortedClients = useMemo(() => sortClients(filteredClients, clientSort), [filteredClients, clientSort])
+  const profesionales = useProfesionalesEquipo(userProfile.uid)
+  const sortedClients = useMemo(() => sortClients(
+    profFilter === null ? filteredClients : filteredClients.filter(c => (c.profesional_id || '') === profFilter), clientSort,
+  ), [filteredClients, clientSort, profFilter])
   // Acciones masivas: lo seleccionado es siempre lo que se ve (al filtrar o buscar se recorta) y se olvida al salir de Clientes.
   const selection = useClientSelection()
   const { sync: syncSelection, stop: stopSelection } = selection
@@ -773,6 +779,16 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted'}>{f.n}</span>
                     </button>
                   ))}
+                {/* Por profesional del equipo (solo con equipo) */}
+                {profesionales.length > 1 && (
+                  <select value={profFilter ?? '__todos'} onChange={e => setProfFilter(e.target.value === '__todos' ? null : e.target.value)} aria-label="Filtrar por profesional"
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none shadow-sm ${profFilter !== null ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted'}`}>
+                    <option value="__todos">Todos los profesionales</option>
+                    <option value={realUid}>Mis clientes</option>
+                    {profesionales.filter(p => p.uid !== realUid).map(p => <option key={p.uid} value={p.uid}>{p.nombre}</option>)}
+                    <option value="">Sin asignar</option>
+                  </select>
+                )}
                 {/* Por etiqueta: se combina con el estado ("Sin plan" de "Online", por ejemplo) */}
                 {labels.length > 0 && (
                   <select value={labelFilter ?? ''} onChange={e => setLabelFilter(e.target.value || null)} aria-label="Filtrar por etiqueta"

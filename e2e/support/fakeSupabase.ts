@@ -269,6 +269,13 @@ export class FakeSupabase {
         this.rows('citas').push(cita)
         return json(route, 200, { id: cita.id, status: cita.status })
       }
+      case 'profesionales_del_equipo': {
+        const owner = args.p_owner
+        const miembros = this.rows('team_members').filter(t => t.owner_id === owner).map(t => t.member_uid)
+        if (me !== owner && !miembros.includes(me)) return json(route, 200, [])
+        const nombre = (uid: string) => { const e = this.rows('entrenadores').find(x => x.uid === uid); return e?.displayName || e?.email || uid }
+        return json(route, 200, [owner, ...miembros].map(uid => ({ uid, nombre: nombre(uid) })))
+      }
       case 'get_trainer_referral_slug': return json(route, 200, null)
       // Página pública del entrenador y su formulario de contacto. La lógica de verdad (validación, duplicados, tope por hora)
       // la prueba supabase/hardening/tests/bloque20; aquí solo lo justo para probar la página.

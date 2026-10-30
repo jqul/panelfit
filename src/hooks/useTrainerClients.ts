@@ -183,6 +183,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       main_goal: rows[i]?.main_goal || undefined,
       plan_last_opened_at: rows[i]?.plan_last_opened_at ?? null,
       token_expires_at: rows[i]?.token_expires_at ?? null,
+      profesional_id: rows[i]?.profesional_id ?? null,
     }))
 
     const hoy = localDateKey()
