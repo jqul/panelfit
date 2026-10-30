@@ -12,7 +12,7 @@ import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 import { parseWorkoutExcel } from '../../lib/importWorkout'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, contenidoQueSePublica } from '../../lib/workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, contenidoQueSePublica, copiaDeWorkout } from '../../lib/workoutList'
 
 interface Props {
   trainerId: string
@@ -181,7 +181,7 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
   }
 
   const duplicate = async (tmpl: TrainingTemplate) => {
-    const copy: TrainingTemplate = { ...tmpl, id: `tmpl_${Date.now()}`, name: `${tmpl.name} (copia)`, createdAt: Date.now(), updatedAt: Date.now() }
+    const copy: TrainingTemplate = copiaDeWorkout(tmpl, `tmpl_${Date.now()}`, Date.now())
     await persist(copy); toast('Duplicado ✓', 'ok')
   }
 

@@ -76,3 +76,18 @@ test.describe('compartir un workout en la galería', () => {
     await expect(page.getByRole('dialog', { name: '¿Compartir en la galería?' })).toContainText('solo se ve la estructura')
   })
 })
+
+test('duplicar un workout público deja la copia privada: no se salta el aviso de compartir', async ({ page, fake }) => {
+  test.setTimeout(120_000)
+  expect.configure({ timeout: 30_000 })
+  sembrar(fake)
+  fake.seed('plan_templates', { id: 'tmpl-3', trainer_id: ids.trainer, name: 'Ya compartido', description: '', created_at: 3, updated_at: 3, label_ids: [], is_public: true, plan: SIN_DATOS })
+  await abrirWorkouts(page)
+
+  await expect(page.getByText('Público', { exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Acciones de Ya compartido' }).click()
+  await page.getByRole('button', { name: /Duplicar/ }).click()
+
+  await expect(page.getByText('Ya compartido (copia)')).toBeVisible()
+  await expect(page.getByText('Público', { exact: true })).toHaveCount(1) // solo el original
+})
