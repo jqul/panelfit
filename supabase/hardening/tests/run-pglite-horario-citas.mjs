@@ -8,7 +8,7 @@
 import { crearBase, read } from './pglite-base.mjs'
 
 const db = await crearBase()
-for (const m of ['20261024000001_enlace_caducidad.sql', '20261026000002_archivar_clientes.sql', '20261030000001_horario_citas.sql']) {
+for (const m of ['20261024000001_enlace_caducidad.sql', '20261026000002_archivar_clientes.sql', '20261030000002_horario_citas.sql']) {
   await db.exec(read(`migrations/${m}`))
   console.log(`migración aplicada: ${m}`)
 }

@@ -6,7 +6,7 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 
 | Ruta | Contenido |
 | --- | --- |
-| `migrations/20261030000001_horario_citas.sql` | Horario para reservas y reserva desde la app: `horario_citas` (franjas por día, duración, margen, antelación, autoconfirmar; solo su entrenador y el equipo), `agenda_cliente()` (el horario de su entrenador y lo ocupado, sin de quién) y `reservar_cita()` (vuelve a comprobar horario, antelación y hueco libre con margen; bloqueo por entrenador; 3 citas futuras como mucho). Horas de Madrid. **Aplicada el 30-oct**. Prueba `bloque26_horario_citas.sql` (`run-pglite-horario-citas.mjs`, 18 casos) |
+| `migrations/20261030000002_horario_citas.sql` | Horario para reservas y reserva desde la app: `horario_citas` (franjas por día, duración, margen, antelación, autoconfirmar; solo su entrenador y el equipo), `agenda_cliente()` (el horario de su entrenador y lo ocupado, sin de quién) y `reservar_cita()` (vuelve a comprobar horario, antelación y hueco libre con margen; bloqueo por entrenador; 3 citas futuras como mucho). Horas de Madrid. **Aplicada el 30-oct**. Prueba `bloque26_horario_citas.sql` (`run-pglite-horario-citas.mjs`, 18 casos) |
 | `migrations/20261018000001_baseline_tables.sql` | 46 tablas, claves, índices y RLS activado |
 | `migrations/20261018000002_baseline_functions_triggers.sql` | Funciones (RPCs y helpers de RLS), triggers y el cron semanal |
 | `migrations/20261018000003_baseline_rls_policies.sql` | Todas las políticas RLS de `public` |

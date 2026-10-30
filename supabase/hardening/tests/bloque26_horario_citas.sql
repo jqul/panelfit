@@ -1,4 +1,4 @@
--- Prueba de migrations/20261030000001_horario_citas.sql
+-- Prueba de migrations/20261030000002_horario_citas.sql
 -- (el horario lo gestiona solo su entrenador; el cliente no lo lee directamente pero sí ve, por agenda_cliente, el
 -- horario de SU entrenador y lo ocupado sin saber de quién; reservar_cita solo deja reservar dentro del horario, con
 -- antelación, en un hueco libre (con margen), como mucho 3 citas futuras y confirmada solo si el entrenador lo quiere).
