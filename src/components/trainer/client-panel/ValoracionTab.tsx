@@ -5,6 +5,27 @@ import { supabase } from '../../../lib/supabase'
 import { toast } from '../../shared/Toast'
 import { localDateKey } from '../../../lib/dates'
 import { DEMO_VALORACIONES_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
+import { limpiarMetricas, nuevaMetrica, limpiarValores, evolucionMetrica, MAX_METRICAS, type MetricaPropia } from '../../../lib/metricasPropias'
+
+// Métricas propias del entrenador (lib/metricasPropias.ts): se leen y guardan en su perfil. En la demo, en memoria.
+let metricasDemo: MetricaPropia[] = [{ id: 'm_fcreposo', nombre: 'FC en reposo', unidad: 'lpm' }]
+function useMetricasPropias(trainerId: string, demo: boolean) {
+  const [metricas, setMetricas] = useState<MetricaPropia[]>([])
+  useEffect(() => {
+    if (demo) { setMetricas(metricasDemo); return }
+    supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle()
+      .then(({ data }) => setMetricas(limpiarMetricas((data?.profile as { metricasPropias?: unknown } | null)?.metricasPropias)))
+  }, [trainerId, demo])
+  const guardar = async (nuevas: MetricaPropia[]) => {
+    const limpias = limpiarMetricas(nuevas)
+    if (demo) { metricasDemo = limpias; setMetricas(limpias); return true }
+    const { data } = await supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle()
+    const { error } = await supabase.from('entrenadores').update({ profile: { ...(data?.profile || {}), metricasPropias: limpias } }).eq('uid', trainerId)
+    if (error) { toast('No se pudo guardar la métrica', 'warn'); return false }
+    setMetricas(limpias); return true
+  }
+  return { metricas, guardar }
+}
 
 interface Valoracion {
   id: string
@@ -24,6 +45,8 @@ interface Valoracion {
   muslo_i: number | null
   notas: string
   fotos: string[]
+  /** Valores de las métricas propias del entrenador: { idMetrica: número } */
+  extra?: Record<string, number>
   created_at: number
 }
 
@@ -36,7 +59,7 @@ function emptyValoracion(clientId: string, trainerId: string): Valoracion {
     peso: null, imc: null, grasa_corporal: null, masa_muscular: null,
     cintura: null, cadera: null, pecho: null,
     brazo_d: null, brazo_i: null, muslo_d: null, muslo_i: null,
-    notas: '', fotos: [],
+    notas: '', fotos: [], extra: {},
     created_at: Date.now(),
   }
 }
@@ -64,6 +87,19 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   const [editing, setEditing] = useState<Valoracion | null>(null)
   const [saving, setSaving] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const { metricas, guardar: guardarMetricas } = useMetricasPropias(trainerId, isDemoClientId(client.id))
+  const [nuevaNombre, setNuevaNombre] = useState('')
+  const [nuevaUnidad, setNuevaUnidad] = useState('')
+  const anadirMetrica = async () => {
+    if (!nuevaNombre.trim()) return
+    if (await guardarMetricas([...metricas, nuevaMetrica(nuevaNombre, nuevaUnidad)])) { setNuevaNombre(''); setNuevaUnidad('') }
+  }
+  const setExtra = (id: string, valor: number | null) => {
+    if (!editing) return
+    const extra = { ...(editing.extra || {}) }
+    if (valor === null || !Number.isFinite(valor)) delete extra[id]; else extra[id] = valor
+    setEditing({ ...editing, extra })
+  }
 
   useEffect(() => {
     loadValoraciones()
@@ -88,7 +124,10 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
   const saveValoracion = async () => {
     if (!editing) return
     setSaving(true)
-    const { error } = isDemoClientId(client.id) ? { error: null } : await supabase.from('valoraciones').upsert(editing, { onConflict: 'id' })
+    // Solo números; los de métricas que ya se quitaron se conservan (por si vuelven).
+    const conservados = Object.fromEntries(Object.entries(editing.extra || {}).filter(([, v]) => typeof v === 'number' && Number.isFinite(v)))
+    const fila = { ...editing, extra: { ...conservados, ...limpiarValores(editing.extra, metricas) } }
+    const { error } = isDemoClientId(client.id) ? { error: null } : await supabase.from('valoraciones').upsert(fila, { onConflict: 'id' })
     if (error) { toast('Error al guardar', 'warn'); setSaving(false); return }
     setValoraciones(vs => vs.find(v => v.id === editing.id)
       ? vs.map(v => v.id === editing.id ? editing : v)
@@ -188,6 +227,42 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
         </div>
       </div>
 
+      {/* Tus métricas (las que define el entrenador) */}
+      <section aria-label="Tus métricas" className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted">Tus métricas</p>
+        </div>
+        <div className="p-4 space-y-3">
+          {metricas.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {metricas.map(m => (
+                <div key={m.id}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor={`metrica-${m.id}`} className="block text-xs font-semibold text-muted">{m.nombre} {m.unidad && <span className="text-muted/60">({m.unidad})</span>}</label>
+                    <button type="button" onClick={() => { if (confirm(`¿Quitar «${m.nombre}» de tus métricas? Los valores ya guardados no se borran.`)) guardarMetricas(metricas.filter(x => x.id !== m.id)) }}
+                      aria-label={`Quitar la métrica ${m.nombre}`} className="text-muted hover:text-warn text-xs px-1">✕</button>
+                  </div>
+                  <input id={`metrica-${m.id}`} type="number" step="0.1" value={editing.extra?.[m.id] ?? ''}
+                    onChange={e => setExtra(m.id, e.target.value ? parseFloat(e.target.value) : null)} placeholder="—"
+                    className="w-full px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20 font-mono" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted">Añade lo que tú mides y no está arriba: FC en reposo, perímetro de cuello, salto, flexibilidad… Saldrá en todas tus valoraciones.</p>
+          )}
+          {metricas.length < MAX_METRICAS && (
+            <div className="flex gap-2">
+              <input value={nuevaNombre} onChange={e => setNuevaNombre(e.target.value)} maxLength={40} placeholder="Nueva métrica" aria-label="Nombre de la nueva métrica"
+                className="flex-1 min-w-0 px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              <input value={nuevaUnidad} onChange={e => setNuevaUnidad(e.target.value)} maxLength={10} placeholder="Unidad" aria-label="Unidad de la nueva métrica"
+                className="w-20 px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none" />
+              <button type="button" onClick={anadirMetrica} disabled={!nuevaNombre.trim()} className="px-3 py-2 border border-border rounded-xl text-sm font-semibold disabled:opacity-40">Añadir</button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Notas */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
@@ -229,6 +304,22 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
         </div>
       ) : (
         <div className="space-y-2">
+          {(() => {
+            const evol = metricas.map(m => ({ m, e: evolucionMetrica(valoraciones, m.id) })).filter(x => x.e)
+            return evol.length > 0 && (
+              <section aria-label="Evolución de tus métricas" className="bg-card border border-border rounded-2xl px-5 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted mb-1.5">Evolución de tus métricas</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {evol.map(({ m, e }) => (
+                    <span key={m.id} className="text-sm">
+                      <span className="text-muted">{m.nombre}:</span> {e!.primera} → <span className="font-semibold">{e!.ultima}</span>{m.unidad ? ` ${m.unidad}` : ''}
+                      <span className="text-xs text-muted"> ({e!.diferencia > 0 ? '+' : ''}{e!.diferencia.toLocaleString('es-ES')})</span>
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )
+          })()}
           {valoraciones.map(val => {
             const isExpanded = expanded === val.id
             const hasData = val.peso || val.grasa_corporal || val.cintura
@@ -273,6 +364,16 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                         {CAMPOS_MEDIDAS.map(c => val[c.key] ? (
                           <span key={c.key} className="text-xs bg-bg-alt border border-border px-2 py-1 rounded-lg font-medium">
                             {c.label}: {val[c.key]}cm
+                          </span>
+                        ) : null)}
+                      </div>
+                    )}
+                    {/* Tus métricas */}
+                    {metricas.some(m => typeof val.extra?.[m.id] === 'number') && (
+                      <div className="flex flex-wrap gap-2">
+                        {metricas.map(m => typeof val.extra?.[m.id] === 'number' ? (
+                          <span key={m.id} className="text-xs bg-accent/5 border border-accent/20 px-2 py-1 rounded-lg font-medium">
+                            {m.nombre}: {val.extra![m.id]}{m.unidad ? ` ${m.unidad}` : ''}
                           </span>
                         ) : null)}
                       </div>
