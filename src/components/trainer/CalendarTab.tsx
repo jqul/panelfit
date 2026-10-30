@@ -10,8 +10,31 @@ import {
 import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
 import { Modal } from '../shared/Modal'
 import { localDateKey } from '../../lib/dates'
+import { limpiarTipos, type TipoCita } from '../../lib/tiposCita'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
+const TiposCitaEditor = lazy(() => import('./TiposCitaEditor').then(m => ({ default: m.TiposCitaEditor })))
+
+// Tipos de cita del entrenador (en su perfil). En la demo, en memoria.
+let tiposDemo: TipoCita[] = [{ id: 't_personal', nombre: 'Entreno personal', color: '#2f6f4f', duracion: 60 }, { id: 't_valoracion', nombre: 'Valoración', color: '#3b5b92', duracion: 45 }]
+function useTiposCita(trainerId: string) {
+  const demo = trainerId === DEMO_TRAINER_ID
+  const [tipos, setTipos] = useState<TipoCita[]>([])
+  useEffect(() => {
+    if (demo) { setTipos(tiposDemo); return }
+    supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle()
+      .then(({ data }) => setTipos(limpiarTipos((data?.profile as { tiposCita?: unknown } | null)?.tiposCita)))
+  }, [trainerId, demo])
+  const guardar = async (nuevos: TipoCita[]) => {
+    const limpios = limpiarTipos(nuevos)
+    if (demo) { tiposDemo = limpios; setTipos(limpios); return true }
+    const { data } = await supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle()
+    const { error } = await supabase.from('entrenadores').update({ profile: { ...(data?.profile || {}), tiposCita: limpios } }).eq('uid', trainerId)
+    if (error) { toast('No se pudieron guardar los tipos', 'warn'); return false }
+    setTipos(limpios); toast('Tipos de cita guardados ✓', 'ok'); return true
+  }
+  return { tipos, guardar }
+}
 
 interface Props {
   trainerId: string
@@ -29,12 +52,13 @@ interface Cita {
   notes: string
   recurring: 'weekly' | null
   recurring_until: string | null
+  tipo_id?: string | null
 }
 
 function emptyForm(dateISO: string) {
   return {
     title: 'Sesión', clientId: '', date: dateISO, time: '09:00', durationMin: 60,
-    recurring: false, recurringUntil: '',
+    recurring: false, recurringUntil: '', tipoId: '' as string,
   }
 }
 
@@ -62,6 +86,9 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const [showForm, setShowForm] = useState<{ dateISO: string } | null>(null)
   const [verHorario, setVerHorario] = useState(false)
+  const [verTipos, setVerTipos] = useState(false)
+  const { tipos, guardar: guardarTipos } = useTiposCita(trainerId)
+  const tipoDe = (id?: string | null) => (id ? tipos.find(t => t.id === id) : undefined)
   const [form, setForm] = useState(emptyForm(toISODate(new Date())))
   const [saving, setSaving] = useState(false)
 
@@ -110,6 +137,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
       end_at: end.toISOString(),
       status: 'confirmada' as const,
       notes: '',
+      tipo_id: form.tipoId || null,
     }
 
     let newRows: Cita[]
@@ -180,6 +208,10 @@ export function CalendarTab({ trainerId, clients }: Props) {
         <CalendarClock className="w-4 h-4 text-accent flex-shrink-0" />
         <span className="flex-1">Horario para reservas<span className="block text-xs text-muted font-normal">Cuándo pueden reservarte cita tus clientes desde su app</span></span>
       </button>
+      <button onClick={() => setVerTipos(true)} className="text-xs font-semibold text-accent -mt-2">
+        {tipos.length ? `Tipos de cita (${tipos.length})` : '+ Tipos de cita con color'}
+      </button>
+      {verTipos && <Suspense fallback={null}><TiposCitaEditor tipos={tipos} onGuardar={guardarTipos} onClose={() => setVerTipos(false)} /></Suspense>}
       {verHorario && <Suspense fallback={null}><HorarioCitasEditor trainerId={trainerId} demo={trainerId === DEMO_TRAINER_ID} onClose={() => setVerHorario(false)} /></Suspense>}
       {/* Navegación semanal */}
       <div className="flex items-center justify-between">
@@ -217,7 +249,8 @@ export function CalendarTab({ trainerId, clients }: Props) {
                     const time = new Date(cita.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
                     const name = clientName(cita.client_id)
                     return (
-                      <div key={cita.id} className="px-4 py-3 flex items-center gap-3">
+                      <div key={cita.id} className="px-4 py-3 flex items-center gap-3 relative">
+                        {tipoDe(cita.tipo_id) && <span className="absolute left-0 inset-y-2 w-1 rounded-r" style={{ backgroundColor: tipoDe(cita.tipo_id)!.color }} aria-hidden />}
                         <div className="flex items-center gap-1.5 text-xs font-semibold text-muted w-14 flex-shrink-0">
                           <Clock className="w-3 h-3" />{time}
                         </div>
@@ -227,6 +260,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                             {cita.recurring && <Repeat className="w-3 h-3 text-muted" />}
                           </p>
                           {name && <p className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{name}</p>}
+                          {tipoDe(cita.tipo_id) && <p className="text-[11px] text-muted">{tipoDe(cita.tipo_id)!.nombre}</p>}
                         </div>
                         <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
                           {meta.label}
@@ -267,6 +301,21 @@ export function CalendarTab({ trainerId, clients }: Props) {
               <h3 className="font-serif font-bold text-lg">Nueva sesión</h3>
               <button onClick={() => setShowForm(null)} className="p-1.5 text-muted hover:text-ink"><X className="w-4 h-4" /></button>
             </div>
+
+            {tipos.length > 0 && (
+              <div>
+                <p className="block text-xs font-semibold text-muted mb-1.5">Tipo</p>
+                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Tipo de cita">
+                  {tipos.map(t => (
+                    <button key={t.id} type="button" role="radio" aria-checked={form.tipoId === t.id}
+                      onClick={() => setForm(f => f.tipoId === t.id ? { ...f, tipoId: '' } : { ...f, tipoId: t.id, title: t.nombre, durationMin: t.duracion })}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${form.tipoId === t.id ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} aria-hidden />{t.nombre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-muted mb-1.5">Título</label>
