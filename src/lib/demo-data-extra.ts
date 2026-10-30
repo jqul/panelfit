@@ -226,14 +226,15 @@ export const DEMO_BORRADOR_CLIENT_IDS = ['demo-client-002']
 
 // ── HÁBITOS DIARIOS ─────────────────────────────────────
 // Store mutable compartido: lo que añade el entrenador lo ve el cliente.
-export interface DemoHabito { id: string; clientId: string; text: string; sub?: string; order: number }
-const hb = (clientId: string, texts: string[]): DemoHabito[] =>
-  texts.map((text, order) => ({ id: `demo-hab-${clientId.slice(-3)}-${order}`, clientId, text, order }))
+export interface DemoHabito { id: string; clientId: string; text: string; sub?: string; order: number; meta?: number | null; unidad?: string | null }
+// Un texto es una casilla sí/no; un objeto { text, meta, unidad } es un hábito con meta numérica.
+const hb = (clientId: string, items: (string | { text: string; meta: number; unidad: string })[]): DemoHabito[] =>
+  items.map((it, order) => ({ id: `demo-hab-${clientId.slice(-3)}-${order}`, clientId, order, ...(typeof it === 'string' ? { text: it } : it) }))
 export const DEMO_HABITOS_MAP: Record<string, DemoHabito[]> = {
   'demo-client-001': hb('demo-client-001', ['Beber 2 L de agua', 'Dormir 7-8 h', 'Proteína en cada comida', '8.000 pasos']),
   'demo-client-002': hb('demo-client-002', ['Dormir 8 h (clave en el pico)', 'Comer carbohidratos antes de entrenar', 'Movilidad de cadera 10 min']),
-  'demo-client-003': hb('demo-client-003', ['Beber 2,5 L de agua', '10.000 pasos', 'Verdura en comida y cena', 'Sin picoteo nocturno']),
-  'demo-client-004': hb('demo-client-004', ['Dormir 8 h', 'Pesarme en ayunas', 'Comer las 5 tomas']),
+  'demo-client-003': hb('demo-client-003', ['Beber 2,5 L de agua', { text: 'Pasos', meta: 10000, unidad: 'pasos' }, 'Verdura en comida y cena', 'Sin picoteo nocturno']),
+  'demo-client-004': hb('demo-client-004', [{ text: 'Dormir', meta: 8, unidad: 'h' }, 'Pesarme en ayunas', 'Comer las 5 tomas']),
   'demo-client-005': hb('demo-client-005', ['Ejercicios de rehab (10 min)', 'Hielo 15 min si hay inflamación', 'Evitar escaleras largas']),
   'demo-client-006': hb('demo-client-006', ['Caminar 30 min', 'Beber 2 L de agua', 'Cenar antes de las 21:30']),
   'demo-client-007': hb('demo-client-007', ['Dormir 8-9 h', 'Hidratación con electrolitos', 'Rodillo de espuma post-sesión', 'Registrar sensaciones tras sprints']),

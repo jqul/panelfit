@@ -61,7 +61,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 - **PAR-Q + intake**: cuestionario de salud estándar (7 preguntas sí/no) más preguntas libres (lesiones, objetivo, disponibilidad horaria) al darse de alta el cliente. Tres preguntas **opcionales** ayudan a ajustar la carga desde la primera semana: tiempo y tipo de entrenamiento previo, marcas o pesos actuales y horas de sueño; solo aparecen en la ficha de admisión si el cliente las contesta (no llenan la ficha de «Sin responder»).
 - **Check-in diario de bienestar**: sueño, dolor muscular, estrés, motivación (escala 1-5), alimenta el semáforo de Riesgo.
 - **Valoraciones físicas**: ficha completa de medidas (peso, IMC, grasa corporal, masa muscular, perímetros de cintura/cadera/pecho/brazos/muslos) con histórico y notas.
-- **Hábitos**: lista de hábitos diarios por cliente (ej. "Beber 2L de agua"), con check-in diario y racha.
+- **Hábitos**: lista de hábitos diarios por cliente (ej. "Beber 2L de agua"), con check-in diario y racha. Un hábito puede llevar **meta numérica** y unidad (10.000 pasos, 7 h de sueño, 155 g de proteína): el cliente escribe el valor del día en su panel, ve una barra de progreso y el hábito se marca solo al llegar a la meta; sin meta sigue siendo una casilla sí/no. El entrenador pone la meta y la unidad al crear el hábito.
 
 ## 7. Vídeo feedback
 
