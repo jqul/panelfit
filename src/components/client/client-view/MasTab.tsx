@@ -13,6 +13,7 @@ import { RecordatorioDiario } from './RecordatorioDiario'
 import type { Consejo } from '../../../lib/consejos'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
+const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
 const CalendarioSuscripcion = lazy(() => import('../CalendarioSuscripcion').then(m => ({ default: m.CalendarioSuscripcion })))
 
 export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, consejos = [], trainerName }: {
@@ -99,6 +100,7 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, 
       <RecordatorioDiario client={client} />
 
       {/* Fechas clave y cuándo no puede entrenar: lo ve su entrenador */}
+      <Suspense fallback={null}><BonosCliente clientId={client.id} quien="cliente" /></Suspense>
       <Suspense fallback={null}><AusenciasEventos clientId={client.id} quien="cliente" /></Suspense>
 
       {/* Sus entrenos, sesiones y fechas en Google / Apple / Outlook */}
