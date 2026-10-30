@@ -1,4 +1,4 @@
--- Prueba de migrations/20261030000007_permisos_equipo.sql
+-- Prueba de migrations/20261030000008_permisos_equipo.sql
 -- (sin restricción, el compañero ve todos los clientes del dueño, como antes; con "solo sus clientes", solo ve y toca
 -- los asignados a él, y tampoco los planes, citas ni bonos de los demás; lo que crea queda asignado a él; no puede
 -- pasarle un cliente a otro; el dueño lo sigue viendo todo; el compañero lee sus propios permisos).

@@ -10,7 +10,7 @@ import { crearBase, read } from './pglite-base.mjs'
 const db = await crearBase()
 for (const m of ['20261023000004_separar_politica_clientes.sql', '20261024000001_enlace_caducidad.sql', '20261026000002_archivar_clientes.sql',
   '20261029000002_recordatorio_diario.sql', '20261030000004_bonos_cliente.sql', '20261030000005_profesional_cliente.sql',
-  '20261030000007_permisos_equipo.sql']) {
+  '20261030000008_permisos_equipo.sql']) {
   let sql = read(`migrations/${m}`)
   sql = sql.slice(0, sql.includes('-- Tarea programada') ? sql.indexOf('-- Tarea programada') : sql.length) // PGlite no tiene cron
   await db.exec(sql)

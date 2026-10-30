@@ -533,8 +533,10 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       <SyncIndicator syncState={syncState} pendingCount={pendingCount} onRetry={() => trySyncPendingLogs(client.id)} />
       <Suspense fallback={null}><PWAInstallBanner /></Suspense>
 
+      {/* En Hoy, el botón flotante "Entrenar ahora" (52 px + 8 de separación) flota justo encima de la barra de pestañas:
+          sin 76 px más de margen tapaba las últimas filas de la página (p. ej. los hábitos de abajo) y no se podían pulsar. */}
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
-        style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom, 0px))', WebkitOverflowScrolling: 'touch' }}>
+        style={{ paddingBottom: `calc(${activeTab === 'hoy' ? 132 : 56}px + env(safe-area-inset-bottom, 0px))`, WebkitOverflowScrolling: 'touch' }}>
         {loading || consent.status === 'loading' ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
