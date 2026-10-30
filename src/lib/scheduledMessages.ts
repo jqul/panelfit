@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from './supabase'
 import { localDateKey } from './dates'
+import { nuevoIdMensaje } from './scheduledMessageId'
 import { isDemoTrainerId, buildDemoScheduledMessages } from './demo-data-extra'
 
 export interface ScheduledMessage {
@@ -42,7 +43,7 @@ export function useScheduledMessages(trainerId?: string) {
   const schedule = useCallback(async (clientId: string, tipo: string, mensaje: string, fechaEnvio: string) => {
     if (!trainerId) return
     const row = {
-      id: `sched_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      id: nuevoIdMensaje(),
       trainerId, clientId, tipo, mensaje, fechaEnvio,
       enviado: false, pushEnviado: false, createdAt: Date.now(),
     }
