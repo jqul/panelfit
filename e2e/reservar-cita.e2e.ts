@@ -23,7 +23,8 @@ test('con horario, el cliente reserva en un hueco libre y queda confirmada', asy
   expect(citas[0]).toMatchObject({ client_id: ids.client, trainer_id: ids.trainer, status: 'confirmada' })
   // Con 24 h de antelación, el primer día que se ofrece es mañana
   const inicio = new Date(citas[0].start_at)
-  expect(inicio.getHours()).toBe(10)
+  // El navegador de las pruebas va en hora de Madrid; Node, en la del sistema (UTC en CI)
+  expect(new Intl.DateTimeFormat('es-ES', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Madrid' }).format(inicio)).toBe('10')
   expect(inicio.getTime()).toBeGreaterThan(Date.now() + 24 * 3600_000 - 60_000)
 })
 
