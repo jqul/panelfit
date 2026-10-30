@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery, contenidoQueSePublica, carpetasDe, nombreCarpeta } from './workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery, contenidoQueSePublica, copiaDeWorkout, carpetasDe, nombreCarpeta } from './workoutList'
 import { WeekPlan } from '../types'
 
 const ex = (n: string) => ({ name: n, sets: '3×10', weight: '', isMain: false, comment: '' })
@@ -106,5 +106,14 @@ describe('carpetas', () => {
     expect(filterTemplates(lista, { carpeta: null })).toHaveLength(5)
     expect(filterTemplates(lista, { carpeta: 'Fuerza' }).map(t => t.name)).toEqual(['A', 'C'])
     expect(filterTemplates(lista, { carpeta: '' }).map(t => t.name)).toEqual(['D'])
+  })
+})
+
+describe('copiaDeWorkout', () => {
+  it('la copia de un workout público nace privada, con id y fechas nuevos', () => {
+    const original = { id: 'a', name: 'Fuerza', isPublic: true, createdAt: 1, updatedAt: 2, weeks: [{ label: 'S1' }] }
+    const copia = copiaDeWorkout(original, 'b', 99)
+    expect(copia).toMatchObject({ id: 'b', name: 'Fuerza (copia)', isPublic: false, createdAt: 99, updatedAt: 99, weeks: [{ label: 'S1' }] })
+    expect(original.isPublic).toBe(true) // no toca el original
   })
 })
