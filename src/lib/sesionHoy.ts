@@ -52,6 +52,16 @@ export function getTodaySession(plan: TrainingPlan, logs: TrainingLogs, now: Dat
     dayIdx = currentWeek.days.findIndex((_, di) => !isDayDone(di) && !movidaAOtroDia(di))
     if (dayIdx === -1) dayIdx = 0
   }
+  // 3) Hoy ya has entrenado, pero otra sesión del plan (p. ej. la del jueves un viernes): esa es la de hoy, hecha. Sin esto
+  //    seguía pidiendo entrenar "lo del viernes" a quien ya había entrenado hoy.
+  if (!isDayDone(dayIdx)) {
+    const entrenadoHoy = (di: number) => (currentWeek.days[di]?.exercises || []).some((_, ri) => {
+      const l = logs[`ex_w${weekIdx}_d${di}_r${ri}`]
+      return !!l?.done && l.dateDone === hoy
+    })
+    const hechaHoy = currentWeek.days.findIndex((_, di) => di !== dayIdx && isDayDone(di) && entrenadoHoy(di))
+    if (hechaHoy !== -1) dayIdx = hechaHoy
+  }
   const day = currentWeek.days[dayIdx]
   if (!day) return null
   return { day, weekIdx, dayIdx, dayKey: `w${weekIdx}_d${dayIdx}` }
