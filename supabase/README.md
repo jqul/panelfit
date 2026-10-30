@@ -6,6 +6,7 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 
 | Ruta | Contenido |
 | --- | --- |
+| `migrations/20261030000003_recordatorio_cita.sql` | Recordatorio de cita una hora antes: tarea programada cada 15 min (`recordatorio-cita`) que, si hay citas confirmadas con cliente que empiezan dentro de 30 a 75 min y sin recordar, llama a la función `recordatorio-cita` (secreto `recordatorio_cita`); la función reclama cada cita (`citas.recordada_at`, atómico) y manda el push al cliente. **Aplicada el 30-oct**; función desplegada (versión 1). Prueba `bloque27_recordatorio_cita.sql` (`run-pglite-recordatorio-cita.mjs`, 4 casos) |
 | `migrations/20261030000002_horario_citas.sql` | Horario para reservas y reserva desde la app: `horario_citas` (franjas por día, duración, margen, antelación, autoconfirmar; solo su entrenador y el equipo), `agenda_cliente()` (el horario de su entrenador y lo ocupado, sin de quién) y `reservar_cita()` (vuelve a comprobar horario, antelación y hueco libre con margen; bloqueo por entrenador; 3 citas futuras como mucho). Horas de Madrid. **Aplicada el 30-oct**. Prueba `bloque26_horario_citas.sql` (`run-pglite-horario-citas.mjs`, 18 casos) |
 | `migrations/20261018000001_baseline_tables.sql` | 46 tablas, claves, índices y RLS activado |
 | `migrations/20261018000002_baseline_functions_triggers.sql` | Funciones (RPCs y helpers de RLS), triggers y el cron semanal |
