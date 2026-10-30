@@ -64,9 +64,9 @@ export function clientStatus(c: StatusInput, now: Date = new Date()): ClientStat
 
 const SEVERITY: Record<StatusLevel, number> = { risk: 0, review: 1, 'no-plan': 2, ok: 3 }
 
-export type ClientSort = 'attention' | 'name' | 'last' | 'adherence'
+export type ClientSort = 'attention' | 'name' | 'last' | 'adherence' | 'recent'
 
-interface Sortable extends StatusInput { name: string; surname?: string; weeklyDays?: number }
+interface Sortable extends StatusInput { name: string; surname?: string; weeklyDays?: number; createdAt?: number }
 
 // Orden estable; los empates se resuelven por nombre.
 export function sortClients<T extends Sortable>(list: T[], by: ClientSort, now: Date = new Date()): T[] {
@@ -74,6 +74,8 @@ export function sortClients<T extends Sortable>(list: T[], by: ClientSort, now: 
   const byName = (a: T, b: T) => name(a).localeCompare(name(b), 'es')
   const copy = [...list]
   if (by === 'name') return copy.sort(byName)
+  // Altas más recientes primero (lo de "fecha de alta"); sin fecha, al final.
+  if (by === 'recent') return copy.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || byName(a, b))
   if (by === 'attention') {
     return copy.sort((a, b) => SEVERITY[clientStatus(a, now).level] - SEVERITY[clientStatus(b, now).level] || byName(a, b))
   }

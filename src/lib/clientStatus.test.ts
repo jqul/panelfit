@@ -84,3 +84,10 @@ describe('clientStatus con una ausencia que cubre hoy', () => {
     expect(s.reasons).toEqual(['Carga alta (ACWR 1,7)'])
   })
 })
+
+describe('sortClients por alta', () => {
+  it('las altas más recientes primero; sin fecha, al final', () => {
+    const c = (name: string, createdAt?: number) => ({ name, createdAt, hasPlan: true })
+    expect(sortClients([c('Ana', 1), c('Bea'), c('Carla', 3)], 'recent').map(x => x.name)).toEqual(['Carla', 'Ana', 'Bea'])
+  })
+})

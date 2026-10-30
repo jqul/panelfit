@@ -6,10 +6,15 @@ interface Options {
   clients: ClientWithStats[]
   logsMap: Record<string, any>
   search: string
-  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
+  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar'
+  /** Solo los que llevan esta etiqueta (se combina con el filtro de estado). */
+  labelId?: string | null
 }
 
-export function useClientStats({ clients, logsMap, search, clientFilter }: Options) {
+/** Invitado que aún no ha entrado: nunca abrió su enlace ni ha registrado nada (lo que Harbiz llama "invitados"). */
+export const sinEntrar = (c: { plan_last_opened_at?: string | null; lastActive?: string | null }) => !c.plan_last_opened_at && !c.lastActive
+
+export function useClientStats({ clients, logsMap, search, clientFilter, labelId }: Options) {
   const haceUnaS = new Date()
   haceUnaS.setDate(haceUnaS.getDate() - 7)
   const haceDosSemanas = new Date()
@@ -24,6 +29,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   const atRiskCount = clients.filter(c => c.atRisk).length
   const highAcwrCount = clients.filter(c => c.highAcwr).length
   const jumpDropCount = clients.filter(c => c.highJumpDrop).length
+  const sinEntrarCount = clients.filter(sinEntrar).length
 
   const activePrevWeek = useMemo(() => {
     let count = 0
@@ -55,11 +61,13 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
     else if (clientFilter === 'at-risk') list = list.filter(c => c.atRisk)
     else if (clientFilter === 'high-acwr') list = list.filter(c => c.highAcwr)
     else if (clientFilter === 'jump-drop') list = list.filter(c => c.highJumpDrop)
+    else if (clientFilter === 'sin-entrar') list = list.filter(sinEntrar)
+    if (labelId) list = list.filter(c => (c.label_ids || []).includes(labelId))
     if (search) list = list.filter(c =>
       `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
     )
     return list
-  }, [clients, clientFilter, search])
+  }, [clients, clientFilter, search, labelId])
 
   const chartData = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date()
@@ -106,7 +114,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter }: Optio
   }
 
   return {
-    activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount,
+    activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount,
     adherenciaMap, filteredClients, chartData, activityFeed,
     alerts, formatLastActive,
   }

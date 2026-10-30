@@ -91,7 +91,7 @@ type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'cal
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
 const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop'
+type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar'
 
 interface Props {
   userProfile: UserProfile
@@ -121,6 +121,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const onboarding = useOnboarding(userProfile.uid, clients.map(c => ({ id: c.id, hasPlan: c.hasPlan, openedAt: c.plan_last_opened_at })), !demoClients)
   const [search, setSearch] = useState('')
   const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
+  const [labelFilter, setLabelFilter] = useState<string | null>(null)
   const [clientSort, setClientSort] = useState<ClientSort>('attention')
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
@@ -168,9 +169,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     })
   }, [realUid, demoClients])
 
-  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, adherenciaMap,
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
-    useClientStats({ clients, logsMap, search, clientFilter })
+    useClientStats({ clients, logsMap, search, clientFilter, labelId: labelFilter })
   const sortedClients = useMemo(() => sortClients(filteredClients, clientSort), [filteredClients, clientSort])
   // Acciones masivas: lo seleccionado es siempre lo que se ve (al filtrar o buscar se recorta) y se olvida al salir de Clientes.
   const selection = useClientSelection()
@@ -738,6 +739,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     <option value="name">Nombre</option>
                     <option value="last">Más tiempo sin entrenar</option>
                     <option value="adherence">Menor adherencia</option>
+                    <option value="recent">Altas más recientes</option>
                   </select>
                 </label>
                 </>}
@@ -762,6 +764,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'at-risk', label: 'En riesgo', n: atRiskCount },
                   { id: 'high-acwr', label: 'Carga alta', n: highAcwrCount },
                   { id: 'jump-drop', label: 'Caída de salto', n: jumpDropCount },
+                  { id: 'sin-entrar', label: 'Sin entrar', n: sinEntrarCount },
                 ] as { id: ClientFilter; label: string; n: number; always?: boolean }[])
                   .filter(f => f.always || f.n > 0 || clientFilter === f.id)
                   .map(f => (
@@ -770,7 +773,18 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                       {f.label} <span className={clientFilter === f.id ? 'opacity-70' : 'text-muted'}>{f.n}</span>
                     </button>
                   ))}
+                {/* Por etiqueta: se combina con el estado ("Sin plan" de "Online", por ejemplo) */}
+                {labels.length > 0 && (
+                  <select value={labelFilter ?? ''} onChange={e => setLabelFilter(e.target.value || null)} aria-label="Filtrar por etiqueta"
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold border outline-none shadow-sm ${labelFilter ? 'bg-ink text-white border-ink' : 'bg-card border-border/50 text-muted'}`}>
+                    <option value="">Todas las etiquetas</option>
+                    {labels.map(l => <option key={l.id} value={l.id}>{l.emoji} {l.name} ({clients.filter(c => (c.label_ids || []).includes(l.id)).length})</option>)}
+                  </select>
+                )}
               </div>}
+              {clientView === 'active' && clientFilter === 'sin-entrar' && sinEntrarCount > 0 && (
+                <p className="text-xs text-muted -mt-1">Nunca han abierto su enlace ni registrado nada. Mándales el enlace otra vez desde su ficha (o selecciónalos y envíales un mensaje).</p>
+              )}
               {loading ? (
                 <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
               ) : clientView === 'archived' ? (
