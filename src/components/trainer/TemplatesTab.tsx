@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal, Folder } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { Modal } from '../shared/Modal'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
@@ -12,7 +12,7 @@ import { TemplateGallery } from './TemplateGallery'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 import { parseWorkoutExcel } from '../../lib/importWorkout'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, contenidoQueSePublica, copiaDeWorkout } from '../../lib/workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, contenidoQueSePublica, copiaDeWorkout, carpetasDe, nombreCarpeta } from '../../lib/workoutList'
 
 interface Props {
   trainerId: string
@@ -88,6 +88,9 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
   })
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [filterType, setFilterType]   = useState<string | null>(null)
+  const [filterCarpeta, setFilterCarpeta] = useState<string | null>(null) // null = todas; '' = sin carpeta
+  const [moviendo, setMoviendo] = useState<TrainingTemplate | null>(null)
+  const [destino, setDestino] = useState('')
   const [query, setQuery]             = useState(initialSearch)
   const [exportingId, setExportingId] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
@@ -234,10 +237,22 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
   }
 
   const allTypes = [...TIPOS_DEFAULT, ...customTypes]
-  const filtered = filterTemplates(templates, { query, type: filterType, labelId: filterLabel })
+  const filtered = filterTemplates(templates, { query, type: filterType, labelId: filterLabel, carpeta: filterCarpeta })
   const types = templateTypes(templates)
-  const hasFilters = !!(query.trim() || filterType || filterLabel)
-  const clearFilters = () => { setQuery(''); setFilterType(null); setFilterLabel(null) }
+  const carpetas = carpetasDe(templates)
+  const sinCarpeta = templates.filter(t => !nombreCarpeta(t.carpeta)).length
+  const hasFilters = !!(query.trim() || filterType || filterLabel || filterCarpeta !== null)
+  const clearFilters = () => { setQuery(''); setFilterType(null); setFilterLabel(null); setFilterCarpeta(null) }
+
+  // Mover a una carpeta (o sacarlo de la suya): solo cambia la carpeta del workout.
+  const moverACarpeta = async (tmpl: TrainingTemplate, carpeta: string) => {
+    const c = nombreCarpeta(carpeta)
+    try {
+      await persist({ ...tmpl, carpeta: c || undefined, updatedAt: Date.now() })
+      toast(c ? `«${tmpl.name}» está en ${c} ✓` : `«${tmpl.name}» ya no está en ninguna carpeta`, 'ok')
+      setMoviendo(null)
+    } catch { toast('No se pudo mover', 'warn') }
+  }
 
   // ── Editor ──
   if (editing && editingPlan) return (
@@ -339,6 +354,18 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
         </div>
       )}
 
+      {/* Carpetas: solo cuando hay alguna */}
+      {carpetas.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="group" aria-label="Carpetas">
+          {[{ id: null, nombre: 'Todas', n: templates.length }, ...carpetas.map(c => ({ id: c.nombre, ...c })), { id: '', nombre: 'Sin carpeta', n: sinCarpeta }].map(c => (
+            <button key={c.id ?? '__todas'} onClick={() => setFilterCarpeta(c.id)} aria-pressed={filterCarpeta === c.id}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap flex-shrink-0 ${filterCarpeta === c.id ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>
+              <Folder className="w-3 h-3" aria-hidden /> {c.nombre} ({c.n})
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Filtro por etiqueta: pulsar de nuevo la quita */}
       {labels.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" aria-label="Filtrar por etiqueta">
@@ -412,6 +439,7 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {tmpl.type && <span className="text-[11px] bg-accent/10 text-accent px-2 py-0.5 rounded-full font-semibold">{tmpl.type}</span>}
                       <p className="text-xs text-muted">{plural(stats.exercises, 'ejercicio', 'ejercicios')}{stats.weeks > 1 ? ' por semana' : ''} · {plural(stats.days, 'día', 'días')}{stats.weeks > 1 ? ` · ${stats.weeks} sem` : ''}{upd ? ` · ${upd}` : ''}</p>
+                      {nombreCarpeta(tmpl.carpeta) && filterCarpeta === null && <span className="text-[11px] text-muted flex items-center gap-1"><Folder className="w-2.5 h-2.5" aria-hidden />{nombreCarpeta(tmpl.carpeta)}</span>}
                       {tmpl.isPublic && <span className="text-[11px] bg-ok/10 text-ok px-2 py-0.5 rounded-full font-semibold flex items-center gap-1"><Globe className="w-2.5 h-2.5" /> Público</span>}
                       {tmplLabels.map(l => <LabelPill key={l.id} label={l} small />)}
                     </div>
@@ -423,6 +451,10 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
                         <Globe className={`w-3.5 h-3.5 flex-shrink-0 ${tmpl.isPublic ? 'text-ok' : 'text-muted'}`} />
                         {tmpl.isPublic ? 'Dejar de compartir' : 'Compartir en la galería'}
+                      </button>
+                      <button onClick={() => { setMoviendo(tmpl); setDestino(nombreCarpeta(tmpl.carpeta)) }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
+                        <Folder className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Mover a carpeta…
                       </button>
                       <button onClick={() => duplicate(tmpl)}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-bg-alt">
@@ -464,6 +496,32 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
             )
           })}
         </div>
+      )}
+      {moviendo && (
+        <Modal open onClose={() => setMoviendo(null)} title={`Mover «${moviendo.name}» a…`} maxWidth="max-w-sm"
+          footer={
+            <div className="flex gap-2">
+              {nombreCarpeta(moviendo.carpeta) && <button onClick={() => moverACarpeta(moviendo, '')} className="px-3 py-2.5 border border-border rounded-xl text-sm text-muted">Sacar de la carpeta</button>}
+              <button onClick={() => moverACarpeta(moviendo, destino)} disabled={!nombreCarpeta(destino) || nombreCarpeta(destino) === nombreCarpeta(moviendo.carpeta)}
+                className="flex-1 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Mover</button>
+            </div>
+          }>
+          <div className="p-5 space-y-3">
+            {carpetas.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {carpetas.map(c => (
+                  <button key={c.nombre} onClick={() => setDestino(c.nombre)} aria-pressed={nombreCarpeta(destino) === c.nombre}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${nombreCarpeta(destino) === c.nombre ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                    <Folder className="w-3 h-3" aria-hidden /> {c.nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+            <input value={destino} onChange={e => setDestino(e.target.value)} maxLength={40} autoFocus
+              placeholder={carpetas.length ? 'U otra nueva: nombre de la carpeta' : 'Nombre de la carpeta (p. ej. Fuerza 2026)'} aria-label="Carpeta"
+              className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+          </div>
+        </Modal>
       )}
       {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onImported={() => { setShowGallery(false); loadAll() }} />}
       {aCompartir && (() => {
