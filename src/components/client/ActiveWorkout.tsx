@@ -33,7 +33,7 @@ import { guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { construirSustitucion } from '../../lib/sustitucion'
 import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
 import { streakDays } from '../../lib/progressSummary'
-import { latestPreviousLog } from '../../lib/previousSession'
+import { latestPreviousLog, mismoEjercicioEnOtrasSemanas } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
 import { semanaResumen, semanasCompletasSeguidas } from '../../lib/hoyResumen'
 import { mantenerPantallaEncendida } from '../../lib/pantallaEncendida'
@@ -384,7 +384,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   ): NextSetInfo | null => {
     const prevSetsFor = (rowIdx: number): Record<number, { weight?: string; reps?: string; rir?: number }> => {
       const key = `ex_${dayKey}_r${rowIdx}`
-      const pattern = new RegExp(`^ex_w\\d+_d${dayIdx}_r${rowIdx}$`)
+      const pattern = mismoEjercicioEnOtrasSemanas(plan.weeks, weekIdx, dayIdx, rowIdx)
       return latestPreviousLog(logsRef.current, pattern, key)?.sets || {}
     }
     const buildInfo = (rowIdx: number, setIdx: number, totalForRow: number, existing?: { weight?: string; reps?: string }): NextSetInfo => {
@@ -503,10 +503,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const allRirs = Object.values(sets).flatMap(exSets => Object.values(exSets).filter(s => s.done && s.rir !== undefined).map(s => s.rir as number))
   const avgRir = allRirs.length ? Math.round((allRirs.reduce((a, b) => a + b, 0) / allRirs.length) * 10) / 10 : null
 
-  // Mismo ejercicio en semanas anteriores = mismo día de la semana (dayIdx) y misma
-  // posición (ri), solo cambia la semana. `.includes('_r{ri}')` hacía falsos positivos:
+  // Mismo ejercicio en otras semanas = mismo día de la semana (dayIdx) y mismo nombre en el plan, aunque la
+  // posición haya cambiado (filas nuevas, como las series de bajada). `.includes('_r{ri}')` hacía falsos positivos:
   // "_r1" también casaba con "_r10", "_r11"... y con el mismo ri en OTRO día del plan.
-  const samePlaceInPlan = (ri: number) => new RegExp(`^ex_w\\d+_d${dayIdx}_r${ri}$`)
+  const samePlaceInPlan = (ri: number) => mismoEjercicioEnOtrasSemanas(plan.weeks, weekIdx, dayIdx, ri)
 
   const isNewRecord = (ri: number) => {
     const currentBest = Math.max(0, ...Object.values(sets[ri] || {}).map(s => parseFloat(s.weight || '0')))
