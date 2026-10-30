@@ -82,3 +82,11 @@ export function contenidoQueSePublica(t: Pick<TemplateLike, 'weeks' | 'descripti
   }
   return { ejercicios, comentarios, cargas, descripcion: hay(t.description) }
 }
+
+/**
+ * La copia de un workout propio. Nunca nace pública: compartir publica la plantilla entera y pasa por su aviso,
+ * así que una copia de un workout público no puede saltárselo heredando el estado.
+ */
+export function copiaDeWorkout<T extends { name: string }>(t: T, id: string, ahora: number): T & { id: string; createdAt: number; updatedAt: number; isPublic: false } {
+  return { ...t, id, name: `${t.name} (copia)`, createdAt: ahora, updatedAt: ahora, isPublic: false }
+}
