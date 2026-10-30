@@ -6,6 +6,7 @@ Proyecto de producción: `panelfit` (`thurxdxazqqxuzbupghv`, eu-west-1).
 
 | Ruta | Contenido |
 | --- | --- |
+| `migrations/20261030000005_habitos_numericos.sql` | Hábitos con meta numérica: `habitos.meta` (positiva, hasta 1.000.000) y `habitos.unidad` (hasta 20 caracteres), ambas opcionales (sin meta, el hábito sigue siendo una casilla), y `registros_habitos.valores` (objeto `{id del hábito: número}` del día, por defecto `{}`). La app marca sola el hábito en `completedHabitIds` al llegar a la meta. Solo añade columnas: políticas sin cambios. Va después de `20261030000002`. Prueba `bloque29_habitos_numericos.sql` (`run-pglite-habitos-numericos.mjs`, 11 casos) y `src/lib/habitoNumerico.test.ts` |
 | `migrations/20261030000002_horario_citas.sql` | Horario para reservas y reserva desde la app: `horario_citas` (franjas por día, duración, margen, antelación, autoconfirmar; solo su entrenador y el equipo), `agenda_cliente()` (el horario de su entrenador y lo ocupado, sin de quién) y `reservar_cita()` (vuelve a comprobar horario, antelación y hueco libre con margen; bloqueo por entrenador; 3 citas futuras como mucho). Horas de Madrid. **Aplicada el 30-oct**. Prueba `bloque26_horario_citas.sql` (`run-pglite-horario-citas.mjs`, 18 casos) |
 | `migrations/20261018000001_baseline_tables.sql` | 46 tablas, claves, índices y RLS activado |
 | `migrations/20261018000002_baseline_functions_triggers.sql` | Funciones (RPCs y helpers de RLS), triggers y el cron semanal |
