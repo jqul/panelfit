@@ -39,11 +39,25 @@ export function matchesQuery(name: string, query: string): boolean {
   return !q || norm(name).includes(q)
 }
 
-export function filterTemplates<T extends TemplateLike>(list: T[], f: { query?: string; type?: string | null; labelId?: string | null }): T[] {
+/** Nombre de carpeta limpio (sin espacios de más, 40 caracteres como mucho); vacío = sin carpeta. */
+export const nombreCarpeta = (s: string | undefined | null) => (s || '').replace(/\s+/g, ' ').trim().slice(0, 40)
+
+/** Las carpetas que hay, con cuántos workouts tiene cada una, por orden alfabético. */
+export function carpetasDe(list: { carpeta?: string }[]): { nombre: string; n: number }[] {
+  const n = new Map<string, number>()
+  list.forEach(t => { const c = nombreCarpeta(t.carpeta); if (c) n.set(c, (n.get(c) || 0) + 1) })
+  return [...n.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es')).map(([nombre, k]) => ({ nombre, n: k }))
+}
+
+/**
+ * `carpeta`: null = todas; '' = las que no están en ninguna; un nombre = las de esa carpeta.
+ */
+export function filterTemplates<T extends TemplateLike & { carpeta?: string }>(list: T[], f: { query?: string; type?: string | null; labelId?: string | null; carpeta?: string | null }): T[] {
   return list.filter(t =>
     matchesQuery(t.name, f.query || '') &&
     (!f.type || t.type === f.type) &&
-    (!f.labelId || (t.label_ids || []).includes(f.labelId))
+    (!f.labelId || (t.label_ids || []).includes(f.labelId)) &&
+    (f.carpeta === undefined || f.carpeta === null || nombreCarpeta(t.carpeta) === f.carpeta)
   )
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery, contenidoQueSePublica } from './workoutList'
+import { workoutStats, templateTypes, filterTemplates, updatedLabel, plural, matchesQuery, contenidoQueSePublica, carpetasDe, nombreCarpeta } from './workoutList'
 import { WeekPlan } from '../types'
 
 const ex = (n: string) => ({ name: n, sets: '3×10', weight: '', isMain: false, comment: '' })
@@ -93,5 +93,18 @@ describe('contenidoQueSePublica', () => {
 
   it('sin semanas no rompe', () => {
     expect(contenidoQueSePublica({})).toEqual({ ejercicios: 0, comentarios: 0, cargas: 0, descripcion: false })
+  })
+})
+
+describe('carpetas', () => {
+  const lista = [{ name: 'A', carpeta: 'Fuerza' }, { name: 'B', carpeta: ' fuerza ' }, { name: 'C', carpeta: 'Fuerza ' }, { name: 'D' }, { name: 'E', carpeta: 'Online' }] as any[]
+  it('lista las carpetas con cuántos tiene cada una', () => {
+    expect(carpetasDe(lista)).toEqual([{ nombre: 'fuerza', n: 1 }, { nombre: 'Fuerza', n: 2 }, { nombre: 'Online', n: 1 }])
+    expect(nombreCarpeta('  Fuerza   2026 ')).toBe('Fuerza 2026')
+  })
+  it('filtra: todas, una carpeta o las que no están en ninguna', () => {
+    expect(filterTemplates(lista, { carpeta: null })).toHaveLength(5)
+    expect(filterTemplates(lista, { carpeta: 'Fuerza' }).map(t => t.name)).toEqual(['A', 'C'])
+    expect(filterTemplates(lista, { carpeta: '' }).map(t => t.name)).toEqual(['D'])
   })
 })
