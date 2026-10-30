@@ -1,15 +1,17 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import { logError } from '../../lib/errors'
 import { ClientData } from '../../types'
 import {
   Plus, X, Trash2, CheckCircle2, ChevronLeft, ChevronRight,
-  Clock, Users, Repeat, Ban
+  Clock, Users, Repeat, Ban, CalendarClock
 } from 'lucide-react'
 import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
 import { Modal } from '../shared/Modal'
 import { localDateKey } from '../../lib/dates'
+// Solo se abre de vez en cuando: se descarga al abrirlo.
+const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
 
 interface Props {
   trainerId: string
@@ -59,6 +61,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const [loading, setLoading] = useState(true)
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
   const [showForm, setShowForm] = useState<{ dateISO: string } | null>(null)
+  const [verHorario, setVerHorario] = useState(false)
   const [form, setForm] = useState(emptyForm(toISODate(new Date())))
   const [saving, setSaving] = useState(false)
 
@@ -172,6 +175,12 @@ export function CalendarTab({ trainerId, clients }: Props) {
           </p>
         </div>
       )}
+      <button onClick={() => setVerHorario(true)}
+        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-2xl text-sm font-semibold text-left hover:border-accent transition-colors">
+        <CalendarClock className="w-4 h-4 text-accent flex-shrink-0" />
+        <span className="flex-1">Horario para reservas<span className="block text-xs text-muted font-normal">Cuándo pueden reservarte cita tus clientes desde su app</span></span>
+      </button>
+      {verHorario && <Suspense fallback={null}><HorarioCitasEditor trainerId={trainerId} demo={trainerId === DEMO_TRAINER_ID} onClose={() => setVerHorario(false)} /></Suspense>}
       {/* Navegación semanal */}
       <div className="flex items-center justify-between">
         <button onClick={() => setAnchor(addDays(anchor, -7))} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
