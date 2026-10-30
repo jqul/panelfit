@@ -2,7 +2,7 @@ import type { ProgramWeekLike } from './programPlan'
 import type { Tarea, TipoTarea } from './tareas'
 import { lunesDe, sumarDias } from './fechasPlan'
 
-// Las tareas de un programa que no son entrenos (cardio, vídeo, documento, registrar evolución) llegan al cliente como
+// Las tareas de un programa que no son entrenos (cardio, vídeo, documento, sesión, registrar evolución) llegan al cliente como
 // tareas sueltas con fecha (tabla tareas_cliente): las ve en Hoy y las marca hechas. Antes solo quedaban como texto en
 // el "foco" del día del plan. Los mensajes y formularios tienen su propio camino y no se convierten.
 //
@@ -31,6 +31,7 @@ export function tareasDePrograma(weeks: ProgramWeekLike[] | undefined, fechaInic
       if (t.type === 'cardio') { tipo = 'cardio'; nota = String(t.data?.objective || '') }
       else if (t.type === 'video') { tipo = 'video'; enlace = https(t.data?.url) }
       else if (t.type === 'documento') { tipo = 'tarea'; enlace = https(t.data?.url) }
+      else if (t.type === 'sesion') { tipo = 'tarea'; nota = /^\d{2}:\d{2}$/.test(String(t.data?.hora || '')) ? `A las ${t.data?.hora}` : ''; enlace = https(t.data?.url) }
       else if (t.type === 'evolucion') tipo = (t.data?.items as string[] | undefined)?.includes('fotos') ? 'foto' : 'tarea'
       if (!tipo) continue
       const titulo = recorta(t.title || '', 80)

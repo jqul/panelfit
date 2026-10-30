@@ -24,7 +24,7 @@ const ActualizarProgramaSheet = lazy(() => import('./bulk/ActualizarProgramaShee
 // ── Tipos ─────────────────────────────────────────────────
 export interface ProgramTask {
   id: string
-  type: 'workout' | 'cardio' | 'evolucion' | 'formulario' | 'mensaje' | 'video' | 'documento'
+  type: 'workout' | 'cardio' | 'evolucion' | 'formulario' | 'mensaje' | 'video' | 'documento' | 'sesion'
   title: string
   data: Record<string, any>
 }
@@ -58,6 +58,7 @@ const TASK_TYPES = [
   { id: 'mensaje', label: 'Mensaje', color: '#5a4a38', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: MessageSquare },
   { id: 'video', label: 'Vídeo', color: '#b39d82', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Video },
   { id: 'documento', label: 'Documento', color: '#8f7a62', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: FileText },
+  { id: 'sesion', label: 'Sesión', color: '#6b5d4a', bg: 'bg-bg-alt', border: 'border-border', text: 'text-ink', icon: Users },
 ] as const
 
 const TIPOS_DEFAULT = ['Fuerza','Hipertrofia','Pérdida de grasa','Resistencia','Rehabilitación','Rendimiento','General','Iniciación','Mantenimiento','Definición','Volumen','Peaking']
@@ -84,6 +85,7 @@ function TaskCard({ task, onDelete }: { task: ProgramTask; onDelete: () => void 
         <p className={`font-semibold leading-tight truncate ${meta.text}`}>{task.title}</p>
         {task.data.objective && <p className="text-muted text-[11px] mt-0.5 truncate">{task.data.objective}</p>}
         {task.data.text && <p className="text-muted text-[11px] mt-0.5 truncate">"{task.data.text}"</p>}
+        {task.type === 'sesion' && task.data.hora && <p className="text-muted text-[11px] mt-0.5 truncate">A las {task.data.hora}</p>}
       </div>
       {/* Visible siempre salvo en pantallas anchas con ratón, donde aparece al pasar el cursor o al
           enfocarla con el teclado (antes solo aparecía al pasar el ratón y en táctil no se podía borrar) */}
@@ -115,6 +117,9 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
   const [videoTitle, setVideoTitle] = useState('')
   const [docUrl, setDocUrl] = useState('')
   const [docTitle, setDocTitle] = useState('')
+  const [sesTitle, setSesTitle] = useState('')
+  const [sesHora, setSesHora] = useState('')
+  const [sesUrl, setSesUrl] = useState('')
 
   const saveTask = (type: string) => {
     let task: ProgramTask | null = null
@@ -140,6 +145,11 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
     else if (type === 'documento') {
       if (!/^https:\/\//i.test(docUrl.trim()) || !docTitle.trim()) return
       task = { id: `t_${Date.now()}`, type: 'documento', title: docTitle.trim(), data: { url: docUrl.trim() } }
+    }
+    else if (type === 'sesion') {
+      // Cita presencial u online con el cliente: título, hora y enlace de videollamada, estos dos opcionales.
+      if (!sesTitle.trim() || (sesUrl.trim() && !/^https:\/\//i.test(sesUrl.trim()))) return
+      task = { id: `t_${Date.now()}`, type: 'sesion', title: sesTitle.trim(), data: { hora: sesHora, url: sesUrl.trim() } }
     }
     if (task) { onAdd(task); onClose() }
   }
@@ -301,6 +311,20 @@ function AddTaskModal({ dayIdx, surveyTemplates, planTemplates, onAdd, onClose }
                           className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
                         <button onClick={() => saveTask('documento')} disabled={!docTitle.trim() || !/^https:\/\//i.test(docUrl.trim())}
                           className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir documento</button>
+                      </div>
+                    )}
+                    {type.id === 'sesion' && (
+                      <div className="space-y-2">
+                        <input value={sesTitle} onChange={e => setSesTitle(e.target.value)} maxLength={80}
+                          placeholder="Qué es (p. ej. Revisión técnica por videollamada)" aria-label="Título de la sesión"
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                        <input value={sesHora} onChange={e => setSesHora(e.target.value)} type="time" aria-label="Hora de la sesión"
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                        <input value={sesUrl} onChange={e => setSesUrl(e.target.value)} type="url"
+                          placeholder="Enlace de la videollamada https:// (opcional)" aria-label="Enlace de la sesión"
+                          className="w-full px-3 py-2 bg-card border border-border rounded-xl text-sm outline-none" />
+                        <button onClick={() => saveTask('sesion')} disabled={!sesTitle.trim() || (!!sesUrl.trim() && !/^https:\/\//i.test(sesUrl.trim()))}
+                          className="w-full py-2.5 bg-ink text-white rounded-xl text-sm font-semibold disabled:opacity-40">Añadir sesión</button>
                       </div>
                     )}
                   </div>
