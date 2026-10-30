@@ -14,6 +14,38 @@ const base = {
 const miercoles28 = new Date(2026, 9, 28, 10)
 
 describe('sesión de hoy', () => {
+  // Un viernes (30 oct) con el plan por días: «JUEVES» ya hecho hoy, «VIERNES» sin hacer.
+  const viernes30 = new Date(2026, 9, 30, 10)
+  const planDias = (titulos: string[]) => ({ ...base, fechaInicio: '2026-10-26', weeks: [{ label: 'S', rpe: '', isCurrent: true, days: titulos.map(dia) }] }) as any
+  const hecho = (w: number, d: number, fecha: string) => ({ [`ex_w${w}_d${d}_r0`]: { done: true, dateDone: fecha } }) as any
+
+  it('hizo hoy (viernes) la sesión del jueves: Hoy enseña esa como hecha, no pide la del viernes', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'MARTES — TIRÓN', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
+    expect(getTodaySession(plan, hecho(0, 2, '2026-10-30'), viernes30)?.dayKey).toBe('w0_d2')
+  })
+
+  it('lo mismo con días sin nombre (Día A/B/C): hecha hoy otra, esa es la de hoy', () => {
+    const plan = planDias(['Día A', 'Día B', 'Día C'])
+    expect(getTodaySession(plan, hecho(0, 0, '2026-10-30'), viernes30)?.dayKey).toBe('w0_d0')
+  })
+
+  it('si la del jueves se hizo ayer, hoy sigue tocando la del viernes', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'MARTES — TIRÓN', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
+    expect(getTodaySession(plan, hecho(0, 2, '2026-10-29'), viernes30)?.dayKey).toBe('w0_d3')
+  })
+
+  it('una sesión de hoy a medias (sin terminar) no cuenta como hecha', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
+    const logs = { ex_w0_d1_r0: { done: false, dateDone: '2026-10-30' } } as any
+    expect(getTodaySession(plan, logs, viernes30)?.dayKey).toBe('w0_d2')
+  })
+
+  it('si la del viernes ya está hecha, es la del viernes aunque hoy se hiciera otra más', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
+    const logs = { ...hecho(0, 1, '2026-10-30'), ...hecho(0, 2, '2026-10-30') }
+    expect(getTodaySession(plan, logs, viernes30)?.dayKey).toBe('w0_d2')
+  })
+
   it('sin movimientos, la siguiente sin terminar de la semana (como antes)', () => {
     expect(getTodaySession(base, {}, miercoles28)?.dayKey).toBe('w1_d0')
   })
