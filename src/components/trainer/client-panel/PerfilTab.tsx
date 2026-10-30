@@ -14,6 +14,7 @@ import { FichaSections } from './FichaSections'
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
 const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
 import { localDateKey } from '../../../lib/dates'
+import { useProfesionalesEquipo } from '../../../hooks/useProfesionalesEquipo'
 
 export interface ClientAlert {
   id: string
@@ -135,6 +136,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
       <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
 
+      <ProfesionalAsignado client={c} ownerId={trainerId} onUpdate={onUpdate} />
       <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
 
       <Suspense fallback={null}><AusenciasEventos clientId={c.id} quien="entrenador" /></Suspense>
@@ -400,6 +402,23 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       )}
 
       <FichaSections client={client} plan={plan} onPlanChange={onPlanChange} trainerId={trainerId} />
+    </div>
+  )
+}
+
+// Quién del equipo lleva a este cliente. Solo aparece con equipo (más de un profesional).
+function ProfesionalAsignado({ client, ownerId, onUpdate }: { client: ClientData; ownerId?: string; onUpdate: (u: Record<string, any>) => Promise<void> }) {
+  const profesionales = useProfesionalesEquipo(ownerId || '')
+  if (profesionales.length < 2) return null
+  return (
+    <div className="bg-card border border-border rounded-2xl px-5 py-3 flex items-center justify-between gap-3">
+      <label htmlFor="profesional-asignado" className="text-sm font-semibold">Profesional asignado</label>
+      <select id="profesional-asignado" value={client.profesional_id || ''}
+        onChange={async e => { await onUpdate({ profesional_id: e.target.value || null }); toast('Profesional asignado ✓', 'ok') }}
+        className="px-3 py-2 bg-bg border border-border rounded-xl text-sm outline-none">
+        <option value="">Sin asignar</option>
+        {profesionales.map(p => <option key={p.uid} value={p.uid}>{p.nombre}</option>)}
+      </select>
     </div>
   )
 }

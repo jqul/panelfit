@@ -6,7 +6,7 @@
 --   - habitos.meta / habitos.unidad: opcionales; sin meta, el hábito sigue siendo una casilla sí/no;
 --   - registros_habitos.valores: {"<id del hábito>": número} del día; por defecto {}.
 -- Solo se añaden columnas: las políticas RLS no cambian y las filas existentes quedan igual.
--- Prueba: hardening/tests/bloque29_habitos_numericos.sql (run-pglite-habitos-numericos.mjs).
+-- Prueba: hardening/tests/bloque30_habitos_numericos.sql (run-pglite-habitos-numericos.mjs).
 
 alter table public.habitos
   add column if not exists meta numeric,

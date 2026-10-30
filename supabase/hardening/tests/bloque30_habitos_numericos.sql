@@ -1,4 +1,4 @@
--- Prueba de migrations/20261030000005_habitos_numericos.sql
+-- Prueba de migrations/20261030000006_habitos_numericos.sql
 -- (un hábito puede llevar meta y unidad; la meta debe ser positiva y razonable; la unidad corta; el registro del día
 -- guarda un objeto de valores; lo que ya existía sigue igual).
 --

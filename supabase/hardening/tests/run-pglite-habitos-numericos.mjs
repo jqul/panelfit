@@ -7,12 +7,12 @@
 import { crearBase, read } from './pglite-base.mjs'
 
 const db = await crearBase()
-for (const m of ['20261030000005_habitos_numericos.sql']) {
+for (const m of ['20261030000006_habitos_numericos.sql']) {
   await db.exec(read(`migrations/${m}`))
   console.log(`migración aplicada: ${m}`)
 }
 
-const res = await db.exec(read('hardening/tests/bloque29_habitos_numericos.sql'))
+const res = await db.exec(read('hardening/tests/bloque30_habitos_numericos.sql'))
 const r = [...res].reverse().find(x => x.fields?.some(f => f.name === 'caso'))
 console.table(r.rows.map(x => ({ caso: x.caso, resultado: x.resultado, detalle: String(x.detalle).slice(0, 80) })))
 const ok = r.rows.every(x => x.resultado === 'OK')

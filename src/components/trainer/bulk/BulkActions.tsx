@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Dumbbell, MessageCircle, Tag, ClipboardList, Archive, X } from 'lucide-react'
+import { Dumbbell, MessageCircle, Tag, ClipboardList, Archive, X, UserCheck } from 'lucide-react'
 import type { ClientWithStats } from '../../../hooks/useTrainerClients'
 import type { MessageType } from '../../../lib/messageTemplates'
 import { AssignSheet } from './AssignSheet'
 import { MessageSheet } from './MessageSheet'
 import { LabelsSheet } from './LabelsSheet'
 import { SurveySheet } from './SurveySheet'
+import { ProfesionalSheet } from './ProfesionalSheet'
+import { useProfesionalesEquipo } from '../../../hooks/useProfesionalesEquipo'
 
-type Sheet = 'assign' | 'message' | 'labels' | 'survey'
+type Sheet = 'assign' | 'message' | 'labels' | 'survey' | 'profesional'
 
 interface Props {
   trainerId: string
@@ -41,6 +43,9 @@ export function BulkActions({ trainerId, clients, onClear, onChanged, aboveDemoB
   const n = clients.length
   const close = () => { setSheet(null); setNotify(null) }
   const notifyTargets = notify ? clients.filter(c => notify.ids.includes(c.id)) : clients
+  // Con equipo (más de un profesional), también se pueden repartir los clientes
+  const profesionales = useProfesionalesEquipo(trainerId)
+  const acciones = profesionales.length > 1 ? [...ACTIONS, { id: 'profesional' as Sheet, label: 'Profesional', Icon: UserCheck }] : ACTIONS
 
   return (
     <>
@@ -50,7 +55,7 @@ export function BulkActions({ trainerId, clients, onClear, onChanged, aboveDemoB
         <div className="max-w-6xl mx-auto flex items-center gap-1 px-2 sm:px-4 py-2">
           <p className="px-2 text-sm font-semibold whitespace-nowrap" aria-live="polite">{n} <span className="hidden sm:inline">seleccionado{n === 1 ? '' : 's'}</span><span className="sm:hidden">sel.</span></p>
           <div className="flex-1 flex items-center justify-center gap-1 min-w-0">
-            {ACTIONS.map(({ id, label, Icon }) => (
+            {acciones.map(({ id, label, Icon }) => (
               <button key={id} onClick={() => setSheet(id)} disabled={n === 0}
                 className="flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 min-h-[44px] min-w-[44px] px-2 sm:px-4 rounded-xl text-[11px] sm:text-sm font-semibold hover:bg-bg-alt disabled:opacity-40">
                 <Icon className="w-4 h-4" />{label}
@@ -73,6 +78,7 @@ export function BulkActions({ trainerId, clients, onClear, onChanged, aboveDemoB
       {sheet === 'message' && <MessageSheet trainerId={trainerId} clients={notifyTargets} onClose={close} preset={notify ? ('nueva_rutina' as MessageType) : undefined} />}
       {sheet === 'labels' && <LabelsSheet trainerId={trainerId} clients={clients} onClose={close} onChanged={onChanged} />}
       {sheet === 'survey' && <SurveySheet trainerId={trainerId} clients={clients} onClose={close} />}
+      {sheet === 'profesional' && <ProfesionalSheet trainerId={trainerId} clients={clients} onClose={close} onChanged={onChanged} profesionales={profesionales} />}
     </>
   )
 }
