@@ -30,6 +30,13 @@ describe('tareasDePrograma', () => {
     ])
   })
 
+  it('una sesión lleva su hora en la nota y su enlace de videollamada solo si es https', () => {
+    const weeks = [semana({ 2: [t('sesion', 'Revisión técnica', { hora: '18:30', url: 'https://meet.google.com/abc' }), t('sesion', 'Cita en el gimnasio', { hora: '', url: '' }), t('sesion', 'Rara', { hora: 'tarde', url: 'http://x' })] })]
+    expect(tareasDePrograma(weeks, '2026-11-02', 'p1').map(x => [x.titulo, x.tipo, x.nota, x.enlace])).toEqual([
+      ['Revisión técnica', 'tarea', 'A las 18:30', 'https://meet.google.com/abc'], ['Cita en el gimnasio', 'tarea', '', ''], ['Rara', 'tarea', '', ''],
+    ])
+  })
+
   it('un enlace que no es https no se guarda', () => {
     expect(tareasDePrograma([semana({ 0: [t('video', 'V', { url: 'http://x' })] })], '2026-11-02', 'p1')[0].enlace).toBe('')
   })
