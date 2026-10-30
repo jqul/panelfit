@@ -12,6 +12,7 @@ import { OnboardingChecklist } from './OnboardingChecklist'
 import { FichaSections } from './FichaSections'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
+const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
 import { localDateKey } from '../../../lib/dates'
 
 export interface ClientAlert {
@@ -137,6 +138,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       <GoalsSection client={c} trainerId={trainerId} onUpdate={onUpdate} />
 
       <Suspense fallback={null}><AusenciasEventos clientId={c.id} quien="entrenador" /></Suspense>
+      {trainerId && <Suspense fallback={null}><BonosCliente clientId={c.id} trainerId={trainerId} quien="entrenador" /></Suspense>}
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (
