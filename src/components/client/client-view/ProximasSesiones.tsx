@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { CalendarDays, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { logError } from '../../../lib/errors'
 import { sendPush } from '../../../lib/usePushNotifications'
 import { localDateKey } from '../../../lib/dates'
 import { avisarCambioHoy } from '../../../lib/hoyEventos'
+// Reservar en un hueco del horario del entrenador: se descarga al tocar "Pedir cita".
+const ReservarCita = lazy(() => import('./ReservarCita').then(m => ({ default: m.ReservarCita })))
 
 interface CitaCliente {
   id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
@@ -14,6 +16,8 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   const [citas, setCitas] = useState<CitaCliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  // Sin horario para reservas (o en la demo): la solicitud libre de siempre (día y hora; el entrenador confirma).
+  const [solicitudLibre, setSolicitudLibre] = useState(false)
   const [date, setDate] = useState(() => localDateKey(new Date(Date.now() + 86400000)))
   const [time, setTime] = useState('09:00')
   const [saving, setSaving] = useState(false)
@@ -91,7 +95,12 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
           </button>
         </div>
 
-        {showForm && (
+        {showForm && !solicitudLibre && !isDemo && (
+          <Suspense fallback={<p className="px-4 py-3 text-xs text-muted">Buscando huecos…</p>}>
+            <ReservarCita trainerId={trainerId} clientName={clientName} onSinHorario={() => setSolicitudLibre(true)} onHecho={() => { setShowForm(false); load() }} />
+          </Suspense>
+        )}
+        {showForm && (solicitudLibre || isDemo) && (
           <div className="px-4 py-3 border-b border-border bg-bg-alt/30 space-y-2">
             <div className="flex gap-2">
               <input type="date" value={date} min={localDateKey()} onChange={e => setDate(e.target.value)}

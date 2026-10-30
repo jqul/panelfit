@@ -248,6 +248,26 @@ export class FakeSupabase {
         if (c) c.recordatorio_diario = !!args.p_activo
         return json(route, 200, !!c)
       }
+      // Horario de citas (simplificado: la base de datos real comprueba franjas, antelación y margen)
+      case 'agenda_cliente': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const h = c && this.rows('horario_citas').find(x => x.trainer_id === c.trainerId)
+        if (!c) return json(route, 200, null)
+        if (!h || !(h.franjas || []).length) return json(route, 200, { horario: null, ocupado: [] })
+        const ocupado = this.rows('citas').filter(x => x.trainer_id === c.trainerId && x.status !== 'cancelada').map(x => ({ inicio: x.start_at, fin: x.end_at }))
+        return json(route, 200, { horario: { franjas: h.franjas, duracion_min: h.duracion_min, margen_min: h.margen_min, antelacion_horas: h.antelacion_horas, autoconfirmar: h.autoconfirmar }, ocupado })
+      }
+      case 'reservar_cita': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const h = c && this.rows('horario_citas').find(x => x.trainer_id === c.trainerId)
+        if (!c || !h) return json(route, 200, { error: 'sin_horario' })
+        const inicio = new Date(args.p_inicio)
+        const fin = new Date(inicio.getTime() + h.duracion_min * 60000)
+        if (this.rows('citas').some(x => x.trainer_id === c.trainerId && x.status !== 'cancelada' && new Date(x.start_at) < fin && new Date(x.end_at) > inicio)) return json(route, 200, { error: 'ocupado' })
+        const cita = { id: crypto.randomUUID(), trainer_id: c.trainerId, client_id: c.id, title: 'Cita reservada', start_at: inicio.toISOString(), end_at: fin.toISOString(), status: h.autoconfirmar ? 'confirmada' : 'pendiente', notes: '' }
+        this.rows('citas').push(cita)
+        return json(route, 200, { id: cita.id, status: cita.status })
+      }
       case 'get_trainer_referral_slug': return json(route, 200, null)
       // Página pública del entrenador y su formulario de contacto. La lógica de verdad (validación, duplicados, tope por hora)
       // la prueba supabase/hardening/tests/bloque20; aquí solo lo justo para probar la página.
