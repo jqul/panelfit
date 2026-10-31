@@ -20,3 +20,9 @@ describe('volumen', () => {
     expect(h.sesiones[0].mejor).toEqual({ weight: 30, reps: 8 })
   })
 })
+
+describe('volumen y calentamiento', () => {
+  it('las series de calentamiento no suman', () => {
+    expect(volumenSeries([{ weight: '40', reps: '10', tipo: 'calentamiento' }, { weight: '80', reps: '5' }])).toBe(400)
+  })
+})

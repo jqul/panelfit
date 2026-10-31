@@ -18,3 +18,10 @@ describe('resumenSeries', () => {
     expect(resumenSeries({}, true)).toEqual({ reps: 0, volumen: 0, maxKg: 0 })
   })
 })
+
+describe('resumenSeries y calentamiento', () => {
+  it('el calentamiento no cuenta en reps, volumen ni kg máximo', () => {
+    expect(resumenSeries({ 0: { weight: '60', reps: '10', done: true, tipo: 'calentamiento' }, 1: { weight: '50', reps: '5', done: true } }, true))
+      .toEqual({ reps: 5, volumen: 250, maxKg: 50 })
+  })
+})

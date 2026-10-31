@@ -1,5 +1,6 @@
 import { Especialidad } from '../lib/especialidades'
 import { PlanName } from '../lib/plans'
+import type { TipoSerie } from '../lib/tipoSerie'
 // ── USUARIOS ──────────────────────────────────────────
 export interface UserProfile {
   uid: string; email: string; displayName: string; photoURL?: string
@@ -120,6 +121,7 @@ export interface LogSet {
   timeSec?: number    // carrera: tiempo de la tirada (o duración fija del test)
   distanceM?: number  // carrera: metros de la tirada (o alcanzados en el test)
   isTest?: boolean    // carrera: test de tiempo fijo (Cooper) — distanceM es el resultado
+  tipo?: TipoSerie    // la marca el cliente: calentamiento (no cuenta para volumen), dropset o al fallo (lib/tipoSerie)
 }
 // sessionFinished: solo se usa en una entrada sintética con clave
 // `finished_${dayKey}` (sets vacío, done:false) que ActiveWorkout escribe al

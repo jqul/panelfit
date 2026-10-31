@@ -42,6 +42,7 @@ import { VueltaCalma } from './active-workout/VueltaCalma'
 import { NotaAntes } from './active-workout/NotaAntes'
 import { FichaEjercicio } from './active-workout/FichaEjercicio'
 import { historialPorEjercicio } from '../../lib/historialEjercicio'
+import type { TipoSerie } from '../../lib/tipoSerie'
 import { volumenSeries } from '../../lib/volumen'
 
 interface Props {
@@ -105,7 +106,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     addTestResultado(trainerId, testId, valor, todayDate, '')
   }
 
-  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; timeSec?: number; distanceM?: number; isTest?: boolean }
+  type SetState = { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; timeSec?: number; distanceM?: number; isTest?: boolean; tipo?: TipoSerie }
   const [sets, setSets] = useState<Record<number, Record<number, SetState>>>(() => {
     const initial: Record<number, Record<number, SetState>> = {}
     day?.exercises.forEach((ex, ri) => {
@@ -124,6 +125,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           timeSec: log?.sets?.[si]?.timeSec,
           distanceM: log?.sets?.[si]?.distanceM,
           isTest: log?.sets?.[si]?.isTest,
+          tipo: log?.sets?.[si]?.tipo,
         }
       }
     })
@@ -257,11 +259,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const currentLogs = logsRef.current
     const prevRir = currentLogs[key]?.sets?.[si]?.rir
     const prevVelocity = currentLogs[key]?.sets?.[si]?.velocity
+    const prevTipo = currentLogs[key]?.sets?.[si]?.tipo
     onLogsChange({
       ...currentLogs,
       [key]: {
         ...currentLogs[key],
-        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}), ...(prevVelocity !== undefined ? { velocity: prevVelocity } : {}) } },
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}), ...(prevVelocity !== undefined ? { velocity: prevVelocity } : {}), ...(prevTipo ? { tipo: prevTipo } : {}) } },
         done: currentLogs[key]?.done || false,
         dateDone: today,
         ...(day?.exercises[ri]?.pesoPorLado ? { porLado: true } : {}),
@@ -279,6 +282,21 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       [key]: {
         ...currentLogs[key],
         sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, rir } },
+      }
+    })
+  }, [dayKey, onLogsChange])
+
+  // Tipo de la serie (calentamiento, dropset, al fallo): se guarda al momento, como el RIR
+  const setTipo = useCallback((ri: number, si: number, tipo: TipoSerie | undefined) => {
+    setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], tipo } } }))
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    const { tipo: _t, ...existingSet } = currentLogs[key]?.sets?.[si] || { weight: '', reps: '' }
+    onLogsChange({
+      ...currentLogs,
+      [key]: {
+        ...currentLogs[key],
+        sets: { ...(currentLogs[key]?.sets || {}), [si]: tipo ? { ...existingSet, tipo } : existingSet },
       }
     })
   }, [dayKey, onLogsChange])
@@ -472,7 +490,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         weight: st?.weight || '', reps: st?.reps || '',
         ...(st?.rir !== undefined ? { rir: st.rir } : {}), ...(st?.velocity !== undefined ? { velocity: st.velocity } : {}),
         ...(st?.timeSec !== undefined ? { timeSec: st.timeSec } : {}), ...(st?.distanceM !== undefined ? { distanceM: st.distanceM } : {}),
-        ...(st?.isTest ? { isTest: true } : {}),
+        ...(st?.isTest ? { isTest: true } : {}), ...(st?.tipo ? { tipo: st.tipo } : {}),
       }
     }
 
@@ -817,7 +835,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
           onCommit={commitSet}
           onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
-          onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
+          onSetRir={setRir} onSetTipo={setTipo} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
           renderMore={renderMore} renderRun={renderRun} topExtras={topExtras} onOpenFicha={setFichaRi}
           cooldown={(day.cooldownExercises?.length || 0) > 0 ? <VueltaCalma ejercicios={day.cooldownExercises} /> : undefined}
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
@@ -1083,6 +1101,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     onToggle={(w, r) => { toggleSet(ri, si, w, r); setFilaElegida(null) /* los ajustes pasan a la que toca */ }}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
                     onSetRir={(rir) => setRir(ri, si, rir)}
+                    tipo={s.tipo} onSetTipo={(tipo) => setTipo(ri, si, tipo)}
                     onSetVelocity={(v) => setVelocity(ri, si, v)}
                   />
                   </Fragment>
