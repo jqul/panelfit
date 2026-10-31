@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts'
@@ -7,6 +7,7 @@ import { TrainingPlan, TrainingLogs } from '../../../types'
 import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap, VOLUME_LANDMARKS, getVolumeStatus } from './helpers'
 import { localDateKey } from '../../../lib/dates'
 import { volumenLog } from '../../../lib/volumen'
+import { contarSeries, RIR_EFECTIVA } from '../../../lib/seriesEfectivas'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -58,31 +59,41 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
 // ── Volumen semanal por grupo muscular ─────────────────────
 export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[] }) {
   const libraryMap = useLibraryMuscleMap(library)
+  // Todas las series o solo las efectivas (RIR ≤ 3): los rangos MEV/MAV/MRV se pensaron para series duras
+  const [modo, setModo] = useState<'todas' | 'efectivas'>('todas')
 
-  const { data, groups } = useMemo(() => {
+  const { data, groups, faciles, sinRir } = useMemo(() => {
     const byWeek: Record<string, Record<string, number>> = {}
     const groupSet = new Set<string>()
+    const porSemana: Record<string, { faciles: number; sinRir: number }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done || !log.dateDone) return
       const name = getExName(key, plan)
       if (!name) return
       const g = getMuscleGroup(name, libraryMap)
-      const setsDone = Object.values(log.sets || {}).filter((s: any) => (parseFloat(s.weight) || 0) > 0 || (parseInt(s.reps) || 0) > 0).length || 1
+      const cuenta = contarSeries(Object.values(log.sets || {}))
+      const setsDone = modo === 'efectivas' ? cuenta.efectivas : (cuenta.todas || 1)
       const d = new Date(log.dateDone + 'T00:00:00')
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
       const weekKey = localDateKey(lunes)
       if (!byWeek[weekKey]) byWeek[weekKey] = {}
       byWeek[weekKey][g] = (byWeek[weekKey][g] || 0) + setsDone
+      const p = porSemana[weekKey] ?? (porSemana[weekKey] = { faciles: 0, sinRir: 0 })
+      p.faciles += cuenta.faciles; p.sinRir += cuenta.sinRir
       groupSet.add(g)
     })
     const groups = [...groupSet].sort()
-    const data = Object.entries(byWeek).sort(([a], [b]) => a.localeCompare(b)).slice(-8).map(([date, counts]) => ({
+    const semanas = Object.entries(byWeek).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
+    const data = semanas.map(([date, counts]) => ({
       semana: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
       ...counts,
     }))
-    return { data, groups }
-  }, [logs, plan, libraryMap])
+    // Lo que se deja fuera (o se da por bueno) en las semanas que se ven, para explicarlo debajo del selector
+    const faciles = semanas.reduce((a, [w]) => a + (porSemana[w]?.faciles || 0), 0)
+    const sinRir = semanas.reduce((a, [w]) => a + (porSemana[w]?.sinRir || 0), 0)
+    return { data, groups, faciles, sinRir }
+  }, [logs, plan, libraryMap, modo])
 
   if (data.length < 2) return <EmptyState icon={<Activity className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita actividad en al menos 2 semanas" />
 
@@ -91,6 +102,23 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
 
   return (
     <div className="space-y-3">
+      <div className="space-y-1.5">
+        <div className="inline-flex p-0.5 bg-bg-alt rounded-xl" role="group" aria-label="Qué series contar">
+          {([['todas', 'Todas las series'], ['efectivas', `Efectivas (RIR ≤ ${RIR_EFECTIVA})`]] as const).map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setModo(id)} aria-pressed={modo === id}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${modo === id ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {modo === 'efectivas' && (
+          <p className="text-[11px] text-muted" data-testid="nota-efectivas">
+            Solo cuentan las series hechas cerca del fallo (RIR {RIR_EFECTIVA} o menos).
+            {faciles > 0 && ` ${faciles} ${faciles === 1 ? 'serie' : 'series'} con RIR ${RIR_EFECTIVA + 1} o más no ${faciles === 1 ? 'cuenta' : 'cuentan'}.`}
+            {sinRir > 0 && ` ${sinRir} sin RIR apuntado se dan por efectivas.`}
+          </p>
+        )}
+      </div>
       {withLandmarks.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
@@ -106,7 +134,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold">{g}</span>
                   <span className="flex items-center gap-1.5">
-                    <span className="font-bold">{sets} series</span>
+                    <span className="font-bold">{sets} {modo === 'efectivas' ? 'efectivas' : 'series'}</span>
                     <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
                   </span>
                 </div>
