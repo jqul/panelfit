@@ -812,7 +812,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         onToggleOscuro={cambiarFocoOscuro}
       />
 
-      {!trainerMode && <div className="px-4 pt-3"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
+      {!trainerMode && <div className="px-4 pt-2"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (

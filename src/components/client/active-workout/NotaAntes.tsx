@@ -38,7 +38,7 @@ export function NotaAntes({ clientId, dia }: { clientId: string; dia: string }) 
 
   if (!abierta) return (
     <button onClick={() => { setTexto(guardada || ''); setAbierta(true) }}
-      className="w-full flex items-center gap-2 px-4 py-2.5 bg-card border border-border rounded-xl text-sm text-left text-muted hover:border-accent transition-colors">
+      className="w-full flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-xl text-sm text-left text-muted hover:border-accent transition-colors">
       <MessageCircle className="w-4 h-4 flex-shrink-0" />
       {guardada ? <span className="truncate"><span className="font-semibold text-ink">Hoy llegas:</span> {guardada}</span> : '¿Cómo llegas hoy? (opcional)'}
     </button>

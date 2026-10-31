@@ -34,7 +34,7 @@ export function WorkoutHeader({
 }: Props) {
   return (
     <div className="bg-card border-b border-border flex-shrink-0">
-      <div className="flex items-center gap-2 px-4 py-3">
+      <div className="flex items-center gap-1.5 px-3 py-1.5">
         <button onClick={onBack} aria-label="Volver" className="p-2 rounded-xl hover:bg-bg-alt text-muted">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -58,43 +58,26 @@ export function WorkoutHeader({
         <FinishButton allComplete={allComplete} onClick={onFinishClick} />
       </div>
 
-      {/* Stats bar */}
-      <div className="flex items-center px-4 pb-3 gap-4 text-xs">
-        <div><p className="text-muted">Duración</p><p className="font-bold text-accent tabular-nums">{elapsedLabel}</p></div>
-        <div><p className="text-muted">Volumen</p><p className="font-bold">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</p></div>
-        <div><p className="text-muted">Series</p><p className="font-bold">{totalSetsDone}</p></div>
+      {/* Una sola línea de datos (el tiempo ya va arriba) y la barra de progreso fina debajo */}
+      <div className="flex items-center gap-3 px-4 pb-1.5 text-xs text-muted tabular-nums">
+        <span><b className="text-ink">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</b></span>
+        <span><b className="text-ink">{totalSetsDone}</b> series</span>
         {avgRir !== null && (
-          <div><p className="text-muted">RIR medio</p><p className="font-bold" style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</p></div>
+          <span>RIR <b style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</b></span>
         )}
-        <div className="flex-1 text-right">
-          <p className="text-muted">{doneExs}/{totalExs} ejercicios</p>
-          <div className="w-full h-1.5 bg-bg-alt rounded-full mt-1">
-            <div className="h-full bg-ok rounded-full transition-all" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
+        {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
+        {totalVolume > 0 && (densityRate > 0 || densityPct !== null) && (
+          <span className="flex items-center gap-0.5 text-warn font-semibold" title="Densidad: kg por minuto y tonelaje frente a la semana pasada">
+            <Flame className="w-3 h-3" />
+            {densityRate > 0 && `${densityRate} kg/min`}
+            {densityPct !== null && `${densityRate > 0 ? ' · ' : ''}${(totalVolume / 1000).toFixed(1)}t/${(prevSessionVolume / 1000).toFixed(1)}t`}
+          </span>
+        )}
+        <span className="ml-auto">{doneExs}/{totalExs} ejercicios</span>
       </div>
-
-      {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
-      {totalVolume > 0 && (
-        <div className="px-4 pb-3">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[11px] font-bold text-warn uppercase tracking-wider flex items-center gap-1">
-              <Flame className="w-3 h-3" /> Densidad
-            </p>
-            <p className="text-[11px] text-muted font-bold tabular-nums">
-              {densityRate > 0 && `${densityRate} kg/min · `}
-              {densityPct !== null
-                ? `${(totalVolume / 1000).toFixed(1)}t / ${(prevSessionVolume / 1000).toFixed(1)}t`
-                : `${(totalVolume / 1000).toFixed(1)}t movidas`}
-            </p>
-          </div>
-          {densityPct !== null && (
-            <div className="w-full h-2 bg-bg-alt rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${densityPct}%`, background: 'linear-gradient(90deg, #e07b54, #f0a868)' }} />
-            </div>
-          )}
-        </div>
-      )}
+      <div className="h-1 bg-bg-alt" aria-hidden>
+        <div className="h-full bg-ok transition-all" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }

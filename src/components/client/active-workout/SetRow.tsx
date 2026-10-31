@@ -1,5 +1,5 @@
 import { useState, memo } from 'react'
-import { Check, Zap, Gauge, CornerLeftDown } from 'lucide-react'
+import { Check, Gauge, CornerLeftDown } from 'lucide-react'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
 
@@ -108,8 +108,17 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
               done ? 'text-ok' : activa ? 'text-accent' : 'text-muted'
             }`}>{setNum}</button>
 
-          {/* Lo que pide el plan ("8 @2"); lo de la última vez va de fondo en las casillas */}
-          <p className="text-sm text-muted text-center truncate min-w-0">{planLabel || (prevWeight ? `${prevWeight}×${prevReps}` : '—')}</p>
+          {/* Lo que pide el plan ("8 @2"); lo de la última vez va de fondo en las casillas. Hecha, la misma celda apunta el
+              RIR, para no añadir una línea más por serie */}
+          {done ? (
+            <button type="button" onClick={() => setShowRir(true)} aria-label={rirMeta ? `RIR ${rir}: ${rirMeta.desc}` : 'Añadir RIR'}
+              className="text-xs font-bold text-center truncate min-w-0 py-1 rounded-md active:scale-95 transition-transform"
+              style={{ color: rirMeta ? rirMeta.color : 'var(--color-muted)' }}>
+              {rirMeta ? `RIR ${rir}` : '+ RIR'}
+            </button>
+          ) : (
+            <p className="text-sm text-muted text-center truncate min-w-0">{planLabel || (prevWeight ? `${prevWeight}×${prevReps}` : '—')}</p>
+          )}
 
           <input
             type="number"
@@ -171,11 +180,10 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           </div>
         )}
 
-        {/* Badges RIR / Velocidad (VBT) — aparecen debajo de la fila cuando la serie está marcada como hecha */}
-        {done && (
+        {/* Velocidad (VBT) de una serie hecha: si ya está apuntada, o al tocar la fila (el RIR va en la celda del plan) */}
+        {done && showVelocity && (activa || velocity !== undefined || editingVelocity) && (
           <div className="flex items-center justify-end gap-1.5 mt-1 pr-1 flex-wrap">
-            {showVelocity && (
-              editingVelocity ? (
+            {editingVelocity ? (
                 <input
                   type="number" inputMode="decimal" step="0.01" autoFocus
                   value={velocityInput}
@@ -197,17 +205,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
                   <Gauge className="w-2.5 h-2.5" />
                   {velocity !== undefined ? `${velocity} m/s${lossPct !== null && lossPct > 0.5 ? ` (-${lossPct}%)` : ''}` : '+ Velocidad'}
                 </button>
-              )
             )}
-            <button onClick={() => setShowRir(true)}
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold transition-all active:scale-95"
-              style={{
-                backgroundColor: rirMeta ? rirMeta.color + '15' : 'var(--color-bg-alt)',
-                color: rirMeta ? rirMeta.color : 'var(--color-muted)',
-              }}>
-              <Zap className="w-2.5 h-2.5" />
-              {rirMeta ? `RIR ${rir} · ${rirMeta.desc}` : 'Añadir RIR'}
-            </button>
           </div>
         )}
       </div>
