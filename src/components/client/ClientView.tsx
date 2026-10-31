@@ -19,6 +19,12 @@ const EncuestaClienteTab = lazy(() => import('./EncuestaClienteTab').then(m => (
 const CuestionarioAviso = lazy(() => import('./CuestionarioAviso').then(m => ({ default: m.CuestionarioAviso })))
 const TareasHoy = lazy(() => import('./TareasHoy').then(m => ({ default: m.TareasHoy })))
 const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
+// Lo de debajo del entreno de hoy (check-in, citas, logros, hábitos) no hace falta para la primera pantalla: se descarga
+// después, y así la carga inicial del cliente deja sitio (presupuesto en scripts/bundle-report.mjs).
+const ReadinessCheckin = lazy(() => import('./ReadinessCheckin').then(m => ({ default: m.ReadinessCheckin })))
+const ProximasSesiones = lazy(() => import('./client-view/ProximasSesiones').then(m => ({ default: m.ProximasSesiones })))
+const BadgesWidget = lazy(() => import('./BadgesWidget').then(m => ({ default: m.BadgesWidget })))
+const HabitosWidget = lazy(() => import('./HabitosWidget').then(m => ({ default: m.HabitosWidget })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
@@ -26,16 +32,12 @@ import { weekIdxFromStart } from '../../lib/planWeek'
 import { NotFound } from '../shared/NotFound'
 import { pantallaDeEnlace } from '../../lib/enlaceCliente'
 import { rememberClientLink, forgetClientLink, installClientManifest } from '../../lib/clientLink'
-import { HabitosWidget } from './HabitosWidget'
-import { BadgesWidget } from './BadgesWidget'
-import { ReadinessCheckin } from './ReadinessCheckin'
 import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { MessageTemplate, resolveMessage } from '../../lib/messageTemplates'
 import { hydrateDemoStorage } from '../../lib/useAuthBootstrap'
 import { CLIENT_CACHE_KEY, PLAN_CACHE_KEY } from './client-view/helpers'
 import { cacheGet, cacheSet, hasPendingLogs, getPendingKeys, addPendingKeys, clearPendingKeys, deviceKeys, clearClientDeviceData, sweepExpiredCaches } from '../../lib/deviceStorage'
 import { diffKeys, mergeLogs, adoptRemote, saveLogsMerged, savePlanDiasMerged } from '../../lib/serverSync'
-import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
@@ -560,10 +562,12 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     <Suspense fallback={null}><TareasHoy clientId={client.id} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
-                    <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
-                    <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
-                    <BadgesWidget logs={logs} />
-                    <div id="hoy-habitos" className="scroll-mt-2"><HabitosWidget clientId={client.id} /></div>
+                    <Suspense fallback={null}>
+                      <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
+                      <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
+                      <BadgesWidget logs={logs} />
+                      <div id="hoy-habitos" className="scroll-mt-2"><HabitosWidget clientId={client.id} /></div>
+                    </Suspense>
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                   </>
                 : <NoPlanView />
