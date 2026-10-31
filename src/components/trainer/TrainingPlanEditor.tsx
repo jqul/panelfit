@@ -3,6 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Copy, Video, Star, GripVertical, 
 import { normalizeRirTarget, RIR_PRESETS } from '../../lib/rirTarget'
 import { useCustomPeriodizationBlocks, PeriodizationBlock } from '../../lib/periodizationBlocks'
 import { BlockManager } from './training-plan-editor/BlockManager'
+import { OBJETIVOS_BLOQUE, objetivoPorNombre, type ObjetivoBloque } from '../../lib/mesociclo'
 import { WendlerModal } from './training-plan-editor/WendlerModal'
 import { ConditioningModal } from './training-plan-editor/ConditioningModal'
 import { Modal } from '../shared/Modal'
@@ -129,12 +130,16 @@ export function TrainingPlanEditor({
   const applyBlock = (block: PeriodizationBlock) => {
     if (!currentWeek) return
     const baseLabel = currentWeek.label.replace(/\s*\(bloque.*\)$/i, '')
+    // Las semanas recuerdan su bloque y su objetivo: el cliente ve «Bloque de fuerza · semana 2 de 4» (lib/mesociclo)
+    const objetivo = block.objetivo ?? objetivoPorNombre(block.label)
     const newWeeks: WeekPlan[] = block.steps.map((step, i) => ({
       ...JSON.parse(JSON.stringify(currentWeek)),
       label: `${baseLabel} (bloque ${i + 1}/${block.steps.length})`,
       rpe: step.rpe,
       isDeload: step.isDeload,
       isCurrent: false,
+      bloque: block.label,
+      ...(objetivo ? { objetivo } : {}),
     }))
     updatePlan({ weeks: [...weeks, ...newWeeks] })
     setActiveWeek(weeks.length)
@@ -345,6 +350,12 @@ export function TrainingPlanEditor({
               <input value={currentWeek.rpe} onChange={e => updateWeek(activeWeek, { rpe: e.target.value })}
                 placeholder="@7" title="RPE objetivo"
                 className="w-12 text-[11px] text-center font-mono bg-bg border border-border rounded-md px-1 py-0.5 outline-none" />
+              <select value={currentWeek.objetivo ?? ''} aria-label="Objetivo del bloque" title="Objetivo del bloque (mesociclo): el cliente lo ve en Hoy"
+                onChange={e => updateWeek(activeWeek, { objetivo: (e.target.value || undefined) as ObjetivoBloque | undefined })}
+                className="text-[11px] bg-bg border border-border rounded-md px-1 py-0.5 outline-none max-w-[110px]">
+                <option value="">Sin objetivo</option>
+                {OBJETIVOS_BLOQUE.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+              </select>
               <button onClick={() => updateWeek(activeWeek, { isDeload: !currentWeek.isDeload })}
                 title="Marcar como semana de descarga (deload)"
                 className={`p-1.5 rounded-lg transition-colors ${currentWeek.isDeload ? 'text-warn bg-warn/10' : 'text-muted hover:text-warn hover:bg-warn/5'}`}>

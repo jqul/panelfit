@@ -15,6 +15,7 @@ import { localDateKey } from '../../lib/dates'
 import { estimarMinutos, presupuestosUtiles, versionCorta } from '../../lib/duracionSesion'
 import { AnilloProgreso } from './AnilloProgreso'
 import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, type Tono } from '../../lib/hoyResumen'
+import { bloqueDeSemana, objetivoInfo } from '../../lib/mesociclo'
 
 // Color solo para estados: verde = bien, naranja/rojo = atención, gris = neutro.
 const TONO_CLASE: Record<Tono, string> = { ok: 'text-ok', atencion: 'text-attn', neutro: 'text-muted' }
@@ -64,6 +65,9 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     : null
   const weekIdx = getEffectiveWeekIdx(plan, logs)
   const weekLabel = plan.weeks?.[weekIdx]?.label
+  // El mesociclo de esta semana (si el entrenador le puso objetivo o aplicó un bloque): qué toca y para qué
+  const bloque = bloqueDeSemana(plan.weeks, weekIdx)
+  const paraQue = objetivoInfo(bloque?.objetivo)?.paraQue
   const semana = semanaResumen(plan, logs, weekIdx)
   const fraseSem = fraseSemana(semana.hechas, semana.previstas)
   // Adherencia de las últimas 4 semanas: dice más que "42 ejercicios hechos".
@@ -157,6 +161,12 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
               <p className="text-[11px] uppercase tracking-widest text-muted font-bold mb-1">Hoy{weekLabel ? ` · ${weekLabel}` : ''}</p>
               <h3 className="font-serif font-bold text-xl leading-tight">{todaySession.day.title}</h3>
               {todaySession.day.focus && <p className="text-sm text-muted mt-0.5">{todaySession.day.focus}</p>}
+              {bloque && (
+                <div className="mt-2 text-xs" data-testid="bloque-actual">
+                  <p className="font-semibold">{bloque.nombre} · semana {bloque.semana} de {bloque.total}{bloque.descarga ? ' · descarga' : ''}</p>
+                  {paraQue && <p className="text-muted">{bloque.descarga ? 'Semana suave para recuperar y llegar fresco al siguiente bloque.' : paraQue}</p>}
+                </div>
+              )}
               {todayComplete && <p role="status" className="text-sm font-semibold text-ok mt-2">Entreno de hoy hecho. Buen trabajo.</p>}
 
               {/* Dónde vas: hoy y en el programa, en anillos */}
