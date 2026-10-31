@@ -89,29 +89,27 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
     setReps(v); onCommit(weight, v)
   }
 
-  const casilla = (extra: string) => `w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${extra} ${
-    done ? 'bg-ok/10 border-ok/30 text-ok' : activa ? 'bg-bg border-accent' : 'bg-bg border-border'
+  // Casillas planas, sin borde: lo de la última vez va de fondo (placeholder) y el borde solo marca la serie activa
+  const casilla = `w-full text-center text-[15px] font-semibold tabular-nums py-1.5 rounded-lg border outline-none placeholder:text-muted/50 placeholder:font-medium focus:border-accent ${
+    done ? 'bg-transparent border-transparent text-ok' : activa ? 'bg-bg-alt border-accent/60' : 'bg-bg-alt/70 border-transparent'
   }`
-  const paso = 'min-w-[40px] h-9 px-2 flex items-center justify-center text-xs font-bold rounded-lg bg-bg border border-border text-muted active:scale-90 transition-transform'
+  const paso = 'min-w-[36px] h-8 px-2 flex items-center justify-center text-xs font-bold rounded-lg bg-bg-alt text-muted active:scale-90 transition-transform'
 
   return (
     <>
       {showRir && (
         <RirSelector value={rir} onSelect={onSetRir} onClose={() => setShowRir(false)} />
       )}
-      <div className={`px-3 py-1.5 transition-colors ${done ? 'bg-ok/8' : activa ? 'bg-accent/5' : ''}`} onFocusCapture={onActivar}>
-        <div className="grid grid-cols-[28px_1fr_76px_60px_40px] gap-1.5 items-center">
+      <div className={`px-3 py-1 transition-colors ${done ? 'bg-ok/10' : ''}`} onFocusCapture={onActivar}>
+        <div className="grid grid-cols-[28px_1fr_72px_56px_36px] gap-1.5 items-center">
           {/* Nº serie */}
           <button type="button" onClick={onActivar} aria-label={`Ajustes de la serie ${setNum}`} tabIndex={-1}
-            className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
-              done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+            className={`h-7 flex items-center justify-center text-sm font-bold tabular-nums ${
+              done ? 'text-ok' : activa ? 'text-accent' : 'text-muted'
             }`}>{setNum}</button>
 
-          {/* Plan + lo de la última vez */}
-          <div className="text-center leading-tight min-w-0">
-            {planLabel && <p className="text-sm text-muted truncate">{planLabel}</p>}
-            <p className="text-[11px] text-muted/80 truncate">{prevWeight ? `${prevWeight}×${prevReps}` : '—'}</p>
-          </div>
+          {/* Lo que pide el plan ("8 @2"); lo de la última vez va de fondo en las casillas */}
+          <p className="text-sm text-muted text-center truncate min-w-0">{planLabel || (prevWeight ? `${prevWeight}×${prevReps}` : '—')}</p>
 
           <input
             type="number"
@@ -121,7 +119,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             onBlur={() => onCommit(weight, reps)}
             placeholder={prevWeight || '—'}
             aria-label={`Peso serie ${setNum}`}
-            className={casilla('')}
+            className={casilla}
           />
 
           <input
@@ -132,15 +130,15 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             onBlur={() => onCommit(weight, reps)}
             placeholder={prevReps || '10'}
             aria-label={`Repeticiones serie ${setNum}`}
-            className={casilla('')}
+            className={casilla}
           />
 
           {/* Check */}
           <button
             onClick={() => onToggle(weight, reps)}
             aria-label={done ? `Marcar serie ${setNum} como no hecha` : `Marcar serie ${setNum} como hecha`}
-            className={`w-9 h-9 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
-              done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
+            className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
+              done ? 'bg-ok text-white' : 'bg-bg-alt text-muted hover:text-ok'
             }`}>
             <Check className="w-4 h-4" />
           </button>

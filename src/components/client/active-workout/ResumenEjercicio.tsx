@@ -18,7 +18,7 @@ export function ResumenEjercicio({ hoy, antes }: { hoy: Record<number, SerieLite
     )
   }
   return (
-    <div className="grid grid-cols-3 gap-2 mx-4 mb-2 py-1.5 border-y border-border/60" aria-label="Hoy frente a la última vez">
+    <div className="grid grid-cols-3 gap-2 mx-4 mb-1.5 py-1" aria-label="Hoy frente a la última vez">
       {celda('Reps', h.reps, a.reps)}
       {celda('Vol', h.volumen, a.volumen)}
       {celda('Máx kg', h.maxKg, a.maxKg)}

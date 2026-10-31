@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import {
-  ChevronDown, Trophy,
+  MoreHorizontal, Trophy,
   Plus, Dumbbell, Flame, X, CheckCircle2, Repeat
 } from 'lucide-react'
 import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../types'
@@ -10,7 +10,6 @@ import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelo
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
-import { RirTargetChip } from './active-workout/RirTargetChip'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
@@ -877,29 +876,28 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           ) : null
 
           return (
-            <div key={ri} className="border-b border-border">
-              <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+            <div key={ri} className="border-b border-border/60 pb-1">
+              <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
                 {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
-                    className="w-10 h-10 rounded-xl overflow-hidden border border-border flex-shrink-0">
+                    className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
                     <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
                   </a>
                 ) : (
-                  <div className="w-10 h-10 rounded-xl bg-bg-alt flex items-center justify-center flex-shrink-0">
-                    <Dumbbell className="w-5 h-5 text-muted" />
+                  <div className="w-8 h-8 rounded-lg bg-bg-alt flex items-center justify-center flex-shrink-0">
+                    <Dumbbell className="w-4 h-4 text-muted" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`font-bold text-base ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
-                    {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
+                  <div className="flex items-center gap-1.5">
+                    <p className={`font-semibold text-[15px] leading-tight truncate ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-ink'}`}>{ex.name}</p>
+                    {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />}
                   </div>
                   {substitutions[ri] && (
-                    <p className="text-sm font-bold text-warn flex items-center gap-1 mt-0.5">
-                      <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
+                    <p className="text-xs font-bold text-warn flex items-center gap-1 mt-0.5">
+                      <Repeat className="w-3 h-3 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
-                  {ex.isMain && <span className="text-[11px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
                     const target = resolveWeightFromPercent(ex.weight, best1RM)
@@ -921,13 +919,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                   )}
                 </div>
                 <button onClick={() => setExpandedHistory(expandedHistory === ri ? null : ri)}
-                  className="p-2 -m-2 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label="Ver historial">
-                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHistory === ri ? 'rotate-180' : ''}`} />
+                  className="p-2 -m-1 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label={`Más de ${ex.name}`} aria-expanded={expandedHistory === ri}>
+                  <MoreHorizontal className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Historial comparativo instantáneo — últimas sesiones de este
-                  ejercicio, sin salir de la sesión activa */}
+              {/* El «…» del ejercicio: historial, cambiarlo y pedir feedback, para que la lista quede limpia */}
               {expandedHistory === ri && (() => {
                 const history = getExerciseHistory(ex.name)
                 return (
@@ -960,10 +957,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 )
               })()}
 
-              {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+              {ex.comment && <p className="mx-4 mb-1 text-[11px] text-muted italic leading-snug">"{ex.comment}"</p>}
 
-              {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
-              {renderSubstitution(ri, ex)}
+              {/* Sustituir ejercicio — ej. el material previsto está ocupado. En el «…», salvo si ya lo cambió o preguntó */}
+              {(expandedHistory === ri || substitutions[ri] || logs[`ex_${dayKey}_r${ri}`]?.duda) && renderSubstitution(ri, ex)}
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
                   fisioterapia deportiva moderna no se busca "cero dolor" sino
@@ -988,7 +985,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
               {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
                   ejecución; no aplica cuando es el propio entrenador quien graba */}
-              {trainerId && !trainerMode && (
+              {trainerId && !trainerMode && expandedHistory === ri && (
                 <div className="px-4 mb-3">
                   <VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} />
                 </div>
@@ -996,8 +993,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
               {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} />}
 
-              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
-              <RirTargetChip rir={ex.rir} />
+              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó. El RIR objetivo ya va en la columna Plan */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
               {ex.kind === 'run' && ex.run ? (
@@ -1011,11 +1007,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 />
               ) : (<>
               {/* Cabecera tabla */}
-              <div className="grid grid-cols-[28px_1fr_76px_60px_40px] gap-1.5 px-3 pb-1">
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Set</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Plan</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Kg</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Reps</p>
+              <div className="grid grid-cols-[28px_1fr_72px_56px_36px] gap-1.5 px-3 pb-0.5">
+                {['Set', 'Plan', 'Kg', 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
                 <div />
               </div>
 
@@ -1027,10 +1020,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                   <Fragment key={clave}>
                   {/* El descanso entre series, como separador (no después de la última) */}
                   {si > 0 && !hideRest && (
-                    <div className="flex items-center gap-2 px-4 py-0.5" aria-hidden>
-                      <span className="flex-1 h-px bg-border" />
-                      <span className="text-[11px] text-muted tabular-nums">{restMin}:{String(restSecR).padStart(2, '0')}</span>
-                      <span className="flex-1 h-px bg-border" />
+                    <div className="flex items-center gap-2 px-6 h-3" aria-hidden>
+                      <span className="flex-1 h-px bg-border/60" />
+                      <span className="text-[11px] text-muted/80 tabular-nums">{restMin}:{String(restSecR).padStart(2, '0')}</span>
+                      <span className="flex-1 h-px bg-border/60" />
                     </div>
                   )}
                   <SetRow
@@ -1052,7 +1045,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     showVelocity={tracksVelocity(ex)}
                     showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
-                    onToggle={(w, r) => toggleSet(ri, si, w, r)}
+                    onToggle={(w, r) => { toggleSet(ri, si, w, r); setFilaElegida(null) /* los ajustes pasan a la que toca */ }}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
                     onSetRir={(rir) => setRir(ri, si, rir)}
                     onSetVelocity={(v) => setVelocity(ri, si, v)}
@@ -1062,8 +1055,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               })}
 
               <button onClick={() => addSet(ri)}
-                className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
-                <Plus className="w-4 h-4" /> Agregar Serie
+                className="mx-auto flex items-center justify-center gap-1 px-3 py-1.5 mt-0.5 rounded-lg text-muted hover:bg-bg-alt transition-colors text-xs font-semibold">
+                <Plus className="w-3.5 h-3.5" /> Añadir serie
               </button>
               </>)}
             </div>
