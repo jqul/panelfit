@@ -1,8 +1,8 @@
 import { useState, lazy, Suspense } from 'react'
-import { createPortal } from 'react-dom'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
-import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { useSesionEnCurso } from './SesionEnCurso'
 import { VideoModal } from './VideoModal'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { DEFAULT_SERIES_TYPES, type SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
@@ -17,9 +17,7 @@ const CalendarioTab = lazy(() => import('./CalendarioTab').then(m => ({ default:
 interface Props {
   plan: TrainingPlan
   logs: TrainingLogs
-  onLogsChange: (logs: TrainingLogs) => void
   seriesTypes?: SeriesTypeDef[]
-  trainerId?: string
   clientId?: string
   view?: 'semana' | 'calendario'
   onViewChange?: (v: 'semana' | 'calendario') => void
@@ -59,9 +57,10 @@ function SeriesTypeInfoModal({ type, onClose }: { type: SeriesTypeDef; onClose: 
   )
 }
 
-export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, trainerId, clientId, view = 'semana', onViewChange }: Props) {
+export function TrainingPlanView({ plan, logs, seriesTypes, clientId, view = 'semana', onViewChange }: Props) {
   usePrefetchActiveWorkout()
-  const [activeWorkout, setActiveWorkout] = useState<{ weekIdx: number; dayIdx: number } | null>(null)
+  // El entreno se abre en ClientView (SesionEnCurso): así sigue abierto, en la barra, aunque se cambie de pestaña
+  const sesionEnCurso = useSesionEnCurso()
   const [openDays, setOpenDays] = useState<Record<string, boolean>>({})
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [seriesInfoModal, setSeriesInfoModal] = useState<SeriesTypeDef | null>(null)
@@ -71,20 +70,6 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
 
   const weekIdx = getEffectiveWeekIdx(plan, logs)
   const currentWeek = plan.weeks?.[weekIdx]
-
-  // En el body, no dentro de <main> (z-10): ahí la cabecera de la app (z-20) tapaba la del entreno.
-  if (activeWorkout) return createPortal(
-    <ActiveWorkout
-      plan={plan}
-      day={plan.weeks[activeWorkout.weekIdx].days[activeWorkout.dayIdx]}
-      dayKey={`w${activeWorkout.weekIdx}_d${activeWorkout.dayIdx}`}
-      logs={logs}
-      onLogsChange={onLogsChange}
-      onFinish={() => setActiveWorkout(null)}
-      trainerId={trainerId}
-    />,
-    document.body
-  )
 
   if (!currentWeek) return (
     <div className="p-8 text-center text-muted">
@@ -170,7 +155,7 @@ export function TrainingPlanView({ plan, logs, onLogsChange, seriesTypes, traine
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
-                    onClick={() => setActiveWorkout({ weekIdx, dayIdx: di })}
+                    onClick={() => sesionEnCurso?.abrir(plan.weeks[weekIdx].days[di], `w${weekIdx}_d${di}`)}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
                       isComplete ? 'bg-ok/10 text-ok border border-ok/30' :
                       pct > 0 ? 'bg-accent text-white' : 'bg-ink text-white'
