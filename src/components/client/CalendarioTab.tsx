@@ -7,6 +7,7 @@ import { sesionesPorFecha, cumplimientoDia, ETIQUETA_NIVEL, NivelCumplimiento, t
 import { supabase } from '../../lib/supabase'
 import { isDemoClientId } from '../../lib/demoIds'
 import { COLOR_NIVEL } from '../shared/PuntosSemana'
+import { volumenSeries } from '../../lib/volumen'
 
 function getExerciseName(key: string, plan?: TrainingPlan | null): string {
   // Antes le faltaban las \ de \d y nunca casaba: el detalle del día enseñaba "ex_w1_d0_r0" en vez del nombre.
@@ -21,9 +22,10 @@ function getDaySession(logs: TrainingLogs, date: string, plan?: TrainingPlan | n
   const exercises = entries.map(([key, log]) => ({
     name: getExerciseName(key, plan),
     sets: Object.values(log.sets || {}),
+    porLado: log.porLado,
     best: Math.max(0, ...Object.values(log.sets || {}).map((s: any) => parseFloat(s.weight) || 0))
   })).filter(e => e.name && e.name !== '')
-  const volume = exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, s: any) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0), 0)
+  const volume = exercises.reduce((acc, ex) => acc + volumenSeries(ex.sets, ex.porLado), 0)
   return { exercises, volume: Math.round(volume) }
 }
 

@@ -1,5 +1,6 @@
 import { TrainingLogs, TrainingPlan } from '../types'
 import { estimate1RM } from './strength'
+import { volumenSeries } from './volumen'
 
 // Historial de cada ejercicio para el cliente: qué hizo cada día que lo entrenó (series, mejor serie, 1RM estimado y
 // volumen). Lo usan la vista «Por ejercicio» de Progreso y la ficha del ejercicio dentro del entreno. Puro: recibe
@@ -19,7 +20,7 @@ const KEY_RE = /^ex_w(\d+)_d(\d+)_r(\d+)$/
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | null): HistorialDeEjercicio[] {
-  const porNombre = new Map<string, { name: string; dias: Map<string, SerieHecha[]> }>()
+  const porNombre = new Map<string, { name: string; dias: Map<string, { series: SerieHecha[]; volumen: number }> }>()
   for (const [key, log] of Object.entries(logs || {})) {
     if (!log?.done || !log.dateDone) continue
     const m = key.match(KEY_RE)
@@ -31,17 +32,18 @@ export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | 
     if (!series.length) continue
     const clave = name.toLowerCase()
     const e = porNombre.get(clave) ?? { name, dias: new Map() }
-    e.dias.set(log.dateDone, [...(e.dias.get(log.dateDone) || []), ...series])
+    // El volumen se suma aquí, registro a registro: en los de peso por lado (porLado) cuenta el doble
+    const dia = e.dias.get(log.dateDone) ?? { series: [], volumen: 0 }
+    e.dias.set(log.dateDone, { series: [...dia.series, ...series], volumen: dia.volumen + volumenSeries(Object.values(log.sets || {}), log.porLado) })
     porNombre.set(clave, e)
   }
   const lista: HistorialDeEjercicio[] = []
   for (const { name, dias } of porNombre.values()) {
-    const sesiones = [...dias.entries()].map(([date, series]): SesionEjercicio => {
-      let mejor: SerieHecha | null = null, e1rm = 0, volumen = 0
+    const sesiones = [...dias.entries()].map(([date, { series, volumen }]): SesionEjercicio => {
+      let mejor: SerieHecha | null = null, e1rm = 0
       for (const s of series) {
         if (s.weight > 0 && (!mejor || s.weight > mejor.weight || (s.weight === mejor.weight && s.reps > mejor.reps))) mejor = s
         if (s.weight > 0 && s.reps <= 10) e1rm = Math.max(e1rm, estimate1RM(s.weight, s.reps))
-        volumen += s.weight * s.reps
       }
       return { date, series, mejor, e1rm: r1(e1rm), volumen: r1(volumen) }
     }).sort((a, b) => b.date.localeCompare(a.date))

@@ -270,7 +270,7 @@ export function FocusWorkout(p: Props) {
                     onChange={e => setWeight(e.target.value)} onBlur={() => p.onCommit(p.ri, p.si, weight, reps)}
                     placeholder={prev?.weight || '0'}
                     className="w-full text-center bg-transparent font-serif font-bold text-6xl outline-none tabular-nums" />
-                  <p className="text-xs text-muted -mt-1">kg</p>
+                  <p className="text-xs text-muted -mt-1">{ex.pesoPorLado ? 'kg por lado' : 'kg'}</p>
                 </div>
                 <button onClick={() => adjustWeight(2.5)} aria-label="Añadir 2,5 kg" className="w-12 h-12 rounded-2xl bg-bg border border-border font-bold text-sm text-muted active:scale-90 transition-transform">+2,5</button>
               </div>

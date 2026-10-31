@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { TrainingLogs } from '../../../types'
 import { CustomTooltip } from './helpers'
+import { volumenLog } from '../../../lib/volumen'
 
 export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
   const { thisWeek, lastWeek } = useMemo(() => {
@@ -17,7 +18,7 @@ export function ComparativaChart({ logs }: { logs: TrainingLogs }) {
     Object.values(logs).forEach((log: any) => {
       if (!log.dateDone || !log.done) return
       const d = new Date(log.dateDone + 'T00:00:00')
-      const vol = Object.values(log.sets || {}).reduce((a: number, s: any) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      const vol = volumenLog(log)
       if (d >= lunesEsta) { thisVol += vol; thisSes.add(log.dateDone) }
       else if (d >= lunesAnterior && d <= domAnterior) { lastVol += vol; lastSes.add(log.dateDone) }
     })
