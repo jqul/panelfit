@@ -37,6 +37,8 @@ interface Props {
   onOpenCalc: (weight: string) => void
   renderMore: (ri: number) => ReactNode
   renderRun: (ri: number) => ReactNode
+  /** Abre la ficha del ejercicio (técnica, historial, alternativas). */
+  onOpenFicha?: (ri: number) => void
   topExtras?: ReactNode
   /** Vuelta a la calma: se enseña al tener todo hecho, justo antes de terminar. */
   cooldown?: ReactNode
@@ -223,7 +225,11 @@ export function FocusWorkout(p: Props) {
           <button onClick={() => goEx(-1)} disabled={p.ri === 0} className="sr-only">Ejercicio anterior</button>
           <div className="flex-1 min-w-0 text-center">
             <div className="flex items-center justify-center gap-2">
-              <h2 className={`font-serif font-bold text-2xl leading-tight ${sub ? 'line-through text-muted text-lg' : ''}`}>{ex.name}</h2>
+              <h2 className={`font-serif font-bold text-2xl leading-tight ${sub ? 'line-through text-muted text-lg' : ''}`}>
+                {p.onOpenFicha
+                  ? <button type="button" onClick={() => p.onOpenFicha!(p.ri)} aria-label={`Ficha de ${ex.name}`} className="hover:underline underline-offset-4 decoration-2">{ex.name}</button>
+                  : ex.name}
+              </h2>
               {p.isRecord(p.ri) && <Trophy className="w-5 h-5 text-warn flex-shrink-0" />}
             </div>
             {sub && <p className="flex items-center justify-center gap-1.5 font-serif font-bold text-2xl text-warn"><Repeat className="w-5 h-5" /> {sub}</p>}

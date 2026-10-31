@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react'
 import {
   MoreHorizontal, Trophy,
   Plus, Dumbbell, Flame, X, CheckCircle2, Repeat
@@ -40,6 +40,8 @@ import { mantenerPantallaEncendida } from '../../lib/pantallaEncendida'
 import { FocusWorkout } from './active-workout/FocusWorkout'
 import { VueltaCalma } from './active-workout/VueltaCalma'
 import { NotaAntes } from './active-workout/NotaAntes'
+import { FichaEjercicio } from './active-workout/FichaEjercicio'
+import { historialPorEjercicio } from '../../lib/historialEjercicio'
 
 interface Props {
   day: DayPlan
@@ -209,6 +211,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     try { localStorage.setItem('pf_workout_view', next) } catch { /* sin almacenamiento: no se recuerda */ }
   }
   const [calcWeight, setCalcWeight] = useState<number | null>(null)
+  // Ficha del ejercicio (al tocar su nombre): técnica, lo hecho otras veces y alternativas
+  const [fichaRi, setFichaRi] = useState<number | null>(null)
+  const historialEjercicios = useMemo(() => fichaRi === null ? [] : historialPorEjercicio(logs, plan), [fichaRi, logs, plan])
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
   const [sessionRpeHalf, setSessionRpeHalf] = useState(false)
@@ -771,6 +776,15 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
+      {(() => {
+        const ex = fichaRi !== null ? day.exercises[fichaRi] : null
+        return (
+          <FichaEjercicio ex={ex ?? null} open={!!ex} onClose={() => setFichaRi(null)} trainerId={trainerId}
+            historial={ex ? historialEjercicios.find(h => h.name.toLowerCase() === ex.name.trim().toLowerCase()) ?? null : null}
+            grupo={ex ? libraryMuscleMap.get(ex.name.toLowerCase().trim()) : undefined}
+            restSecs={ex ? ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)) : undefined} />
+        )
+      })()}
       {prAlert && <PrAlert exerciseName={prAlert.name} oneRM={prAlert.oneRM} weight={prAlert.weight} reps={prAlert.reps} deltaKg={prAlert.deltaKg} />}
 
       {view === 'foco' ? (
@@ -784,7 +798,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           onCommit={commitSet}
           onToggle={(ri, si, w, r) => { toggleSet(ri, si, w, r); setFocusOverride(null) }}
           onSetRir={setRir} onSetVelocity={setVelocity} onAddSet={addSet} onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
-          renderMore={renderMore} renderRun={renderRun} topExtras={topExtras}
+          renderMore={renderMore} renderRun={renderRun} topExtras={topExtras} onOpenFicha={setFichaRi}
           cooldown={(day.cooldownExercises?.length || 0) > 0 ? <VueltaCalma ejercicios={day.cooldownExercises} /> : undefined}
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
         />
@@ -890,7 +904,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className={`font-semibold text-[15px] leading-tight truncate ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-ink'}`}>{ex.name}</p>
+                    <button type="button" onClick={() => setFichaRi(ri)} aria-label={`Ficha de ${ex.name}`}
+                      className={`font-semibold text-[15px] leading-tight truncate text-left hover:underline underline-offset-2 ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-ink'}`}>{ex.name}</button>
                     {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />}
                   </div>
                   {substitutions[ri] && (
