@@ -8,7 +8,7 @@ export function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs;
     const counts: Record<string, number> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       const g = getMuscleGroup(name, libraryMap)
       counts[g] = (counts[g] || 0) + 1

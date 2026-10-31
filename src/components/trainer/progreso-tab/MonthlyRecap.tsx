@@ -21,7 +21,7 @@ export function MonthlyRecap({ logs, plan }: { logs: TrainingLogs; plan?: Traini
 
     const entries = Object.entries(logs)
       .filter(([, log]) => log.done && log.dateDone)
-      .map(([key, log]) => ({ key, log, date: new Date(log.dateDone + 'T00:00:00'), name: getExName(key, plan) || key }))
+      .map(([key, log]) => ({ key, log, date: new Date(log.dateDone + 'T00:00:00'), name: getExName(key, plan, log) || key }))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
 
     const byMonth: Record<string, MonthStats & { sessionDates: Set<string> }> = {}

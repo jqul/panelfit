@@ -68,7 +68,7 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
     const porSemana: Record<string, { faciles: number; sinRir: number }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done || !log.dateDone) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       const g = getMuscleGroup(name, libraryMap)
       const cuenta = contarSeries(Object.values(log.sets || {}))

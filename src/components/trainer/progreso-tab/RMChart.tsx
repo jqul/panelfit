@@ -8,7 +8,7 @@ export function RMChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPla
     const best: Record<string, { rm: number; peso: number; reps: number; date: string }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       Object.values(log.sets || {}).forEach((s: any) => {
         const w = parseFloat(s.weight) || 0; const r = parseInt(s.reps) || 0

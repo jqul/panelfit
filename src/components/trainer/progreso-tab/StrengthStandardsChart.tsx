@@ -10,7 +10,7 @@ export function StrengthStandardsChart({ client, logs, plan }: { client: ClientD
     const bestByLift: Record<LiftKey, number> = { squat: 0, bench: 0, deadlift: 0 }
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       const lift = matchLiftKey(name)
       if (!lift) return
