@@ -58,9 +58,15 @@ interface Props {
   trainerId?: string
   clientName?: string   // solo para mostrar de quién es la sesión en modo entrenador
   trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
+  /** Cuándo se abrió (ms): el cronómetro sigue desde ahí aunque la pantalla se esconda en la barra y vuelva. */
+  inicio?: number
+  /** Cada vez que cambia (y no es 0), abre el «Terminar»: es el botón Terminar de la barra del entreno en curso. */
+  pedirTerminar?: number
+  /** Series hechas y totales del día, para la barra del entreno en curso. */
+  onProgreso?: (p: { hechas: number; total: number }) => void
 }
 
-export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode }: Props) {
+export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode, inicio, pedirTerminar, onProgreso }: Props) {
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
   const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
   const dayIdx = dayKeyMatch ? parseInt(dayKeyMatch[2]) : 0
@@ -217,7 +223,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const [prAlert, setPrAlert] = useState<{ name: string; oneRM: number; weight: number; reps: number; deltaKg: number | null } | null>(null)
   const [sessionRpe, setSessionRpe] = useState<number | null>(null)
   const [sessionRpeHalf, setSessionRpeHalf] = useState(false)
-  const startTime = useRef(Date.now())
+  const startTime = useRef(inicio ?? Date.now())
   const setsRef = useRef(sets)
   useEffect(() => { setsRef.current = sets }, [sets])
 
@@ -226,6 +232,16 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const t = setInterval(() => setElapsedSecs(Math.floor((Date.now() - startTime.current) / 1000)), 1000)
     return () => clearInterval(t)
   }, [finished])
+
+  useEffect(() => { if (pedirTerminar) setShowFinish(true) }, [pedirTerminar])
+
+  // Series hechas / totales para la barra del entreno en curso
+  useEffect(() => {
+    if (!onProgreso) return
+    let hechas = 0, total = 0
+    Object.values(sets).forEach(ex => Object.values(ex).forEach(s => { total++; if (s.done) hechas++ }))
+    onProgreso({ hechas, total })
+  }, [sets, onProgreso])
 
   const formatElapsed = () => {
     const m = Math.floor(elapsedSecs / 60)

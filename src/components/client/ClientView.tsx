@@ -39,6 +39,7 @@ import { ProximasSesiones } from './client-view/ProximasSesiones'
 import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
+import { SesionEnCursoProvider } from './SesionEnCurso'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -506,6 +507,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   return (
     <SyncStatusContext.Provider value={{ state: syncState, pendingCount, retry: () => { trySyncPendingLogs(client.id) } }}>
+    <SesionEnCursoProvider plan={plan} logs={logs} onLogsChange={handleLogsChange} trainerId={client.trainerId}>
     <div className="h-[100dvh] overflow-hidden flex flex-col"
       style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: 'var(--color-bg)' }}>
 
@@ -536,7 +538,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
       {/* En Hoy, el botón flotante "Entrenar ahora" (52 px + 8 de separación) flota justo encima de la barra de pestañas:
           sin 76 px más de margen tapaba las últimas filas de la página (p. ej. los hábitos de abajo) y no se podían pulsar. */}
       <main className="flex-1 overflow-y-auto overscroll-contain max-w-2xl mx-auto w-full relative z-10"
-        style={{ paddingBottom: `calc(${activeTab === 'hoy' ? 132 : 56}px + env(safe-area-inset-bottom, 0px))`, WebkitOverflowScrolling: 'touch' }}>
+        style={{ paddingBottom: `calc(${activeTab === 'hoy' ? 132 : 56}px + var(--pf-barra-entreno, 0px) + env(safe-area-inset-bottom, 0px))`, WebkitOverflowScrolling: 'touch' }}>
         {loading || consent.status === 'loading' ? (
           <div className="p-4 space-y-3">
             {[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border rounded-2xl animate-pulse" />)}
@@ -549,7 +551,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
-                      clientName={clientName} clientId={client.id} trainerId={client.trainerId} trainerName={trainerProfile.displayName || trainerProfile.brandName} trainerLogo={brandLogo}
+                      clientName={clientName} clientId={client.id} trainerName={trainerProfile.displayName || trainerProfile.brandName} trainerLogo={brandLogo}
                       objetivo={client.objetivo} welcomeMsg={welcomeMsg} motivMsg={motivMsg}
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
@@ -569,7 +571,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'entreno' && (
               plan
                 ? <PestanaSinDescargar><Suspense fallback={<Cargando />}>
-                    <TrainingPlanView plan={plan} logs={logs} onLogsChange={handleLogsChange} seriesTypes={seriesTypes} trainerId={client.trainerId} clientId={client.id}
+                    <TrainingPlanView plan={plan} logs={logs} seriesTypes={seriesTypes} clientId={client.id}
                       view={entrenoView} onViewChange={setEntrenoView} />
                   </Suspense></PestanaSinDescargar>
                 : <NoPlanView />
@@ -611,6 +613,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
         </div>
       </nav>
     </div>
+    </SesionEnCursoProvider>
     </SyncStatusContext.Provider>
   )
 }

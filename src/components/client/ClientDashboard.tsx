@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { createPortal } from 'react-dom'
 import { Flame, Dumbbell, Play, Target, MessageSquare, TrendingUp, Trophy, Clock, Zap } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { Exercise } from '../../types'
-import { ActiveWorkout, usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
+import { useSesionEnCurso } from './SesionEnCurso'
 import { ParaHoy } from './ParaHoy'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const FechaClaveHoy = lazy(() => import('./FechaClaveHoy').then(m => ({ default: m.FechaClaveHoy })))
@@ -28,7 +28,6 @@ interface Props {
   onLogsChange: (logs: TrainingLogs) => void
   clientName: string
   clientId: string
-  trainerId?: string
   objetivo?: string
   welcomeMsg?: string
   motivMsg?: string
@@ -42,10 +41,10 @@ interface Props {
   trainerName?: string
 }
 
-export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
+export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId, trainerName, welcomeMsg, motivMsg, restDayMsg, brandBg, trainerLogo, brandColor = '#6e5438' }: Props) {
   usePrefetchActiveWorkout()
-  const [session, setSession] = useState<{ day: any; dayKey: string } | null>(null)
-  const [sessionMinimized, setSessionMinimized] = useState(false)
+  // El entreno abierto (y su barra al salir de él) vive en ClientView, por encima de las pestañas
+  const sesionEnCurso = useSesionEnCurso()
   const [quickLogOpen, setQuickLogOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
 
@@ -110,62 +109,15 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
     : -1
   const nextEx = nextExIdx >= 0 ? todaySession?.day.exercises[nextExIdx] : null
 
-  const sessionOverlay = session && (
-    <>
-      {/* En un portal: <main> de ClientView tiene z-10 y crea su propio contexto de
-          capas, así que dentro de él el entreno quedaba por debajo de la cabecera
-          de la app (z-20) y la tapaba (volver, cronómetro y Terminar). */}
-      {!sessionMinimized && createPortal(
-        <ActiveWorkout
-          day={session.day}
-          dayKey={session.dayKey}
-          plan={plan}
-          logs={logs}
-          onLogsChange={onLogsChange}
-          onFinish={() => { setSession(null); setSessionMinimized(false) }}
-          onBack={() => setSessionMinimized(true)}
-          trainerId={trainerId}
-        />,
-        document.body
-      )}
-      {sessionMinimized && (
-        <div className="fixed bottom-16 left-0 right-0 z-40 px-3 pb-1">
-          <div
-            className="bg-ink text-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-xl cursor-pointer active:scale-[0.98] transition-transform"
-            onClick={() => setSessionMinimized(false)}>
-            <div className="w-3 h-3 rounded-full bg-ok flex-shrink-0 animate-pulse" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate">{session.day.title}</p>
-              <p className="text-xs text-white/60">
-                {(() => {
-                  const done = session.day.exercises.filter((_: any, ri: number) => logs[`ex_${session.dayKey}_r${ri}`]?.done).length
-                  const total = session.day.exercises.length
-                  return `${done}/${total} ejercicios · Toca para continuar`
-                })()}
-              </p>
-            </div>
-            <button
-              onClick={e => { e.stopPropagation(); setSession(null); setSessionMinimized(false) }}
-              className="flex-shrink-0 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-semibold transition-colors">
-              Terminar
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  )
-
   const hora = new Date().getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
     <div className="max-w-xl mx-auto" style={{ paddingTop: brandBg ? 8 : 0 }}>
-      {sessionOverlay}
-
       {/* Botón fijo: aparece cuando el de la tarjeta de hoy se ha desplazado fuera de la pantalla */}
-      {todaySession && !todayComplete && !session && !botonVisible && (
+      {todaySession && !todayComplete && !sesionEnCurso?.abierta && !botonVisible && (
         <div className="fixed left-0 right-0 z-30 px-4 pointer-events-none" style={{ bottom: 'calc(56px + env(safe-area-inset-bottom, 0px) + 8px)' }}>
-          <button onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
+          <button onClick={() => sesionEnCurso?.abrir(todaySession.day, todaySession.dayKey)}
             style={{ minHeight: '52px' }}
             className="pointer-events-auto max-w-xl mx-auto w-full flex items-center justify-center gap-2 bg-ink text-white rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-transform">
             <Play className="w-5 h-5" /> {todayDone > 0 ? 'Continuar' : 'Entrenar ahora'}
@@ -263,7 +215,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
             </div>
 
             <div className="px-4 pb-4">
-              <button ref={botonHero} onClick={() => setSession({ day: todaySession.day, dayKey: todaySession.dayKey })}
+              <button ref={botonHero} onClick={() => sesionEnCurso?.abrir(todaySession.day, todaySession.dayKey)}
                 style={{ minHeight: '52px' }}
                 className="w-full flex items-center justify-center gap-3 bg-ink text-white rounded-2xl font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
                 <Play className="w-5 h-5" />
