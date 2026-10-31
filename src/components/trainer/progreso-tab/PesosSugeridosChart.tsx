@@ -17,7 +17,7 @@ export function PesosSugeridosChart({ logs, plan }: { logs: TrainingLogs; plan?:
     const lastByExercise: Record<string, { weight: number; reps: string; rir?: number; date: string }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done || !log.dateDone) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       const setsArr = Object.values(log.sets || {})
       if (!setsArr.length) return

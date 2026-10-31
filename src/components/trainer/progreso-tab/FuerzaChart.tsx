@@ -14,7 +14,7 @@ export function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: Trainin
     const map: Record<string, Record<string, { peso: number; rm1: number }>> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.dateDone) return
-      const name = getExName(key, plan)
+      const name = getExName(key, plan, log)
       if (!name) return
       let bestPeso = 0, bestRM = 0
       Object.values(log.sets || {}).forEach((s: any) => {
