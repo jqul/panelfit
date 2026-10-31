@@ -70,3 +70,9 @@ export const LIFT_LABELS: Record<LiftKey, string> = {
   bench: 'Press banca',
   deadlift: 'Peso muerto',
 }
+
+/** Los kilos de 1RM que marcan cada nivel para un peso corporal: la escala completa, para la calculadora pública. */
+export function umbralesKg(lift: LiftKey, bodyweightKg: number, sex: 'm' | 'f'): { level: StrengthLevel; kg: number }[] {
+  if (!bodyweightKg) return []
+  return RATIOS[lift][sex].map((r, i) => ({ level: LEVELS[i], kg: Math.round(r * bodyweightKg * 2) / 2 }))
+}
