@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import type { ObjetivoBloque } from './mesociclo'
 
 // Plantillas de bloques de periodización (estilo mesociclo): cada paso define
 // el RPE objetivo y si es semana de descarga. El entrenador aplica un bloque
@@ -15,6 +16,8 @@ export interface PeriodizationBlock {
   desc: string
   steps: PeriodizationStep[]
   custom?: boolean
+  /** Para qué es el bloque; si no lo dice, se deduce del nombre (lib/mesociclo). */
+  objetivo?: ObjetivoBloque
 }
 
 export const DEFAULT_PERIODIZATION_BLOCKS: PeriodizationBlock[] = [
@@ -22,6 +25,7 @@ export const DEFAULT_PERIODIZATION_BLOCKS: PeriodizationBlock[] = [
     id: 'strength_4w',
     label: 'Bloque de fuerza · 4 semanas',
     desc: 'Acumulación → Acumulación → Intensificación → Descarga',
+    objetivo: 'fuerza',
     steps: [
       { rpe: '@7', isDeload: false },
       { rpe: '@8', isDeload: false },
@@ -33,6 +37,7 @@ export const DEFAULT_PERIODIZATION_BLOCKS: PeriodizationBlock[] = [
     id: 'hypertrophy_5w',
     label: 'Bloque de hipertrofia · 5 semanas',
     desc: 'Volumen progresivo durante 4 semanas + descarga',
+    objetivo: 'hipertrofia',
     steps: [
       { rpe: '@6.5', isDeload: false },
       { rpe: '@7', isDeload: false },
@@ -45,6 +50,7 @@ export const DEFAULT_PERIODIZATION_BLOCKS: PeriodizationBlock[] = [
     id: 'peaking_3w',
     label: 'Bloque de peaking · 3 semanas',
     desc: 'Rampa de intensidad hacia una marca/competición',
+    objetivo: 'peaking',
     steps: [
       { rpe: '@8', isDeload: false },
       { rpe: '@9', isDeload: false },

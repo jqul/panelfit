@@ -1,5 +1,6 @@
 import { Especialidad } from '../lib/especialidades'
 import { PlanName } from '../lib/plans'
+import type { ObjetivoBloque } from '../lib/mesociclo'
 import type { TipoSerie } from '../lib/tipoSerie'
 // ── USUARIOS ──────────────────────────────────────────
 export interface UserProfile {
@@ -72,7 +73,8 @@ export interface ExerciseVideoUpload {
   uploadedAt: number
 }
 export interface DayPlan { title: string; focus: string; exercises: Exercise[]; warmup?: string; warmupExercises?: Exercise[]; cooldownExercises?: Exercise[]; testIds?: string[] }
-export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[] }
+// objetivo / bloque: el mesociclo al que pertenece la semana (lib/mesociclo.ts): lo rellena aplicar un bloque o el entrenador a mano.
+export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDeload?: boolean; startDate?: string; endDate?: string; days: DayPlan[]; objetivo?: ObjetivoBloque; bloque?: string }
 
 export interface TrainingPlan {
   clientId: string; type: string; restMain: number; restAcc: number; restWarn: number
