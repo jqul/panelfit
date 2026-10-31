@@ -16,3 +16,13 @@ describe('contarSeries', () => {
     expect(contarSeries([])).toEqual({ todas: 0, efectivas: 0, faciles: 0, sinRir: 0 })
   })
 })
+
+describe('contarSeries con tipo de serie', () => {
+  it('el calentamiento no cuenta; «al fallo» es efectiva aunque no tenga RIR', () => {
+    expect(contarSeries([
+      { weight: '40', reps: '10', tipo: 'calentamiento' },
+      { weight: '80', reps: '8', tipo: 'fallo' },
+      { weight: '60', reps: '10', tipo: 'dropset' },
+    ])).toEqual({ todas: 2, efectivas: 2, faciles: 0, sinRir: 1 })
+  })
+})

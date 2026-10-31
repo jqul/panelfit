@@ -7,8 +7,10 @@ import { RirTargetChip } from './RirTargetChip'
 import { useSwipe } from '../../../lib/swipe'
 import { SyncBadge } from '../client-view/SyncStatus'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
+import { SelectorTipoSerie } from './SelectorTipoSerie'
+import { TIPOS_SERIE, letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
 
-export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number }
+export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; tipo?: TipoSerie }
 interface PrevSet { weight?: string; reps?: string; rir?: number }
 
 interface Props {
@@ -32,6 +34,7 @@ interface Props {
   onCommit: (ri: number, si: number, weight: string, reps: string) => void
   onToggle: (ri: number, si: number, weight: string, reps: string) => void
   onSetRir: (ri: number, si: number, rir: number) => void
+  onSetTipo: (ri: number, si: number, tipo: TipoSerie | undefined) => void
   onSetVelocity: (ri: number, si: number, velocity: number | undefined) => void
   onAddSet: (ri: number) => void
   onOpenCalc: (weight: string) => void
@@ -324,6 +327,11 @@ export function FocusWorkout(p: Props) {
               {cur.rir !== undefined && <p className="text-center text-xs text-muted mt-1.5">{RIR_OPTIONS.find(o => o.value === Math.floor(cur.rir!))?.desc}</p>}
             </div>
 
+            {/* Tipo de serie: calentamiento (no cuenta para el volumen), dropset o al fallo */}
+            <div className="mx-4 mt-4">
+              <SelectorTipoSerie grande value={cur.tipo} onChange={t => p.onSetTipo(p.ri, p.si, t)} />
+            </div>
+
             {tracksVelocity(ex) && (ex.isMain || velOpen || cur.velocity !== undefined ? (
               <div className="mx-4 mt-4 flex items-center justify-center gap-2">
                 <Gauge className="w-4 h-4 text-muted" />
@@ -374,11 +382,12 @@ export function FocusWorkout(p: Props) {
                   <button key={i} onClick={() => select(p.ri, i)} aria-label={`Ir a la serie ${i + 1}`}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${active ? 'bg-accent/8' : ''}`}>
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${s?.done ? 'bg-ok text-white' : active ? 'bg-ink text-white' : 'bg-bg-alt text-muted'}`}>
-                      {s?.done ? <Check className="w-4 h-4" /> : i + 1}
+                      {s?.done ? <Check className="w-4 h-4" /> : letraTipo(s?.tipo) ?? i + 1}
                     </span>
                     <span className={`flex-1 text-sm ${s?.done ? 'font-semibold' : 'text-muted'}`}>
                       {s?.weight ? `${fmt(s.weight)} kg × ${s.reps}` : pv?.weight ? `${fmt(pv.weight)} kg × ${pv.reps} (última vez)` : '—'}
                     </span>
+                    {s?.tipo && <span className="text-xs font-bold text-muted">{TIPOS_SERIE.find(t => t.id === s.tipo)?.label}</span>}
                     {s?.rir !== undefined && <span className="text-xs font-bold text-muted">RIR {s.rir}</span>}
                     {active && <span className="text-xs font-bold text-accent">←</span>}
                   </button>

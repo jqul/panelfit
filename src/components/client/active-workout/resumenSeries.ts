@@ -1,7 +1,9 @@
 // Totales de las series de un ejercicio: reps, volumen (kg × reps) y peso máximo. Para el resumen de la vista de
-// lista. `soloHechas`: hoy solo cuentan las marcadas; la vez anterior, todas las que tienen datos.
+// lista. `soloHechas`: hoy solo cuentan las marcadas; la vez anterior, todas las que tienen datos. El calentamiento no cuenta.
 
-export interface SerieLite { weight?: string; reps?: string; done?: boolean }
+import type { TipoSerie } from '../../../lib/tipoSerie'
+
+export interface SerieLite { weight?: string; reps?: string; done?: boolean; tipo?: TipoSerie }
 
 const num = (v: string | undefined) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) && n > 0 ? n : 0 }
 
@@ -9,7 +11,7 @@ const num = (v: string | undefined) => { const n = parseFloat(String(v ?? '').re
 export function resumenSeries(series: Record<number, SerieLite | undefined>, soloHechas: boolean, porLado = false): { reps: number; volumen: number; maxKg: number } {
   let reps = 0, volumen = 0, maxKg = 0
   for (const s of Object.values(series || {})) {
-    if (!s || (soloHechas && !s.done)) continue
+    if (!s || (soloHechas && !s.done) || s.tipo === 'calentamiento') continue
     const r = Math.round(num(s.reps)), w = num(s.weight)
     if (!r) continue
     reps += r

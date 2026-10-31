@@ -2,6 +2,8 @@ import { useState, memo } from 'react'
 import { Check, Gauge, CornerLeftDown } from 'lucide-react'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
+import { SelectorTipoSerie } from './SelectorTipoSerie'
+import { letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
 
 interface SetRowProps {
   setNum: number
@@ -21,6 +23,9 @@ interface SetRowProps {
   /** La serie que se está editando (o la siguiente que toca): solo ella enseña los ajustes rápidos. */
   activa?: boolean
   onActivar?: () => void
+  /** Calentamiento, dropset o al fallo (lo marca el cliente en la serie activa). */
+  tipo?: TipoSerie
+  onSetTipo?: (tipo: TipoSerie | undefined) => void
   showVelocity?: boolean  // anotar velocidad de barra (VBT); por defecto solo en ejercicios principales
   showTarget?: boolean  // "pesos sugeridos" — el entrenador puede desactivarlo en Ajustes
   onCommit: (weight: string, reps: string) => void
@@ -33,7 +38,7 @@ interface SetRowProps {
 // Una serie de la vista de lista, en una sola línea (nº · plan y lo anterior · kg · reps · ✓) para ver la rutina
 // entera de un vistazo. Los ajustes rápidos (±2,5/±5 kg, ±1 rep, discos, repetir lo anterior) solo aparecen debajo
 // de la serie activa, en vez de repetirse en todas.
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, planLabel, activa = false, onActivar, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, planLabel, activa = false, onActivar, tipo, onSetTipo, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -106,7 +111,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           <button type="button" onClick={onActivar} aria-label={`Ajustes de la serie ${setNum}`} tabIndex={-1}
             className={`h-7 flex items-center justify-center text-sm font-bold tabular-nums ${
               done ? 'text-ok' : activa ? 'text-accent' : 'text-muted'
-            }`}>{setNum}</button>
+            }`}>{letraTipo(tipo) ? <span title={tipo}>{letraTipo(tipo)}<span className="sr-only"> ({tipo})</span></span> : setNum}</button>
 
           {/* Lo que pide el plan ("8 @2"); lo de la última vez va de fondo en las casillas. Hecha, la misma celda apunta el
               RIR, para no añadir una línea más por serie */}
@@ -152,6 +157,9 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
             <Check className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Tipo de serie: en la activa, también después de hecha */}
+        {activa && onSetTipo && <div className="mt-1.5"><SelectorTipoSerie value={tipo} onChange={onSetTipo} /></div>}
 
         {/* Ajustes rápidos: solo en la serie activa */}
         {activa && !done && (
