@@ -19,6 +19,18 @@ describe('sesión de hoy', () => {
   const planDias = (titulos: string[]) => ({ ...base, fechaInicio: '2026-10-26', weeks: [{ label: 'S', rpe: '', isCurrent: true, days: titulos.map(dia) }] }) as any
   const hecho = (w: number, d: number, fecha: string) => ({ [`ex_w${w}_d${d}_r0`]: { done: true, dateDone: fecha } }) as any
 
+  it('sábado con toda la semana hecha y nada entrenado hoy: descanso, no vuelve al lunes', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'MARTES — TIRÓN', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
+    const logs = { ...hecho(0, 0, '2026-10-26'), ...hecho(0, 1, '2026-10-27'), ...hecho(0, 2, '2026-10-29'), ...hecho(0, 3, '2026-10-30') }
+    expect(getTodaySession(plan, logs, new Date(2026, 9, 31, 10))).toBeNull()
+  })
+
+  it('sábado con la semana hecha y una sesión entrenada hoy: esa, hecha', () => {
+    const plan = planDias(['LUNES — EMPUJE', 'VIERNES — PIERNA'])
+    const logs = { ...hecho(0, 0, '2026-10-26'), ...hecho(0, 1, '2026-10-31') }
+    expect(getTodaySession(plan, logs, new Date(2026, 9, 31, 10))?.dayKey).toBe('w0_d1')
+  })
+
   it('hizo hoy (viernes) la sesión del jueves: Hoy enseña esa como hecha, no pide la del viernes', () => {
     const plan = planDias(['LUNES — EMPUJE', 'MARTES — TIRÓN', 'JUEVES — BANCA', 'VIERNES — PIERNA'])
     expect(getTodaySession(plan, hecho(0, 2, '2026-10-30'), viernes30)?.dayKey).toBe('w0_d2')

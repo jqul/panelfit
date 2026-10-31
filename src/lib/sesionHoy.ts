@@ -47,18 +47,25 @@ export function getTodaySession(plan: TrainingPlan, logs: TrainingLogs, now: Dat
   //    asumiendo 7 días exactos (uno por día del calendario) — con un split de
   //    3-4 días eso se salía del hueco real (p. ej. un jueves con un plan de 4
   //    días mostraba days[3] "Viernes" en vez del día que tocaba).
+  const entrenadoHoy = (di: number) => (currentWeek.days[di]?.exercises || []).some((_, ri) => {
+    const l = logs[`ex_w${weekIdx}_d${di}_r${ri}`]
+    return !!l?.done && l.dateDone === hoy
+  })
   let dayIdx = weekdayMatchIdx
   if (dayIdx === -1) {
     dayIdx = currentWeek.days.findIndex((_, di) => !isDayDone(di) && !movidaAOtroDia(di))
-    if (dayIdx === -1) dayIdx = 0
+    if (dayIdx === -1) {
+      // Semana completa. Si hoy se ha entrenado alguna, esa es la de hoy (hecha); si no, hoy es de descanso: antes volvía
+      // al primer día y un sábado con la semana terminada seguía enseñando «lunes — empuje».
+      const hechaHoy = currentWeek.days.findIndex((_, di) => isDayDone(di) && entrenadoHoy(di))
+      if (hechaHoy !== -1) dayIdx = hechaHoy
+      else if (currentWeek.days.every((_, di) => isDayDone(di))) return null
+      else dayIdx = 0
+    }
   }
   // 3) Hoy ya has entrenado, pero otra sesión del plan (p. ej. la del jueves un viernes): esa es la de hoy, hecha. Sin esto
   //    seguía pidiendo entrenar "lo del viernes" a quien ya había entrenado hoy.
   if (!isDayDone(dayIdx)) {
-    const entrenadoHoy = (di: number) => (currentWeek.days[di]?.exercises || []).some((_, ri) => {
-      const l = logs[`ex_w${weekIdx}_d${di}_r${ri}`]
-      return !!l?.done && l.dateDone === hoy
-    })
     const hechaHoy = currentWeek.days.findIndex((_, di) => di !== dayIdx && isDayDone(di) && entrenadoHoy(di))
     if (hechaHoy !== -1) dayIdx = hechaHoy
   }
