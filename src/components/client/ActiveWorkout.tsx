@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import {
-  ChevronDown, Trophy,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Repeat
+  MoreHorizontal, Trophy,
+  Plus, Dumbbell, Flame, X, CheckCircle2, Repeat
 } from 'lucide-react'
 import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
@@ -10,11 +10,11 @@ import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelo
 import { sendPush } from '../../lib/usePushNotifications'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
-import { RirTargetChip } from './active-workout/RirTargetChip'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
 import { SetRow } from './active-workout/SetRow'
+import { ResumenEjercicio } from './active-workout/ResumenEjercicio'
 import { RunSets } from './active-workout/RunSets'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
@@ -201,6 +201,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     try { return localStorage.getItem('pf_workout_view') === 'lista' ? 'lista' : 'foco' } catch { return 'foco' }
   })
   const [focusOverride, setFocusOverride] = useState<{ ri: number; si: number } | null>(null)
+  // Vista de lista: la serie cuyos ajustes rápidos se ven (la que se toca); sin tocar ninguna, la siguiente que toca.
+  const [filaElegida, setFilaElegida] = useState<string | null>(null)
   const toggleView = () => {
     const next = view === 'foco' ? 'lista' : 'foco'
     setView(next); setFocusOverride(null)
@@ -689,6 +691,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     return { ri: last, si: Math.max(0, total - 1) }
   })()
   const pos = focusOverride && day.exercises[focusOverride.ri] ? focusOverride : autoPos
+  const filaActiva = filaElegida ?? `${autoPos.ri}-${autoPos.si}`
 
   const renderRun = (ri: number) => {
     const ex = day.exercises[ri]
@@ -751,7 +754,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(day.warmupExercises || []).map((w, i) => (
           <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
-            <p className="font-semibold text-gray-700">{w.name}</p>
+            <p className="font-semibold text-ink">{w.name}</p>
             {w.sets && <p className="text-muted">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
           </div>
         ))}
@@ -764,7 +767,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   ) : undefined
 
   return (
-    <div className={`fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden ${view === 'foco' && focoOscuro ? 'pf-foco-oscuro' : ''}`}
+    <div className={`fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden ${focoOscuro ? 'pf-foco-oscuro' : ''}`}
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
@@ -786,7 +789,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
         />
       ) : (
-      <>
+      // La lista lleva el mismo fondo (oscuro o claro) que la vista de foco
+      <div className={`flex-1 flex flex-col min-h-0 bg-bg text-ink ${focoOscuro ? 'dark' : ''}`}>
       <WorkoutHeader
         title={day.title}
         clientName={clientName}
@@ -804,9 +808,11 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         densityPct={densityPct}
         prevSessionVolume={prevSessionVolume}
         onToggleView={toggleView}
+        oscuro={focoOscuro}
+        onToggleOscuro={cambiarFocoOscuro}
       />
 
-      {!trainerMode && <div className="px-4 pt-3"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
+      {!trainerMode && <div className="px-4 pt-2"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
 
       {/* Calentamiento si existe */}
       {(day.warmupExercises?.length || 0) > 0 && (
@@ -817,7 +823,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(day.warmupExercises || []).map((ex, i) => (
               <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
-                <p className="font-semibold text-gray-700">{ex.name}</p>
+                <p className="font-semibold text-ink">{ex.name}</p>
                 {ex.sets && <p className="text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
               </div>
             ))}
@@ -841,6 +847,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           const hideRest = ex.hideRest || ex.kind === 'run'
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
+          // Lo que pide el plan por serie: las reps de "4x6-8" y, si lo hay, el RIR objetivo ("6-8 @2")
+          const repsPlan = (String(ex.sets || '').split(/[x×]/i)[1] || '').trim() || String(numReps)
+          const planSerie = `${repsPlan}${ex.rir !== undefined && ex.rir !== null && String(ex.rir) !== '' ? ` @${ex.rir}` : ''}`
 
           // Primera serie A LA MISMA CARGA con velocidad registrada hoy — referencia
           // para el % de pérdida de velocidad (autorregulación VBT). Se compara
@@ -867,29 +876,28 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           ) : null
 
           return (
-            <div key={ri} className="border-b border-border">
-              <div className="flex items-center gap-3 px-4 pt-4 pb-2">
+            <div key={ri} className="border-b border-border/60 pb-1">
+              <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
                 {ytId ? (
                   <a href={ex.videoUrl} target="_blank" rel="noreferrer"
-                    className="w-10 h-10 rounded-xl overflow-hidden border border-border flex-shrink-0">
+                    className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
                     <img src={`https://img.youtube.com/vi/${ytId}/default.jpg`} className="w-full h-full object-cover" alt="" />
                   </a>
                 ) : (
-                  <div className="w-10 h-10 rounded-xl bg-bg-alt flex items-center justify-center flex-shrink-0">
-                    <Dumbbell className="w-5 h-5 text-muted" />
+                  <div className="w-8 h-8 rounded-lg bg-bg-alt flex items-center justify-center flex-shrink-0">
+                    <Dumbbell className="w-4 h-4 text-muted" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`font-bold text-base ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-accent'}`}>{ex.name}</p>
-                    {record && <Trophy className="w-4 h-4 text-warn flex-shrink-0" />}
+                  <div className="flex items-center gap-1.5">
+                    <p className={`font-semibold text-[15px] leading-tight truncate ${substitutions[ri] ? 'line-through text-muted' : allDone ? 'text-ok' : 'text-ink'}`}>{ex.name}</p>
+                    {record && <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />}
                   </div>
                   {substitutions[ri] && (
-                    <p className="text-sm font-bold text-warn flex items-center gap-1 mt-0.5">
-                      <Repeat className="w-3.5 h-3.5 flex-shrink-0" /> {substitutions[ri]}
+                    <p className="text-xs font-bold text-warn flex items-center gap-1 mt-0.5">
+                      <Repeat className="w-3 h-3 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
-                  {ex.isMain && <span className="text-[11px] text-accent font-bold uppercase tracking-wider">Principal</span>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
                     const best1RM = getBest1RM(ex.name)
                     const target = resolveWeightFromPercent(ex.weight, best1RM)
@@ -911,13 +919,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                   )}
                 </div>
                 <button onClick={() => setExpandedHistory(expandedHistory === ri ? null : ri)}
-                  className="p-2 -m-2 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label="Ver historial">
-                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHistory === ri ? 'rotate-180' : ''}`} />
+                  className="p-2 -m-1 flex-shrink-0 text-muted hover:text-accent transition-colors" aria-label={`Más de ${ex.name}`} aria-expanded={expandedHistory === ri}>
+                  <MoreHorizontal className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Historial comparativo instantáneo — últimas sesiones de este
-                  ejercicio, sin salir de la sesión activa */}
+              {/* El «…» del ejercicio: historial, cambiarlo y pedir feedback, para que la lista quede limpia */}
               {expandedHistory === ri && (() => {
                 const history = getExerciseHistory(ex.name)
                 return (
@@ -950,10 +957,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 )
               })()}
 
-              {ex.comment && <p className="mx-4 mb-2 text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+              {ex.comment && <p className="mx-4 mb-1 text-[11px] text-muted italic leading-snug">"{ex.comment}"</p>}
 
-              {/* Sustituir ejercicio — ej. el material previsto está ocupado */}
-              {renderSubstitution(ri, ex)}
+              {/* Sustituir ejercicio — ej. el material previsto está ocupado. En el «…», salvo si ya lo cambió o preguntó */}
+              {(expandedHistory === ri || substitutions[ri] || logs[`ex_${dayKey}_r${ri}`]?.duda) && renderSubstitution(ri, ex)}
 
               {/* Dolor EVA 0-10 en ejercicios terapéuticos/de readaptación — en
                   fisioterapia deportiva moderna no se busca "cero dolor" sino
@@ -978,24 +985,15 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
 
               {/* Vídeo-feedback asíncrono — pedirle al entrenador que revise una
                   ejecución; no aplica cuando es el propio entrenador quien graba */}
-              {trainerId && !trainerMode && (
+              {trainerId && !trainerMode && expandedHistory === ri && (
                 <div className="px-4 mb-3">
                   <VideoFeedbackButton exerciseName={ex.name} clientId={plan.clientId} trainerId={trainerId} />
                 </div>
               )}
 
-              {/* Descanso — solo si no está oculto */}
-              {!hideRest && (
-                <div className="flex items-center gap-1.5 px-4 mb-3">
-                  <Timer className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-xs text-accent font-semibold">
-                    Descanso: {restMin > 0 ? `${restMin}min ` : ''}{restSecR > 0 ? `${restSecR}s` : ''}
-                  </span>
-                </div>
-              )}
+              {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} />}
 
-              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
-              <RirTargetChip rir={ex.rir} />
+              {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó. El RIR objetivo ya va en la columna Plan */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
               {ex.kind === 'run' && ex.run ? (
@@ -1009,23 +1007,30 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 />
               ) : (<>
               {/* Cabecera tabla */}
-              <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
-                <p className="text-[11px] uppercase text-muted font-bold text-center">N</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Anterior</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
-                  KG <Calculator className="w-2.5 h-2.5 opacity-50" />
-                </p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Reps</p>
+              <div className="grid grid-cols-[28px_1fr_72px_56px_36px] gap-1.5 px-3 pb-0.5">
+                {['Set', 'Plan', 'Kg', 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
                 <div />
               </div>
 
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
                 const prev = prevSets[si]
+                const clave = `${ri}-${si}`
                 return (
+                  <Fragment key={clave}>
+                  {/* El descanso entre series, como separador (no después de la última) */}
+                  {si > 0 && !hideRest && (
+                    <div className="flex items-center gap-2 px-6 h-3" aria-hidden>
+                      <span className="flex-1 h-px bg-border/60" />
+                      <span className="text-[11px] text-muted/80 tabular-nums">{restMin}:{String(restSecR).padStart(2, '0')}</span>
+                      <span className="flex-1 h-px bg-border/60" />
+                    </div>
+                  )}
                   <SetRow
-                    key={`${ri}-${si}`}
                     setNum={si + 1}
+                    planLabel={planSerie}
+                    activa={filaActiva === clave}
+                    onActivar={() => setFilaElegida(clave)}
                     initWeight={s.weight}
                     initReps={s.reps}
                     done={s.done}
@@ -1040,17 +1045,18 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     showVelocity={tracksVelocity(ex)}
                     showTarget={showPesosSugeridos}
                     onCommit={(w, r) => commitSet(ri, si, w, r)}
-                    onToggle={(w, r) => toggleSet(ri, si, w, r)}
+                    onToggle={(w, r) => { toggleSet(ri, si, w, r); setFilaElegida(null) /* los ajustes pasan a la que toca */ }}
                     onOpenCalc={(w) => setCalcWeight(parseFloat(w) || 0)}
                     onSetRir={(rir) => setRir(ri, si, rir)}
                     onSetVelocity={(v) => setVelocity(ri, si, v)}
                   />
+                  </Fragment>
                 )
               })}
 
               <button onClick={() => addSet(ri)}
-                className="w-full flex items-center justify-center gap-2 py-3 text-muted hover:bg-bg-alt transition-colors text-sm font-medium">
-                <Plus className="w-4 h-4" /> Agregar Serie
+                className="mx-auto flex items-center justify-center gap-1 px-3 py-1.5 mt-0.5 rounded-lg text-muted hover:bg-bg-alt transition-colors text-xs font-semibold">
+                <Plus className="w-3.5 h-3.5" /> Añadir serie
               </button>
               </>)}
             </div>
@@ -1079,7 +1085,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         <div className="h-8" />
       </div>
 
-      </>
+      </div>
       )}
 
       {/* Modal confirmación terminar */}
