@@ -42,6 +42,7 @@ import { VueltaCalma } from './active-workout/VueltaCalma'
 import { NotaAntes } from './active-workout/NotaAntes'
 import { FichaEjercicio } from './active-workout/FichaEjercicio'
 import { historialPorEjercicio } from '../../lib/historialEjercicio'
+import { volumenSeries } from '../../lib/volumen'
 
 interface Props {
   day: DayPlan
@@ -263,9 +264,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         sets: { ...(currentLogs[key]?.sets || {}), [si]: { weight, reps, ...(prevRir !== undefined ? { rir: prevRir } : {}), ...(prevVelocity !== undefined ? { velocity: prevVelocity } : {}) } },
         done: currentLogs[key]?.done || false,
         dateDone: today,
+        ...(day?.exercises[ri]?.pesoPorLado ? { porLado: true } : {}),
       }
     })
-  }, [dayKey, onLogsChange])
+  }, [dayKey, onLogsChange, day])
 
   const setRir = useCallback((ri: number, si: number, rir: number) => {
     setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], rir } } }))
@@ -475,7 +477,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     }
 
     setSets(updated)
-    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today } })
+    onLogsChange({ ...logsRef.current, [key]: { ...logsRef.current[key], sets: setsData, done: allDone, dateDone: today, ...(ex.pesoPorLado ? { porLado: true } : {}) } })
 
     // Iniciar timer de descanso solo si no tiene hideRest (en carrera la
     // recuperación es andando una distancia, no una cuenta atrás)
@@ -518,8 +520,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     return Array.from({ length: numSets }, (_, si) => sets[ri]?.[si]?.done).every(Boolean)
   }).length || 0
   const pct = totalExs ? Math.round((doneExs / totalExs) * 100) : 0
-  const totalVolume = Object.values(sets).reduce((acc, exSets) =>
-    acc + Object.values(exSets).reduce((a, s) => a + (s.done ? (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0) : 0), 0), 0)
+  const totalVolume = Object.entries(sets).reduce((acc, [ri, exSets]) =>
+    acc + volumenSeries(Object.values(exSets).filter(s => s.done), day?.exercises[+ri]?.pesoPorLado), 0)
   const totalSetsDone = Object.values(sets).reduce((acc, exSets) => acc + Object.values(exSets).filter(s => s.done).length, 0)
 
   // Promedio de RIR de la sesión — útil como indicador de fatiga
@@ -566,7 +568,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   // referencia real detrás en vez de una barra que sube porque sí.
   const prevSessionVolume = (day?.exercises || []).reduce((acc, _, ri) => {
     const prevSets = getPrevSets(ri)
-    return acc + Object.values(prevSets).reduce((a, s: any) => a + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0)
+    return acc + volumenSeries(Object.values(prevSets), day.exercises[ri]?.pesoPorLado)
   }, 0)
   const densityRate = elapsedSecs >= 30 && totalVolume > 0 ? Math.round(totalVolume / (elapsedSecs / 60)) : 0
   const densityPct = prevSessionVolume > 0 ? Math.min(100, Math.round((totalVolume / prevSessionVolume) * 100)) : null
@@ -1024,7 +1026,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 </div>
               )}
 
-              {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} />}
+              {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} porLado={ex.pesoPorLado} />}
 
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó. El RIR objetivo ya va en la columna Plan */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
@@ -1041,7 +1043,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_72px_56px_36px] gap-1.5 px-3 pb-0.5">
-                {['Set', 'Plan', 'Kg', 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
+                {['Set', 'Plan', ex.pesoPorLado ? 'Kg/lado' : 'Kg', 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
                 <div />
               </div>
 

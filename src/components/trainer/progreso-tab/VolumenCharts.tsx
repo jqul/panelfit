@@ -6,6 +6,7 @@ import { Activity } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, useLibraryMuscleMap, VOLUME_LANDMARKS, getVolumeStatus } from './helpers'
 import { localDateKey } from '../../../lib/dates'
+import { volumenLog } from '../../../lib/volumen'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -17,7 +18,7 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
       const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1)
       const lunes = new Date(d); lunes.setDate(diff)
       const key = localDateKey(lunes)
-      const vol = Object.values(log.sets || {}).reduce((acc, s: any) => acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      const vol = volumenLog(log)
       semanas[key] = (semanas[key] || 0) + vol
     })
     return Object.entries(semanas).sort(([a], [b]) => a.localeCompare(b)).slice(-10).map(([date, vol]) => ({

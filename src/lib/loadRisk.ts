@@ -1,4 +1,5 @@
 import { TrainingLogs } from '../types'
+import { volumenLog, volumenSeries } from './volumen'
 
 export interface TrainingSignal {
   avgRirThis: number | null
@@ -35,7 +36,7 @@ function buildDayTonnage(logs: TrainingLogs): Record<string, number> {
   const dayTonnage: Record<string, number> = {}
   Object.values(logs).forEach(log => {
     if (!log.done || !log.dateDone) return
-    const vol = Object.values(log.sets || {}).reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+    const vol = volumenLog(log)
     dayTonnage[log.dateDone] = (dayTonnage[log.dateDone] || 0) + vol
   })
   return dayTonnage
@@ -189,7 +190,7 @@ export function computeTrainingSignal(logs: TrainingLogs): TrainingSignal {
     if (!log.done || !log.dateDone) return
     const d = new Date(log.dateDone + 'T00:00:00')
     const setsArr = Object.values(log.sets || {})
-    const vol = setsArr.reduce((a, s) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+    const vol = volumenSeries(setsArr, log.porLado)
     const rirs = setsArr.filter(s => s.rir !== undefined).map(s => s.rir as number)
 
     if (d >= hace7) {

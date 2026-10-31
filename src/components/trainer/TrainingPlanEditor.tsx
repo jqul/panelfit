@@ -701,6 +701,16 @@ export function TrainingPlanEditor({
                                         {ex.enReadaptacion ? '✓ En readaptación — pide dolor EVA 0-10' : 'Marcar como terapéutico / en readaptación'}
                                       </button>
                                       {ex.kind !== 'run' && (
+                                        <button onClick={() => updateExercise(activeWeek, di, ri, { pesoPorLado: !ex.pesoPorLado })} aria-pressed={!!ex.pesoPorLado}
+                                          title="Mancuernas, máquinas unilaterales, polea a una mano: el cliente apunta el peso de un lado y el volumen cuenta el doble"
+                                          className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${
+                                            ex.pesoPorLado ? 'bg-accent/10 border-accent/30 text-accent' : 'border-border/50 text-muted hover:border-accent/40 hover:text-accent'
+                                          }`}>
+                                          <span>⚖️</span>
+                                          {ex.pesoPorLado ? '✓ Peso por lado (el volumen cuenta doble)' : 'Peso por lado (mancuernas, unilateral)'}
+                                        </button>
+                                      )}
+                                      {ex.kind !== 'run' && (
                                         <PlanBEditor exercise={ex} library={library} libraryMap={libraryMap}
                                           onChange={patch => updatePlan({ weeks: conPlanB(weeks, ex.name, patch).weeks })} />
                                       )}

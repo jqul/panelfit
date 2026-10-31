@@ -24,6 +24,7 @@ import { Modal } from '../shared/Modal'
 import { ProgressRing } from '../shared/ProgressRing'
 import { FormaClienteCard } from './FormaClienteCard'
 import { HistorialPorEjercicio } from './HistorialEjercicio'
+import { volumenSeries } from '../../lib/volumen'
 
 
 interface Props {
@@ -76,7 +77,7 @@ function HistorialPorFecha({ logs, plan }: { logs: TrainingLogs; plan?: Training
       const name = getExerciseName(key, plan)
       const sets = Object.values(log.sets || {})
       const best = Math.max(0, ...sets.map((s: any) => parseFloat(s.weight) || 0))
-      const vol = sets.reduce((a, s: any) => a + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      const vol = volumenSeries(sets, log.porLado)
       byDate[log.dateDone].exercises.push({ name, sets, best })
       byDate[log.dateDone].volume += vol
     })

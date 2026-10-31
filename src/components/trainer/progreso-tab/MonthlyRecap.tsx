@@ -38,7 +38,7 @@ export function MonthlyRecap({ logs, plan }: { logs: TrainingLogs; plan?: Traini
       setsArr.forEach((s: any) => {
         const w = parseFloat(s.weight) || 0
         const r = parseInt(s.reps) || 0
-        bucket.volume += w * r
+        bucket.volume += w * r * (log.porLado ? 2 : 1)
         if (w > maxWeightHere) maxWeightHere = w
       })
       const prevBest = runningMax[name] || 0

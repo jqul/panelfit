@@ -5,6 +5,7 @@ import { EmptyState } from './helpers'
 import { useClientPain } from '../../../lib/clientPain'
 import { TrainingLogs } from '../../../types'
 import { localDateKey } from '../../../lib/dates'
+import { volumenLog } from '../../../lib/volumen'
 
 const INTENSIDAD_COLOR = (v: number) => v >= 7 ? '#dc2626' : v >= 4 ? '#e0a854' : '#4caf7d'
 
@@ -52,7 +53,7 @@ export function DolorChart({ clientId, logs = {} }: { clientId: string; logs?: T
     Object.values(logs).forEach(log => {
       if (!log.dateDone || !log.done) return
       const key = mondayKey(log.dateDone)
-      const vol = Object.values(log.sets || {}).reduce((acc, s: any) => acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      const vol = volumenLog(log)
       volumenPorSemana[key] = (volumenPorSemana[key] || 0) + vol
     })
 

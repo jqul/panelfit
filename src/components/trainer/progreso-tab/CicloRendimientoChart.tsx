@@ -4,6 +4,7 @@ import { Moon } from 'lucide-react'
 import { TrainingLogs } from '../../../types'
 import { useCicloTracking, getCyclePhase, PHASE_INFO, CyclePhase } from '../../../lib/cyclePhase'
 import { EmptyState, CustomTooltip } from './helpers'
+import { volumenLog } from '../../../lib/volumen'
 
 const PHASE_ORDER: CyclePhase[] = ['menstrual', 'folicular', 'ovulacion', 'lutea']
 
@@ -19,7 +20,7 @@ export function CicloRendimientoChart({ clientId, logs }: { clientId: string; lo
     const bySession: Record<string, { vol: number; rirs: number[] }> = {}
     Object.values(logs).forEach(log => {
       if (!log.done || !log.dateDone) return
-      const vol = Object.values(log.sets || {}).reduce((acc, s: any) => acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0)), 0)
+      const vol = volumenLog(log)
       const rirs = Object.values(log.sets || {}).map((s: any) => s.rir).filter((r: any) => r !== undefined) as number[]
       if (!bySession[log.dateDone]) bySession[log.dateDone] = { vol: 0, rirs: [] }
       bySession[log.dateDone].vol += vol
