@@ -598,18 +598,20 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     if (emoji !== MOLESTIA_EMOJI) setMolestiaZona(null)
   }
 
-  const shareAchievement = () => {
-    const lines = [
-      `💪 ¡Entreno completado! — ${day.title}`,
-      '',
-      `⏱️ ${formatElapsed()}`,
-      `🏋️ ${totalVolume > 0 ? Math.round(totalVolume).toLocaleString() : 0} kg movidos`,
-      newRecords.length > 0 ? `🏆 ${newRecords.length} récord${newRecords.length > 1 ? 's' : ''} batido${newRecords.length > 1 ? 's' : ''}: ${newRecords.map(r => `${r.name} (${r.best}kg)`).join(', ')}` : null,
-      sessionRpe !== null ? `🎯 RPE ${sessionRpe}/10` : null,
-      '',
-      'Hecho con PanelFit',
-    ].filter(Boolean).join('\n')
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, '_blank')
+  // Compartir el entreno como imagen (tarjeta dibujada en el momento); si algo falla, como texto por WhatsApp
+  const shareAchievement = async () => {
+    const datos = {
+      titulo: day.title, fecha: new Date(), duracion: formatElapsed(), volumen: totalVolume, series: totalSetsDone,
+      ejercicios: day.exercises.map((ex, ri) => ({ name: substitutions[ri] || ex.name, sets: Object.values(sets[ri] || {}) })),
+      records: newRecords.map(r => ({ name: r.name, best: r.best })),
+    }
+    try {
+      const { compartirTarjeta } = await import('../../lib/tarjetaEntreno')
+      await compartirTarjeta(datos)
+    } catch {
+      const { textoTarjeta } = await import('../../lib/tarjetaEntreno').catch(() => ({ textoTarjeta: null }))
+      if (textoTarjeta) window.open(`https://wa.me/?text=${encodeURIComponent(textoTarjeta(datos))}`, '_blank')
+    }
   }
 
   const confirmFinish = async () => {
@@ -666,7 +668,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   if (finished) {
     return (
       <FinishedScreen title={day.title} trainerMode={trainerMode} clientName={clientName} elapsedLabel={formatElapsed()}
-        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish}
+        totalVolume={totalVolume} newRecords={newRecords} streak={streak} onContinue={onFinish} onShare={trainerMode ? undefined : shareAchievement}
         semanaCompleta={(() => { const s = semanaResumen(plan, logs, weekIdx); return s.previstas > 0 && s.hechas >= s.previstas })()}
         semanasSeguidas={semanasCompletasSeguidas(plan, logs, weekIdx)} clientId={plan.clientId} />
     )
