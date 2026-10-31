@@ -23,6 +23,7 @@ import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 import { Modal } from '../shared/Modal'
 import { ProgressRing } from '../shared/ProgressRing'
 import { FormaClienteCard } from './FormaClienteCard'
+import { HistorialPorEjercicio } from './HistorialEjercicio'
 
 
 interface Props {
@@ -45,8 +46,26 @@ function getExerciseName(key: string, plan?: TrainingPlan | null): string {
   return plan.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name || key
 }
 
-// ── Historial de entrenos ─────────────────────────────────
+// ── Historial de entrenos: por fecha (cada sesión) o por ejercicio (su evolución) ──
 function HistorialTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+  const [modo, setModo] = useState<'fecha' | 'ejercicio'>(() => { try { return localStorage.getItem('pf_historial_modo') === 'ejercicio' ? 'ejercicio' : 'fecha' } catch { return 'fecha' } })
+  const elegir = (m: 'fecha' | 'ejercicio') => { setModo(m); try { localStorage.setItem('pf_historial_modo', m) } catch { /* no se recuerda */ } }
+  return (
+    <div className="space-y-3">
+      <div className="inline-flex p-0.5 bg-bg-alt rounded-xl" role="group" aria-label="Ver el historial">
+        {([['fecha', 'Por fecha'], ['ejercicio', 'Por ejercicio']] as const).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => elegir(id)} aria-pressed={modo === id}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${modo === id ? 'bg-card text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {modo === 'fecha' ? <HistorialPorFecha logs={logs} plan={plan} /> : <HistorialPorEjercicio logs={logs} plan={plan} />}
+    </div>
+  )
+}
+
+function HistorialPorFecha({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const [expanded, setExpanded] = useState<string | null>(null)
 
   const sessions = useMemo(() => {
