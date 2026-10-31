@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchLiftKey, getStrengthStandard } from './strengthStandards'
+import { matchLiftKey, getStrengthStandard, umbralesKg } from './strengthStandards'
 
 describe('matchLiftKey', () => {
   it('matches squat, bench and deadlift by common names', () => {
@@ -38,5 +38,15 @@ describe('getStrengthStandard', () => {
     expect(r?.level).toBe('elite')
     expect(r?.nextLevel).toBeNull()
     expect(r?.kgToNext).toBeNull()
+  })
+})
+
+describe('umbralesKg', () => {
+  it('los kilos de cada nivel para un peso corporal (redondeado a 0,5 kg)', () => {
+    expect(umbralesKg('bench', 80, 'm')).toEqual([
+      { level: 'principiante', kg: 40 }, { level: 'novato', kg: 60 }, { level: 'intermedio', kg: 80 },
+      { level: 'avanzado', kg: 120 }, { level: 'elite', kg: 140 },
+    ])
+    expect(umbralesKg('bench', 0, 'm')).toEqual([])
   })
 })

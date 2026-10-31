@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
+import { getStrengthStandard, umbralesKg, LEVEL_LABELS, LIFT_LABELS, type LiftKey } from '../lib/strengthStandards'
 
 interface Props { onDemo: () => void; onRegister: () => void; onLogin: () => void }
 
@@ -16,11 +17,17 @@ export function CalculadoraRM({ onDemo, onRegister, onLogin }: Props) {
   const [peso, setPeso] = useState('')
   const [reps, setReps] = useState('')
   const [rm, setRm] = useState<number | null>(null)
+  // Nivel de fuerza (opcional): con el ejercicio, el peso corporal y el sexo se compara con los estándares del big 3
+  const [ejercicio, setEjercicio] = useState<LiftKey | ''>('')
+  const [pesoCorporal, setPesoCorporal] = useState('')
+  const [sexo, setSexo] = useState<'m' | 'f'>('m')
+  const bw = parseFloat(pesoCorporal)
+  const nivel = rm && ejercicio && bw >= 30 && bw <= 250 ? getStrengthStandard(ejercicio, rm, bw, sexo) : null
 
   useEffect(() => {
-    document.title = 'Calculadora de 1RM (una repetición máxima) | PanelFit'
+    document.title = 'Calculadora de 1RM y nivel de fuerza | PanelFit'
     document.querySelector('meta[name="description"]')?.setAttribute('content',
-      'Calcula tu 1RM (una repetición máxima) gratis. Introduce el peso y las repeticiones y obtén tu máximo estimado con 4 fórmulas científicas.')
+      'Calcula tu 1RM (una repetición máxima) gratis con 4 fórmulas y descubre tu nivel de fuerza en sentadilla, press banca y peso muerto según tu peso corporal.')
     const ld = document.createElement('script')
     ld.type = 'application/ld+json'; ld.id = 'ld-calc-rm'
     ld.text = JSON.stringify({
@@ -105,6 +112,77 @@ export function CalculadoraRM({ onDemo, onRegister, onLogin }: Props) {
                 <p className="text-sm text-text-secondary mb-1">Tu 1RM estimado</p>
                 <p className="text-5xl font-bold text-accent">{rm} <span className="text-2xl">kg</span></p>
                 <p className="text-xs text-text-secondary mt-2">Media de 4 fórmulas (Epley, Brzycki, Lander, Lombardi)</p>
+              </div>
+
+              {/* Nivel de fuerza */}
+              <div className="p-4 sm:p-5 bg-bg rounded-xl border border-border space-y-4" aria-label="Tu nivel de fuerza">
+                <div>
+                  <h2 className="font-semibold">¿Qué nivel de fuerza tienes?</h2>
+                  <p className="text-xs text-text-secondary mt-0.5">Opcional: en sentadilla, press banca o peso muerto, según tu peso corporal.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className="block text-sm">
+                    <span className="block font-medium mb-1">Ejercicio</span>
+                    <select value={ejercicio} onChange={e => setEjercicio(e.target.value as LiftKey | '')}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text focus:outline-none focus:ring-2 focus:ring-accent">
+                      <option value="">Elige…</option>
+                      {(Object.keys(LIFT_LABELS) as LiftKey[]).map(k => <option key={k} value={k}>{LIFT_LABELS[k]}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-sm">
+                    <span className="block font-medium mb-1">Tu peso corporal (kg)</span>
+                    <input type="number" min="30" max="250" placeholder="ej. 75" value={pesoCorporal} onChange={e => setPesoCorporal(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-bg text-text focus:outline-none focus:ring-2 focus:ring-accent" />
+                  </label>
+                  <div className="text-sm">
+                    <span className="block font-medium mb-1" id="calc-sexo">Sexo</span>
+                    <div className="grid grid-cols-2 gap-1 p-1 rounded-xl border border-border" role="radiogroup" aria-labelledby="calc-sexo">
+                      {([['m', 'Hombre'], ['f', 'Mujer']] as const).map(([id, label]) => (
+                        <button key={id} type="button" role="radio" aria-checked={sexo === id} onClick={() => setSexo(id)}
+                          className={`py-1.5 rounded-lg font-medium transition-colors ${sexo === id ? 'bg-accent text-white' : 'text-text-secondary hover:text-text'}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {nivel && ejercicio && (() => {
+                  const meta = LEVEL_LABELS[nivel.level]
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-sm">
+                          Con <strong>{rm.toLocaleString('es-ES')} kg</strong> en {LIFT_LABELS[ejercicio].toLowerCase()} levantas <strong>{nivel.ratio.toLocaleString('es-ES')} veces</strong> tu peso.
+                        </p>
+                        <span className="px-3 py-1.5 rounded-full text-sm font-bold capitalize" style={{ backgroundColor: meta.color + '20', color: meta.color }}>
+                          {meta.emoji} Nivel {nivel.level === 'elite' ? 'élite' : nivel.level}
+                        </span>
+                      </div>
+                      {nivel.nextLevel && (
+                        <div>
+                          <div className="h-2 bg-bg-alt rounded-full overflow-hidden">
+                            <div className="h-full" style={{ width: `${nivel.progressToNext * 100}%`, backgroundColor: meta.color }} />
+                          </div>
+                          <p className="text-xs text-text-secondary mt-1">
+                            Te faltan unos <strong>{nivel.kgToNext?.toLocaleString('es-ES')} kg</strong> de 1RM para el nivel {nivel.nextLevel === 'elite' ? 'élite' : nivel.nextLevel}.
+                          </p>
+                        </div>
+                      )}
+                      <table className="w-full text-sm">
+                        <caption className="sr-only">Kilos de 1RM de cada nivel para tu peso</caption>
+                        <tbody>
+                          {umbralesKg(ejercicio, bw, sexo).map(u => (
+                            <tr key={u.level} className={`border-b border-border/50 ${u.level === nivel.level ? 'font-bold' : ''}`}>
+                              <td className="py-1.5 capitalize">{LEVEL_LABELS[u.level].emoji} {u.level === 'elite' ? 'élite' : u.level}</td>
+                              <td className="py-1.5 text-right">desde {u.kg.toLocaleString('es-ES')} kg</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p className="text-[11px] text-text-secondary">Orientativo: ratios de fuerza de la comunidad (1RM ÷ peso corporal), no una referencia médica ni de competición.</p>
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* Tabla de porcentajes */}
