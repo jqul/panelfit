@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Trophy, Flame, CalendarCheck, Bell } from 'lucide-react'
+import { Check, Trophy, Flame, CalendarCheck, Bell, Share2 } from 'lucide-react'
 import { celebraciones } from '../../../lib/hoyResumen'
 import { usePushNotifications } from '../../../lib/usePushNotifications'
 
@@ -21,10 +21,12 @@ interface Props {
   /** Cliente que entrena: se le ofrece activar los avisos (no al entrenador que registra por él). */
   clientId?: string
   onContinue: () => void
+  /** Compartir el entreno como imagen (solo el cliente). */
+  onShare?: () => void
 }
 
 // Lo último que ve el cliente: la sesión ya está guardada, esto es el cierre.
-export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, semanaCompleta, semanasSeguidas, clientId, onContinue }: Props) {
+export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, totalVolume, newRecords, streak, semanaCompleta, semanasSeguidas, clientId, onContinue, onShare }: Props) {
   const fiestas = celebraciones({ records: newRecords, semanaCompleta, racha: streak, semanasSeguidas })
   // Pedir permiso al terminar el entreno, no al abrir la app: es cuando el aviso tiene sentido. Una sola vez.
   const push = usePushNotifications({ clientId })
@@ -74,8 +76,14 @@ export function FinishedScreen({ title, trainerMode, clientName, elapsedLabel, t
         </div>
       )}
 
+      {onShare && (
+        <button onClick={onShare}
+          className="mt-8 w-full max-w-xs py-3.5 rounded-2xl border border-border bg-card font-semibold text-sm flex items-center justify-center gap-2 hover:border-accent active:scale-[0.98] transition-all">
+          <Share2 className="w-4 h-4" /> Compartir como imagen
+        </button>
+      )}
       <button onClick={onContinue}
-        className="mt-10 w-full max-w-xs py-4 rounded-2xl bg-ink text-white font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all">
+        className={`${onShare ? 'mt-3' : 'mt-10'} w-full max-w-xs py-4 rounded-2xl bg-ink text-white font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all`}>
         Volver al inicio
       </button>
     </div>

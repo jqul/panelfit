@@ -36,7 +36,7 @@ interface Props {
 
 // Modal de confirmación al terminar la sesión: resumen (duración/volumen/
 // récords), RPE de la sesión, cómo le ha sentado (con zona si hay molestia),
-// y compartir el logro por WhatsApp si se completó todo.
+// y compartir el entreno como imagen si se completó todo.
 export function FinishWorkoutModal({
   dayTitle, totalSetsDone, streak, saving, allComplete, totalExs, doneExs, incompleteExercises, elapsedLabel, totalVolume, newRecords, avgRir,
   sessionRpe, sessionRpeHalf, onSetSessionRpe, onToggleSessionRpeHalf,
@@ -165,9 +165,8 @@ export function FinishWorkoutModal({
         </div>
         {allComplete && (
           <button onClick={onShare}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm text-white hover:opacity-90 active:scale-[0.98] transition-all"
-            style={{ backgroundColor: '#25D366' }}>
-            📤 Compartir logro
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm border border-border bg-card hover:border-accent active:scale-[0.98] transition-all">
+            📤 Compartir como imagen
           </button>
         )}
         <button onClick={onConfirm} disabled={saving}
