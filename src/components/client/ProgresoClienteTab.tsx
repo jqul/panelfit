@@ -24,6 +24,7 @@ import { Modal } from '../shared/Modal'
 import { ProgressRing } from '../shared/ProgressRing'
 import { FormaClienteCard } from './FormaClienteCard'
 import { HistorialPorEjercicio } from './HistorialEjercicio'
+import { IndiceProgresoCard } from '../shared/IndiceProgresoCard'
 import { volumenSeries } from '../../lib/volumen'
 
 
@@ -205,6 +206,7 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, 
 
   return (
     <div className="space-y-4">
+      <IndiceProgresoCard logs={logs} plan={plan} />
       {showRecords && (
         <div className="bg-card border border-border rounded-2xl p-5">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Nuevos récords</p>

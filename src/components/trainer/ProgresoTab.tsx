@@ -18,6 +18,7 @@ import { StrengthStandardsChart } from './progreso-tab/StrengthStandardsChart'
 import { PruebasChart } from './progreso-tab/PruebasChart'
 import { FVProfileChart } from './progreso-tab/FVProfileChart'
 import { MonthlyRecap } from './progreso-tab/MonthlyRecap'
+import { IndiceProgresoCard } from '../shared/IndiceProgresoCard'
 import { CicloCard } from './progreso-tab/CicloCard'
 import { CicloRendimientoChart } from './progreso-tab/CicloRendimientoChart'
 import { DolorChart } from './progreso-tab/DolorChart'
@@ -56,6 +57,9 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         <h3 className="font-serif font-bold text-lg">Progreso de {client.name}</h3>
         <p className="text-xs text-muted mt-0.5">Análisis de rendimiento y evolución</p>
       </div>
+
+      {/* La conclusión antes que las gráficas: si progresa y por qué */}
+      <IndiceProgresoCard logs={logs} plan={plan} quien="entrenador" />
 
       <div className="flex gap-1.5 flex-wrap">
         {groups.map(g => (
