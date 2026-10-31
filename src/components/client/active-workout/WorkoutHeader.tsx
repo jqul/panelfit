@@ -1,4 +1,4 @@
-import { ChevronLeft, Clock, Flame, Focus } from 'lucide-react'
+import { ChevronLeft, Clock, Flame, Focus, Sun, Moon } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
 import { FinishButton } from './FinishButton'
 import { SyncBadge } from '../client-view/SyncStatus'
@@ -20,6 +20,9 @@ interface Props {
   densityPct: number | null
   prevSessionVolume: number
   onToggleView?: () => void  // pasar a la vista de foco (una serie a la vez)
+  /** Fondo oscuro del entreno (el mismo que en la vista de foco). */
+  oscuro?: boolean
+  onToggleOscuro?: () => void
 }
 
 // Cabecera de la sesión activa: título + cronómetro + botón terminar, barra de
@@ -27,7 +30,7 @@ interface Props {
 // la sesión equivalente de la semana pasada).
 export function WorkoutHeader({
   title, clientName, onBack, onFinishClick, elapsedLabel, allComplete,
-  totalVolume, totalSetsDone, avgRir, doneExs, totalExs, pct, densityRate, densityPct, prevSessionVolume, onToggleView,
+  totalVolume, totalSetsDone, avgRir, doneExs, totalExs, pct, densityRate, densityPct, prevSessionVolume, onToggleView, oscuro, onToggleOscuro,
 }: Props) {
   return (
     <div className="bg-card border-b border-border flex-shrink-0">
@@ -44,6 +47,10 @@ export function WorkoutHeader({
           <Clock className="w-3.5 h-3.5" />
           <span className="font-mono font-semibold tabular-nums">{elapsedLabel}</span>
         </div>
+        {onToggleOscuro && (
+          <button onClick={onToggleOscuro} aria-label={oscuro ? 'Cambiar a fondo claro' : 'Cambiar a fondo oscuro'} aria-pressed={oscuro}
+            className="p-2 rounded-xl hover:bg-bg-alt text-muted">{oscuro ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}</button>
+        )}
         {onToggleView && (
           <button onClick={onToggleView} aria-label="Modo foco: una serie a la vez" title="Modo foco"
             className="p-2 rounded-xl hover:bg-bg-alt text-muted"><Focus className="w-5 h-5" /></button>

@@ -10,6 +10,7 @@ import { CicloWidget } from '../CicloWidget'
 import { ReferralWidget } from '../ReferralWidget'
 import { MisDatosCard } from './MisDatosCard'
 import { RecordatorioDiario } from './RecordatorioDiario'
+import { VistaEntreno } from './VistaEntreno'
 import type { Consejo } from '../../../lib/consejos'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
@@ -88,6 +89,8 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, 
         </div>
         <ThemeToggle />
       </div>
+
+      <VistaEntreno />
 
       {/* Notificaciones push */}
       <div className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between gap-3">

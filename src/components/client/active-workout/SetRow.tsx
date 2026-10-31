@@ -1,5 +1,5 @@
 import { useState, memo } from 'react'
-import { ChevronUp, ChevronDown, Check, Calculator, Zap, Gauge, CornerLeftDown } from 'lucide-react'
+import { Check, Zap, Gauge, CornerLeftDown } from 'lucide-react'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct } from '../../../lib/strength'
 import { RirSelector } from './RirSelector'
 
@@ -16,6 +16,11 @@ interface SetRowProps {
   prevRir?: number
   weekRpe?: string
   isMain: boolean
+  /** Lo que pide el plan para esta serie, p. ej. "8" o "6-8 @2" (reps @RIR). */
+  planLabel?: string
+  /** La serie que se está editando (o la siguiente que toca): solo ella enseña los ajustes rápidos. */
+  activa?: boolean
+  onActivar?: () => void
   showVelocity?: boolean  // anotar velocidad de barra (VBT); por defecto solo en ejercicios principales
   showTarget?: boolean  // "pesos sugeridos" — el entrenador puede desactivarlo en Ajustes
   onCommit: (weight: string, reps: string) => void
@@ -25,7 +30,10 @@ interface SetRowProps {
   onSetVelocity: (velocity: number | undefined) => void
 }
 
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+// Una serie de la vista de lista, en una sola línea (nº · plan y lo anterior · kg · reps · ✓) para ver la rutina
+// entera de un vistazo. Los ajustes rápidos (±2,5/±5 kg, ±1 rep, discos, repetir lo anterior) solo aparecen debajo
+// de la serie activa, en vez de repetirse en todas.
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, planLabel, activa = false, onActivar, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -73,120 +81,97 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
   // sistema con las manos sudadas o con magnesio.
   const round1 = (n: number) => Math.round(n * 10) / 10
   const adjustWeight = (delta: number) => {
-    const v = String(Math.max(0, round1((parseFloat(weight) || 0) + delta)))
+    const v = String(Math.max(0, round1((parseFloat(weight || prevWeight || '') || 0) + delta)))
     setWeight(v); onCommit(v, reps)
   }
+  const adjustReps = (delta: number) => {
+    const v = String(Math.max(0, (parseInt(reps) || 0) + delta))
+    setReps(v); onCommit(weight, v)
+  }
+
+  const casilla = (extra: string) => `w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${extra} ${
+    done ? 'bg-ok/10 border-ok/30 text-ok' : activa ? 'bg-bg border-accent' : 'bg-bg border-border'
+  }`
+  const paso = 'min-w-[40px] h-9 px-2 flex items-center justify-center text-xs font-bold rounded-lg bg-bg border border-border text-muted active:scale-90 transition-transform'
 
   return (
     <>
       {showRir && (
         <RirSelector value={rir} onSelect={onSetRir} onClose={() => setShowRir(false)} />
       )}
-      <div className={`px-3 py-2 transition-colors ${done ? 'bg-ok/8' : ''}`}>
-        <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 items-center">
+      <div className={`px-3 py-1.5 transition-colors ${done ? 'bg-ok/8' : activa ? 'bg-accent/5' : ''}`} onFocusCapture={onActivar}>
+        <div className="grid grid-cols-[28px_1fr_76px_60px_40px] gap-1.5 items-center">
           {/* Nº serie */}
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
-            done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
-          }`}>{setNum}</div>
+          <button type="button" onClick={onActivar} aria-label={`Ajustes de la serie ${setNum}`} tabIndex={-1}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold mx-auto ${
+              done ? 'bg-ok text-white' : isMain ? 'bg-accent/10 text-accent' : 'bg-bg-alt text-muted'
+            }`}>{setNum}</button>
 
-          {/* Anterior + objetivo sugerido para hoy */}
-          <div className="text-center leading-tight">
-            <p className="text-xs text-muted">
-              {prevWeight ? `${prevWeight}kg ×${prevReps}` : '—'}
-            </p>
-            {targetRange && (
-              <p className="text-[11px] font-bold" style={{ color: suggestion?.color || '#6e5438' }} title="Objetivo de hoy">
-                🎯 {targetRange}
-              </p>
-            )}
-            {!done && prevWeight && (
-              <button type="button" onClick={fillFromPrevious}
-                className="mt-0.5 flex items-center gap-0.5 mx-auto text-[11px] font-semibold text-accent active:scale-95 transition-transform py-1"
-                style={{ minHeight: '28px' }}>
-                <CornerLeftDown className="w-3 h-3" /> Usar
-              </button>
-            )}
+          {/* Plan + lo de la última vez */}
+          <div className="text-center leading-tight min-w-0">
+            {planLabel && <p className="text-sm text-muted truncate">{planLabel}</p>}
+            <p className="text-[11px] text-muted/80 truncate">{prevWeight ? `${prevWeight}×${prevReps}` : '—'}</p>
           </div>
 
-          {/* KG — pasos rápidos ±2.5/±5 (el 85% de los ajustes reales) y calculadora */}
-          <div className="flex flex-col items-stretch gap-1">
-            <div className="flex gap-0.5">
-              <button type="button" onClick={() => adjustWeight(5)} tabIndex={-1}
-                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
-                +5
-              </button>
-              <button type="button" onClick={() => adjustWeight(2.5)} tabIndex={-1}
-                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
-                +2.5
-              </button>
-            </div>
-            <div className="relative">
-              <input
-                type="number"
-                inputMode="decimal"
-                value={weight}
-                onChange={e => setWeight(e.target.value)}
-                onBlur={() => onCommit(weight, reps)}
-                placeholder={prevWeight || '0'}
-                aria-label={`Peso serie ${setNum}`}
-                className={`w-full text-center text-base font-semibold py-2 pr-6 rounded-xl border outline-none ${
-                  done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => onOpenCalc(weight)}
-                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent transition-colors"
-                title="Calculadora de discos">
-                <Calculator className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex gap-0.5">
-              <button type="button" onClick={() => adjustWeight(-2.5)} tabIndex={-1}
-                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
-                -2.5
-              </button>
-              <button type="button" onClick={() => adjustWeight(-5)} tabIndex={-1}
-                className="flex-1 h-7 flex items-center justify-center text-[11px] font-bold rounded-md text-muted hover:text-accent hover:bg-accent/10 active:scale-90 transition-all">
-                -5
-              </button>
-            </div>
-          </div>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={weight}
+            onChange={e => setWeight(e.target.value)}
+            onBlur={() => onCommit(weight, reps)}
+            placeholder={prevWeight || '—'}
+            aria-label={`Peso serie ${setNum}`}
+            className={casilla('')}
+          />
 
-          {/* Reps — con paso rápido +/- */}
-          <div className="flex flex-col items-stretch gap-0.5">
-            <button type="button" onClick={() => { const v = String(Math.max(0, (parseInt(reps) || 0) + 1)); setReps(v); onCommit(weight, v) }}
-              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
-              <ChevronUp className="w-3 h-3" />
-            </button>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={reps}
-              onChange={e => setReps(e.target.value)}
-              onBlur={() => onCommit(weight, reps)}
-              placeholder={prevReps || '10'}
-              aria-label={`Repeticiones serie ${setNum}`}
-              className={`w-full text-center text-base font-semibold py-2 rounded-xl border outline-none ${
-                done ? 'bg-ok/10 border-ok/30 text-ok' : 'bg-bg border-border'
-              }`}
-            />
-            <button type="button" onClick={() => { const v = String(Math.max(0, (parseInt(reps) || 0) - 1)); setReps(v); onCommit(weight, v) }}
-              className="h-4 flex items-center justify-center text-muted hover:text-accent active:scale-90 transition-all" tabIndex={-1}>
-              <ChevronDown className="w-3 h-3" />
-            </button>
-          </div>
+          <input
+            type="number"
+            inputMode="numeric"
+            value={reps}
+            onChange={e => setReps(e.target.value)}
+            onBlur={() => onCommit(weight, reps)}
+            placeholder={prevReps || '10'}
+            aria-label={`Repeticiones serie ${setNum}`}
+            className={casilla('')}
+          />
 
           {/* Check */}
           <button
             onClick={() => onToggle(weight, reps)}
             aria-label={done ? `Marcar serie ${setNum} como no hecha` : `Marcar serie ${setNum} como hecha`}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
+            className={`w-9 h-9 rounded-lg flex items-center justify-center mx-auto transition-all active:scale-90 ${
               done ? 'bg-ok text-white' : 'bg-bg border-2 border-border text-muted hover:border-ok'
             }`}>
             <Check className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Ajustes rápidos: solo en la serie activa */}
+        {activa && !done && (
+          <div className="mt-1.5 space-y-1.5" role="group" aria-label={`Ajustes rápidos de la serie ${setNum}`}>
+            <div className="flex items-center gap-1 flex-wrap">
+              <button type="button" onClick={() => adjustWeight(-5)} className={paso} aria-label="Quitar 5 kg">−5</button>
+              <button type="button" onClick={() => adjustWeight(-2.5)} className={paso} aria-label="Quitar 2,5 kg">−2,5</button>
+              <button type="button" onClick={() => adjustWeight(2.5)} className={paso} aria-label="Añadir 2,5 kg">+2,5</button>
+              <button type="button" onClick={() => adjustWeight(5)} className={paso} aria-label="Añadir 5 kg">+5</button>
+              <span className="w-px h-6 bg-border mx-0.5" aria-hidden />
+              <button type="button" onClick={() => adjustReps(-1)} className={paso} aria-label="Una repetición menos">−1 rep</button>
+              <button type="button" onClick={() => adjustReps(1)} className={paso} aria-label="Una repetición más">+1 rep</button>
+              <button type="button" onClick={() => onOpenCalc(weight)} className={paso}>Discos</button>
+            </div>
+            {(prevWeight || targetRange) && (
+              <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                {targetRange && <span className="font-bold" style={{ color: suggestion?.color || 'var(--color-accent)' }} title="Objetivo de hoy">🎯 Hoy: {targetRange}</span>}
+                {prevWeight && (
+                  <button type="button" onClick={fillFromPrevious}
+                    className="flex items-center gap-0.5 font-semibold text-accent active:scale-95 transition-transform py-1" style={{ minHeight: '28px' }}>
+                    <CornerLeftDown className="w-3 h-3" /> {targetRange && suggestion?.deltaKg ? 'Usar lo recomendado' : `Repetir ${prevWeight}×${prevReps}`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Badges RIR / Velocidad (VBT) — aparecen debajo de la fila cuando la serie está marcada como hecha */}
         {done && (

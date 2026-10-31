@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import {
   ChevronDown, Trophy,
-  Plus, Dumbbell, Flame, Timer, Calculator, X, CheckCircle2, Repeat
+  Plus, Dumbbell, Flame, X, CheckCircle2, Repeat
 } from 'lucide-react'
 import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../types'
 import { CalculadoraDiscos } from './CalculadoraDiscos'
@@ -15,6 +15,7 @@ import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
 import { SetRow } from './active-workout/SetRow'
+import { ResumenEjercicio } from './active-workout/ResumenEjercicio'
 import { RunSets } from './active-workout/RunSets'
 import { PrAlert } from './active-workout/PrAlert'
 import { DayTestsCard } from './active-workout/DayTestsCard'
@@ -201,6 +202,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     try { return localStorage.getItem('pf_workout_view') === 'lista' ? 'lista' : 'foco' } catch { return 'foco' }
   })
   const [focusOverride, setFocusOverride] = useState<{ ri: number; si: number } | null>(null)
+  // Vista de lista: la serie cuyos ajustes rápidos se ven (la que se toca); sin tocar ninguna, la siguiente que toca.
+  const [filaElegida, setFilaElegida] = useState<string | null>(null)
   const toggleView = () => {
     const next = view === 'foco' ? 'lista' : 'foco'
     setView(next); setFocusOverride(null)
@@ -689,6 +692,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     return { ri: last, si: Math.max(0, total - 1) }
   })()
   const pos = focusOverride && day.exercises[focusOverride.ri] ? focusOverride : autoPos
+  const filaActiva = filaElegida ?? `${autoPos.ri}-${autoPos.si}`
 
   const renderRun = (ri: number) => {
     const ex = day.exercises[ri]
@@ -751,7 +755,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
       <div className="flex gap-2 overflow-x-auto pb-1">
         {(day.warmupExercises || []).map((w, i) => (
           <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
-            <p className="font-semibold text-gray-700">{w.name}</p>
+            <p className="font-semibold text-ink">{w.name}</p>
             {w.sets && <p className="text-muted">{w.sets}{w.weight ? ` · ${w.weight}` : ''}</p>}
           </div>
         ))}
@@ -764,7 +768,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   ) : undefined
 
   return (
-    <div className={`fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden ${view === 'foco' && focoOscuro ? 'pf-foco-oscuro' : ''}`}
+    <div className={`fixed inset-0 z-40 bg-bg flex flex-col overflow-hidden ${focoOscuro ? 'pf-foco-oscuro' : ''}`}
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {restTimer && <RestTimer seconds={restTimer.secs} next={restTimer.next} onDone={() => setRestTimer(null)} onSkip={() => setRestTimer(null)} />}
       {calcWeight !== null && <CalculadoraDiscos pesoObjetivo={calcWeight} onClose={() => setCalcWeight(null)} />}
@@ -786,7 +790,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
         />
       ) : (
-      <>
+      // La lista lleva el mismo fondo (oscuro o claro) que la vista de foco
+      <div className={`flex-1 flex flex-col min-h-0 bg-bg text-ink ${focoOscuro ? 'dark' : ''}`}>
       <WorkoutHeader
         title={day.title}
         clientName={clientName}
@@ -804,6 +809,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         densityPct={densityPct}
         prevSessionVolume={prevSessionVolume}
         onToggleView={toggleView}
+        oscuro={focoOscuro}
+        onToggleOscuro={cambiarFocoOscuro}
       />
 
       {!trainerMode && <div className="px-4 pt-3"><NotaAntes clientId={plan.clientId} dia={day.title} /></div>}
@@ -817,7 +824,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           <div className="flex gap-2 overflow-x-auto pb-1">
             {(day.warmupExercises || []).map((ex, i) => (
               <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
-                <p className="font-semibold text-gray-700">{ex.name}</p>
+                <p className="font-semibold text-ink">{ex.name}</p>
                 {ex.sets && <p className="text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
               </div>
             ))}
@@ -841,6 +848,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           const hideRest = ex.hideRest || ex.kind === 'run'
           const restMin = Math.floor(restSecs / 60)
           const restSecR = restSecs % 60
+          // Lo que pide el plan por serie: las reps de "4x6-8" y, si lo hay, el RIR objetivo ("6-8 @2")
+          const repsPlan = (String(ex.sets || '').split(/[x×]/i)[1] || '').trim() || String(numReps)
+          const planSerie = `${repsPlan}${ex.rir !== undefined && ex.rir !== null && String(ex.rir) !== '' ? ` @${ex.rir}` : ''}`
 
           // Primera serie A LA MISMA CARGA con velocidad registrada hoy — referencia
           // para el % de pérdida de velocidad (autorregulación VBT). Se compara
@@ -984,15 +994,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 </div>
               )}
 
-              {/* Descanso — solo si no está oculto */}
-              {!hideRest && (
-                <div className="flex items-center gap-1.5 px-4 mb-3">
-                  <Timer className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-xs text-accent font-semibold">
-                    Descanso: {restMin > 0 ? `${restMin}min ` : ''}{restSecR > 0 ? `${restSecR}s` : ''}
-                  </span>
-                </div>
-              )}
+              {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} />}
 
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó */}
               <RirTargetChip rir={ex.rir} />
@@ -1009,12 +1011,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 />
               ) : (<>
               {/* Cabecera tabla */}
-              <div className="grid grid-cols-[28px_1fr_100px_60px_36px] gap-1 px-3 pb-1">
-                <p className="text-[11px] uppercase text-muted font-bold text-center">N</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center">Anterior</p>
-                <p className="text-[11px] uppercase text-muted font-bold text-center flex items-center justify-center gap-1">
-                  KG <Calculator className="w-2.5 h-2.5 opacity-50" />
-                </p>
+              <div className="grid grid-cols-[28px_1fr_76px_60px_40px] gap-1.5 px-3 pb-1">
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Set</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Plan</p>
+                <p className="text-[11px] uppercase text-muted font-bold text-center">Kg</p>
                 <p className="text-[11px] uppercase text-muted font-bold text-center">Reps</p>
                 <div />
               </div>
@@ -1022,10 +1022,22 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               {Array.from({ length: totalExSets }, (_, si) => {
                 const s = exSets[si] || { weight: '', reps: String(numReps), done: false }
                 const prev = prevSets[si]
+                const clave = `${ri}-${si}`
                 return (
+                  <Fragment key={clave}>
+                  {/* El descanso entre series, como separador (no después de la última) */}
+                  {si > 0 && !hideRest && (
+                    <div className="flex items-center gap-2 px-4 py-0.5" aria-hidden>
+                      <span className="flex-1 h-px bg-border" />
+                      <span className="text-[11px] text-muted tabular-nums">{restMin}:{String(restSecR).padStart(2, '0')}</span>
+                      <span className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
                   <SetRow
-                    key={`${ri}-${si}`}
                     setNum={si + 1}
+                    planLabel={planSerie}
+                    activa={filaActiva === clave}
+                    onActivar={() => setFilaElegida(clave)}
                     initWeight={s.weight}
                     initReps={s.reps}
                     done={s.done}
@@ -1045,6 +1057,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     onSetRir={(rir) => setRir(ri, si, rir)}
                     onSetVelocity={(v) => setVelocity(ri, si, v)}
                   />
+                  </Fragment>
                 )
               })}
 
@@ -1079,7 +1092,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         <div className="h-8" />
       </div>
 
-      </>
+      </div>
       )}
 
       {/* Modal confirmación terminar */}
