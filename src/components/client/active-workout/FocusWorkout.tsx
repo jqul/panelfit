@@ -9,6 +9,7 @@ import { SyncBadge } from '../client-view/SyncStatus'
 import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 import { SelectorTipoSerie } from './SelectorTipoSerie'
 import { TIPOS_SERIE, letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
+import { escalaEsfuerzo, etiquetaEsfuerzo, preguntaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; tipo?: TipoSerie }
 interface PrevSet { weight?: string; reps?: string; rir?: number }
@@ -73,6 +74,7 @@ function totalSets(ex: Exercise, exSets: Record<number, FocusSet>) {
 // Usa los mismos manejadores que la vista de lista, así que lo que registra es
 // idéntico — solo cambia cómo se presenta.
 export function FocusWorkout(p: Props) {
+  const escala = escalaEsfuerzo() // RIR o RPE, la que el cliente eligió en Más
   const ex = p.exercises[p.ri]
   const { numReps } = parseSet(ex.sets)
   const exSets = p.sets[p.ri] || {}
@@ -298,7 +300,7 @@ export function FocusWorkout(p: Props) {
               {/* Referencia: la última vez y lo recomendado hoy */}
               {(prev?.weight || targetRange) && (
                 <div className="mt-5 pt-4 border-t border-border/60 text-center space-y-1.5">
-                  {prev?.weight && <p className="text-sm font-medium text-muted">La última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · RIR ${prev.rir}` : ''}</p>}
+                  {prev?.weight && <p className="text-sm font-medium text-muted">La última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · ${etiquetaEsfuerzo(prev.rir, escala)}` : ''}</p>}
                   {targetRange && <p className="text-sm font-bold" style={{ color: suggestion?.color || 'var(--color-accent)' }}>🎯 Recomendado hoy: {fmt(targetRange)}</p>}
                   {!cur.done && prev?.weight && (
                     <button onClick={useSuggested} className="inline-flex items-center gap-1 text-sm font-semibold text-accent py-1">
@@ -311,7 +313,7 @@ export function FocusWorkout(p: Props) {
 
             {/* RIR — repeticiones que te quedaban */}
             <div className="mx-4 mt-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center mb-2">¿Cuántas te quedaban? (RIR)</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center mb-2">{preguntaEsfuerzo(escala)}</p>
               <div className="flex gap-1.5 justify-center">
                 {RIR_OPTIONS.map(o => {
                   const active = cur.rir !== undefined && Math.floor(cur.rir) === o.value
@@ -319,7 +321,7 @@ export function FocusWorkout(p: Props) {
                     <button key={o.value} onClick={() => p.onSetRir(p.ri, p.si, o.value)} aria-pressed={active}
                       className="flex-1 max-w-[72px] py-2 rounded-xl text-sm font-bold border-2 transition-all active:scale-95"
                       style={active ? { backgroundColor: o.color, borderColor: o.color, color: '#fff' } : { borderColor: 'var(--color-border)', color: 'var(--color-muted)' }}>
-                      {o.value}
+                      {escala === 'rpe' ? valorEnEscala(o.value, 'rpe', o.value === 5) : o.value}
                     </button>
                   )
                 })}
@@ -388,7 +390,7 @@ export function FocusWorkout(p: Props) {
                       {s?.weight ? `${fmt(s.weight)} kg × ${s.reps}` : pv?.weight ? `${fmt(pv.weight)} kg × ${pv.reps} (última vez)` : '—'}
                     </span>
                     {s?.tipo && <span className="text-xs font-bold text-muted">{TIPOS_SERIE.find(t => t.id === s.tipo)?.label}</span>}
-                    {s?.rir !== undefined && <span className="text-xs font-bold text-muted">RIR {s.rir}</span>}
+                    {s?.rir !== undefined && <span className="text-xs font-bold text-muted">{etiquetaEsfuerzo(s.rir, escala)}</span>}
                     {active && <span className="text-xs font-bold text-accent">←</span>}
                   </button>
                 )

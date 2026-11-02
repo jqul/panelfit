@@ -2,6 +2,7 @@ import { ChevronLeft, Clock, Flame, Focus, Sun, Moon } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
 import { FinishButton } from './FinishButton'
 import { SyncBadge } from '../client-view/SyncStatus'
+import { escalaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
 
 interface Props {
   title: string
@@ -63,7 +64,7 @@ export function WorkoutHeader({
         <span><b className="text-ink">{totalVolume > 0 ? `${Math.round(totalVolume).toLocaleString()} kg` : '0 kg'}</b></span>
         <span><b className="text-ink">{totalSetsDone}</b> series</span>
         {avgRir !== null && (
-          <span>RIR <b style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{avgRir}</b></span>
+          <span>{escalaEsfuerzo() === 'rpe' ? 'RPE' : 'RIR'} <b style={{ color: RIR_OPTIONS.find(o => Math.round(avgRir) === o.value)?.color || '#6e5438' }}>{escalaEsfuerzo() === 'rpe' ? valorEnEscala(avgRir, 'rpe') : avgRir}</b></span>
         )}
         {/* Densidad de sesión — kg/min en vivo y tonelaje frente a la semana pasada */}
         {totalVolume > 0 && (densityRate > 0 || densityPct !== null) && (
