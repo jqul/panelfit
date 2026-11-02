@@ -16,7 +16,7 @@ test('en Progreso › Entrenos el cliente ve la evolución de cada ejercicio', a
   await page.getByRole('tab', { name: 'Entrenos' }).click()
 
   await page.getByRole('button', { name: 'Por ejercicio' }).click()
-  const press = page.getByRole('button', { name: /Press banca/ })
+  const press = page.getByRole('button', { name: /^Press banca/ }) // la fila (la estrella es «Seguir Press banca»)
   await expect(press).toContainText('85×5')
   await expect(press).toContainText('2 sesiones')
   await expect(press).toContainText('+5,9 kg 1RM') // 99,2 − 93,3
