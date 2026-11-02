@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Zap } from 'lucide-react'
 import { RIR_OPTIONS } from '../../../lib/strength'
+import { escalaEsfuerzo, preguntaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
 
 // ── Selector RIR inline (aparece tras marcar check) ───────
 export function RirSelector({ value, onSelect, onClose }: { value: number | undefined; onSelect: (rir: number) => void; onClose: () => void }) {
@@ -10,6 +11,7 @@ export function RirSelector({ value, onSelect, onClose }: { value: number | unde
   const initialHalf = value !== undefined && value % 1 !== 0
   const [half, setHalf] = useState(initialHalf)
   const baseValue = value !== undefined ? Math.floor(value) : undefined
+  const escala = escalaEsfuerzo() // se guarda siempre como RIR; solo cambia cómo se pregunta
 
   return (
     <div className="fixed inset-0 z-[55] bg-ink/60 flex items-end justify-center" onClick={onClose}>
@@ -17,9 +19,9 @@ export function RirSelector({ value, onSelect, onClose }: { value: number | unde
         <div className="w-10 h-1 bg-border rounded-full mx-auto mb-1" />
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-accent" />
-          <p className="text-sm font-bold">¿Cuánto te quedaba? (RIR)</p>
+          <p className="text-sm font-bold">{preguntaEsfuerzo(escala)}</p>
         </div>
-        <p className="text-xs text-muted">Repeticiones en reserva — cuántas más podrías haber hecho</p>
+        <p className="text-xs text-muted">{escala === 'rpe' ? 'Esfuerzo percibido: 10 es el máximo, no podías ni una más' : 'Repeticiones en reserva — cuántas más podrías haber hecho'}</p>
         <div className="grid grid-cols-3 gap-2">
           {RIR_OPTIONS.map(opt => {
             const canHalf = opt.value < 5 // "5+" es abierto, no tiene sentido un "5.5+"
@@ -31,7 +33,7 @@ export function RirSelector({ value, onSelect, onClose }: { value: number | unde
                   borderColor: selected ? opt.color : '#e5e7eb',
                   backgroundColor: selected ? opt.color + '15' : 'transparent',
                 }}>
-                <span className="text-xl font-bold" style={{ color: opt.color }}>{selected && half ? `${opt.value}.5` : opt.label}</span>
+                <span className="text-xl font-bold" style={{ color: opt.color }}>{escala === 'rpe' ? valorEnEscala(opt.value + (selected && half ? 0.5 : 0), 'rpe', opt.value === 5) : selected && half ? `${opt.value}.5` : opt.label}</span>
                 <span className="text-[11px] text-muted text-center leading-tight">{opt.desc}</span>
               </button>
             )
@@ -39,7 +41,7 @@ export function RirSelector({ value, onSelect, onClose }: { value: number | unde
         </div>
         <button onClick={() => setHalf(h => !h)}
           className={`w-full py-2 rounded-xl text-xs font-semibold border transition-all ${half ? 'bg-accent/15 border-accent text-accent' : 'border-border text-muted'}`}>
-          {half ? '✓ ' : ''}+0.5 (precisión powerlifting/halterofilia)
+          {half ? '✓ ' : ''}{escala === 'rpe' ? '−0,5' : '+0,5'} (precisión powerlifting/halterofilia)
         </button>
         <button onClick={onClose} className="w-full py-2.5 text-xs text-muted">Omitir</button>
       </div>

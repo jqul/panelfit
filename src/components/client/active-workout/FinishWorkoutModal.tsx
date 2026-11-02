@@ -1,6 +1,7 @@
 import { Check, Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
 import { ZONAS_DOLOR } from '../../../lib/clientPain'
 import { REACTION_EMOJIS, MOLESTIA_EMOJI } from './utils'
+import { escalaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
 
 interface IncompleteExercise { name: string; done: number; total: number }
 interface NewRecord { name: string; best: number }
@@ -107,8 +108,8 @@ export function FinishWorkoutModal({
           <div className="flex items-center gap-2 bg-bg rounded-2xl px-4 py-3">
             <Zap className="w-4 h-4 text-accent flex-shrink-0" />
             <div className="flex-1">
-              <p className="text-xs text-muted">RIR medio de la sesión</p>
-              <p className="text-sm font-bold">{avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
+              <p className="text-xs text-muted">{escalaEsfuerzo() === 'rpe' ? 'RPE' : 'RIR'} medio de la sesión</p>
+              <p className="text-sm font-bold">{escalaEsfuerzo() === 'rpe' ? valorEnEscala(avgRir, 'rpe') : avgRir} — {avgRir <= 1.5 ? 'Sesión muy intensa' : avgRir <= 3 ? 'Buena intensidad' : 'Margen de mejora'}</p>
             </div>
           </div>
         )}

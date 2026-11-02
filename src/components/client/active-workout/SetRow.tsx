@@ -4,6 +4,7 @@ import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLos
 import { RirSelector } from './RirSelector'
 import { SelectorTipoSerie } from './SelectorTipoSerie'
 import { letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
+import { escalaEsfuerzo, etiquetaEsfuerzo } from '../../../lib/escalaEsfuerzo'
 
 interface SetRowProps {
   setNum: number
@@ -42,6 +43,7 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
+  const escala = escalaEsfuerzo()
   const [editingVelocity, setEditingVelocity] = useState(false)
   const [velocityInput, setVelocityInput] = useState('')
 
@@ -116,10 +118,10 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
           {/* Lo que pide el plan ("8 @2"); lo de la última vez va de fondo en las casillas. Hecha, la misma celda apunta el
               RIR, para no añadir una línea más por serie */}
           {done ? (
-            <button type="button" onClick={() => setShowRir(true)} aria-label={rirMeta ? `RIR ${rir}: ${rirMeta.desc}` : 'Añadir RIR'}
+            <button type="button" onClick={() => setShowRir(true)} aria-label={rirMeta ? `${etiquetaEsfuerzo(rir!, escala)}: ${rirMeta.desc}` : `Añadir ${escala === 'rpe' ? 'RPE' : 'RIR'}`}
               className="text-xs font-bold text-center truncate min-w-0 py-1 rounded-md active:scale-95 transition-transform"
               style={{ color: rirMeta ? rirMeta.color : 'var(--color-muted)' }}>
-              {rirMeta ? `RIR ${rir}` : '+ RIR'}
+              {rirMeta ? etiquetaEsfuerzo(rir!, escala) : escala === 'rpe' ? '+ RPE' : '+ RIR'}
             </button>
           ) : (
             <p className="text-sm text-muted text-center truncate min-w-0">{planLabel || (prevWeight ? `${prevWeight}×${prevReps}` : '—')}</p>
