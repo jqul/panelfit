@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Dumbbell, Search, TrendingDown, TrendingUp } from 'lucide-react'
+import { ChevronDown, Dumbbell, Search, Star, TrendingDown, TrendingUp } from 'lucide-react'
 import { TrainingLogs, TrainingPlan } from '../../types'
 import { historialPorEjercicio, cambioE1rm, HistorialDeEjercicio } from '../../lib/historialEjercicio'
+import { useFavoritos } from '../../lib/favoritos'
 
 const kg = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 1 })
 const fecha = (d: string, year = false) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) })
@@ -69,8 +70,11 @@ export function HistorialPorEjercicio({ logs, plan }: { logs: TrainingLogs; plan
   const lista = useMemo(() => historialPorEjercicio(logs, plan), [logs, plan])
   const [busca, setBusca] = useState('')
   const [abierto, setAbierto] = useState<string | null>(null)
+  const { esFav, alternar } = useFavoritos()
   const filtro = busca.trim().toLowerCase()
-  const visibles = filtro ? lista.filter(e => e.name.toLowerCase().includes(filtro)) : lista
+  // Los que sigue, primero (sort es estable: dentro de cada grupo, lo último entrenado arriba)
+  const visibles = (filtro ? lista.filter(e => e.name.toLowerCase().includes(filtro)) : lista)
+    .slice().sort((a, b) => Number(esFav(b.name)) - Number(esFav(a.name)))
 
   if (!lista.length) return (
     <div className="text-center py-12 text-muted">
@@ -96,8 +100,14 @@ export function HistorialPorEjercicio({ logs, plan }: { logs: TrainingLogs; plan
           const open = abierto === e.name
           return (
             <div key={e.name}>
+              <div className="flex items-center">
+              <button type="button" onClick={() => alternar(e.name)} aria-pressed={esFav(e.name)}
+                aria-label={esFav(e.name) ? `Dejar de seguir ${e.name}` : `Seguir ${e.name}`}
+                className="pl-3 pr-1 py-3 flex-shrink-0">
+                <Star className={`w-4 h-4 ${esFav(e.name) ? 'fill-warn text-warn' : 'text-muted/60'}`} />
+              </button>
               <button type="button" onClick={() => setAbierto(open ? null : e.name)} aria-expanded={open}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/30 transition-colors">
+                className="flex-1 min-w-0 flex items-center gap-3 pl-2 pr-4 py-3 text-left hover:bg-bg-alt/30 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{e.name}</p>
                   <p className="text-[11px] text-muted">
@@ -114,11 +124,44 @@ export function HistorialPorEjercicio({ logs, plan }: { logs: TrainingLogs; plan
                 </div>
                 <ChevronDown className={`w-4 h-4 text-muted flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
               </button>
+              </div>
               {open && <div className="px-4 pb-3"><DetalleEjercicio historial={e} /></div>}
             </div>
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/** Progreso › Resumen: los ejercicios que sigue, con la última mejor serie y cuánto ha cambiado su 1RM estimado. */
+export function FavoritosResumen({ logs, plan, onVer }: { logs: TrainingLogs; plan?: TrainingPlan | null; onVer: () => void }) {
+  const { favs } = useFavoritos()
+  const lista = useMemo(() => historialPorEjercicio(logs, plan), [logs, plan])
+  const seguidos = favs.map(f => lista.find(e => e.name.toLowerCase() === f.toLowerCase())).filter((e): e is HistorialDeEjercicio => !!e)
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5" aria-label="Ejercicios que sigues">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">⭐ Ejercicios que sigues</p>
+      {seguidos.length === 0 ? (
+        <p className="text-sm text-muted">Marca con la estrella los ejercicios que quieras seguir de cerca y verás aquí cómo evolucionan.</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {seguidos.map(e => {
+            const ultima = e.sesiones[0]
+            const cambio = cambioE1rm(e.sesiones)
+            return (
+              <li key={e.name} className="flex items-baseline gap-3">
+                <span className="flex-1 min-w-0 text-sm font-semibold truncate">{e.name}</span>
+                <span className="text-sm font-bold tabular-nums flex-shrink-0">{ultima.mejor ? `${kg(ultima.mejor.weight)}×${ultima.mejor.reps}` : '—'}</span>
+                <span className={`text-xs font-bold flex-shrink-0 w-20 text-right ${cambio === null || cambio === 0 ? 'text-muted' : cambio > 0 ? 'text-ok' : 'text-warn'}`}>
+                  {cambio === null ? '' : `${cambio > 0 ? '+' : ''}${kg(cambio)} kg 1RM`}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <button onClick={onVer} className="mt-4 text-sm font-semibold text-accent hover:underline">{seguidos.length ? 'Ver su historial →' : 'Elegir ejercicios →'}</button>
     </div>
   )
 }

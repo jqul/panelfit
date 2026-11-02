@@ -23,7 +23,7 @@ import { buildGroups, groupOf, leafForGroup } from '../../lib/progressTabs'
 import { Modal } from '../shared/Modal'
 import { ProgressRing } from '../shared/ProgressRing'
 import { FormaClienteCard } from './FormaClienteCard'
-import { HistorialPorEjercicio } from './HistorialEjercicio'
+import { HistorialPorEjercicio, FavoritosResumen } from './HistorialEjercicio'
 import { IndiceProgresoCard } from '../shared/IndiceProgresoCard'
 import { volumenSeries } from '../../lib/volumen'
 
@@ -172,7 +172,7 @@ const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-
 function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso, formaClientId }: {
   logs: TrainingLogs; plan?: TrainingPlan | null
   pesoActual?: number; pesoCambio: number | null
-  onGo: (t: 'records' | 'peso') => void
+  onGo: (t: 'records' | 'peso' | 'historial') => void
   onOpenCalendar?: () => void
   showRecords: boolean; showPeso: boolean
   /** Si el entrenador comparte "Riesgo", el id del cliente para la tarjeta "Tu forma". */
@@ -207,6 +207,8 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, 
   return (
     <div className="space-y-4">
       <IndiceProgresoCard logs={logs} plan={plan} />
+      {/* Los ejercicios que sigue; «ver» abre el historial ya en «Por ejercicio» */}
+      <FavoritosResumen logs={logs} plan={plan} onVer={() => { try { localStorage.setItem('pf_historial_modo', 'ejercicio') } catch { /* sin almacenamiento */ } onGo('historial') }} />
       {showRecords && (
         <div className="bg-card border border-border rounded-2xl p-5">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted mb-3">🏆 Nuevos récords</p>
