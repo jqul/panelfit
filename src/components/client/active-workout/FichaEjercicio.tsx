@@ -6,6 +6,7 @@ import { supabase } from '../../../lib/supabase'
 import { getYTId } from './utils'
 import { HistorialDeEjercicio } from '../../../lib/historialEjercicio'
 import { DetalleEjercicio } from '../HistorialEjercicio'
+import { MapaMusculos, intensidadPorGrupo } from '../../shared/MapaMusculos'
 
 type Pestana = 'tecnica' | 'historial' | 'alternativas'
 
@@ -69,6 +70,9 @@ export function FichaEjercicio({ ex, open, onClose, historial, grupo, trainerId,
               {dato('Descanso', descanso)}
               {dato('Grupo', grupo)}
             </div>
+            {grupo && Object.keys(intensidadPorGrupo({ [grupo]: 1 })).length > 0 && (
+              <div className="flex justify-center"><MapaMusculos intensidad={intensidadPorGrupo({ [grupo]: 1 })} className="w-44" /></div>
+            )}
             {ex.comment && <p className="text-sm italic text-muted leading-relaxed">“{ex.comment}”</p>}
             {descripcion && <p className="text-sm leading-relaxed whitespace-pre-line">{descripcion}</p>}
             {videos.length > 0 && (
