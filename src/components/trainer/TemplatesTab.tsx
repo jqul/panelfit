@@ -325,6 +325,10 @@ export function TemplatesTab({ trainerId, clients, onManageLabels, initialSearch
               <Tag className="w-3.5 h-3.5 text-muted flex-shrink-0" /> Gestionar etiquetas
             </button>
           </ActionMenu>
+          <button onClick={() => setShowGallery(true)}
+            className="flex items-center gap-1.5 px-3 py-2.5 border border-border rounded-xl text-sm font-semibold text-ink hover:border-ink transition-colors">
+            <Store className="w-4 h-4" /> Galería
+          </button>
           <button onClick={startNew}
             className="flex items-center gap-1.5 px-4 py-2.5 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
             <Plus className="w-4 h-4" /> Nuevo workout
@@ -405,9 +409,14 @@ export function TemplatesTab({ trainerId, clients, onManageLabels, initialSearch
               </div>
               <p className="font-serif text-xl font-bold text-ink">Crea tu primer workout</p>
               <p className="text-sm text-muted mt-2 max-w-xs mx-auto">Los workouts son rutinas con ejercicios completos que puedes reutilizar en múltiples clientes y programas.</p>
-              <button onClick={startNew} className="mt-5 px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
-                Crear workout
-              </button>
+              <div className="mt-5 flex flex-wrap gap-2 justify-center">
+                <button onClick={startNew} className="px-6 py-3 bg-ink text-white rounded-xl text-sm font-semibold hover:opacity-90">
+                  Crear workout
+                </button>
+                <button onClick={() => setShowGallery(true)} className="px-6 py-3 border border-border rounded-xl text-sm font-semibold text-ink hover:border-ink flex items-center gap-1.5">
+                  <Store className="w-4 h-4" /> Empezar con un programa hecho
+                </button>
+              </div>
             </div>
             <div className="border-t border-border/50 px-8 py-5 bg-bg-alt/30">
               <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Flujo recomendado</p>

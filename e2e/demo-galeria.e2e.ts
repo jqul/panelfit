@@ -13,13 +13,7 @@ test('en la demo, un programa de la galería se añade a la librería y se asign
   await page.getByRole('combobox', { name: 'Buscar' }).fill('Ir a Workouts')
   await page.getByRole('option', { name: 'Ir a Workouts' }).click()
 
-  // En la demo el menú puede tardar en responder mientras termina de cargar: se reintenta hasta que se abre
-  const galeria = page.getByRole('button', { name: /Galería de workouts/ })
-  await expect(async () => {
-    if (!(await galeria.isVisible())) await page.getByRole('button', { name: 'Más herramientas' }).click()
-    await expectBase(galeria).toBeVisible({ timeout: 2000 })
-  }).toPass({ timeout: 60_000 })
-  await galeria.click()
+  await page.getByRole('button', { name: 'Galería', exact: true }).click()
   await page.getByRole('button', { name: /¿Cuál le va mejor\?/ }).click()
   const q = page.getByLabel('Cuestionario de programa')
   await q.getByRole('radiogroup', { name: '¿Cuántos días por semana puede entrenar?' }).getByRole('radio', { name: '3' }).click()
