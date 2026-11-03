@@ -33,6 +33,7 @@ import { useOnboarding } from '../../hooks/useOnboarding'
 import { PlanGate } from '../shared/PlanGate'
 import { EquipoSection } from './EquipoSection'
 import { Section, SECTIONS, GROUPS } from '../../lib/progresoSections'
+import { ProximasCitasCard } from './ProximasCitasCard'
 
 // recharts pesa ~105 kB (gzip): la gráfica se carga bajo demanda y no bloquea la apertura del panel.
 // Pestañas que no hacen falta para abrir el Resumen: se descargan al entrar en ellas (el panel abre antes).
@@ -619,6 +620,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </div>
                   </div>
                 )}
+
+                {/* Las citas que quedan hoy y las de mañana */}
+                <ProximasCitasCard trainerId={userProfile.uid} clients={clients} onVerAgenda={() => handleTabChange('calendario')} />
 
                 {/* Bandeja unificada — sesiones, check-ins, dolor, vídeos sin
                     responder, borradores sin publicar y clientes en riesgo,
