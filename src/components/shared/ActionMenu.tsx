@@ -19,18 +19,22 @@ export function ActionMenu({ children, title = 'Más acciones', trigger, buttonC
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
+  // Cuándo se abrió: los scroll de los primeros instantes (la página aún colocándose tras navegar o cargar algo)
+  // no lo cierran; antes se cerraba solo nada más abrirse y parecía que el botón no respondía.
+  const abiertoEn = useRef(0)
 
   const toggle = () => {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
       setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+      abiertoEn.current = Date.now()
     }
     setOpen(o => !o)
   }
 
   useEffect(() => {
     if (!open) return
-    const close = () => setOpen(false)
+    const close = () => { if (Date.now() - abiertoEn.current > 400) setOpen(false) }
     window.addEventListener('scroll', close, true)
     window.addEventListener('resize', close)
     return () => { window.removeEventListener('scroll', close, true); window.removeEventListener('resize', close) }
