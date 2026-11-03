@@ -26,6 +26,7 @@ test('el entrenador ve el equilibrio empuje/tirón/pierna y el aviso si está de
   await expect(eq).toContainText('Empuje 12')
   await expect(eq).toContainText('Tirón 4')
   await expect(eq).toContainText('Mucho más empuje que tirón (3:1)')
+  await expect(page.getByRole('img', { name: /^Músculos trabajados: .*Espalda/ })).toBeVisible() // el mapa de las últimas 4 semanas
   await expect(page.getByText('Pecho', { exact: true })).toBeVisible()
   await expect(page.getByText('6 series · 27%').first()).toBeVisible() // ahora cuenta series, no ejercicios
 })

@@ -5,6 +5,7 @@ import { getExName, getMuscleGroup, useLibraryMuscleMap } from './helpers'
 import { contarSeries } from '../../../lib/seriesEfectivas'
 import { equilibrio, MINIMO_SERIES, type Patron } from '../../../lib/equilibrio'
 import { localDateKey } from '../../../lib/dates'
+import { MapaMusculos, intensidadPorGrupo } from '../../shared/MapaMusculos'
 
 const PATRONES: { id: Patron; label: string; color: string }[] = [
   { id: 'empuje', label: 'Empuje', color: '#6e5438' },
@@ -15,7 +16,7 @@ const PATRONES: { id: Patron; label: string; color: string }[] = [
 export function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[] }) {
   const libraryMap = useLibraryMuscleMap(library)
   // Series por grupo (sin calentamientos): de siempre, para la distribución, y de las últimas 4 semanas, para el equilibrio
-  const { data, eq } = useMemo(() => {
+  const { data, eq, recientes } = useMemo(() => {
     const hace28 = new Date(); hace28.setDate(hace28.getDate() - 27)
     const desde = localDateKey(hace28)
     const counts: Record<string, number> = {}
@@ -32,6 +33,7 @@ export function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs;
     return {
       data: Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value })),
       eq: equilibrio(recientes),
+      recientes,
     }
   }, [logs, plan, libraryMap])
 
@@ -63,6 +65,11 @@ export function DistribucionChart({ logs, plan, library }: { logs: TrainingLogs;
             : eq.avisos.map(a => <p key={a} className="text-xs text-warn font-semibold flex items-start gap-1"><AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-px" /> {a}</p>)}
         </>)}
       </div>
+
+      {/* Mapa: cuánto se ha trabajado cada grupo en las últimas 4 semanas (el más trabajado, color lleno) */}
+      {Object.keys(intensidadPorGrupo(recientes)).length > 0 && (
+        <div className="flex justify-center"><MapaMusculos intensidad={intensidadPorGrupo(recientes)} className="w-56" /></div>
+      )}
 
       {data.map(({ name, value }, i) => {
         const pct = Math.round((value / total) * 100)

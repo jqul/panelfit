@@ -21,6 +21,7 @@ test('al tocar el nombre del ejercicio se abre su ficha: cómo se hace e histori
   await expect(ficha.getByText('80kg')).toBeVisible()
   await expect(ficha.getByText('Pecho', { exact: true })).toBeVisible()
   await expect(ficha.getByText(/Escápulas juntas/)).toBeVisible()
+  await expect(ficha.getByRole('img', { name: 'Músculos trabajados: Pecho' })).toBeVisible()
 
   await ficha.getByRole('tab', { name: 'Historial' }).click()
   await expect(ficha.getByRole('img', { name: 'Evolución del 1RM estimado de Press banca' })).toBeVisible()

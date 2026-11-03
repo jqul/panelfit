@@ -31,7 +31,7 @@ import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
 import { guessZonaForExercise } from '../../lib/exerciseAlternatives'
 import { construirSustitucion } from '../../lib/sustitucion'
-import { useLibraryMuscleMap } from '../trainer/progreso-tab/helpers'
+import { useLibraryMuscleMap, getMuscleGroup } from '../trainer/progreso-tab/helpers'
 import { streakDays } from '../../lib/progressSummary'
 import { latestPreviousLog, mismoEjercicioEnOtrasSemanas } from '../../lib/previousSession'
 import { FinishedScreen } from './active-workout/FinishedScreen'
@@ -819,7 +819,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         return (
           <FichaEjercicio ex={ex ?? null} open={!!ex} onClose={() => setFichaRi(null)} trainerId={trainerId}
             historial={ex ? historialEjercicios.find(h => h.name.toLowerCase() === ex.name.trim().toLowerCase()) ?? null : null}
-            grupo={ex ? libraryMuscleMap.get(ex.name.toLowerCase().trim()) : undefined}
+            grupo={ex ? ((g => g === 'Otros' ? undefined : g)(getMuscleGroup(ex.name, libraryMuscleMap))) : undefined}
             restSecs={ex ? ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90)) : undefined} />
         )
       })()}
