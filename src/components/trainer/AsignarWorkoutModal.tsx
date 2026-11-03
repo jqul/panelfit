@@ -5,6 +5,7 @@ import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { localDateKey } from '../../lib/dates'
 import { asignarWorkout } from '../../lib/asignarWorkout'
+import { FechasPlan } from './FechasPlan'
 
 // Asignar un workout a un cliente directamente desde Workouts (sin entrar en su ficha): elegir cliente y fecha de inicio.
 // Su plan actual se guarda en el historial antes de sustituirlo (lib/asignarWorkout).
@@ -52,11 +53,7 @@ export function AsignarWorkoutModal({ tmpl, clients, trainerId, onClose }: { tmp
             </button>
           ))}
         </div>
-        <label className="block text-sm">
-          <span className="block font-medium mb-1">Empieza el</span>
-          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} aria-label="Fecha de inicio"
-            className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
-        </label>
+        <FechasPlan inicio={fecha} onInicio={setFecha} semanas={tmpl.weeks?.length || 1} />
         <p className="text-xs text-muted">Sustituye las semanas de su plan actual (se guarda una copia en su historial). Si tiene un borrador abierto, va al borrador.</p>
       </div>
     </Modal>

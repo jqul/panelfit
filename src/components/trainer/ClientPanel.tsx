@@ -30,6 +30,7 @@ import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS, DEMO_PROGRAMS } from
 import { DEMO_ALERTS_MAP, DEMO_BORRADOR_CLIENT_IDS } from '../../lib/demo-data-extra'
 import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
 import { localDateKey } from '../../lib/dates'
+import { FechasPlan } from './FechasPlan'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
 
@@ -609,9 +610,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
         {wizardStep === 2 && wizardTemplate && (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fecha de inicio</label>
-              <input type="date" value={wizardFechaInicio} onChange={e => setWizardFechaInicio(e.target.value)}
-                className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              <p className="block text-xs font-semibold uppercase tracking-wider text-muted mb-2">Fechas</p>
+              <FechasPlan inicio={wizardFechaInicio} onInicio={setWizardFechaInicio} semanas={wizardTemplate.weeks?.length || 1} />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setWizardStep(1)} className="flex-1 py-2.5 border border-border rounded-xl text-sm text-muted">← Atrás</button>
