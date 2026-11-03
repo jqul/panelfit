@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react'
 import { Store, Copy, X, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { TrainingTemplate } from '../../types'
-import { toast } from '../shared/Toast'
 import { Modal } from '../shared/Modal'
 import { ProgramasPanelfit } from './ProgramasPanelfit'
 
 interface PublicRow { id: string; trainer_id: string; name: string; description: string; plan: TrainingTemplate; trainer_name?: string }
 
-export function TemplateGallery({ trainerId, onClose, onImported }: {
-  trainerId: string; onClose: () => void; onImported: () => void
+// «Añadir» no guarda aquí: se lo pasa a Workouts (`onAdd`), que guarda igual que cualquier otro workout (también en la demo).
+export function TemplateGallery({ trainerId, onClose, onAdd }: {
+  trainerId: string; onClose: () => void; onAdd: (tmpl: TrainingTemplate) => Promise<boolean>
 }) {
   const [rows, setRows] = useState<PublicRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,15 +25,9 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
 
   const importTemplate = async (row: PublicRow) => {
     setImporting(row.id)
-    const tmpl: TrainingTemplate = { ...row.plan, id: `tmpl_${Date.now()}`, trainerId, name: `${row.name} (de la comunidad)`, createdAt: Date.now(), updatedAt: Date.now(), isPublic: false }
-    const { error } = await supabase.from('plan_templates').insert({
-      id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: row.description || '', plan: tmpl,
-      created_at: tmpl.createdAt, updated_at: tmpl.updatedAt, label_ids: [], is_public: false,
-    })
+    const tmpl: TrainingTemplate = { ...row.plan, id: `tmpl_${Date.now()}`, trainerId, name: `${row.name} (de la comunidad)`, description: row.description || '', createdAt: Date.now(), updatedAt: Date.now(), isPublic: false, label_ids: [] }
+    await onAdd(tmpl)
     setImporting(null)
-    if (error) { toast('Error al añadir a tu librería', 'warn'); return }
-    toast(`"${row.name}" añadido a tu librería ✓`, 'ok')
-    onImported()
   }
 
   return (
@@ -51,7 +45,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
           ))}
         </div>
         <div className="p-5 pt-4 space-y-2 overflow-y-auto flex-1">
-          {pestana === 'panelfit' ? <ProgramasPanelfit trainerId={trainerId} onImported={onImported} /> : (<>
+          {pestana === 'panelfit' ? <ProgramasPanelfit trainerId={trainerId} onAdd={onAdd} /> : (<>
           <p className="text-xs text-muted mb-2">Workouts que otros entrenadores han compartido públicamente. Añadirlo crea una copia en tu propia librería.</p>
           {loading ? (
             <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-bg border border-border rounded-2xl animate-pulse" />)}</div>

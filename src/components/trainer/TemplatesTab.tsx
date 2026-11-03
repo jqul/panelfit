@@ -3,12 +3,13 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { ClientData, TrainingTemplate, TrainingPlan } from '../../types'
 import { toast } from '../shared/Toast'
-import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal, Folder } from 'lucide-react'
+import { Plus, Trash2, Copy, ChevronDown, ChevronUp, ClipboardCheck, Edit2, ArrowLeft, Save, Tag, Store, Globe, FileSpreadsheet, Upload, Search, MoreHorizontal, Folder, UserCheck, X } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import { Modal } from '../shared/Modal'
 import { TrainingPlanEditor } from './TrainingPlanEditor'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { TemplateGallery } from './TemplateGallery'
+import { AsignarWorkoutModal } from './AsignarWorkoutModal'
 import { DEMO_TRAINER_ID, DEMO_PLAN_TEMPLATES, DEMO_LABELS } from '../../lib/demo-data'
 import { exportWorkoutToExcel } from '../../lib/exportWorkout'
 import { parseWorkoutExcel } from '../../lib/importWorkout'
@@ -70,7 +71,7 @@ function planToTmpl(tmpl: TrainingTemplate, plan: TrainingPlan, name: string, ty
 
 // ── Label pill ────────────────────────────────────────────
 
-export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: Props) {
+export function TemplatesTab({ trainerId, clients, onManageLabels, initialSearch = '' }: Props) {
   const [templates, setTemplates]     = useState<TrainingTemplate[]>([])
   const [labels, setLabels]           = useState<TrainerLabel[]>([])
   const [loading, setLoading]         = useState(true)
@@ -96,6 +97,9 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showGallery, setShowGallery] = useState(false)
+  // Asignar un workout a un cliente desde aquí, y el último añadido de la galería (para ofrecer asignarlo)
+  const [asignando, setAsignando] = useState<TrainingTemplate | null>(null)
+  const [recienAnadido, setRecienAnadido] = useState<TrainingTemplate | null>(null)
   const library = useExerciseLibrary(trainerId)
 
 
@@ -427,6 +431,13 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
         )
       ) : (
         <div className="space-y-3">
+          {recienAnadido && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-ok/10 border border-ok/30" role="status">
+              <p className="flex-1 text-sm"><span className="font-semibold">«{recienAnadido.name}»</span> ya está en tu librería.</p>
+              <button onClick={() => { setAsignando(recienAnadido); setRecienAnadido(null) }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-white text-xs font-semibold flex-shrink-0"><UserCheck className="w-3.5 h-3.5" /> Asignar a un cliente</button>
+              <button onClick={() => setRecienAnadido(null)} aria-label="Cerrar aviso" className="p-1 text-muted"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           {filtered.map(tmpl => {
             const tmplLabels = labels.filter(l => (tmpl.label_ids || []).includes(l.id))
             const stats = workoutStats(tmpl)
@@ -445,6 +456,7 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => setAsignando(tmpl)} aria-label={`Asignar ${tmpl.name} a un cliente`} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-white text-xs font-semibold hover:opacity-90 transition-opacity"><UserCheck className="w-3.5 h-3.5" /> Asignar</button>
                     <button onClick={() => startEdit(tmpl)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-ink transition-colors"><Edit2 className="w-3.5 h-3.5" /> Editar</button>
                     <ActionMenu title={`Acciones de ${tmpl.name}`}>
                       <button onClick={() => togglePublic(tmpl)}
@@ -523,7 +535,14 @@ export function TemplatesTab({ trainerId, onManageLabels, initialSearch = '' }: 
           </div>
         </Modal>
       )}
-      {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onImported={() => { setShowGallery(false); loadAll() }} />}
+      {showGallery && <TemplateGallery trainerId={trainerId} onClose={() => setShowGallery(false)} onAdd={async t => {
+        // Se guarda como cualquier workout (persist: también en la demo, donde no hay filas reales)
+        try { await persist(t) } catch { toast('Error al añadir a tu librería', 'warn'); return false }
+        setShowGallery(false); setRecienAnadido(t)
+        toast(`«${t.name}» añadido a tu librería ✓`, 'ok')
+        return true
+      }} />}
+      {asignando && <AsignarWorkoutModal tmpl={asignando} clients={clients} trainerId={trainerId} onClose={() => setAsignando(null)} />}
       {aCompartir && (() => {
         const c = contenidoQueSePublica(aCompartir)
         const avisos = [

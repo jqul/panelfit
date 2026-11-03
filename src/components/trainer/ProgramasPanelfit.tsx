@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Copy, ChevronDown, ChevronUp, Dumbbell, Sparkles } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import { toast } from '../shared/Toast'
+import type { TrainingTemplate } from '../../types'
 import { PROGRAMAS_PANELFIT, NIVELES_PROGRAMA, OBJETIVOS_PROGRAMA, filtrarProgramas, starterToTemplate, type NivelPrograma, type ObjetivoPrograma, type StarterTemplate } from '../../lib/starterTemplates'
 import { recomendarProgramas, type Lugar } from '../../lib/recomendarPrograma'
 
@@ -55,7 +54,7 @@ function CuestionarioPrograma({ anadiendo, onAnadir }: { anadiendo: string | nul
 
 // Programas hechos por PanelFit, con filtros por días, nivel y objetivo. Añadir uno crea una copia en la librería del
 // entrenador (como la galería de la comunidad), editable y reutilizable.
-export function ProgramasPanelfit({ trainerId, onImported }: { trainerId: string; onImported: () => void }) {
+export function ProgramasPanelfit({ trainerId, onAdd }: { trainerId: string; onAdd: (tmpl: TrainingTemplate) => Promise<boolean> }) {
   const [dias, setDias] = useState<number | null>(null)
   const [nivel, setNivel] = useState<NivelPrograma | null>(null)
   const [objetivo, setObjetivo] = useState<ObjetivoPrograma | null>(null)
@@ -66,15 +65,8 @@ export function ProgramasPanelfit({ trainerId, onImported }: { trainerId: string
 
   const anadir = async (p: StarterTemplate) => {
     setAnadiendo(p.key)
-    const tmpl = starterToTemplate(p, trainerId)
-    const { error } = await supabase.from('plan_templates').insert({
-      id: tmpl.id, trainer_id: trainerId, name: tmpl.name, description: tmpl.description, plan: tmpl,
-      created_at: tmpl.createdAt, updated_at: tmpl.updatedAt, label_ids: [], is_public: false,
-    })
+    await onAdd(starterToTemplate(p, trainerId))
     setAnadiendo(null)
-    if (error) { toast('Error al añadir a tu librería', 'warn'); return }
-    toast(`"${p.name}" añadido a tu librería ✓`, 'ok')
-    onImported()
   }
 
   const chip = (activo: boolean) => `px-2.5 py-1 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${activo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`
