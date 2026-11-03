@@ -133,7 +133,8 @@ export interface LogSet {
 // sustitucion: lo que el cliente hizo EN VEZ del ejercicio prescrito (la receta del plan no se toca). substituteName se mantiene
 // con el mismo nombre que sustitucion.performedName porque estadísticas e historial leen ese campo.
 // duda: el cliente pidió ayuda con la técnica de este ejercicio (fecha ISO); el entrenador lo ve en su cola.
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sustitucion?: Sustitucion; duda?: string; sessionFinished?: boolean; dolorEva?: number; porLado?: boolean }
+// noContar: el entrenador lo ha sacado de las estadísticas (dato mal apuntado); no se borra (lib/cuentaEnProgreso).
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sustitucion?: Sustitucion; duda?: string; sessionFinished?: boolean; dolorEva?: number; porLado?: boolean; noContar?: boolean }
 export type SustitucionMotivo = 'material' | 'dolor' | 'preferencia' | 'tecnico'
 // automatico = lo propuso la app (mismo grupo muscular); entrenador = estaba en su plan B; pendiente = lo eligió el cliente por su cuenta y falta que lo revise.
 export type SustitucionAprobacion = 'automatico' | 'entrenador' | 'pendiente'

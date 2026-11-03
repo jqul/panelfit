@@ -1,6 +1,7 @@
 import { TrainingLogs, TrainingPlan } from '../types'
 import { estimate1RM } from './strength'
 import { volumenSeries } from './volumen'
+import { cuentaEnProgreso } from './cuentaEnProgreso'
 
 // Historial de cada ejercicio para el cliente: qué hizo cada día que lo entrenó (series, mejor serie, 1RM estimado y
 // volumen). Lo usan la vista «Por ejercicio» de Progreso y la ficha del ejercicio dentro del entreno. Puro: recibe
@@ -22,7 +23,7 @@ const r1 = (n: number) => Math.round(n * 10) / 10
 export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | null): HistorialDeEjercicio[] {
   const porNombre = new Map<string, { name: string; dias: Map<string, { series: SerieHecha[]; volumen: number }> }>()
   for (const [key, log] of Object.entries(logs || {})) {
-    if (!log?.done || !log.dateDone) continue
+    if (!log?.done || !log.dateDone || !cuentaEnProgreso(log)) continue
     const m = key.match(KEY_RE)
     const name = (log.substituteName || (m && plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name) || '').trim()
     if (!name) continue

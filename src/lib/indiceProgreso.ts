@@ -2,6 +2,7 @@ import { TrainingLogs, TrainingPlan } from '../types'
 import { localDateKey } from './dates'
 import { historialPorEjercicio } from './historialEjercicio'
 import { volumenLog } from './volumen'
+import { cuentaEnProgreso } from './cuentaEnProgreso'
 
 // Índice de progreso: un número que resume si el cliente progresa, comparando las últimas 4 semanas con las 4 de
 // antes, y que se explica solo. Sale de tres partes, cada una con su peso:
@@ -18,6 +19,8 @@ export interface IndiceProgreso {
   estado: 'sube' | 'estable' | 'baja'
   partes: ParteIndice[]
   rirMedio: number | null
+  /** Registros de estos dos periodos que el entrenador marcó como «no contar». */
+  excluidos: number
 }
 
 const DIAS = 28
@@ -43,10 +46,12 @@ export function indiceProgreso(logs: TrainingLogs, plan?: TrainingPlan | null, h
   const vol = { ahora: 0, antes: 0 }
   const dias = { ahora: new Set<string>(), antes: new Set<string>() }
   const rirs: number[] = []
+  let excluidos = 0
   for (const log of Object.values(logs || {})) {
     if (!log?.done || !log.dateDone) continue
     const p = periodo(log.dateDone)
     if (!p) continue
+    if (!cuentaEnProgreso(log)) { excluidos++; continue }
     vol[p] += volumenLog(log)
     dias[p].add(log.dateDone)
     if (p === 'ahora') Object.values(log.sets || {}).forEach(s => { if (typeof s?.rir === 'number') rirs.push(s.rir) })
@@ -88,6 +93,7 @@ export function indiceProgreso(logs: TrainingLogs, plan?: TrainingPlan | null, h
     estado: indice >= 1.5 ? 'sube' : indice <= -1.5 ? 'baja' : 'estable',
     partes,
     rirMedio: rirs.length ? r1(rirs.reduce((a, b) => a + b, 0) / rirs.length) : null,
+    excluidos,
   }
 }
 

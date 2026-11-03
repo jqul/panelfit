@@ -26,6 +26,7 @@ import { FormaClienteCard } from './FormaClienteCard'
 import { HistorialPorEjercicio, FavoritosResumen } from './HistorialEjercicio'
 import { IndiceProgresoCard } from '../shared/IndiceProgresoCard'
 import { volumenSeries } from '../../lib/volumen'
+import { cuentaEnProgreso } from '../../lib/cuentaEnProgreso'
 
 
 interface Props {
@@ -78,7 +79,7 @@ function HistorialPorFecha({ logs, plan }: { logs: TrainingLogs; plan?: Training
       const name = getExerciseName(key, plan)
       const sets = Object.values(log.sets || {})
       const best = Math.max(0, ...sets.map((s: any) => parseFloat(s.weight) || 0))
-      const vol = volumenSeries(sets, log.porLado)
+      const vol = cuentaEnProgreso(log) ? volumenSeries(sets, log.porLado) : 0
       byDate[log.dateDone].exercises.push({ name, sets, best })
       byDate[log.dateDone].volume += vol
     })
@@ -271,7 +272,7 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
   const records = useMemo(() => {
     const r: Record<string, { best: number; date: string; reps: string }> = {}
     Object.entries(logs).forEach(([key, log]) => {
-      if (!log.done) return
+      if (!log.done || !cuentaEnProgreso(log)) return
       const name = getExerciseName(key, plan)
       Object.values(log.sets || {}).forEach((s: any) => {
         const w = parseFloat(s.weight) || 0

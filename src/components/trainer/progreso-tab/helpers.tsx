@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
 import { TrainingPlan } from '../../../types'
+import { cuentaEnProgreso } from '../../../lib/cuentaEnProgreso'
 
 /** Nombre del ejercicio de un registro. Si el cliente lo cambió por otro ese día (`substituteName`), cuenta como el que
  *  hizo de verdad, como en el resto de la app; si no, el del plan en esa posición. */
-export function getExName(key: string, plan?: TrainingPlan | null, log?: { substituteName?: string } | null) {
+export function getExName(key: string, plan?: TrainingPlan | null, log?: { substituteName?: string; noContar?: boolean } | null) {
+  // Lo que el entrenador marcó como «no contar» no sale en ninguna gráfica
+  if (!cuentaEnProgreso(log)) return null
   const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m) return null
   const ex = plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]
