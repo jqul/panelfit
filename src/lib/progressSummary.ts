@@ -1,6 +1,7 @@
 import { TrainingLogs, TrainingPlan } from '../types'
 import { localDateKey } from './dates'
 import { getEffectiveWeekIdx } from './planWeek'
+import { cuentaEnProgreso } from './cuentaEnProgreso'
 
 // Interpretación del progreso del cliente en frases y números sencillos (récords
 // recientes, cuánto ha subido la fuerza, adherencia, racha), para enseñar la
@@ -22,7 +23,7 @@ function exerciseName(key: string, plan: TrainingPlan | null | undefined, substi
 export function collectSessionBests(logs: TrainingLogs, plan?: TrainingPlan | null): SessionBest[] {
   const byKey = new Map<string, SessionBest>()
   for (const [key, log] of Object.entries(logs)) {
-    if (!log.done || !log.dateDone) continue
+    if (!log.done || !log.dateDone || !cuentaEnProgreso(log)) continue
     const name = exerciseName(key, plan, log.substituteName)
     if (!name) continue
     for (const s of Object.values(log.sets || {}) as { weight: string; reps: string }[]) {

@@ -57,6 +57,12 @@ export function IndiceProgresoCard({ logs, plan, quien = 'cliente' }: { logs: Tr
         </p>
       )}
 
+      {r.excluidos > 0 && (
+        <p className="mt-2 text-xs text-muted">
+          {r.excluidos} {r.excluidos === 1 ? 'registro no cuenta' : 'registros no cuentan'}: {tu ? 'tu entrenador los ha marcado' : 'los has marcado'} como dato erróneo.
+        </p>
+      )}
+
       <button type="button" onClick={() => setAbierto(a => !a)} aria-expanded={abierto}
         className="mt-3 flex items-center gap-1 text-xs font-semibold text-accent">
         ¿Cómo se calcula? <ChevronDown className={`w-3.5 h-3.5 transition-transform ${abierto ? 'rotate-180' : ''}`} />
@@ -67,6 +73,7 @@ export function IndiceProgresoCard({ logs, plan, quien = 'cliente' }: { logs: Tr
           ejercicio que se repite), el volumen (25 %, kilos × repeticiones) y la constancia (15 %, sesiones hechas). Cada parte
           cuenta como mucho ±25 % (fuerza) o ±50 % (volumen y constancia), para que una semana rara no lo dispare. Si una
           parte no se puede calcular, las otras se reparten su peso. Por encima de +1,5 % es progresar; por debajo de −1,5 %, bajar.
+          Los registros que el entrenador marca como «no contar» (un peso mal apuntado) quedan fuera.
         </p>
       )}
     </div>

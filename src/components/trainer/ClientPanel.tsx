@@ -527,7 +527,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                 </div>
               )}
               {activeTab === 'vista' && <div className="flex-1 overflow-y-auto"><VistaTab plan={plan} logs={logs} /></div>}
-              {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} clientId={client.id} /></div>}
+              {activeTab === 'entrenos' && <div className="flex-1 overflow-y-auto"><EntrenosTab logs={logs} plan={plan} clientId={client.id} onLogsChange={saveLogs} /></div>}
               {activeTab === 'progreso' && (
                 <div className="flex-1 overflow-y-auto">
                   <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>

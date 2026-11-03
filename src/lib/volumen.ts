@@ -1,4 +1,5 @@
 import { esCalentamiento, type TipoSerie } from './tipoSerie'
+import { cuentaEnProgreso } from './cuentaEnProgreso'
 
 // Volumen (tonelaje) = kg × reps de cada serie. En los ejercicios que el entrenador marca como «peso por lado»
 // (mancuernas, máquinas unilaterales, polea a una mano...) se apunta el peso de UNA mano o lado, así que el volumen
@@ -14,6 +15,6 @@ export function volumenSeries(series: SerieConPeso[], porLado?: boolean): number
   return porLado ? v * 2 : v
 }
 
-export function volumenLog(log?: { sets?: Record<number, SerieConPeso>; porLado?: boolean } | null): number {
-  return log ? volumenSeries(Object.values(log.sets || {}), log.porLado) : 0
+export function volumenLog(log?: { sets?: Record<number, SerieConPeso>; porLado?: boolean; noContar?: boolean } | null): number {
+  return log && cuentaEnProgreso(log) ? volumenSeries(Object.values(log.sets || {}), log.porLado) : 0
 }

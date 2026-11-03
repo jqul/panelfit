@@ -1,5 +1,6 @@
 import { TrainingLogs } from '../types'
 import { volumenLog, volumenSeries } from './volumen'
+import { cuentaEnProgreso } from './cuentaEnProgreso'
 
 export interface TrainingSignal {
   avgRirThis: number | null
@@ -187,7 +188,7 @@ export function computeTrainingSignal(logs: TrainingLogs): TrainingSignal {
   let volLastWeek = 0
 
   Object.values(logs).forEach(log => {
-    if (!log.done || !log.dateDone) return
+    if (!log.done || !log.dateDone || !cuentaEnProgreso(log)) return
     const d = new Date(log.dateDone + 'T00:00:00')
     const setsArr = Object.values(log.sets || {})
     const vol = volumenSeries(setsArr, log.porLado)

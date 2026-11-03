@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ClipboardList, CheckCircle2, Dumbbell, TrendingUp, X } from 'lucide-react'
+import { ClipboardList, CheckCircle2, Dumbbell, TrendingUp, X, EyeOff } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../../types'
 import { ETIQUETA_MOTIVO, ETIQUETA_APROBACION } from '../../../lib/sustitucionPlan'
 import { supabase } from '../../../lib/supabase'
 import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../../lib/demo-data-extra'
+import { cuentaEnProgreso } from '../../../lib/cuentaEnProgreso'
 
 function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: number }[]; color?: string }) {
   if (data.length < 2) return <p className="text-xs text-muted text-center py-2">Solo 1 sesión — necesitas al menos 2 para ver la gráfica</p>
@@ -44,7 +45,13 @@ function MiniLineChart({ data, color = '#6e5438' }: { data: { x: string; y: numb
 
 interface SessionReaction { date: string; emoji: string; comment: string | null }
 
-export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan: TrainingPlan | null; clientId?: string }) {
+export function EntrenosTab({ logs, plan, clientId, onLogsChange }: { logs: TrainingLogs; plan: TrainingPlan | null; clientId?: string; onLogsChange?: (logs: TrainingLogs) => void }) {
+  // Sacar un registro de las estadísticas (un peso mal apuntado) o volver a contarlo. No se borra (lib/cuentaEnProgreso).
+  const alternarNoContar = (key: string) => {
+    if (!onLogsChange || !logs[key]) return
+    const { noContar, ...resto } = logs[key]
+    onLogsChange({ ...logs, [key]: noContar ? resto : { ...resto, noContar: true } })
+  }
   const [reactions, setReactions] = useState<Record<string, SessionReaction>>({})
   const [notasAntes, setNotasAntes] = useState<Record<string, string>>({}) // fecha → "¿cómo llegas hoy?"
   const [expandedEx, setExpandedEx] = useState<string | null>(null)
@@ -70,7 +77,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
   // ── Historial por ejercicio ────────────────────────────────
   const exHistory: Record<string, { date: string; bestWeight: number }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
-    if (!log.dateDone) return
+    if (!log.dateDone || !cuentaEnProgreso(log)) return
     const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
     if (!m) return
     const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
@@ -84,7 +91,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
   })
   Object.values(exHistory).forEach(arr => arr.sort((a, b) => a.date.localeCompare(b.date)))
 
-  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string; substituteName?: string; sustitucion?: Sustitucion; dolorEva?: number }[]> = {}
+  const byDate: Record<string, { exName: string; sets: Record<number, LogSet>; key: string; substituteName?: string; sustitucion?: Sustitucion; dolorEva?: number; noContar?: boolean }[]> = {}
   Object.entries(logs).forEach(([key, log]) => {
     if (!log.dateDone) return
     const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
@@ -92,7 +99,7 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
     const wi = parseInt(m[1]), di = parseInt(m[2]), ri = parseInt(m[3])
     const exName = plan?.weeks?.[wi]?.days?.[di]?.exercises?.[ri]?.name || key
     if (!byDate[log.dateDone]) byDate[log.dateDone] = []
-    byDate[log.dateDone].push({ exName, sets: log.sets, key, substituteName: log.substituteName, sustitucion: log.sustitucion, dolorEva: log.dolorEva })
+    byDate[log.dateDone].push({ exName, sets: log.sets, key, substituteName: log.substituteName, sustitucion: log.sustitucion, dolorEva: log.dolorEva, noContar: log.noContar })
   })
   const dates = Object.keys(byDate).sort().reverse()
   if (!dates.length) return <div className="text-center py-16 text-muted"><ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="font-serif text-lg">Sin entrenamientos aún</p></div>
@@ -116,13 +123,13 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
             </div>
           )}
           <div className="divide-y divide-border">
-            {byDate[fecha].map(({ exName, sets, key, substituteName, sustitucion, dolorEva }) => {
+            {byDate[fecha].map(({ exName, sets, key, substituteName, sustitucion, dolorEva, noContar }) => {
               const setsArr = Object.values(sets || {})
               const mejor = setsArr.reduce((max, s) => Math.max(max, parseFloat(s.weight) || 0), 0)
               const evaColor = dolorEva === undefined ? undefined : dolorEva <= 3 ? '#4caf7d' : dolorEva <= 6 ? '#e0a854' : '#dc2626'
               return (
                 <div key={key}>
-                  <div className="flex items-center gap-3 px-4 py-2.5">
+                  <div className={`flex items-center gap-3 px-4 py-2.5 ${noContar ? 'opacity-60' : ''}`}>
                     <div className="w-7 h-7 rounded-lg bg-bg flex items-center justify-center flex-shrink-0"><Dumbbell className="w-3.5 h-3.5 text-muted" /></div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${substituteName ? 'line-through text-muted' : ''}`}>{exName}</p>
@@ -131,12 +138,21 @@ export function EntrenosTab({ logs, plan, clientId }: { logs: TrainingLogs; plan
                       )}
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
                         {setsArr.map((s, si) => <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}
+                        {noContar && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-warn/10 text-warn">No cuenta en el progreso</span>}
                         {dolorEva !== undefined && (
                           <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: evaColor + '18', color: evaColor }}>🩹 EVA {dolorEva}/10</span>
                         )}
                       </div>
                     </div>
                     {mejor > 0 && <div className="text-right flex-shrink-0"><p className="text-xs font-bold text-accent">{mejor}kg</p><p className="text-[11px] text-muted">mejor</p></div>}
+                    {onLogsChange && (
+                      <button onClick={() => alternarNoContar(key)} aria-pressed={!!noContar}
+                        aria-label={noContar ? `Volver a contar ${substituteName || exName} del ${fecha}` : `No contar ${substituteName || exName} del ${fecha} en el progreso`}
+                        title={noContar ? 'Volver a contarlo en las estadísticas' : 'No contar en el progreso (p. ej. un peso mal apuntado): no se borra'}
+                        className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${noContar ? 'bg-warn/10 text-warn' : 'text-muted hover:text-warn'}`}>
+                        <EyeOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     {(exHistory[exName]?.length ?? 0) >= 2 && (
                       <button
                         onClick={() => setExpandedEx(expandedEx === key ? null : key)}
