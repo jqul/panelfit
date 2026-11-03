@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { TrainingTemplate } from '../../types'
 import { toast } from '../shared/Toast'
 import { Modal } from '../shared/Modal'
+import { ProgramasPanelfit } from './ProgramasPanelfit'
 
 interface PublicRow { id: string; trainer_id: string; name: string; description: string; plan: TrainingTemplate; trainer_name?: string }
 
@@ -14,6 +15,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [pestana, setPestana] = useState<'panelfit' | 'comunidad'>('panelfit')
 
   useEffect(() => {
     supabase.from('plan_templates').select('id, trainer_id, name, description, plan')
@@ -35,12 +37,21 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
   }
 
   return (
-    <Modal open plain onClose={onClose} ariaLabel="Galería de la comunidad" maxWidth="max-w-lg">
+    <Modal open plain onClose={onClose} ariaLabel="Galería de workouts" maxWidth="max-w-lg">
         <div className="flex items-center justify-between p-5 pb-3 border-b border-border flex-shrink-0">
-          <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Store className="w-5 h-5" /> Galería de la comunidad</h2>
+          <h2 className="font-serif text-xl font-bold flex items-center gap-2"><Store className="w-5 h-5" /> Galería de workouts</h2>
           <button aria-label="Cerrar" onClick={onClose} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><X className="w-4 h-4" /></button>
         </div>
+        <div className="flex gap-4 px-5 border-b border-border/70 flex-shrink-0" role="tablist" aria-label="Origen de los workouts">
+          {([['panelfit', 'Programas de PanelFit'], ['comunidad', 'De la comunidad']] as const).map(([id, label]) => (
+            <button key={id} role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}
+              className={`py-2 -mb-px text-sm font-medium border-b-2 transition-colors ${pestana === id ? 'border-ink text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="p-5 pt-4 space-y-2 overflow-y-auto flex-1">
+          {pestana === 'panelfit' ? <ProgramasPanelfit trainerId={trainerId} onImported={onImported} /> : (<>
           <p className="text-xs text-muted mb-2">Workouts que otros entrenadores han compartido públicamente. Añadirlo crea una copia en tu propia librería.</p>
           {loading ? (
             <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-bg border border-border rounded-2xl animate-pulse" />)}</div>
@@ -92,6 +103,7 @@ export function TemplateGallery({ trainerId, onClose, onImported }: {
               )}
             </div>
           ))}
+          </>)}
         </div>
       </Modal>
   )
