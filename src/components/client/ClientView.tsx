@@ -509,7 +509,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   return (
     <SyncStatusContext.Provider value={{ state: syncState, pendingCount, retry: () => { trySyncPendingLogs(client.id) } }}>
-    <SesionEnCursoProvider plan={plan} logs={logs} onLogsChange={handleLogsChange} trainerId={client.trainerId}>
+    <SesionEnCursoProvider plan={plan} logs={logs} onLogsChange={handleLogsChange} trainerId={client.trainerId} nombreCliente={client.name}>
     <div className="h-[100dvh] overflow-hidden flex flex-col"
       style={{ backgroundImage: brandBg ? `url(${brandBg})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'scroll', backgroundColor: 'var(--color-bg)' }}>
 

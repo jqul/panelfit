@@ -20,11 +20,13 @@ interface Sesion { day: DayPlan; dayKey: string; inicio: number }
 
 const reloj = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-export function SesionEnCursoProvider({ plan, logs, onLogsChange, trainerId, children }: {
+export function SesionEnCursoProvider({ plan, logs, onLogsChange, trainerId, nombreCliente, children }: {
   plan: TrainingPlan | null
   logs: TrainingLogs
   onLogsChange: (logs: TrainingLogs) => void
   trainerId?: string
+  /** Para el aviso al entrenador al terminar («Ana ha batido un récord»). */
+  nombreCliente?: string
   children: ReactNode
 }) {
   const [sesion, setSesion] = useState<Sesion | null>(null)
@@ -60,7 +62,7 @@ export function SesionEnCursoProvider({ plan, logs, onLogsChange, trainerId, chi
         // En el body: dentro de <main> (z-10) la cabecera de la app (z-20) tapaba la del entreno
         <div hidden={minimizada}>
           <ActiveWorkout key={sesion.dayKey}
-            day={sesion.day} dayKey={sesion.dayKey} plan={plan} logs={logs} onLogsChange={onLogsChange} trainerId={trainerId}
+            day={sesion.day} dayKey={sesion.dayKey} plan={plan} logs={logs} onLogsChange={onLogsChange} trainerId={trainerId} nombreCliente={nombreCliente}
             inicio={sesion.inicio} pedirTerminar={terminar} onProgreso={setProgreso}
             onFinish={cerrar} onBack={() => setMinimizada(true)} />
         </div>,

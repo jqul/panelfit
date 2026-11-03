@@ -8,6 +8,7 @@ import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
 import { sendPush } from '../../lib/usePushNotifications'
+import { avisoFinSesion } from '../../lib/avisoEntrenador'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
 import { RestTimer } from './active-workout/RestTimer'
@@ -59,6 +60,8 @@ interface Props {
   onBack?: () => void
   trainerId?: string
   clientName?: string   // solo para mostrar de quién es la sesión en modo entrenador
+  /** Nombre del cliente que entrena (su propia app): va en el aviso al entrenador al terminar. */
+  nombreCliente?: string
   trainerMode?: boolean // el entrenador está registrando la sesión desde su propio dispositivo
   /** Cuándo se abrió (ms): el cronómetro sigue desde ahí aunque la pantalla se esconda en la barra y vuelva. */
   inicio?: number
@@ -68,7 +71,7 @@ interface Props {
   onProgreso?: (p: { hechas: number; total: number }) => void
 }
 
-export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, trainerMode, inicio, pedirTerminar, onProgreso }: Props) {
+export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, nombreCliente, trainerMode, inicio, pedirTerminar, onProgreso }: Props) {
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
   const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
   const dayIdx = dayKeyMatch ? parseInt(dayKeyMatch[2]) : 0
@@ -638,7 +641,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     if (saving) return
     setSaving(true)
     try {
-    if (allComplete && trainerId) sendPush({ trainerId }, 'Sesión completada 💪', `${day.title} terminado`)
+    // Un solo aviso al entrenador: de récord si ha batido alguno (aunque no lo haya hecho todo); si no, el de sesión completada
+    const aviso = trainerId && !trainerMode ? avisoFinSesion({ nombre: nombreCliente, dia: day.title, completa: allComplete, records: newRecords }) : null
+    if (aviso && trainerId) sendPush({ trainerId }, aviso.titulo, aviso.cuerpo)
     if (reactionEmoji) {
       const today = localDateKey()
       if (isDemoClientId(plan.clientId)) {
