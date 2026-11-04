@@ -14,8 +14,11 @@ const DURACIONES = [30, 45, 60, 90]
 const MARGENES = [0, 10, 15, 30]
 const ANTELACIONES = [{ h: 2, t: '2 horas' }, { h: 12, t: '12 horas' }, { h: 24, t: '1 día' }, { h: 48, t: '2 días' }]
 
-interface Horario { franjas: Franja[]; duracion_min: number; margen_min: number; antelacion_horas: number; autoconfirmar: boolean }
-const VACIO: Horario = { franjas: [], duracion_min: 60, margen_min: 0, antelacion_horas: 12, autoconfirmar: false }
+interface Horario { franjas: Franja[]; duracion_min: number; margen_min: number; antelacion_horas: number; autoconfirmar: boolean; dias_vista: number; cancelar_horas: number }
+const VACIO: Horario = { franjas: [], duracion_min: 60, margen_min: 0, antelacion_horas: 12, autoconfirmar: false, dias_vista: 60, cancelar_horas: 0 }
+// Normas de reserva: hasta cuándo se puede reservar y hasta cuándo puede cancelar el cliente
+const DIAS_VISTA = [{ d: 7, t: '1 semana' }, { d: 14, t: '2 semanas' }, { d: 30, t: '1 mes' }, { d: 60, t: '2 meses' }]
+const PLAZOS_CANCELAR = [{ h: 0, t: 'Hasta que empiece' }, { h: 12, t: '12 h antes' }, { h: 24, t: '24 h antes' }, { h: 48, t: '48 h antes' }]
 
 export function HorarioCitasEditor({ trainerId, demo, onClose }: { trainerId: string; demo: boolean; onClose: () => void }) {
   const [h, setH] = useState<Horario | null>(null)
@@ -89,6 +92,15 @@ export function HorarioCitasEditor({ trainerId, demo, onClose }: { trainerId: st
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-muted mb-1.5">Antelación mínima</p>
             <div className="flex gap-1.5 flex-wrap">{ANTELACIONES.map(a => <button key={a.h} onClick={() => cambiar({ antelacion_horas: a.h })} aria-pressed={h.antelacion_horas === a.h} className={chip(h.antelacion_horas === a.h)}>{a.t}</button>)}</div>
+          </div>
+          <div role="group" aria-label="Reservar con hasta">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted mb-1.5">Reservar con hasta</p>
+            <div className="flex gap-1.5 flex-wrap">{DIAS_VISTA.map(a => <button key={a.d} onClick={() => cambiar({ dias_vista: a.d })} aria-pressed={h.dias_vista === a.d} className={chip(h.dias_vista === a.d)}>{a.t}</button>)}</div>
+          </div>
+          <div role="group" aria-label="El cliente puede cancelar">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted mb-1.5">El cliente puede cancelar</p>
+            <div className="flex gap-1.5 flex-wrap">{PLAZOS_CANCELAR.map(a => <button key={a.h} onClick={() => cambiar({ cancelar_horas: a.h })} aria-pressed={h.cancelar_horas === a.h} className={chip(h.cancelar_horas === a.h)}>{a.t}</button>)}</div>
+            <p className="text-[11px] text-muted mt-1">Tú puedes cancelar siempre.</p>
           </div>
           <label className="flex items-center gap-3 text-sm cursor-pointer">
             <input type="checkbox" checked={h.autoconfirmar} onChange={e => cambiar({ autoconfirmar: e.target.checked })} className="w-4 h-4 accent-accent" />

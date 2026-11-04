@@ -27,6 +27,11 @@ describe('huecosLibres', () => {
     const ahora = new Date(2026, 10, 2, 8, 30)
     expect(horas(huecosLibres({ ...base, antelacion_horas: 2 }, [], '2026-11-02', 1, ahora))).toEqual(['2026-11-02 11:00'])
   })
+
+  it('no ofrece nada más allá de los días vista del entrenador', () => {
+    // Desde el domingo 1 a las 10:00 con 2 días vista: el lunes sí, el miércoles no
+    expect(horas(huecosLibres({ ...base, dias_vista: 2 }, [], '2026-11-02', 7, antes))).toEqual(['2026-11-02 09:00', '2026-11-02 10:00', '2026-11-02 11:00'])
+  })
 })
 
 describe('limpiarFranjas', () => {
