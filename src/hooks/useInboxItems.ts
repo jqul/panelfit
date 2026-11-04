@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { algunaBaja } from '../lib/checkinConfig'
 import { supabase } from '../lib/supabase'
 import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
 import { avisosDeEjercicios, ETIQUETA_MOTIVO } from '../lib/sustitucionPlan'
@@ -9,7 +10,7 @@ import { localDateKey } from '../lib/dates'
 import { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP } from '../lib/demo-data-extra'
 import { buildQueue, isSnoozed, type QueueItem, type QueueKind, type QueueTier } from '../lib/dailyQueue'
 
-interface ReadinessRow { clientId: string; date: string; sleep: number; soreness: number; stress: number; motivation: number }
+interface ReadinessRow { clientId: string; date: string; sleep: number | null; soreness: number | null; stress: number | null; motivation: number | null }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
 interface BorradorRow { clientId: string; borrador_activo: boolean; borrador_started_at: string | null }
 interface ReviewRow { clientId: string; week_start: string }
@@ -153,9 +154,12 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
 
     readiness.forEach(r => {
       const name = nameOf(r.clientId); if (!name) return
-      const warn = r.sleep <= 2 || r.soreness <= 2 || r.motivation <= 2
+      // Las escalas que el entrenador no pregunta llegan vacías: ni cuentan para el aviso ni salen en el texto
+      const warn = algunaBaja(r.sleep, r.soreness, r.motivation)
+      const partes = ([['sueño', r.sleep], ['dolor', r.soreness], ['energía', r.motivation], ['estrés', r.stress]] as const)
+        .filter(([, v]) => typeof v === 'number').map(([n, v]) => `${n} ${v}/5`)
       list.push({ key: `readiness:${r.clientId}:${r.date}`, clientId: r.clientId, clientName: name, date: r.date, kind: 'readiness',
-        detail: `Check-in de forma — sueño ${r.sleep}/5, dolor ${r.soreness}/5, motivación ${r.motivation}/5`, warn,
+        detail: partes.length ? `Check-in de forma — ${partes.join(', ')}` : 'Check-in de forma hecho', warn,
         tier: warn ? 'hoy' : 'luego', score: warn ? 55 : 10 })
     })
 

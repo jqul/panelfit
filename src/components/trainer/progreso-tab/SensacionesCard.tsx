@@ -4,7 +4,8 @@ import { resumen7d, fraseTendencia, type Resumen7d } from '../../../lib/tendenci
 // "Esfuerzo y sensaciones · 7 días": el RPE medio de las sesiones y cada escala del check-in, esta semana frente a la
 // anterior. Responde a "¿cómo lo está llevando?" sin abrir gráficas.
 
-export interface FilaBienestar { date: string; sleep: number; soreness: number; stress: number; motivation: number }
+// Las escalas que el entrenador no pregunta llegan vacías (null) y no cuentan (lib/checkinConfig).
+export interface FilaBienestar { date: string; sleep: number | null; soreness: number | null; stress: number | null; motivation: number | null }
 
 const ESCALAS: { key: keyof Omit<FilaBienestar, 'date'>; label: string }[] = [
   { key: 'motivation', label: 'Energía' },
@@ -41,7 +42,7 @@ export function SensacionesCard({ cargas, bienestar }: { cargas: { date: string;
       </div>
       <div className="px-4 divide-y divide-border/60">
         <Fila label={`Esfuerzo (RPE medio${rpe.n ? `, ${rpe.n} ses.` : ''})`} r={rpe} max={10} masEsMejor={false} />
-        {escalas.map(e => <Fila key={e.key} label={e.label} r={e.r} max={5} masEsMejor />)}
+        {escalas.filter(e => e.r.media !== null || e.r.mediaAntes !== null).map(e => <Fila key={e.key} label={e.label} r={e.r} max={5} masEsMejor />)}
       </div>
     </section>
   )

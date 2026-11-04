@@ -36,6 +36,14 @@ describe('computeReadinessSignal', () => {
     expect(s.avgStress).toBe(3)
     expect(s.avgMotivation).toBe(4)
   })
+
+  it('ignores the scales the trainer does not ask (null), instead of counting them as 0', () => {
+    const s = computeReadinessSignal([
+      { sleep: 4, soreness: null, stress: null, motivation: 2 },
+      { sleep: 2, soreness: null, stress: null, motivation: null },
+    ])
+    expect(s).toEqual({ avgSleep: 3, avgSoreness: null, avgStress: null, avgMotivation: 2, hasData: true })
+  })
 })
 
 describe('computeACWR', () => {
