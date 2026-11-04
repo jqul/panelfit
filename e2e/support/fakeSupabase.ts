@@ -269,6 +269,47 @@ export class FakeSupabase {
         this.rows('citas').push(cita)
         return json(route, 200, { id: cita.id, status: cita.status })
       }
+      // Clases de grupo (simplificado: la base de datos real comprueba días vista, plazo de cancelación y bloquea la
+      // clase al apuntar; lo prueba bloque33)
+      case 'clases_cliente': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        if (!c) return json(route, 200, [])
+        const plazas = this.rows('clase_plazas')
+        const out = this.rows('clases').filter(k => k.trainer_id === c.trainerId && !k.cancelada && new Date(k.start_at) > new Date())
+          .sort((a, b) => String(a.start_at).localeCompare(String(b.start_at)))
+          .map(k => {
+            const de = plazas.filter(p => p.clase_id === k.id).sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+            const mia = de.find(p => p.client_id === c.id)
+            const espera = de.filter(p => p.estado === 'espera')
+            return { id: k.id, titulo: k.titulo, start_at: k.start_at, end_at: k.end_at, notas: k.notas ?? '', aforo: k.aforo,
+              ocupadas: de.filter(p => p.estado === 'reservada').length, en_espera: espera.length, mi_estado: mia?.estado ?? null,
+              mi_puesto: mia?.estado === 'espera' ? espera.indexOf(mia) + 1 : null, cancelar_horas: 0 }
+          })
+        return json(route, 200, out)
+      }
+      case 'reservar_clase': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const k = this.rows('clases').find(x => x.id === args.p_clase)
+        if (!c || !k || k.trainer_id !== c.trainerId) return json(route, 403, { code: '42501', message: 'no_autorizado' })
+        const plazas = this.rows('clase_plazas')
+        let mia = plazas.find(p => p.clase_id === k.id && p.client_id === c.id)
+        if (!mia) {
+          const llena = plazas.filter(p => p.clase_id === k.id && p.estado === 'reservada').length >= k.aforo
+          mia = { clase_id: k.id, client_id: c.id, estado: llena ? 'espera' : 'reservada', created_at: new Date().toISOString() }
+          plazas.push(mia)
+        }
+        return json(route, 200, mia.estado)
+      }
+      case 'cancelar_clase': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const plazas = this.rows('clase_plazas')
+        const i = plazas.findIndex(p => p.clase_id === args.p_clase && p.client_id === c?.id)
+        if (i < 0) return json(route, 200, false)
+        const [quitada] = plazas.splice(i, 1)
+        const primera = plazas.filter(p => p.clase_id === args.p_clase && p.estado === 'espera').sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0]
+        if (quitada.estado === 'reservada' && primera) primera.estado = 'reservada'
+        return json(route, 200, true)
+      }
       case 'profesionales_del_equipo': {
         const owner = args.p_owner
         const miembros = this.rows('team_members').filter(t => t.owner_id === owner).map(t => t.member_uid)
