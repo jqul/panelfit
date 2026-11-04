@@ -4,23 +4,20 @@ import { supabase } from '../../lib/supabase'
 import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
 import { avisarCambioHoy } from '../../lib/hoyEventos'
+import { ESCALAS_BASE, filaCheckin, limpiarConfigCheckin } from '../../lib/checkinConfig'
 
-interface Metric { key: 'motivation' | 'sleep' | 'soreness' | 'stress'; label: string; emoji: string; lowLabel: string; highLabel: string }
-
-// "Energía" reutiliza la columna motivation (mismo concepto en la práctica) para no
-// tener que migrar la tabla readiness_checkins. Estrés se mantiene aparte porque
-// alimenta la señal de riesgo del entrenador (RiesgoChart) y no puede perderse.
-const METRICS: Metric[] = [
-  { key: 'motivation', label: 'Energía', emoji: '⚡', lowLabel: 'Agotado', highLabel: 'A tope' },
-  { key: 'sleep', label: 'Sueño', emoji: '😴', lowLabel: 'Mal', highLabel: 'Genial' },
-  { key: 'soreness', label: 'Agujetas', emoji: '💥', lowLabel: 'Mucho dolor', highLabel: 'Sin dolor' },
-  { key: 'stress', label: 'Estrés', emoji: '🧠', lowLabel: 'Alto', highLabel: 'Bajo' },
-]
-
-export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; trainerId?: string }) {
+// Las preguntas las elige el entrenador (Ajustes → Check-in diario, lib/checkinConfig): de las cuatro escalas de
+// siempre, las que quiera, y hasta tres propias. Lo que no se pregunta se guarda vacío.
+export function ReadinessCheckin({ clientId, trainerId, configRaw }: { clientId: string; trainerId?: string; configRaw?: unknown }) {
+  const config = limpiarConfigCheckin(configRaw)
+  const METRICS = [
+    ...config.escalas.map(k => ({ key: k as string, label: ESCALAS_BASE[k].label, emoji: ESCALAS_BASE[k].emoji, lowLabel: ESCALAS_BASE[k].bajo, highLabel: ESCALAS_BASE[k].alto })),
+    ...config.extra.map(e => ({ key: e.id, label: e.label, emoji: e.emoji, lowLabel: e.bajo, highLabel: e.alto })),
+  ]
   const [loading, setLoading] = useState(true)
   const [doneToday, setDoneToday] = useState(false)
-  const [values, setValues] = useState<Record<string, number>>({ sleep: 3, soreness: 3, stress: 3, motivation: 3 })
+  const [values, setValues] = useState<Record<string, number>>({})
+  const valor = (k: string) => values[k] ?? 3
   const [saving, setSaving] = useState(false)
   const [showSuggestion, setShowSuggestion] = useState(false)
   // Clasificador rápido de dolor: cuando "Agujetas" sale bajo (mucho dolor),
@@ -40,25 +37,29 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
 
   useEffect(() => { if (!loading) avisarCambioHoy(clientId, { checkinHecho: doneToday }) }, [clientId, loading, doneToday])
 
+  // Las sugerencias de después solo salen si se ha preguntado esa escala
+  const energiaBaja = config.escalas.includes('motivation') && valor('motivation') <= 2
+  const dolorAlto = config.escalas.includes('soreness') && valor('soreness') <= 2
+
   const submit = async () => {
     if (clientId.startsWith('demo-client-')) {
       setDoneToday(true)
-      if (values.motivation <= 2) setShowSuggestion(true)
-      if (values.soreness <= 2) setPainStep('classify')
+      if (energiaBaja) setShowSuggestion(true)
+      if (dolorAlto) setPainStep('classify')
       return
     }
     setSaving(true)
     const { error } = await supabase.from('readiness_checkins').upsert({
-      clientId, date: today, ...values,
+      clientId, date: today, ...filaCheckin(config, values),
     }, { onConflict: 'clientId,date' })
     setSaving(false)
     if (!error) {
       setDoneToday(true)
       // Autorregulación: si la energía de hoy es baja, sugiere aliviar la sesión
-      if (values.motivation <= 2) setShowSuggestion(true)
+      if (energiaBaja) setShowSuggestion(true)
       // Mucho dolor marcado en "Agujetas" — puede ser solo fatiga de una buena
       // sesión, o puede ser algo articular. Preguntamos, no asumimos.
-      if (values.soreness <= 2) setPainStep('classify')
+      if (dolorAlto) setPainStep('classify')
     }
   }
 
@@ -68,7 +69,7 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
     // Deriva una intensidad razonable del propio slider (1=mucho dolor -> ~10,
     // 2=dolor notable -> ~8) en vez de pedir un segundo número — el cliente ya
     // nos dijo cuánto le duele, esto es solo clasificarlo.
-    const intensidad = Math.round((5 - values.soreness) * 2.5)
+    const intensidad = Math.round((5 - valor('soreness')) * 2.5)
     await addEntry(zona, intensidad, undefined, undefined, 'articular')
     setPainStep('thanks')
   }
@@ -152,14 +153,14 @@ export function ReadinessCheckin({ clientId, trainerId }: { clientId: string; tr
         </div>
         <div className="p-4 space-y-4">
           {METRICS.map(m => (
-            <div key={m.key}>
+            <div key={m.key} role="group" aria-label={m.label}>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-semibold text-muted flex items-center gap-1.5">
                   <span className="text-base leading-none">{m.emoji}</span>{m.label}
                 </span>
-                <span className="text-xs font-bold text-accent">{values[m.key]}/5</span>
+                <span className="text-xs font-bold text-accent">{valor(m.key)}/5</span>
               </div>
-              <input type="range" min={1} max={5} step={1} value={values[m.key]}
+              <input type="range" min={1} max={5} step={1} value={valor(m.key)} aria-label={`${m.label}, de 1 a 5`}
                 onChange={e => setValues(s => ({ ...s, [m.key]: parseInt(e.target.value) }))}
                 className="w-full accent-accent h-2 cursor-pointer" />
               <div className="flex justify-between text-[11px] text-muted mt-0.5">

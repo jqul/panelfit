@@ -338,7 +338,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         )}
       </div>
 
-      <ReadinessSummary clientId={client.id} />
+      <ReadinessSummary clientId={client.id} trainerId={client.trainerId} />
 
       <IntakeSummary clientId={client.id} />
 

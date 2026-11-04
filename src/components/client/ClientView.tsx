@@ -565,7 +565,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Los id son los destinos de las filas de "Para hoy" */}
                     <Suspense fallback={null}>
                       <ResumenSemana clientId={client.id} plan={plan} logs={logs} />
-                      <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
+                      <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} configRaw={trainerProfile.checkin} /></div>
                       <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
                       <BadgesWidget logs={logs} />
                       <div id="hoy-habitos" className="scroll-mt-2"><HabitosWidget clientId={client.id} /></div>

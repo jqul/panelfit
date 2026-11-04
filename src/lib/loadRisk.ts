@@ -1,4 +1,5 @@
 import { TrainingLogs } from '../types'
+import { mediaEscala } from './checkinConfig'
 import { volumenLog, volumenSeries } from './volumen'
 import { cuentaEnProgreso } from './cuentaEnProgreso'
 
@@ -214,11 +215,15 @@ export function computeTrainingSignal(logs: TrainingLogs): TrainingSignal {
   }
 }
 
-/** Señal de bienestar a partir de los check-ins diarios de readiness (escala 1-5). */
-export function computeReadinessSignal(rows: { sleep: number; soreness: number; stress: number; motivation: number }[]): ReadinessSignal {
+/**
+ * Señal de bienestar a partir de los check-ins diarios de readiness (escala 1-5). Las escalas que el entrenador no
+ * pregunta llegan vacías (null) y no cuentan: su media queda en null (lib/checkinConfig).
+ */
+export function computeReadinessSignal(rows: { sleep: number | null; soreness: number | null; stress: number | null; motivation: number | null }[]): ReadinessSignal {
   if (!rows.length) return { avgSleep: null, avgSoreness: null, avgStress: null, avgMotivation: null, hasData: false }
-  const avg = (key: 'sleep' | 'soreness' | 'stress' | 'motivation') => Math.round((rows.reduce((a, r) => a + r[key], 0) / rows.length) * 10) / 10
-  return { avgSleep: avg('sleep'), avgSoreness: avg('soreness'), avgStress: avg('stress'), avgMotivation: avg('motivation'), hasData: true }
+  const avg = (key: 'sleep' | 'soreness' | 'stress' | 'motivation') => mediaEscala(rows, r => r[key])
+  const s = { avgSleep: avg('sleep'), avgSoreness: avg('soreness'), avgStress: avg('stress'), avgMotivation: avg('motivation') }
+  return { ...s, hasData: Object.values(s).some(v => v !== null) }
 }
 
 /**
