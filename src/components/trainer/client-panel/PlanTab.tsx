@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
 import { X, Check } from 'lucide-react'
-import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs } from '../../../types'
+import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs, TrainingTemplate } from '../../../types'
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
 import { toast } from '../../shared/Toast'
 import { Modal } from '../../shared/Modal'
@@ -10,6 +10,7 @@ import { programToPlanWeeks, workoutTemplateIds } from '../../../lib/programPlan
 import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
 import { FechaInicioCampo } from '../FechaInicioCampo'
+import { SiguientePlan } from './SiguientePlan'
 import { tareasDePrograma } from '../../../lib/tareasPrograma'
 import { sincronizarTareasPrograma } from '../../../lib/sincronizarTareasPrograma'
 
@@ -22,7 +23,7 @@ interface ProgramWeek { label: string; days: ProgramDay[] }
 interface Program { id: string; name: string; tipo: string; label_ids?: string[]; weeks: ProgramWeek[] }
 interface Label { id: string; name: string; emoji: string; color: string }
 
-export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo }: {
+export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo, templates }: {
   client: ClientData
   plan: TrainingPlan
   programs: Program[]
@@ -34,6 +35,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   otherClients: ClientData[]
   trainerId: string
   borradorActivo: boolean
+  templates: TrainingTemplate[]
 }) {
   const [showProgramSelector, setShowProgramSelector] = useState(false)
   const [fechaPrograma, setFechaPrograma] = useState(localDateKey())
@@ -188,6 +190,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
           </div>
         )}
       </div>
+
+      <SiguientePlan clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
 
       {/* Modal selector de programa */}
       {showProgramSelector && (
