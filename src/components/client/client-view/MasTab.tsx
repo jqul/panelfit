@@ -12,6 +12,7 @@ import { MisDatosCard } from './MisDatosCard'
 import { RecordatorioDiario } from './RecordatorioDiario'
 import { VistaEntreno } from './VistaEntreno'
 import { EscalaEsfuerzoCard } from './EscalaEsfuerzoCard'
+import { ArchivosCard } from './ArchivosCard'
 import type { Consejo } from '../../../lib/consejos'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
@@ -49,6 +50,8 @@ export function MasTab({ client, plan, onLogout, fotosConsent, onConsentChange, 
           </a>
         </div>
       </div>
+
+      <ArchivosCard trainerId={client.trainerId} />
 
       {plan && (
         <div className="bg-card border border-border rounded-2xl p-5 space-y-2">

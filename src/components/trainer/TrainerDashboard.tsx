@@ -13,7 +13,7 @@ import {
   LogOut, UserPlus, Search, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare, Archive
+  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare, Archive, FileText
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -70,6 +70,7 @@ function usePrecargarPestanas() {
 const ActividadChart = lazy(() => import('./ActividadChart').then(m => ({ default: m.ActividadChart })))
 // La biblioteca de ejercicios (tarjetas, importación, ficha lateral) solo se descarga al abrir Ejercicios.
 // Encuestas: el editor, los resultados y la impresión solo se descargan al abrir la pestaña.
+const DocumentosTab = lazy(() => import('./DocumentosTab').then(m => ({ default: m.DocumentosTab })))
 const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m.EncuestasTab })))
 // Ajustes → Página pública y la pestaña de Contactos solo se descargan al abrirlas.
 const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ default: m.PublicPageEditor })))
@@ -85,14 +86,14 @@ const ArchivedClientList = lazy(() => import('./ArchivedClientList').then(m => (
 // El asistente de primer cliente (cliente → workout → acceso) también se descarga solo al abrirlo.
 const PrimerClienteWizard = lazy(() => import('./PrimerClienteWizard').then(m => ({ default: m.PrimerClienteWizard })))
 
-type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'negocio' | 'contactos' | 'mas'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'documentos' | 'negocio' | 'contactos' | 'mas'
 
 // Menú reducido a 5 destinos (antes 14 sueltos) — lo menos usado a diario
 // queda agrupado en "Más" y "Planificar", en vez de competir por espacio en
 // el primer nivel. El id de cada pestaña original no cambia: solo cambia
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
-const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
+const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'documentos', 'insights', 'adherencia', 'negocio', 'settings']
 type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar' | 'empieza' | 'termina' | 'terminado'
 
 interface Props {
@@ -283,6 +284,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'ir-mensajes', title: 'Ir a Mensajes', keywords: 'chat whatsapp', run: verTab('mensajes') },
     { id: 'ir-calendario', title: 'Ir al Calendario', keywords: 'agenda citas', run: verTab('calendario') },
     { id: 'ir-etiquetas', title: 'Ir a Etiquetas', keywords: 'labels', run: verTab('etiquetas') },
+    { id: 'ir-documentos', title: 'Ir a Documentos', keywords: 'archivos pdf guias manuales normas', run: verTab('documentos') },
     { id: 'ir-encuestas', title: 'Ir a Encuestas', keywords: 'formularios checkin', run: verTab('encuestas') },
     { id: 'ir-adherencia', title: 'Ir a Adherencia', keywords: 'cumplimiento', run: verTab('adherencia') },
     { id: 'ir-insights', title: 'Ir a Insights', keywords: 'estadisticas analisis', run: verTab('insights') },
@@ -887,6 +889,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               </Suspense>
             </PlanGate>
           )}
+          {activeTab === 'documentos' && (
+            <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando documentos…</p>}>
+              <DocumentosTab trainerId={userProfile.uid} />
+            </Suspense>
+          )}
           {activeTab === 'negocio' && misPermisos.ver_negocio && (
             <PlanGate feature="business_dashboard" planName={userProfile.planName}>
               <Suspense fallback={null}><BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} /></Suspense>
@@ -903,6 +910,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'calendario' as Tab, icon: CalendarDays, label: 'Calendario',  desc: 'Citas y sesiones programadas' },
                   { id: 'mensajes'   as Tab, icon: MessageCircle,label: 'Mensajes',    desc: 'Plantillas y envíos programados' },
                   { id: 'encuestas'  as Tab, icon: ClipboardList,label: 'Encuestas',   desc: 'Cuestionarios para tus clientes' },
+                  { id: 'documentos' as Tab, icon: FileText,     label: 'Documentos',  desc: 'Guías y archivos para clientes' },
                   { id: 'cohortes'   as Tab, icon: Users2,       label: 'Grupos',      desc: 'Cohortes de clientes' },
                   { id: 'etiquetas'  as Tab, icon: TagIcon,      label: 'Etiquetas',   desc: 'Organiza tus clientes' },
                   { id: 'insights'   as Tab, icon: BarChart2,    label: 'Insights',    desc: 'Actividad y especialidad' },
