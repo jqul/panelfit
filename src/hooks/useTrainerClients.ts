@@ -21,6 +21,8 @@ export interface ClientWithStats extends ClientData {
   weeklyDays?: number
   planEndDate?: string
   planEndingSoon?: boolean
+  /** Fecha de inicio del plan (para «Empieza pronto», lib/estadoPlan). */
+  planStartDate?: string
   atRisk?: boolean
   highAcwr?: boolean
   acwrRatio?: number | null
@@ -79,7 +81,7 @@ function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number
   return days >= AT_RISK_INACTIVE_DAYS
 }
 
-function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean } {
+function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string } {
   if (!fechaInicio || !weeksLen) return {}
   const start = new Date(fechaInicio + 'T00:00:00')
   const end = new Date(start); end.setDate(start.getDate() + weeksLen * 7)
@@ -88,6 +90,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
   return {
     planEndDate: localDateKey(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
+    planStartDate: fechaInicio,
   }
 }
 
@@ -213,7 +216,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
       const planMap: Record<string, boolean> = {}
       const planObjMap: Record<string, any> = {}
-      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean }> = {}
+      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string }> = {}
       ;(planes || []).forEach((p: any) => {
         planMap[p.clientId] = !!(p.plan?.P?.weeks?.length)
         planObjMap[p.clientId] = p.plan?.P
