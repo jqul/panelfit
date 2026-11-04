@@ -93,7 +93,7 @@ type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'cal
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
 const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'insights', 'adherencia', 'negocio', 'settings']
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar'
+type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar' | 'empieza' | 'termina' | 'terminado'
 
 interface Props {
   userProfile: UserProfile
@@ -175,7 +175,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     })
   }, [realUid, demoClients])
 
-  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, adherenciaMap,
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, empiezaCount, terminaCount, terminadoCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
     useClientStats({ clients, logsMap, search, clientFilter, labelId: labelFilter })
   const profesionales = useProfesionalesEquipo(userProfile.uid)
@@ -780,6 +780,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'high-acwr', label: 'Carga alta', n: highAcwrCount },
                   { id: 'jump-drop', label: 'Caída de salto', n: jumpDropCount },
                   { id: 'sin-entrar', label: 'Sin entrar', n: sinEntrarCount },
+                  { id: 'empieza', label: 'Empieza pronto', n: empiezaCount },
+                  { id: 'termina', label: 'Termina pronto', n: terminaCount },
+                  { id: 'terminado', label: 'Plan terminado', n: terminadoCount },
                 ] as { id: ClientFilter; label: string; n: number; always?: boolean }[])
                   .filter(f => f.always || f.n > 0 || clientFilter === f.id)
                   .map(f => (
