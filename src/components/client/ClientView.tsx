@@ -25,6 +25,7 @@ const ReadinessCheckin = lazy(() => import('./ReadinessCheckin').then(m => ({ de
 const ProximasSesiones = lazy(() => import('./client-view/ProximasSesiones').then(m => ({ default: m.ProximasSesiones })))
 const BadgesWidget = lazy(() => import('./BadgesWidget').then(m => ({ default: m.BadgesWidget })))
 const HabitosWidget = lazy(() => import('./HabitosWidget').then(m => ({ default: m.HabitosWidget })))
+const ResumenSemana = lazy(() => import('./ResumenSemana').then(m => ({ default: m.ResumenSemana })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
@@ -563,6 +564,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
                     <Suspense fallback={null}>
+                      <ResumenSemana clientId={client.id} plan={plan} logs={logs} />
                       <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} /></div>
                       <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
                       <BadgesWidget logs={logs} />
