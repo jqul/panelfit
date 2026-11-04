@@ -12,6 +12,10 @@ export interface HorarioCitas {
   margen_min: number
   antelacion_horas: number
   autoconfirmar?: boolean
+  /** Hasta cuántos días en adelante se puede reservar (normas de reserva). */
+  dias_vista?: number
+  /** Hasta cuántas horas antes puede cancelar el cliente (0 = hasta que empiece). */
+  cancelar_horas?: number
 }
 export interface Ocupado { inicio: string; fin: string } // ISO
 
@@ -49,6 +53,7 @@ export interface Hueco { fecha: string; hora: string; inicio: Date }
 export function huecosLibres(horario: HorarioCitas, ocupado: Ocupado[], desde: string, dias: number, ahora = new Date()): Hueco[] {
   const dur = horario.duracion_min, margen = horario.margen_min
   const minimo = ahora.getTime() + horario.antelacion_horas * 3600_000
+  const maximo = horario.dias_vista ? ahora.getTime() + horario.dias_vista * 86400_000 : Infinity
   const tramos = ocupado.map(o => [new Date(o.inicio).getTime() - margen * 60_000, new Date(o.fin).getTime() + margen * 60_000])
   const franjas = limpiarFranjas(horario.franjas)
   const out: Hueco[] = []
@@ -60,7 +65,7 @@ export function huecosLibres(horario: HorarioCitas, ocupado: Ocupado[], desde: s
       for (let t = aMinutos(f.desde)!; t + dur <= fin; t += dur + margen) {
         const inicio = fechaLocal(fecha, t)
         const a = inicio.getTime(), b = a + dur * 60_000
-        if (a < minimo) continue
+        if (a < minimo || a > maximo) continue
         if (tramos.some(([x, y]) => x < b && y > a)) continue
         out.push({ fecha, hora: aHora(t), inicio })
       }

@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase'
 import { logError } from '../../../lib/errors'
 import { sendPush } from '../../../lib/usePushNotifications'
 import { localDateKey } from '../../../lib/dates'
+import { toast } from '../../shared/Toast'
 import { avisarCambioHoy } from '../../../lib/hoyEventos'
 // Reservar en un hueco del horario del entrenador: se descarga al tocar "Pedir cita".
 const ReservarCita = lazy(() => import('./ReservarCita').then(m => ({ default: m.ReservarCita })))
@@ -56,7 +57,9 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   const cancelar = async (id: string) => {
     if (isDemo) { setCitas(prev => prev.filter(c => c.id !== id)); return }
     const { error } = await supabase.from('citas').update({ status: 'cancelada' }).eq('id', id)
-    if (!error) setCitas(prev => prev.filter(c => c.id !== id))
+    // Fuera del plazo de cancelación de su entrenador (normas de reserva) la base de datos no deja cancelar
+    if (error) { toast(error.message.includes('plazo_cancelacion') ? `${error.hint || 'Ya no se puede cancelar'}: habla con tu entrenador.` : 'No se pudo cancelar', 'warn'); return }
+    setCitas(prev => prev.filter(c => c.id !== id))
   }
 
   const solicitar = async () => {

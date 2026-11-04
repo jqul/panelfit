@@ -8,13 +8,15 @@ import { toast } from '../../shared/Toast'
 // Reservar cita en un hueco libre del horario de su entrenador (agenda_cliente / reservar_cita). Se descarga al tocar
 // "Pedir cita". Si el entrenador no tiene horario, avisa con onSinHorario y se sigue con la solicitud libre de antes.
 
-const DIAS = 14
+// Se piden 4 semanas (lo que da agenda_cliente) y se enseñan los días que el entrenador deja reservar
+const DIAS = 28
 const ERRORES: Record<string, string> = {
   ocupado: 'Ese hueco se acaba de ocupar. Elige otro.',
   antelacion: 'Ese hueco ya está demasiado cerca. Elige otro.',
   fuera_de_horario: 'Ese hueco ya no está en el horario. Elige otro.',
   demasiadas: 'Ya tienes 3 citas pendientes. Cuando pase alguna podrás reservar otra.',
   sin_horario: 'Tu entrenador ya no tiene horario para reservas.',
+  demasiado_lejos: 'Ese día aún está demasiado lejos para reservar. Elige otro.',
 }
 
 export function ReservarCita({ trainerId, clientName, onSinHorario, onHecho }: {
@@ -37,7 +39,7 @@ export function ReservarCita({ trainerId, clientName, onSinHorario, onHecho }: {
   const diaVisible = dia && dias.includes(dia) ? dia : dias[0]
 
   if (!datos) return <p className="px-4 py-3 text-xs text-muted">Buscando huecos…</p>
-  if (!huecos.length) return <p className="px-4 py-3 text-xs text-muted">No quedan huecos libres en las próximas dos semanas. Escribe a tu entrenador.</p>
+  if (!huecos.length) return <p className="px-4 py-3 text-xs text-muted">No quedan huecos libres por ahora. Escribe a tu entrenador.</p>
 
   const reservar = async () => {
     if (!elegido) return
@@ -74,7 +76,7 @@ export function ReservarCita({ trainerId, clientName, onSinHorario, onHecho }: {
       <button onClick={reservar} disabled={!elegido || enviando} className="w-full py-2 bg-ink text-white rounded-lg text-xs font-bold disabled:opacity-40">
         {enviando ? 'Reservando…' : elegido ? `Reservar a las ${elegido.hora}` : 'Elige una hora'}
       </button>
-      <p className="text-[11px] text-muted">{datos.horario.autoconfirmar ? 'Queda reservada al momento.' : 'Tu entrenador la confirmará.'} Citas de {datos.horario.duracion_min} min.</p>
+      <p className="text-[11px] text-muted">{datos.horario.autoconfirmar ? 'Queda reservada al momento.' : 'Tu entrenador la confirmará.'} Citas de {datos.horario.duracion_min} min.{datos.horario.cancelar_horas ? ` Puedes cancelarla hasta ${datos.horario.cancelar_horas} h antes.` : ''}</p>
     </div>
   )
 }

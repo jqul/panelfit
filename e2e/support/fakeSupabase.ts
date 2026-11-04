@@ -256,7 +256,7 @@ export class FakeSupabase {
         if (!c) return json(route, 200, null)
         if (!h || !(h.franjas || []).length) return json(route, 200, { horario: null, ocupado: [] })
         const ocupado = this.rows('citas').filter(x => x.trainer_id === c.trainerId && x.status !== 'cancelada').map(x => ({ inicio: x.start_at, fin: x.end_at }))
-        return json(route, 200, { horario: { franjas: h.franjas, duracion_min: h.duracion_min, margen_min: h.margen_min, antelacion_horas: h.antelacion_horas, autoconfirmar: h.autoconfirmar }, ocupado })
+        return json(route, 200, { horario: { franjas: h.franjas, duracion_min: h.duracion_min, margen_min: h.margen_min, antelacion_horas: h.antelacion_horas, autoconfirmar: h.autoconfirmar, dias_vista: h.dias_vista ?? 60, cancelar_horas: h.cancelar_horas ?? 0 }, ocupado })
       }
       case 'reservar_cita': {
         const c = this.rows('clientes').find(x => x.auth_user_id === me)
