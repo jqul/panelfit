@@ -845,7 +845,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </label>
                   )}
                   <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
-                    onOpen={onSelectClient} onSend={setLinkModal} onArchive={id => archiveClients([id])}
+                    onOpen={onSelectClient} onSend={setLinkModal} onArchive={id => archiveClients([id])} trainerId={userProfile.uid} labels={labels}
                     selection={selection.selecting ? { selected: selection.selected, onToggle: selection.toggle } : undefined} />
                 </>
               )}
