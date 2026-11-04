@@ -6,6 +6,7 @@ import { sendPush } from '../../../lib/usePushNotifications'
 import { localDateKey } from '../../../lib/dates'
 import { toast } from '../../shared/Toast'
 import { avisarCambioHoy } from '../../../lib/hoyEventos'
+import { ClasesCliente } from './ClasesCliente'
 // Reservar en un hueco del horario del entrenador: se descarga al tocar "Pedir cita".
 const ReservarCita = lazy(() => import('./ReservarCita').then(m => ({ default: m.ReservarCita })))
 
@@ -86,6 +87,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
   if (loading) return null
 
   return (
+    <>
     <div className="px-4 pt-4">
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border flex items-center justify-between gap-2">
@@ -141,5 +143,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
         )}
       </div>
     </div>
+    {!isDemo && <ClasesCliente trainerId={trainerId} clientName={clientName} />}
+    </>
   )
 }

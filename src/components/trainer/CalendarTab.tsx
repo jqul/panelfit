@@ -13,6 +13,7 @@ import { localDateKey } from '../../lib/dates'
 import { limpiarTipos, type TipoCita } from '../../lib/tiposCita'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
+const ClasesGrupo = lazy(() => import('./ClasesGrupo').then(m => ({ default: m.ClasesGrupo })))
 const TiposCitaEditor = lazy(() => import('./TiposCitaEditor').then(m => ({ default: m.TiposCitaEditor })))
 
 // Tipos de cita del entrenador (en su perfil). En la demo, en memoria.
@@ -87,6 +88,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const [showForm, setShowForm] = useState<{ dateISO: string } | null>(null)
   const [verHorario, setVerHorario] = useState(false)
   const [verTipos, setVerTipos] = useState(false)
+  const [verClases, setVerClases] = useState(false)
   const { tipos, guardar: guardarTipos } = useTiposCita(trainerId)
   const tipoDe = (id?: string | null) => (id ? tipos.find(t => t.id === id) : undefined)
   const [form, setForm] = useState(emptyForm(toISODate(new Date())))
@@ -208,6 +210,12 @@ export function CalendarTab({ trainerId, clients }: Props) {
         <CalendarClock className="w-4 h-4 text-accent flex-shrink-0" />
         <span className="flex-1">Horario para reservas<span className="block text-xs text-muted font-normal">Cuándo pueden reservarte cita tus clientes desde su app</span></span>
       </button>
+      <button onClick={() => setVerClases(true)}
+        className="w-full flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-2xl text-sm font-semibold text-left hover:border-accent transition-colors">
+        <Users className="w-4 h-4 text-accent flex-shrink-0" />
+        <span className="flex-1">Clases de grupo<span className="block text-xs text-muted font-normal">Sesiones con plazas y lista de espera</span></span>
+      </button>
+      {verClases && <Suspense fallback={null}><ClasesGrupo trainerId={trainerId} clients={clients} onClose={() => setVerClases(false)} /></Suspense>}
       <button onClick={() => setVerTipos(true)} className="text-xs font-semibold text-accent -mt-2">
         {tipos.length ? `Tipos de cita (${tipos.length})` : '+ Tipos de cita con color'}
       </button>
