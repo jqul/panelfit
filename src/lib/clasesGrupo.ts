@@ -12,6 +12,8 @@ export type EstadoPlaza = 'reservada' | 'espera'
 export interface Clase {
   id: string; trainer_id: string; titulo: string; start_at: string; end_at: string
   aforo: number; notas: string; cancelada: boolean
+  /** Enlace de la videollamada si es online (lib/sesionOnline). */
+  enlace?: string | null
 }
 export interface Plaza { clase_id: string; client_id: string; estado: EstadoPlaza; created_at: string }
 export interface ClaseConPlazas extends Clase { plazas: Plaza[] }
@@ -21,6 +23,8 @@ export interface ClaseCliente {
   id: string; titulo: string; start_at: string; end_at: string; notas: string
   aforo: number; ocupadas: number; en_espera: number
   mi_estado: EstadoPlaza | null; mi_puesto: number | null; cancelar_horas: number
+  /** Si es online lo sabe todo el mundo; el enlace solo llega a quien tiene plaza. */
+  online?: boolean; enlace?: string | null
 }
 
 export const libres = (c: { aforo: number; ocupadas: number }) => Math.max(0, c.aforo - c.ocupadas)
@@ -72,7 +76,7 @@ export async function listarClases(trainerId: string, desde: Date = new Date()):
   return clases.map(c => ({ ...c, plazas: plazas.filter(p => p.clase_id === c.id) }))
 }
 
-export async function crearClase(trainerId: string, c: Pick<Clase, 'titulo' | 'start_at' | 'end_at' | 'aforo' | 'notas'>): Promise<ClaseConPlazas | null> {
+export async function crearClase(trainerId: string, c: Pick<Clase, 'titulo' | 'start_at' | 'end_at' | 'aforo' | 'notas' | 'enlace'>): Promise<ClaseConPlazas | null> {
   if (esDemo(trainerId)) {
     const nueva = { ...c, id: crypto.randomUUID(), trainer_id: trainerId, cancelada: false, plazas: [] }
     DEMO.push(nueva); return nueva
