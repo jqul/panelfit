@@ -12,6 +12,7 @@ import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
 import { FechaInicioCampo } from '../FechaInicioCampo'
 import { SiguientePlan } from './SiguientePlan'
 import { MarcasPlan } from './MarcasPlan'
+import { CompeticionPlan } from './CompeticionPlan'
 import { tareasDePrograma } from '../../../lib/tareasPrograma'
 import { sincronizarTareasPrograma } from '../../../lib/sincronizarTareasPrograma'
 
@@ -194,6 +195,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
 
       <SiguientePlan clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
+      <CompeticionPlan plan={plan} logs={logs} client={client} onPlanChange={onPlanChange} />
 
       {/* Modal selector de programa */}
       {showProgramSelector && (
