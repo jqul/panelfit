@@ -723,6 +723,16 @@ export function TrainingPlanEditor({
                                         </button>
                                       )}
                                       {ex.kind !== 'run' && (
+                                        <button onClick={() => updateExercise(activeWeek, di, ri, { testRM: !ex.testRM || undefined })} aria-pressed={!!ex.testRM}
+                                          title="Ese día el cliente sube hasta su máximo (RM o AMRAP): su mejor serie fija la marca con la que se calculan los % de las semanas siguientes"
+                                          className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${
+                                            ex.testRM ? 'bg-accent/10 border-accent/30 text-accent' : 'border-border/50 text-muted hover:border-accent/40 hover:text-accent'
+                                          }`}>
+                                          <span>🎯</span>
+                                          {ex.testRM ? '✓ Test de RM: su mejor serie fija la marca' : 'Test de RM (tomar marca)'}
+                                        </button>
+                                      )}
+                                      {ex.kind !== 'run' && (
                                         <BackoffEditor exercise={ex} onChange={patch => updateExercise(activeWeek, di, ri, patch)} />
                                       )}
                                       {ex.kind !== 'run' && (

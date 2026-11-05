@@ -50,6 +50,7 @@ export interface Exercise {
   alternativas?: ExerciseAlternative[]  // plan B: sustituciones que el entrenador aprueba de antemano para este ejercicio (material ocupado, etc.)
   dolorSinSustituir?: boolean  // si le molesta algo con este ejercicio, no se le propone cambiarlo: se le dice que pare y se avisa al entrenador
   pesoPorLado?: boolean    // el peso se apunta por mano/lado (mancuernas, unilaterales): el volumen cuenta el doble (lib/volumen.ts)
+  testRM?: boolean         // test de RM / AMRAP («tomar marca»): su mejor serie fija la marca para programar por % (lib/marcaRM.ts)
   backoff?: { pct: number; reps?: string }  // top set + back-off: la 1ª serie es la pesada y las demás bajan a ese % de lo que se movió en ella (lib/backoff.ts)
 }
 
@@ -93,6 +94,7 @@ export interface TrainingPlan {
   weeks: WeekPlan[]
   programId?: string; programName?: string  // programa de plantilla asignado, si lo hay
   customMessages?: Record<string, string>  // override por cliente de una plantilla de mensaje, keyed por id de plantilla
+  marcas?: Record<string, { kg: number; fecha: string }>  // marcas de referencia puestas a mano, por nombre de ejercicio en minúsculas (lib/marcaRM.ts)
 }
 
 // ── PLANTILLAS ────────────────────────────────────────
