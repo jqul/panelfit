@@ -29,6 +29,8 @@ interface Props {
   si: number
   substitutionName: (ri: number) => string | undefined
   isRecord: (ri: number) => boolean
+  /** Peso calculado para un ejercicio por %1RM con la marca de referencia (lib/marcaRM), si lo hay. */
+  pesoObjetivo?: (ri: number) => number | null
   onSelect: (ri: number, si: number) => void
   onBack: () => void
   onFinishClick: () => void
@@ -89,7 +91,8 @@ export function FocusWorkout(p: Props) {
   // teclear y lo que se ve en grande es justo lo que se registra al pulsar HECHO.
   const lastWeight = (() => {
     for (let i = p.si - 1; i >= 0; i--) if (exSets[i]?.weight) return exSets[i].weight
-    return prescribedWeight(ex.weight) || prev?.weight || ''
+    const objetivo = p.pesoObjetivo?.(p.ri)
+    return prescribedWeight(ex.weight) || (objetivo ? String(objetivo) : '') || prev?.weight || ''
   })()
   const [weight, setWeight] = useState(cur.weight || lastWeight)
   const [reps, setReps] = useState(cur.reps)
@@ -252,6 +255,7 @@ export function FocusWorkout(p: Props) {
           </p>
         )}
         {ex.comment && <p className="px-6 mt-2 text-center text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+        {ex.testRM && <p className="mt-2 text-center text-xs font-bold text-accent" data-testid="test-rm">🎯 Test de RM · sube hasta tu máximo de hoy: tu mejor serie será tu nueva marca</p>}
         {ex.rir && <div className="mt-3 flex justify-center"><RirTargetChip rir={ex.rir} /></div>}
 
         {isRun ? (

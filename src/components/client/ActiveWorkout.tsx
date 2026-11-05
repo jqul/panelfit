@@ -8,6 +8,7 @@ import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
 import { etiquetaSerie, precargarBackoff } from '../../lib/backoff'
+import { marcaDeReferencia, textoOrigen } from '../../lib/marcaRM'
 import { sendPush } from '../../lib/usePushNotifications'
 import { avisoFinSesion } from '../../lib/avisoEntrenador'
 import { compressVideo } from '../../lib/videoCompress'
@@ -606,7 +607,15 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const densityPct = prevSessionVolume > 0 ? Math.min(100, Math.round((totalVolume / prevSessionVolume) * 100)) : null
 
   // Mejor 1RM estimado histórico para un ejercicio (para programación por %1RM)
-  const getBest1RM = (exName: string) => getBest1RMFromLogs(exName, logs)
+  // Para los % del plan manda la marca de referencia: el último test de RM o la que puso el entrenador; sin ellas, el
+  // mejor 1RM estimado (lib/marcaRM)
+  const marcaDe = (exName: string) => marcaDeReferencia(exName, plan, logs)
+  const pesoObjetivo = (ri: number) => {
+    const ex = day.exercises[ri]
+    if (!ex || parsePercentWeight(ex.weight) === null) return null
+    const m = marcaDe(ex.name)
+    return m ? resolveWeightFromPercent(ex.weight, m.kg) : null
+  }
 
   // Perfil carga-velocidad histórico para un ejercicio (VBT)
   const getVelocityProfile = (exName: string) => getVelocityProfileFromLogs(exName, logs)
@@ -766,7 +775,8 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const ex = day.exercises[ri]
     const history = getExerciseHistory(ex.name)
     const restSecs = ex.restSets ?? (ex.isMain ? (plan.restMain || 180) : (plan.restAcc || 90))
-    const pctTarget = parsePercentWeight(ex.weight) !== null ? resolveWeightFromPercent(ex.weight, getBest1RM(ex.name)) : null
+    const marca = parsePercentWeight(ex.weight) !== null ? marcaDe(ex.name) : null
+    const pctTarget = pesoObjetivo(ri)
     const vProfile = tracksVelocity(ex) ? getVelocityProfile(ex.name) : null
     return (
       <div className="space-y-3">
@@ -790,7 +800,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
         </div>
         {(pctTarget || vProfile?.oneRM || !(ex.hideRest || ex.kind === 'run')) && (
           <div className="mx-4 text-xs text-muted space-y-1">
-            {pctTarget && <p className="text-accent font-semibold">{ex.weight} ≈ {pctTarget}kg (según tu 1RM estimado)</p>}
+            {pctTarget && marca && <p className="text-accent font-semibold">{ex.weight} ≈ {pctTarget}kg ({textoOrigen(marca)})</p>}
             {vProfile?.oneRM && <p style={{ color: 'var(--color-accent)' }} className="font-semibold">⚡ 1RM real de hoy (por velocidad): ~{vProfile.oneRM}kg</p>}
             {!(ex.hideRest || ex.kind === 'run') && <p>Descanso: {Math.floor(restSecs / 60) > 0 ? `${Math.floor(restSecs / 60)}min ` : ''}{restSecs % 60 > 0 ? `${restSecs % 60}s` : ''}</p>}
           </div>
@@ -846,7 +856,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           title={day.title} clientName={clientName} elapsedLabel={formatElapsed()} pct={pct}
           exercises={day.exercises} sets={sets} prevSets={getPrevSets} weekRpe={plan.weeks?.[weekIdx]?.rpe} showTarget={showPesosSugeridos}
           ri={pos.ri} si={pos.si} allComplete={allComplete}
-          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord}
+          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord} pesoObjetivo={pesoObjetivo}
           onSelect={(ri, si) => setFocusOverride({ ri, si })}
           onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
           onCommit={commitSet}
@@ -967,11 +977,12 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                       <Repeat className="w-3 h-3 flex-shrink-0" /> {substitutions[ri]}
                     </p>
                   )}
+                  {ex.testRM && <p className="text-[11px] text-accent font-bold mt-0.5">🎯 Test de RM · tu mejor serie de hoy será tu nueva marca</p>}
                   {parsePercentWeight(ex.weight) !== null && (() => {
-                    const best1RM = getBest1RM(ex.name)
-                    const target = resolveWeightFromPercent(ex.weight, best1RM)
-                    return target ? (
-                      <p className="text-[11px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg (según tu 1RM estimado)</p>
+                    const marca = marcaDe(ex.name)
+                    const target = marca ? resolveWeightFromPercent(ex.weight, marca.kg) : null
+                    return target && marca ? (
+                      <p className="text-[11px] text-accent font-semibold mt-0.5">{ex.weight} ≈ {target}kg ({textoOrigen(marca)})</p>
                     ) : (
                       <p className="text-[11px] text-muted mt-0.5">{ex.weight} — registra más series para calcular el peso</p>
                     )
