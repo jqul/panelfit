@@ -7,6 +7,7 @@ import { useSesionEnCurso } from './SesionEnCurso'
 import { ParaHoy } from './ParaHoy'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const FechaClaveHoy = lazy(() => import('./FechaClaveHoy').then(m => ({ default: m.FechaClaveHoy })))
+const CompeticionHoy = lazy(() => import('./CompeticionHoy').then(m => ({ default: m.CompeticionHoy })))
 import type { SeriesTypeDef } from '../trainer/training-plan-editor/seriesTypesData'
 import { getTodaySession } from '../../lib/sesionHoy'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
@@ -263,6 +264,7 @@ export function ClientDashboard({ plan, logs, onLogsChange, clientName, clientId
 
         {/* La cuenta atrás y «Para hoy» van DESPUÉS de la tarjeta: el entreno y su botón tienen que verse al abrir
             (encima, en un móvil bajito empujaban el botón fuera de la pantalla). */}
+        {plan.competicion && <Suspense fallback={null}><CompeticionHoy plan={plan} /></Suspense>}
         <Suspense fallback={null}><FechaClaveHoy clientId={clientId} /></Suspense>
 
         <ParaHoy clientId={clientId} entreno={todaySession
