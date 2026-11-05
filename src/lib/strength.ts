@@ -223,8 +223,8 @@ export function getVbtSuggestedWeightChange(
  * ¿Se puede anotar la velocidad de barra en este ejercicio? En cualquiera de
  * fuerza, esté o no marcado como principal: quien entrena con velocímetro la
  * quiere en la sentadilla y el banca aunque el plan no los marque. Las carreras
- * registran tiempo y distancia, no velocidad de barra.
+ * registran tiempo y distancia, no velocidad de barra; las sesiones libres, nada.
  */
 export function tracksVelocity(ex: { kind?: string }): boolean {
-  return ex.kind !== 'run'
+  return ex.kind !== 'run' && ex.kind !== 'libre'
 }

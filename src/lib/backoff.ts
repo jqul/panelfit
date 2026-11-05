@@ -59,8 +59,9 @@ export function precargarBackoff<S extends { weight: string; reps: string; done:
   return out
 }
 
-/** Para leer el plan: "Top set de 3 + 3 bajadas de 5 al 85 %". Sin back-off, las series tal cual. */
-export function resumenSeries(ex: { sets: string; backoff?: Backoff }): string {
+/** Para leer el plan: "Top set de 3 + 3 bajadas de 5 al 85 %". Sin back-off, las series tal cual; una sesión libre no tiene series. */
+export function resumenSeries(ex: { sets: string; backoff?: Backoff; kind?: string }): string {
+  if (ex.kind === 'libre') return 'Sesión libre'
   if (!ex.backoff) return ex.sets
   const m = String(ex.sets || '').match(/(\d+)\s*[x×]\s*([^\s@]+)/i)
   if (!m) return ex.sets

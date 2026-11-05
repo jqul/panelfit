@@ -13,6 +13,8 @@ import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLog
 import { RunEditor } from './training-plan-editor/RunEditor'
 import { PlanBEditor } from './training-plan-editor/PlanBEditor'
 import { BackoffEditor } from './training-plan-editor/BackoffEditor'
+import { LibreEditor } from './training-plan-editor/LibreEditor'
+import { nuevaSesionLibre } from '../../lib/sesionLibre'
 import { conPlanB } from '../../lib/sustitucionPlan'
 import { runDefaultName, runLabel } from '../../lib/run'
 import { TRAINING_TYPES } from '../../lib/constants'
@@ -205,6 +207,7 @@ export function TrainingPlanEditor({
     const run: RunSpec = { reps: 6, distanceM: 200, recoveryM: 100, intensity: 'RPE 5-6' }
     addExercise(wi, di, { name: runDefaultName(run), sets: '6x1', weight: '', isMain: false, comment: '', videoUrl: '', kind: 'run', run, hideRest: true })
   }
+  const addLibreExercise = (wi: number, di: number) => addExercise(wi, di, nuevaSesionLibre())
   // El nombre y las series ("NxM" que lee el resto de la app) siguen a la
   // definición de la carrera mientras el nombre sea el automático.
   const updateRun = (wi: number, di: number, ri: number, ex: Exercise, patch: Partial<RunSpec>) => {
@@ -528,7 +531,12 @@ export function TrainingPlanEditor({
                                   })()}
                                 </div>
 
-                                {ex.kind === 'run' && ex.run ? (
+                                {ex.kind === 'libre' ? (
+                                  <div className="px-2 py-1.5 mx-1 text-xs font-bold text-accent bg-accent/5 border border-accent/20 rounded-lg text-center truncate"
+                                    style={{ gridColumn: 'span 2' }} title="Sesión libre — texto y vídeo, se edita al desplegar">
+                                    📝 {ex.comment ? 'Texto' : 'Sin texto'}{ex.videoUrl ? ' + vídeo' : ''}
+                                  </div>
+                                ) : ex.kind === 'run' && ex.run ? (
                                   /* Carrera: un solo resumen legible en vez de series y kg (se edita en el panel) */
                                   <div className="px-2 py-1.5 mx-1 text-xs font-bold text-accent bg-accent/5 border border-accent/20 rounded-lg text-center truncate"
                                     style={{ gridColumn: 'span 2' }} title="Ejercicio de carrera — edítalo al desplegar">
@@ -610,6 +618,9 @@ export function TrainingPlanEditor({
                                     <RunEditor run={ex.run} onChange={patch => updateRun(activeWeek, di, ri, ex, patch)} />
                                   )}
 
+                                  {ex.kind === 'libre' ? (
+                                    <LibreEditor exercise={ex} onChange={patch => updateExercise(activeWeek, di, ri, patch)} />
+                                  ) : (<>
                                   {/* Tipo serie — info */}
                                   <div className="px-4 py-2.5 border-b border-accent/10 bg-accent/5 flex flex-wrap items-center gap-x-3 gap-y-2">
                                     <span className="text-base">{seriesMeta?.emoji}</span>
@@ -787,6 +798,7 @@ export function TrainingPlanEditor({
                                       </div>
                                     </div>
                                   </div>
+                                  </>)}
                                 </div>
                               )}
                             </div>
@@ -794,7 +806,7 @@ export function TrainingPlanEditor({
                         })}
                       </div>
 
-                      <div className="px-4 py-2 flex gap-2">
+                      <div className="px-4 py-2 flex flex-wrap gap-2">
                         <button onClick={() => setPickerFor({ dayIdx: di })}
                           className="flex-1 border border-dashed border-border rounded-lg py-2 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
                           <Plus className="w-3.5 h-3.5" /> Añadir ejercicio
@@ -803,6 +815,11 @@ export function TrainingPlanEditor({
                           title="Tiradas por metros o test de tiempo, con registro de tiempo y ritmo"
                           className="border border-dashed border-border rounded-lg py-2 px-4 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
                           🏃 Añadir carrera
+                        </button>
+                        <button onClick={() => addLibreExercise(activeWeek, di)}
+                          title="Un bloque con texto y vídeo, sin series ni kilos: movilidad, una clase grabada, cardio libre…"
+                          className="border border-dashed border-border rounded-lg py-2 px-4 text-xs text-muted hover:border-accent hover:text-accent transition-all flex items-center justify-center gap-1.5">
+                          📝 Añadir sesión libre
                         </button>
                       </div>
 

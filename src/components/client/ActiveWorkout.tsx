@@ -7,12 +7,13 @@ import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
-import { etiquetaSerie, precargarBackoff } from '../../lib/backoff'
+import { etiquetaSerie, precargarBackoff, resumenSeries } from '../../lib/backoff'
 import { marcaDeReferencia, textoOrigen } from '../../lib/marcaRM'
 import { sendPush } from '../../lib/usePushNotifications'
 import { avisoFinSesion } from '../../lib/avisoEntrenador'
 import { compressVideo } from '../../lib/videoCompress'
 import { getYTId, parseSet, NextSetInfo, MOLESTIA_EMOJI } from './active-workout/utils'
+import { SesionLibre } from './active-workout/SesionLibre'
 import { RestTimer } from './active-workout/RestTimer'
 import { VideoFeedbackButton } from './active-workout/VideoFeedbackButton'
 import { TempoWidget } from './active-workout/TempoWidget'
@@ -764,6 +765,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
   const renderRun = (ri: number) => {
     const ex = day.exercises[ri]
     const exSets = sets[ri] || {}
+    if (ex.kind === 'libre') return <SesionLibre texto={ex.comment} hecha={!!exSets[0]?.done} onToggle={() => toggleSet(ri, 0, '', '1')} grande />
     return ex.run ? (
       <RunSets run={ex.run} totalSets={Math.max(parseSet(ex.sets).numSets, Object.keys(exSets).length)} sets={exSets}
         prevSets={getPrevSets(ri)} onSetData={(si, patch) => setRunData(ri, si, patch)} onToggle={si => toggleSet(ri, si, '', '1')} />
@@ -902,7 +904,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
             {(day.warmupExercises || []).map((ex, i) => (
               <div key={i} className="flex-shrink-0 bg-card border border-accent/20 rounded-xl px-3 py-2 text-xs">
                 <p className="font-semibold text-ink">{ex.name}</p>
-                {ex.sets && <p className="text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                {ex.sets && <p className="text-muted">{resumenSeries(ex)}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
               </div>
             ))}
           </div>
@@ -1037,7 +1039,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 )
               })()}
 
-              {ex.comment && <p className="mx-4 mb-1 text-[11px] text-muted italic leading-snug">"{ex.comment}"</p>}
+              {ex.comment && ex.kind !== 'libre' && <p className="mx-4 mb-1 text-[11px] text-muted italic leading-snug">"{ex.comment}"</p>}
 
               {/* Sustituir ejercicio — ej. el material previsto está ocupado. En el «…», salvo si ya lo cambió o preguntó */}
               {(expandedHistory === ri || substitutions[ri] || logs[`ex_${dayKey}_r${ri}`]?.duda) && renderSubstitution(ri, ex)}
@@ -1071,12 +1073,14 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 </div>
               )}
 
-              {ex.kind !== 'run' && <ResumenEjercicio hoy={exSets} antes={prevSets} porLado={ex.pesoPorLado} />}
+              {ex.kind !== 'run' && ex.kind !== 'libre' && <ResumenEjercicio hoy={exSets} antes={prevSets} porLado={ex.pesoPorLado} />}
 
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó. El RIR objetivo ya va en la columna Plan */}
               {ex.tempo && <TempoWidget tempo={ex.tempo} />}
 
-              {ex.kind === 'run' && ex.run ? (
+              {ex.kind === 'libre' ? (
+                <SesionLibre texto={ex.comment} hecha={!!exSets[0]?.done} onToggle={() => toggleSet(ri, 0, '', '1')} />
+              ) : ex.kind === 'run' && ex.run ? (
                 <RunSets
                   run={ex.run}
                   totalSets={totalExSets}

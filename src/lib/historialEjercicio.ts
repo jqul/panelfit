@@ -25,7 +25,9 @@ export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | 
   for (const [key, log] of Object.entries(logs || {})) {
     if (!log?.done || !log.dateDone || !cuentaEnProgreso(log)) continue
     const m = key.match(KEY_RE)
-    const name = (log.substituteName || (m && plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]?.name) || '').trim()
+    const planEx = m ? plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]] : undefined
+    if (planEx?.kind === 'libre') continue // una sesión libre no tiene kilos ni reps que comparar (lib/sesionLibre)
+    const name = (log.substituteName || planEx?.name || '').trim()
     if (!name) continue
     const series = Object.values(log.sets || {})
       .map(s => ({ weight: parseFloat(String(s?.weight ?? '').replace(',', '.')) || 0, reps: parseInt(String(s?.reps ?? '')) || 0 }))

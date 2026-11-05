@@ -10,8 +10,9 @@ export function getExName(key: string, plan?: TrainingPlan | null, log?: { subst
   const m = key.match(/ex_w(\d+)_d(\d+)_r(\d+)/)
   if (!m) return null
   const ex = plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]
-  // Las carreras (kg×reps vacíos) no cuentan en fuerza/volumen/récords: van a su propia gráfica de cardio.
-  if (ex?.kind === 'run') return null
+  // Las carreras (kg×reps vacíos) no cuentan en fuerza/volumen/récords: van a su propia gráfica de cardio. Las
+  // sesiones libres (texto y vídeo, lib/sesionLibre) tampoco: solo cuentan como hechas.
+  if (ex?.kind === 'run' || ex?.kind === 'libre') return null
   return log?.substituteName?.trim() || ex?.name || null
 }
 
