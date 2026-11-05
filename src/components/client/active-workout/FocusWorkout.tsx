@@ -84,7 +84,8 @@ export function FocusWorkout(p: Props) {
   const total = totalSets(ex, exSets)
   const cur: FocusSet = exSets[p.si] || { weight: '', reps: String(numReps), done: false }
   const prev = p.prevSets(p.ri)[p.si]
-  const isRun = ex.kind === 'run' && !!ex.run
+  // Carrera y sesión libre llevan su propio bloque (renderRun) en vez de la serie con kg y reps
+  const isRun = (ex.kind === 'run' && !!ex.run) || ex.kind === 'libre'
 
   // Si esta serie aún no tiene peso, se parte del de la serie anterior de hoy y,
   // en la primera, del de la última vez: lo normal es repetir carga, ahorra
@@ -254,7 +255,7 @@ export function FocusWorkout(p: Props) {
             {p.ri > 0 ? '‹ ' : ''}desliza para cambiar de ejercicio{p.ri < p.exercises.length - 1 ? ' ›' : ''}
           </p>
         )}
-        {ex.comment && <p className="px-6 mt-2 text-center text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
+        {ex.comment && ex.kind !== 'libre' && <p className="px-6 mt-2 text-center text-xs text-muted italic leading-relaxed">"{ex.comment}"</p>}
         {ex.testRM && <p className="mt-2 text-center text-xs font-bold text-accent" data-testid="test-rm">🎯 Test de RM · sube hasta tu máximo de hoy: tu mejor serie será tu nueva marca</p>}
         {ex.rir && <div className="mt-3 flex justify-center"><RirTargetChip rir={ex.rir} /></div>}
 

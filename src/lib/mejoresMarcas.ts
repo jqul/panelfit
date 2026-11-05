@@ -15,7 +15,7 @@ export function mejoresMarcas(logs: TrainingLogs, plan: TrainingPlan | null | un
     const m = clave.match(/^ex_w(\d+)_d(\d+)_r(\d+)$/)
     if (!m || !log?.dateDone || (desde && log.dateDone < desde)) continue
     const ex = plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]]
-    if (!ex || ex.kind === 'run') continue
+    if (!ex || ex.kind === 'run' || ex.kind === 'libre') continue
     const nombre = (log.substituteName || ex.name || '').trim()
     if (!nombre) continue
     for (const s of Object.values(log.sets || {})) {
