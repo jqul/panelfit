@@ -7,6 +7,7 @@ import { DayPlan, TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../
 import { CalculadoraDiscos } from './CalculadoraDiscos'
 import { supabase } from '../../lib/supabase'
 import { estimate1RM, parsePercentWeight, resolveWeightFromPercent, estimateVelocityProfile, VelocityPoint, getVbtSuggestedWeightChange, getTargetRangeLabel, tracksVelocity } from '../../lib/strength'
+import { etiquetaSerie, precargarBackoff } from '../../lib/backoff'
 import { sendPush } from '../../lib/usePushNotifications'
 import { avisoFinSesion } from '../../lib/avisoEntrenador'
 import { compressVideo } from '../../lib/videoCompress'
@@ -255,6 +256,9 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
+  // Pesos de bajada que ha puesto la app (no el cliente), por ejercicio: si cambia el top set, se recalculan
+  const backoffAuto = useRef<Record<number, Record<number, string>>>({})
+
   const commitSet = useCallback((ri: number, si: number, weight: string, reps: string) => {
     setSets(prev => ({ ...prev, [ri]: { ...prev[ri], [si]: { ...prev[ri][si], weight, reps } } }))
     const key = `ex_${dayKey}_r${ri}`
@@ -484,6 +488,13 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     const runDistance = ex.kind === 'run' && ex.run && !ex.run.durationSec ? ex.run.distanceM : undefined
     const prevSet = prev[ri]?.[si]
     const updated = { ...prev, [ri]: { ...prev[ri], [si]: { ...prevSet, weight, reps, done: newDone, distanceM: runDistance ?? prevSet?.distanceM } } }
+    // Top set + back-off: al hacer el top set, las bajadas sin hacer se precargan al % de lo que se ha movido (lib/backoff)
+    if (ex.backoff && si === 0 && newDone && ex.kind !== 'run') {
+      const total = Math.max(numSets, Object.keys(updated[ri]).length)
+      const repsPlan = (String(ex.sets || '').split(/[x×]/i)[1] || '').trim()
+      updated[ri] = precargarBackoff(updated[ri], total, ex.backoff, repsPlan, backoffAuto.current[ri])
+      backoffAuto.current[ri] = Object.fromEntries(Array.from({ length: total - 1 }, (_, k) => [k + 1, updated[ri][k + 1]?.weight || '']))
+    }
     const totalSetsInEx = Math.max(numSets, Object.keys(updated[ri]).length); const allDone = Array.from({ length: totalSetsInEx }, (_, i) => updated[ri][i]?.done).every(Boolean)
     const key = `ex_${dayKey}_r${ri}`
     const setsData: Record<number, LogSet> = {}
@@ -1085,8 +1096,10 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                     </div>
                   )}
                   <SetRow
+                    // Las bajadas sin hacer se vuelven a montar cuando la app les precarga el peso del back-off
+                    key={ex.backoff && si > 0 && !s.done ? `bo-${s.weight}-${s.reps}` : 'serie'}
                     setNum={si + 1}
-                    planLabel={planSerie}
+                    planLabel={ex.backoff ? etiquetaSerie(si, ex.backoff, repsPlan, ex.rir ? String(ex.rir) : undefined) : planSerie}
                     activa={filaActiva === clave}
                     onActivar={() => setFilaElegida(clave)}
                     initWeight={s.weight}

@@ -50,6 +50,7 @@ export interface Exercise {
   alternativas?: ExerciseAlternative[]  // plan B: sustituciones que el entrenador aprueba de antemano para este ejercicio (material ocupado, etc.)
   dolorSinSustituir?: boolean  // si le molesta algo con este ejercicio, no se le propone cambiarlo: se le dice que pare y se avisa al entrenador
   pesoPorLado?: boolean    // el peso se apunta por mano/lado (mancuernas, unilaterales): el volumen cuenta el doble (lib/volumen.ts)
+  backoff?: { pct: number; reps?: string }  // top set + back-off: la 1ª serie es la pesada y las demás bajan a ese % de lo que se movió en ella (lib/backoff.ts)
 }
 
 // Plan B de un ejercicio prescrito. Se identifica por nombre (como todo en el plan) y, si se conoce, por el id de la biblioteca.

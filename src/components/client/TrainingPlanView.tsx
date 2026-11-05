@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
+import { resumenSeries } from '../../lib/backoff'
 import { ChevronDown, ChevronUp, Play, Dumbbell, Info, Flame, X, Calculator } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { usePrefetchActiveWorkout } from './ActiveWorkoutLazy'
@@ -200,7 +201,7 @@ export function TrainingPlanView({ plan, logs, seriesTypes, clientId, view = 'se
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-800 truncate">{ex.name}</p>
-                                  {ex.sets && <p className="text-xs text-muted">{ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
+                                  {ex.sets && <p className="text-xs text-muted">{resumenSeries(ex)}{ex.weight ? ` · ${ex.weight}` : ''}</p>}
                                   {ex.comment && <p className="text-xs text-gray-400 italic mt-0.5">"{ex.comment}"</p>}
                                 </div>
                                 {ytId && (
@@ -262,7 +263,7 @@ export function TrainingPlanView({ plan, logs, seriesTypes, clientId, view = 'se
 
                               {/* Series y peso con botón calculadora */}
                               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                <p className="text-xs text-muted">{ex.sets}</p>
+                                <p className="text-xs text-muted">{resumenSeries(ex)}</p>
                                 {ex.weight && (
                                   <button
                                     onClick={() => setCalcWeight(weightNum || 0)}
