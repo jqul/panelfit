@@ -5,7 +5,7 @@ import { logError } from '../../lib/errors'
 import { ClientData } from '../../types'
 import {
   Plus, X, Trash2, CheckCircle2, ChevronLeft, ChevronRight,
-  Clock, Users, Repeat, Ban, CalendarClock
+  Clock, Users, Repeat, Ban, CalendarClock, UserX
 } from 'lucide-react'
 import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
 import { Modal } from '../shared/Modal'
@@ -15,6 +15,7 @@ import { limpiarEnlace } from '../../lib/sesionOnline'
 import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
+const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
 const ClasesGrupo = lazy(() => import('./ClasesGrupo').then(m => ({ default: m.ClasesGrupo })))
 const TiposCitaEditor = lazy(() => import('./TiposCitaEditor').then(m => ({ default: m.TiposCitaEditor })))
 
@@ -51,7 +52,7 @@ interface Cita {
   title: string
   start_at: string
   end_at: string
-  status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
+  status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada' | 'ausente'
   notes: string
   recurring: 'weekly' | null
   recurring_until: string | null
@@ -83,6 +84,7 @@ const STATUS_META = {
   confirmada: { label: 'Confirmada', cls: 'text-ok bg-ok/10' },
   completada: { label: 'Completada', cls: 'text-ink bg-bg-alt' },
   cancelada: { label: 'Cancelada', cls: 'text-warn bg-warn/10' },
+  ausente: { label: 'No vino', cls: 'text-warn bg-warn/10' },
 }
 
 export function CalendarTab({ trainerId, clients }: Props) {
@@ -226,6 +228,8 @@ export function CalendarTab({ trainerId, clients }: Props) {
       </button>
       {verTipos && <Suspense fallback={null}><TiposCitaEditor tipos={tipos} onGuardar={guardarTipos} onClose={() => setVerTipos(false)} /></Suspense>}
       {verHorario && <Suspense fallback={null}><HorarioCitasEditor trainerId={trainerId} demo={trainerId === DEMO_TRAINER_ID} onClose={() => setVerHorario(false)} /></Suspense>}
+      {/* Se vuelve a montar al cerrar Clases de grupo: así recoge la lista que se acaba de pasar */}
+      <Suspense fallback={null}><CifrasAgenda key={verClases ? 'clases-abiertas' : 'clases-cerradas'} trainerId={trainerId} citas={citas} /></Suspense>
       {/* Navegación semanal */}
       <div className="flex items-center justify-between">
         <button onClick={() => setAnchor(addDays(anchor, -7))} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
@@ -289,8 +293,12 @@ export function CalendarTab({ trainerId, clients }: Props) {
                         )}
                         {cita.status === 'confirmada' && (
                           <>
-                            <button onClick={() => updateStatus(cita, 'completada')} title="Marcar como completada"
+                            <button onClick={() => updateStatus(cita, 'completada')} title="Vino (completada)" aria-label={`Vino a ${cita.title}`}
                               className="p-1.5 text-muted hover:text-ok rounded-lg flex-shrink-0"><CheckCircle2 className="w-3.5 h-3.5" /></button>
+                            {cita.client_id && new Date(cita.start_at).getTime() <= Date.now() && (
+                              <button onClick={() => updateStatus(cita, 'ausente')} title="No vino (sin avisar)" aria-label={`No vino a ${cita.title}`}
+                                className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0"><UserX className="w-3.5 h-3.5" /></button>
+                            )}
                             <button onClick={() => updateStatus(cita, 'cancelada')} title="Cancelar"
                               className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0"><Ban className="w-3.5 h-3.5" /></button>
                           </>

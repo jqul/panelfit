@@ -7,7 +7,7 @@ import { limpiarEnlace } from '../../lib/sesionOnline'
 import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 import type { ClientData } from '../../types'
 import {
-  apuntar, cambiarAforo, cancelarClaseEntera, crearClase, listarClases, quitar, resumenPlazas, type ClaseConPlazas,
+  apuntar, cambiarAforo, cancelarClaseEntera, crearClase, listarClases, marcarAsistencia, quitar, resumenPlazas, type ClaseConPlazas,
 } from '../../lib/clasesGrupo'
 
 const hora = (s: string) => new Date(s).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
@@ -64,6 +64,8 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
   const reservadas = clase.plazas.filter(p => p.estado === 'reservada')
   const espera = clase.plazas.filter(p => p.estado === 'espera')
   const sinApuntar = clients.filter(c => !clase.plazas.some(p => p.client_id === c.id))
+  // Ya empezada: toca pasar lista (y no apuntar a nadie ni cambiar plazas)
+  const empezada = new Date(clase.start_at).getTime() <= Date.now()
 
   const run = async (p: Promise<boolean>, ok: string) => { if (await p) { toast(ok, 'ok'); onCambio() } else toast('No se pudo guardar', 'warn') }
 
@@ -76,13 +78,13 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
           {clase.notas && <p className="text-xs text-muted mt-0.5">{clase.notas}</p>}
           {clase.enlace && <a href={clase.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-1"><EtiquetaOnline enlace={clase.enlace} /></a>}
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0" role="group" aria-label={`Plazas de ${clase.titulo}`}>
+        {empezada ? <span className="text-xs font-semibold text-muted flex-shrink-0">{resumenPlazas(n)}</span> : <div className="flex items-center gap-1 flex-shrink-0" role="group" aria-label={`Plazas de ${clase.titulo}`}>
           <button onClick={() => run(cambiarAforo(trainerId, clase.id, clase.aforo - 1), 'Plazas actualizadas')} disabled={clase.aforo <= Math.max(1, n.ocupadas)}
             aria-label="Una plaza menos" className="p-1.5 rounded-lg border border-border text-muted hover:text-ink disabled:opacity-40"><Minus className="w-3 h-3" /></button>
           <span className="text-xs font-semibold tabular-nums px-1">{resumenPlazas(n)}</span>
           <button onClick={() => run(cambiarAforo(trainerId, clase.id, clase.aforo + 1), 'Plazas actualizadas')} disabled={clase.aforo >= 200}
             aria-label="Una plaza más" className="p-1.5 rounded-lg border border-border text-muted hover:text-ink disabled:opacity-40"><Plus className="w-3 h-3" /></button>
-        </div>
+        </div>}
       </div>
 
       {(reservadas.length > 0 || espera.length > 0) && (
@@ -93,14 +95,23 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
                 {p.estado === 'reservada' ? 'Plaza' : `Espera ${i - reservadas.length + 1}º`}
               </span>
               <span className="flex-1 truncate">{nombre(p.client_id)}</span>
-              <button onClick={() => run(quitar(trainerId, clase.id, p.client_id), `${nombre(p.client_id)} ya no está apuntado`)}
-                aria-label={`Quitar a ${nombre(p.client_id)}`} className="p-1 rounded text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+              {empezada ? (p.estado === 'reservada' && (
+                <span className="flex gap-1" role="group" aria-label={`Asistencia de ${nombre(p.client_id)}`}>
+                  {([[true, 'Vino'], [false, 'No vino']] as const).map(([v, l]) => (
+                    <button key={l} aria-pressed={p.asistio === v} onClick={() => run(marcarAsistencia(trainerId, clase.id, p.client_id, p.asistio === v ? null : v), 'Lista guardada')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${p.asistio === v ? (v ? 'bg-ok text-white border-ok' : 'bg-warn text-white border-warn') : 'border-border text-muted hover:text-ink'}`}>{l}</button>
+                  ))}
+                </span>
+              )) : (
+                <button onClick={() => run(quitar(trainerId, clase.id, p.client_id), `${nombre(p.client_id)} ya no está apuntado`)}
+                  aria-label={`Quitar a ${nombre(p.client_id)}`} className="p-1 rounded text-muted hover:text-warn"><X className="w-3.5 h-3.5" /></button>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      <div className="flex gap-2 flex-wrap items-center">
+      {!empezada && <div className="flex gap-2 flex-wrap items-center">
         {sinApuntar.length > 0 && (
           <>
             <select value={anadir} onChange={e => setAnadir(e.target.value)} aria-label={`Apuntar a ${clase.titulo}`}
@@ -114,7 +125,7 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
         )}
         <button onClick={() => { if (confirm(`¿Cancelar «${clase.titulo}»? Dejará de salirles a tus clientes.`)) run(cancelarClaseEntera(trainerId, clase.id), 'Clase cancelada') }}
           className="ml-auto px-3 py-1.5 text-xs font-semibold text-muted hover:text-warn">Cancelar clase</button>
-      </div>
+      </div>}
     </li>
   )
 }
@@ -122,7 +133,7 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
 // Calendario → Clases de grupo: las clases con plazas, quién va y la lista de espera (lib/clasesGrupo).
 export function ClasesGrupo({ trainerId, clients, onClose }: { trainerId: string; clients: ClientData[]; onClose: () => void }) {
   const [clases, setClases] = useState<ClaseConPlazas[] | null>(null)
-  const cargar = () => listarClases(trainerId).then(c => { setClases(c ?? []); if (c === null) toast('No se pudieron cargar las clases', 'warn') })
+  const cargar = () => listarClases(trainerId, new Date(Date.now() - 3 * 86400000)).then(c => { setClases(c ?? []); if (c === null) toast('No se pudieron cargar las clases', 'warn') })
   useEffect(() => { cargar() }, [trainerId])
 
   const crear = async (c: Parameters<typeof crearClase>[1]) => {

@@ -1,6 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, lazy, Suspense } from 'react'
 import { ClientData } from '../../types'
 import { TrendingUp, Users, CheckCircle2, BarChart2, Euro } from 'lucide-react'
+
+// Asistencia y ocupación del mes (las mismas cifras que en el Calendario): se descarga aparte
+const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
 
 interface Props {
   trainerId: string
@@ -9,7 +12,7 @@ interface Props {
   planName?: string
 }
 
-export function BusinessDashboard({ clients, logsMap, planName }: Props) {
+export function BusinessDashboard({ trainerId, clients, logsMap, planName }: Props) {
   const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
 
@@ -53,6 +56,8 @@ export function BusinessDashboard({ clients, logsMap, planName }: Props) {
         <h2 className="text-3xl font-serif font-bold">Mi negocio</h2>
         <p className="text-muted text-sm mt-1">Métricas de tu actividad como entrenador</p>
       </div>
+
+      <Suspense fallback={null}><CifrasAgenda trainerId={trainerId} /></Suspense>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {KPIs.map(({ label, value, icon: Icon, color, border }) => (

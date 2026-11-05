@@ -15,7 +15,7 @@ export interface Clase {
   /** Enlace de la videollamada si es online (lib/sesionOnline). */
   enlace?: string | null
 }
-export interface Plaza { clase_id: string; client_id: string; estado: EstadoPlaza; created_at: string }
+export interface Plaza { clase_id: string; client_id: string; estado: EstadoPlaza; created_at: string; asistio?: boolean | null }
 export interface ClaseConPlazas extends Clase { plazas: Plaza[] }
 
 /** Lo que ve el cliente de cada clase (clases_cliente): sin saber quién más va. */
@@ -70,7 +70,7 @@ export async function listarClases(trainerId: string, desde: Date = new Date()):
   if (error) { logError('clases:listar', error); return null }
   const clases = (data || []) as Clase[]
   if (!clases.length) return []
-  const { data: pl, error: errPlazas } = await supabase.from('clase_plazas').select('clase_id, client_id, estado, created_at').in('clase_id', clases.map(c => c.id))
+  const { data: pl, error: errPlazas } = await supabase.from('clase_plazas').select('clase_id, client_id, estado, created_at, asistio').in('clase_id', clases.map(c => c.id))
   if (errPlazas) { logError('clases:plazas', errPlazas); return null }
   const plazas = ((pl || []) as Plaza[]).sort((a, b) => a.created_at.localeCompare(b.created_at))
   return clases.map(c => ({ ...c, plazas: plazas.filter(p => p.clase_id === c.id) }))
@@ -116,6 +116,18 @@ export async function apuntar(trainerId: string, claseId: string, clientId: stri
   }
   const { error } = await supabase.from('clase_plazas').insert({ clase_id: claseId, client_id: clientId, estado: 'reservada' })
   if (error) { logError('clases:apuntar', error); return false }
+  return true
+}
+
+/** Pasar lista: si vino (true), si no (false) o sin marcar (null). */
+export async function marcarAsistencia(trainerId: string, claseId: string, clientId: string, asistio: boolean | null): Promise<boolean> {
+  if (esDemo(trainerId)) {
+    const p = DEMO.find(x => x.id === claseId)?.plazas.find(x => x.client_id === clientId)
+    if (p) p.asistio = asistio
+    return !!p
+  }
+  const { error } = await supabase.from('clase_plazas').update({ asistio }).eq('clase_id', claseId).eq('client_id', clientId)
+  if (error) { logError('clases:asistencia', error); return false }
   return true
 }
 
