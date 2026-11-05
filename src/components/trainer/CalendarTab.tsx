@@ -11,6 +11,8 @@ import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
 import { Modal } from '../shared/Modal'
 import { localDateKey } from '../../lib/dates'
 import { limpiarTipos, type TipoCita } from '../../lib/tiposCita'
+import { limpiarEnlace } from '../../lib/sesionOnline'
+import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
 const ClasesGrupo = lazy(() => import('./ClasesGrupo').then(m => ({ default: m.ClasesGrupo })))
@@ -54,12 +56,14 @@ interface Cita {
   recurring: 'weekly' | null
   recurring_until: string | null
   tipo_id?: string | null
+  enlace?: string | null
 }
 
 function emptyForm(dateISO: string) {
   return {
     title: 'Sesión', clientId: '', date: dateISO, time: '09:00', durationMin: 60,
     recurring: false, recurringUntil: '', tipoId: '' as string,
+    enlace: null as string | null,  // null = presencial
   }
 }
 
@@ -140,6 +144,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
       status: 'confirmada' as const,
       notes: '',
       tipo_id: form.tipoId || null,
+      enlace: form.enlace === null ? null : limpiarEnlace(form.enlace),
     }
 
     let newRows: Cita[]
@@ -269,6 +274,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                           </p>
                           {name && <p className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{name}</p>}
                           {tipoDe(cita.tipo_id) && <p className="text-[11px] text-muted">{tipoDe(cita.tipo_id)!.nombre}</p>}
+                          {cita.enlace && <a href={cita.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-0.5"><EtiquetaOnline enlace={cita.enlace} /></a>}
                         </div>
                         <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
                           {meta.label}
@@ -360,6 +366,8 @@ export function CalendarTab({ trainerId, clients }: Props) {
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
             </div>
 
+            <CampoEnlaceOnline value={form.enlace} onChange={v => setForm(f => ({ ...f, enlace: v }))} />
+
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={form.recurring} onChange={e => setForm(f => ({ ...f, recurring: e.target.checked }))} />
               Repetir cada semana
@@ -372,7 +380,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
               </div>
             )}
 
-            <button onClick={saveCita} disabled={saving || (form.recurring && !form.recurringUntil)}
+            <button onClick={saveCita} disabled={saving || (form.recurring && !form.recurringUntil) || (form.enlace !== null && !limpiarEnlace(form.enlace))}
               className="w-full py-3.5 bg-ink text-white rounded-2xl font-bold text-sm disabled:opacity-50">
               {saving ? 'Guardando...' : 'Crear sesión'}
             </button>

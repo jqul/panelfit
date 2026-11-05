@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Users } from 'lucide-react'
 import { toast } from '../../shared/Toast'
+import { BotonUnirse, EtiquetaOnline } from '../../shared/EnlaceOnline'
 import { sendPush } from '../../../lib/usePushNotifications'
 import {
   cancelarMiPlaza, clasesDelCliente, estadoParaCliente, libres, puedeCancelar, reservarClase, type ClaseCliente,
@@ -54,6 +55,8 @@ export function ClasesCliente({ trainerId, clientName }: { trainerId: string; cl
                   <p className="text-xs text-muted capitalize">{cuando(c.start_at)}</p>
                   <p className={`text-xs font-semibold mt-0.5 ${c.mi_estado === 'reservada' ? 'text-ok' : c.mi_estado === 'espera' ? 'text-warn' : 'text-muted'}`}>{estado}</p>
                   {c.notas && <p className="text-xs text-muted mt-0.5">{c.notas}</p>}
+                  {c.online && <div className="mt-1">{c.enlace ? <EtiquetaOnline enlace={c.enlace} /> : <span className="text-[11px] font-bold text-accent">Online · el enlace te llega al tener plaza</span>}</div>}
+                  {c.mi_estado === 'reservada' && c.enlace && <div className="mt-2"><BotonUnirse enlace={c.enlace} startAt={c.start_at} endAt={c.end_at} /></div>}
                 </div>
                 {c.mi_estado ? (
                   puedeCancelar(c) && (

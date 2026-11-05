@@ -283,7 +283,8 @@ export class FakeSupabase {
             const espera = de.filter(p => p.estado === 'espera')
             return { id: k.id, titulo: k.titulo, start_at: k.start_at, end_at: k.end_at, notas: k.notas ?? '', aforo: k.aforo,
               ocupadas: de.filter(p => p.estado === 'reservada').length, en_espera: espera.length, mi_estado: mia?.estado ?? null,
-              mi_puesto: mia?.estado === 'espera' ? espera.indexOf(mia) + 1 : null, cancelar_horas: 0 }
+              mi_puesto: mia?.estado === 'espera' ? espera.indexOf(mia) + 1 : null, cancelar_horas: 0,
+              online: !!k.enlace, enlace: mia?.estado === 'reservada' ? (k.enlace ?? null) : null }
           })
         return json(route, 200, out)
       }

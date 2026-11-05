@@ -7,11 +7,13 @@ import { localDateKey } from '../../../lib/dates'
 import { toast } from '../../shared/Toast'
 import { avisarCambioHoy } from '../../../lib/hoyEventos'
 import { ClasesCliente } from './ClasesCliente'
+import { BotonUnirse, EtiquetaOnline } from '../../shared/EnlaceOnline'
 // Reservar en un hueco del horario del entrenador: se descarga al tocar "Pedir cita".
 const ReservarCita = lazy(() => import('./ReservarCita').then(m => ({ default: m.ReservarCita })))
 
 interface CitaCliente {
   id: string; title: string; start_at: string; status: 'pendiente' | 'confirmada' | 'cancelada' | 'completada'
+  end_at?: string; enlace?: string | null
 }
 
 export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId: string; trainerId: string; clientName: string }) {
@@ -36,10 +38,11 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
       return
     }
     supabase.from('citas')
-      .select('id, title, start_at, status')
+      .select('id, title, start_at, end_at, status, enlace')
       .eq('client_id', clientId)
       .in('status', ['confirmada', 'pendiente'])
-      .gte('start_at', new Date().toISOString())
+      // Hasta que acaba (no hasta que empieza): a una online se puede entrar con la sesión ya empezada
+      .gte('end_at', new Date().toISOString())
       .order('start_at')
       .limit(3)
       .then(({ data }) => { setCitas((data || []) as CitaCliente[]); setLoading(false) })
@@ -133,7 +136,9 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
                     {c.status === 'pendiente' && <span className="text-[11px] font-bold text-warn bg-warn/10 px-1.5 py-0.5 rounded-full">Pendiente de confirmar</span>}
                   </p>
                   <p className="text-xs text-muted">{new Date(c.start_at).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  {c.enlace && <div className="mt-1"><EtiquetaOnline enlace={c.enlace} /></div>}
                 </div>
+                {c.enlace && c.end_at && c.status === 'confirmada' && <BotonUnirse enlace={c.enlace} startAt={c.start_at} endAt={c.end_at} />}
                 <button onClick={() => cancelar(c.id)} className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0" title="Cancelar">
                   <X className="w-4 h-4" />
                 </button>

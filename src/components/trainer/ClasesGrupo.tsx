@@ -3,6 +3,8 @@ import { Minus, Plus, X, Users } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
 import { localDateKey } from '../../lib/dates'
+import { limpiarEnlace } from '../../lib/sesionOnline'
+import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 import type { ClientData } from '../../types'
 import {
   apuntar, cambiarAforo, cancelarClaseEntera, crearClase, listarClases, quitar, resumenPlazas, type ClaseConPlazas,
@@ -14,22 +16,24 @@ const contar = (c: ClaseConPlazas) => ({
   aforo: c.aforo, ocupadas: c.plazas.filter(p => p.estado === 'reservada').length, en_espera: c.plazas.filter(p => p.estado === 'espera').length,
 })
 
-function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: string; end_at: string; aforo: number; notas: string }) => Promise<boolean> }) {
+function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: string; end_at: string; aforo: number; notas: string; enlace: string | null }) => Promise<boolean> }) {
   const [titulo, setTitulo] = useState('')
   const [fecha, setFecha] = useState(() => localDateKey(new Date(Date.now() + 86400000)))
   const [horaIni, setHoraIni] = useState('19:00')
   const [duracion, setDuracion] = useState(60)
   const [aforo, setAforo] = useState(10)
   const [notas, setNotas] = useState('')
+  const [enlace, setEnlace] = useState<string | null>(null) // null = presencial
   const [guardando, setGuardando] = useState(false)
   const crear = async () => {
     const ini = new Date(`${fecha}T${horaIni}:00`)
     if (!titulo.trim() || isNaN(ini.getTime())) return
     if (ini.getTime() <= Date.now()) { toast('Elige una fecha y hora futuras', 'warn'); return }
+    if (enlace !== null && !limpiarEnlace(enlace)) { toast('Pega el enlace completo de la videollamada', 'warn'); return }
     setGuardando(true)
-    const ok = await onCrear({ titulo: titulo.trim(), start_at: ini.toISOString(), end_at: new Date(ini.getTime() + duracion * 60000).toISOString(), aforo, notas: notas.trim() })
+    const ok = await onCrear({ titulo: titulo.trim(), start_at: ini.toISOString(), end_at: new Date(ini.getTime() + duracion * 60000).toISOString(), aforo, notas: notas.trim(), enlace: enlace === null ? null : limpiarEnlace(enlace) })
     setGuardando(false)
-    if (ok) { setTitulo(''); setNotas('') }
+    if (ok) { setTitulo(''); setNotas(''); setEnlace(null) }
   }
   const campo = 'w-full text-sm bg-card border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-accent/20'
   return (
@@ -43,6 +47,7 @@ function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: stri
         <label className="text-xs text-muted">Plazas<input type="number" min={1} max={200} value={aforo} onChange={e => setAforo(Math.min(200, Math.max(1, Number(e.target.value) || 1)))} className={campo + ' mt-1'} /></label>
       </div>
       <input value={notas} onChange={e => setNotas(e.target.value)} maxLength={500} placeholder="Notas: sala, qué traer… (opcional)" aria-label="Notas de la clase" className={campo} />
+      <CampoEnlaceOnline value={enlace} onChange={setEnlace} />
       <div className="flex justify-end">
         <button onClick={crear} disabled={guardando || !titulo.trim()} className="px-4 py-2 bg-ink text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50">
           {guardando ? 'Creando…' : 'Crear clase'}
@@ -69,6 +74,7 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
           <p className="text-sm font-bold">{clase.titulo}</p>
           <p className="text-xs text-muted capitalize">{dia(clase.start_at)} · {hora(clase.start_at)}–{hora(clase.end_at)}</p>
           {clase.notas && <p className="text-xs text-muted mt-0.5">{clase.notas}</p>}
+          {clase.enlace && <a href={clase.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-1"><EtiquetaOnline enlace={clase.enlace} /></a>}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0" role="group" aria-label={`Plazas de ${clase.titulo}`}>
           <button onClick={() => run(cambiarAforo(trainerId, clase.id, clase.aforo - 1), 'Plazas actualizadas')} disabled={clase.aforo <= Math.max(1, n.ocupadas)}
