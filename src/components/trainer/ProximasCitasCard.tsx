@@ -4,14 +4,14 @@ import type { ClientData } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { logError } from '../../lib/errors'
 import { citasProximas, type CitaLite, type CitaProxima } from '../../lib/citasProximas'
-import { DEMO_TRAINER_ID, DEMO_CITAS } from '../../lib/demo-data'
+import { DEMO_TRAINER_ID } from '../../lib/demoIds'
 
 // Hoy del entrenador: las citas que quedan hoy y las de mañana, con la hora y el cliente. Un toque abre la agenda.
 export function ProximasCitasCard({ trainerId, clients, onVerAgenda }: { trainerId: string; clients: ClientData[]; onVerAgenda: () => void }) {
   const [citas, setCitas] = useState<CitaProxima[] | null>(null)
 
   useEffect(() => {
-    if (trainerId === DEMO_TRAINER_ID) { setCitas(citasProximas(DEMO_CITAS as CitaLite[])); return }
+    if (trainerId === DEMO_TRAINER_ID) { import('../../lib/demo-data').then(m => setCitas(citasProximas(m.DEMO_CITAS as CitaLite[]))); return }
     const desde = new Date(); desde.setHours(0, 0, 0, 0)
     const hasta = new Date(desde); hasta.setDate(hasta.getDate() + 2)
     supabase.from('citas').select('id, client_id, title, start_at, end_at, status').eq('trainer_id', trainerId)
