@@ -12,6 +12,7 @@ import { ExercisePicker } from './ExercisePicker'
 import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLogs, RunSpec } from '../../types'
 import { RunEditor } from './training-plan-editor/RunEditor'
 import { PlanBEditor } from './training-plan-editor/PlanBEditor'
+import { BackoffEditor } from './training-plan-editor/BackoffEditor'
 import { conPlanB } from '../../lib/sustitucionPlan'
 import { runDefaultName, runLabel } from '../../lib/run'
 import { TRAINING_TYPES } from '../../lib/constants'
@@ -720,6 +721,9 @@ export function TrainingPlanEditor({
                                           <span>⚖️</span>
                                           {ex.pesoPorLado ? '✓ Peso por lado (el volumen cuenta doble)' : 'Peso por lado (mancuernas, unilateral)'}
                                         </button>
+                                      )}
+                                      {ex.kind !== 'run' && (
+                                        <BackoffEditor exercise={ex} onChange={patch => updateExercise(activeWeek, di, ri, patch)} />
                                       )}
                                       {ex.kind !== 'run' && (
                                         <PlanBEditor exercise={ex} library={library} libraryMap={libraryMap}

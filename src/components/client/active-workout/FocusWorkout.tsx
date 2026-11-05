@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react'
+import { resumenSeries } from '../../../lib/backoff'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame, Moon, Sun } from 'lucide-react'
 import { Exercise } from '../../../types'
 import { parseSet } from './utils'
@@ -240,7 +241,7 @@ export function FocusWorkout(p: Props) {
             {sub && <p className="flex items-center justify-center gap-1.5 font-serif font-bold text-2xl text-warn"><Repeat className="w-5 h-5" /> {sub}</p>}
             <p className="text-xs text-muted mt-1">
               {ex.isMain && <span className="font-bold text-accent uppercase tracking-wider mr-2">Principal</span>}
-              {ex.sets}{ex.weight ? ` · ${ex.weight}` : ''}
+              {resumenSeries(ex)}{ex.weight ? ` · ${ex.weight}` : ''}
             </p>
           </div>
           <button onClick={() => goEx(1)} disabled={p.ri === p.exercises.length - 1} className="sr-only">Ejercicio siguiente</button>
@@ -259,6 +260,11 @@ export function FocusWorkout(p: Props) {
           <>
             {exDone(p.ri) && <p role="status" className="text-center text-sm font-semibold text-ok mt-5">Ejercicio completado{p.ri < p.exercises.length - 1 ? ' · desliza para el siguiente' : ''}</p>}
             <p className={`text-center font-serif font-bold text-3xl text-accent ${exDone(p.ri) ? 'mt-1' : 'mt-6'}`}>Serie {p.si + 1} de {total}</p>
+            {ex.backoff && total > 1 && (
+              <p className="text-center text-xs font-bold uppercase tracking-wider text-muted mt-1" data-testid="tipo-backoff">
+                {p.si === 0 ? 'Top set' : `Bajada · ${ex.backoff.pct} % del top set`}
+              </p>
+            )}
             {/* Una barra con un tramo por serie: hecha / actual / pendiente */}
             <div className="flex gap-1.5 mx-8 mt-2.5" aria-hidden="true">
               {Array.from({ length: total }, (_, i) => (
