@@ -128,3 +128,14 @@ describe('fechas de posponer', () => {
     expect(isSnoozed(undefined, '2026-10-27')).toBe(false)
   })
 })
+
+describe('alertas por umbral en la cola', () => {
+  it('varias del mismo cliente se leen todas en su fila, no como "+N más"', () => {
+    const q = buildQueue([
+      item({ key: 'u1', clientId: 'a', kind: 'umbral', tier: 'hoy', score: 52, detail: '💤 10 días sin entrenar' }),
+      item({ key: 'u2', clientId: 'a', kind: 'umbral', tier: 'hoy', score: 52, detail: '⚖️ Peso +2,5 kg en 5 días' }),
+    ], sinNada)
+    expect(q.pending[0].reasons).toHaveLength(1)
+    expect(q.pending[0].reasons[0].detail).toBe('💤 10 días sin entrenar · ⚖️ Peso +2,5 kg en 5 días')
+  })
+})
