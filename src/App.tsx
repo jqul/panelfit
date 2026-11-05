@@ -22,6 +22,7 @@ const LandingAlternativaMyPTHub     = lazy(() => import('./components/LandingAlt
 const LandingAlternativaTrueCoach   = lazy(() => import('./components/LandingAlternativaTrueCoach').then(m => ({ default: m.LandingAlternativaTrueCoach })))
 const LandingAlternativaPTDistinction = lazy(() => import('./components/LandingAlternativaPTDistinction').then(m => ({ default: m.LandingAlternativaPTDistinction })))
 const CalculadoraRM                 = lazy(() => import('./components/CalculadoraRM').then(m => ({ default: m.CalculadoraRM })))
+const ConversorRPE                  = lazy(() => import('./components/ConversorRPE').then(m => ({ default: m.ConversorRPE })))
 const BlogIndex                    = lazy(() => import('./components/BlogIndex').then(m => ({ default: m.BlogIndex })))
 const BlogOrganizarClientes        = lazy(() => import('./components/BlogOrganizarClientes').then(m => ({ default: m.BlogOrganizarClientes })))
 const BlogMejorSoftware            = lazy(() => import('./components/BlogMejorSoftware').then(m => ({ default: m.BlogMejorSoftware })))
@@ -124,6 +125,14 @@ export default function App() {
         <CalculadoraRM
           onDemo={() => goDemo('calculadora_rm')}
           onRegister={() => { track('register_intent', { source: 'calculadora_rm' }); window.history.pushState({}, '', '/'); setView('auth') }}
+          onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
+        />
+      )}
+
+      {view === 'calculadora-rpe' && (
+        <ConversorRPE
+          onDemo={() => goDemo('conversor_rpe')}
+          onRegister={() => { track('register_intent', { source: 'conversor_rpe' }); window.history.pushState({}, '', '/'); setView('auth') }}
           onLogin={() => { window.history.pushState({}, '', '/'); setView('auth') }}
         />
       )}
