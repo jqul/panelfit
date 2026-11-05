@@ -1,9 +1,12 @@
-// Recordatorio de cita una hora antes ("Tu cita es a las 18:00"). Solo lo dispara la tarea programada de la base de
-// datos (lanzar_recordatorio_citas), con el secreto 'recordatorio_cita' de internal_webhook_secrets. Usa los mismos
-// secrets VAPID que send-push.
+// Recordatorios y avisos de la agenda. Solo lo dispara la base de datos (lanzar_recordatorio_citas: la tarea de cada
+// 15 minutos y, al momento, el trigger de las plazas de clase), con el secreto 'recordatorio_cita' de
+// internal_webhook_secrets. Usa los mismos secrets VAPID que send-push. Manda tres avisos al cliente:
+//   - cita confirmada una hora antes: "Tu cita es a las 18:00";
+//   - clase de grupo con plaza una hora antes: "Tu clase es a las 18:00";
+//   - plaza conseguida al salir de la lista de espera: "Ya tienes plaza en «Funcional»".
 //
-// Cada cita se reclama antes de avisar (recordada_at con una condición, que es atómico): aunque la tarea se lance dos
-// veces, el cliente recibe un único aviso. Los clientes archivados no reciben nada.
+// Cada aviso se reclama antes de mandarlo (una actualización con condición, que es atómica): aunque la función se lance
+// dos veces, el cliente recibe uno solo. Los clientes archivados no reciben nada.
 import webpush from "npm:web-push@3.6.7"
 import { createClient } from "npm:@supabase/supabase-js@2"
 
@@ -29,6 +32,26 @@ function igual(a: string, b: string): boolean {
 
 /** "18:00" en hora de Madrid. */
 const horaMadrid = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso))
+/** "jue 12 nov, 18:00" en hora de Madrid. */
+const diaHoraMadrid = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(iso))
+
+/** Push a todos los dispositivos del cliente (si no está archivado). true si llegó a alguno. */
+async function avisar(clientId: string, title: string, body: string): Promise<boolean> {
+  const { data: cliente } = await supabase.from("clientes").select("archived_at").eq("id", clientId).maybeSingle()
+  if (!cliente || cliente.archived_at) return false
+  const { data: subs } = await supabase.from("push_subscriptions").select("*").eq("client_id", clientId)
+  const payload = JSON.stringify({ title, body: body.slice(0, 100), url: "/" })
+  const results = await Promise.allSettled((subs || []).map(sub =>
+    webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+      .catch(async (err: any) => {
+        if (err?.statusCode === 404 || err?.statusCode === 410) await supabase.from("push_subscriptions").delete().eq("id", sub.id)
+        throw err
+      })))
+  return results.some(r => r.status === "fulfilled")
+}
+
+type ClaseEmb = { titulo: string; start_at: string; cancelada: boolean }
+const claseDe = (fila: { clases: ClaseEmb | ClaseEmb[] | null }) => (Array.isArray(fila.clases) ? fila.clases[0] : fila.clases)
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 })
@@ -45,37 +68,59 @@ Deno.serve(async (req: Request) => {
 
   try {
     const ahora = Date.now()
+    const desde = new Date(ahora + 30 * 60_000).toISOString()
+    const hasta = new Date(ahora + 75 * 60_000).toISOString()
+    let citasAvisadas = 0, clasesAvisadas = 0, plazasAvisadas = 0
+
+    // ── Citas: una hora antes ──
     const { data: citas, error } = await supabase.from("citas")
       .select("id, client_id, title, start_at")
       .eq("status", "confirmada").is("recordada_at", null).not("client_id", "is", null)
-      .gte("start_at", new Date(ahora + 30 * 60_000).toISOString())
-      .lte("start_at", new Date(ahora + 75 * 60_000).toISOString())
+      .gte("start_at", desde).lte("start_at", hasta)
     if (error) throw error
-
-    let enviados = 0
     for (const cita of citas || []) {
       // Reclamar: solo una ejecución consigue marcarla
       const { data: reclamada } = await supabase.from("citas").update({ recordada_at: new Date().toISOString() })
         .eq("id", cita.id).is("recordada_at", null).select("id")
       if (!reclamada?.length) continue
-
-      const { data: cliente } = await supabase.from("clientes").select("archived_at").eq("id", cita.client_id).maybeSingle()
-      if (!cliente || cliente.archived_at) continue
-      const { data: subs } = await supabase.from("push_subscriptions").select("*").eq("client_id", cita.client_id)
-      const payload = JSON.stringify({
-        title: `Tu cita es a las ${horaMadrid(cita.start_at)}`,
-        body: String(cita.title || "Sesión con tu entrenador").slice(0, 100),
-        url: "/",
-      })
-      const results = await Promise.allSettled((subs || []).map(sub =>
-        webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
-          .catch(async (err: any) => {
-            if (err?.statusCode === 404 || err?.statusCode === 410) await supabase.from("push_subscriptions").delete().eq("id", sub.id)
-            throw err
-          })))
-      if (results.some(r => r.status === "fulfilled")) enviados++
+      if (await avisar(cita.client_id, `Tu cita es a las ${horaMadrid(cita.start_at)}`, String(cita.title || "Sesión con tu entrenador"))) citasAvisadas++
     }
-    return Response.json({ enviados, candidatas: citas?.length || 0 })
+
+    // ── Clases de grupo: una hora antes, a quien tiene plaza ──
+    const { data: porRecordar, error: errClases } = await supabase.from("clase_plazas")
+      .select("clase_id, client_id, clases!inner(titulo, start_at, cancelada)")
+      .eq("estado", "reservada").is("recordada_at", null)
+      .eq("clases.cancelada", false).gte("clases.start_at", desde).lte("clases.start_at", hasta)
+    if (errClases) throw errClases
+    for (const p of porRecordar || []) {
+      const k = claseDe(p as any)
+      if (!k) continue
+      const { data: reclamada } = await supabase.from("clase_plazas").update({ recordada_at: new Date().toISOString() })
+        .eq("clase_id", p.clase_id).eq("client_id", p.client_id).eq("estado", "reservada").is("recordada_at", null).select("clase_id")
+      if (!reclamada?.length) continue
+      if (await avisar(p.client_id, `Tu clase es a las ${horaMadrid(k.start_at)}`, k.titulo)) clasesAvisadas++
+    }
+
+    // ── Plaza conseguida al salir de la lista de espera ──
+    const { data: plazas, error: errPlazas } = await supabase.from("clase_plazas")
+      .select("clase_id, client_id, clases!inner(titulo, start_at, cancelada)")
+      .eq("aviso_plaza_pendiente", true).eq("estado", "reservada")
+    if (errPlazas) throw errPlazas
+    for (const p of plazas || []) {
+      const { data: reclamada } = await supabase.from("clase_plazas").update({ aviso_plaza_pendiente: false })
+        .eq("clase_id", p.clase_id).eq("client_id", p.client_id).eq("aviso_plaza_pendiente", true).select("clase_id")
+      if (!reclamada?.length) continue
+      const k = claseDe(p as any)
+      // Una clase ya empezada o cancelada no se avisa (el aviso queda consumido igualmente)
+      if (!k || k.cancelada || new Date(k.start_at).getTime() <= ahora) continue
+      if (await avisar(p.client_id, `Ya tienes plaza en «${k.titulo}»`, `Se ha liberado una plaza: ${diaHoraMadrid(k.start_at)}`)) plazasAvisadas++
+    }
+
+    return Response.json({
+      enviados: citasAvisadas + clasesAvisadas + plazasAvisadas,
+      citas: citasAvisadas, clases: clasesAvisadas, plazas: plazasAvisadas,
+      candidatas: (citas?.length || 0) + (porRecordar?.length || 0) + (plazas?.length || 0),
+    })
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   }
