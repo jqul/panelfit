@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { algunaBaja } from '../lib/checkinConfig'
 import { supabase } from '../lib/supabase'
-import { DEMO_TRAINER_ID, DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
+import { DEMO_TRAINER_ID } from '../lib/demoIds'
 import { avisosDeEjercicios, ETIQUETA_MOTIVO } from '../lib/sustitucionPlan'
 import type { TrainingPlan } from '../types'
 import { PainEntry } from '../lib/clientPain'
 import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
-import { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP } from '../lib/demo-data-extra'
 import { buildQueue, isSnoozed, type QueueItem, type QueueKind, type QueueTier } from '../lib/dailyQueue'
 import { evaluarRegla, limpiarReglas, type ReglaUmbral } from '../lib/alertasUmbral'
 
@@ -83,6 +82,8 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
     const clientIds = clients.map(c => c.id)
     if (clientIds.length === 0) { setLoading(false); return }
     if (trainerId === DEMO_TRAINER_ID) {
+      // Los datos de la demo se descargan solo en la demo
+      Promise.all([import('../lib/demo-data'), import('../lib/demo-data-extra')]).then(([{ DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP }, { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP }]) => {
       setReadiness(DEMO_READINESS_FLAT)
       setDolor(DEMO_DOLOR_FLAT)
       setVideos(Object.values(DEMO_VIDEO_FEEDBACK_MAP).flat() as VideoRow[])
@@ -91,6 +92,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       Object.entries(DEMO_WEEKLY_REVIEWS_MAP).forEach(([id, rows]) => { if (rows[0]) latest[id] = rows[0].week_start })
       setLastReviews(latest)
       setLoading(false)
+      })
       return
     }
     const since = new Date(); since.setDate(since.getDate() - DAYS_BACK)
@@ -137,7 +139,7 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
     if (!idsConAvisoDeEjercicio) { setPlanes({}); return }
     const ids = idsConAvisoDeEjercicio.split(',')
     if (trainerId === DEMO_TRAINER_ID) {
-      setPlanes(Object.fromEntries(ids.filter(id => DEMO_PLAN_MAP[id]).map(id => [id, DEMO_PLAN_MAP[id] as unknown as TrainingPlan])))
+      import('../lib/demo-data').then(({ DEMO_PLAN_MAP }) => setPlanes(Object.fromEntries(ids.filter(id => DEMO_PLAN_MAP[id]).map(id => [id, DEMO_PLAN_MAP[id] as unknown as TrainingPlan]))))
       return
     }
     let vivo = true

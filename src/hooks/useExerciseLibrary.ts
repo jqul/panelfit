@@ -4,7 +4,6 @@ import { LibraryExercise, LibraryVideo } from '../types'
 import { Especialidad } from '../lib/especialidades'
 import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExerciseLibrary'
 import { DEMO_TRAINER_ID } from '../lib/demoIds'
-import { buildDemoLibraryEnrichment } from '../lib/demo-data-extra'
 import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
 import { fetchAllPages } from '../lib/fetchAllPages'
 
@@ -128,10 +127,14 @@ export function useExerciseLibrary(trainerId: string) {
     // Modo demo: biblioteca de serie directamente en memoria, sin tocar
     // Supabase (el trainer_id falso no es un UUID real).
     if (trainerId === DEMO_TRAINER_ID) {
-      const enrich = buildDemoLibraryEnrichment()
+      // Los extras de la demo (especialidades, vídeos) se descargan solo en la demo
+      import('../lib/demo-data-extra').then(({ buildDemoLibraryEnrichment }) => {
+        const enrich = buildDemoLibraryEnrichment()
+        setExercises(prev => prev.map(ex => enrich[ex.name] ? { ...ex, especialidades: enrich[ex.name].especialidades || [], videos: enrich[ex.name].videos || [], tags: enrich[ex.name].tags || [] } : ex))
+      })
       const demo: LibraryExercise[] = DEFAULT_EXERCISE_LIBRARY.map((e, i) => ({
         id: `ex_demo_${i}`, trainerId, name: e.name, description: '', category: e.category,
-        especialidades: enrich[e.name]?.especialidades || [], videos: enrich[e.name]?.videos || [], tags: enrich[e.name]?.tags || [], createdAt: Date.now(),
+        especialidades: [], videos: [], tags: [], createdAt: Date.now(),
       }))
       setExercises(demo)
       setLoading(false)

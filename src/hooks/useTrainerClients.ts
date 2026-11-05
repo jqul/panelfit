@@ -5,7 +5,6 @@ import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
-import { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP, DEMO_PLAN_MAP } from '../lib/demo-data'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
 import { loadProgramTemplates } from '../lib/programTemplates'
@@ -129,6 +128,8 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
     if (demoClients) {
       setArchivedClients(demoClients.filter(c => demoArchived[c.id]).map(c => ({ ...c, archivedAt: demoArchived[c.id] })))
       const demoActive = demoClients.filter(c => !demoArchived[c.id])
+      // Los datos de la demo se descargan solo en la demo: así no pesan en el panel de un entrenador real
+      const { DEMO_SESSION_LOAD_MAP, DEMO_TEST_CATALOG, DEMO_TEST_RESULTS_MAP, DEMO_PLAN_MAP } = await import('../lib/demo-data')
       const lm = demoLogsMap || {}
       setLogsMap(lm)
       const hoy = localDateKey()

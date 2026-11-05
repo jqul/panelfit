@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, Check, CheckCheck, X, Dumbbell, AlertTriangle, Calendar, MessageCircle, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { isDemoTrainerId, buildDemoNotificaciones } from '../../lib/demo-data-extra'
+import { isDemoTrainerId } from '../../lib/demoIds'
 
 interface Notificacion {
   id: string
@@ -43,7 +43,7 @@ export function NotificacionesBell({ trainerId, onSelectClient, onVerContactos }
   const isDemo = isDemoTrainerId(trainerId)
 
   useEffect(() => {
-    if (isDemo) { setNotifs(buildDemoNotificaciones() as Notificacion[]); return }
+    if (isDemo) { import('../../lib/demo-data-extra').then(m => setNotifs(m.buildDemoNotificaciones() as Notificacion[])); return }
     loadNotifs()
     // Realtime subscription
     const channel = supabase.channel(channelName)
