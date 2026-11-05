@@ -9,11 +9,13 @@ import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
 import { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP } from '../lib/demo-data-extra'
 import { buildQueue, isSnoozed, type QueueItem, type QueueKind, type QueueTier } from '../lib/dailyQueue'
+import { evaluarRegla, limpiarReglas, type ReglaUmbral } from '../lib/alertasUmbral'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number | null; soreness: number | null; stress: number | null; motivation: number | null }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
 interface BorradorRow { clientId: string; borrador_activo: boolean; borrador_started_at: string | null }
 interface ReviewRow { clientId: string; week_start: string }
+interface PesoRow { clientId: string; date: string; weight: number | null }
 
 export type InboxKind = QueueKind
 
@@ -60,6 +62,9 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
   // Planes de los clientes que han sustituido un ejercicio o pedido ayuda con él: hace falta el plan para saber qué
   // ejercicio estaba prescrito y cuál es su plan B. Solo se piden los de esos clientes (suelen ser pocos).
   const [planes, setPlanes] = useState<Record<string, TrainingPlan>>({})
+  // Alertas por umbral del entrenador (lib/alertasUmbral) y los pesos que necesitan
+  const [reglas, setReglas] = useState<ReglaUmbral[]>([])
+  const [pesos, setPesos] = useState<PesoRow[]>([])
   const [loading, setLoading] = useState(true)
   const [reviewed, setReviewed] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(`pf_bandeja_revisados_${trainerId}`) || '[]')) } catch { return new Set() }
@@ -103,7 +108,17 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       goalClientIds.length
         ? supabase.from('weekly_reviews').select('clientId, week_start').in('clientId', goalClientIds).order('week_start', { ascending: false })
         : Promise.resolve({ data: [] as ReviewRow[] }),
-    ]).then(([readinessRes, dolorRes, videoRes, borradorRes, reviewRes]) => {
+      supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle(),
+    ]).then(async ([readinessRes, dolorRes, videoRes, borradorRes, reviewRes, perfilRes]) => {
+      const rs = limpiarReglas((perfilRes.data?.profile as { alertasUmbral?: unknown } | null)?.alertasUmbral)
+      setReglas(rs)
+      // Los pesos solo hacen falta si hay alguna regla de peso (ventana máxima: la de la regla más larga)
+      const diasPeso = Math.max(0, ...rs.filter(r => r.tipo === 'peso').map(r => r.dias))
+      if (diasPeso) {
+        const d = new Date(); d.setDate(d.getDate() - diasPeso)
+        const { data } = await supabase.from('registros_peso').select('clientId, date, weight').in('clientId', clientIds).gte('date', localDateKey(d))
+        setPesos((data || []) as PesoRow[])
+      } else setPesos([])
       setReadiness((readinessRes.data || []) as ReadinessRow[])
       setDolor((dolorRes.data || []) as ({ clientId: string } & PainEntry)[])
       setVideos((videoRes.data || []) as VideoRow[])
@@ -232,9 +247,25 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
         detail: '🎯 Toca revisión semanal del objetivo', warn: true, tier: 'hoy', score: 35 })
     })
 
+    // Alertas por umbral: una fila por cliente y regla que se cumple. Clave por día: si se marca como hecha, vuelve
+    // mañana si sigue cumpliéndose.
+    if (reglas.length) clients.forEach(c => {
+      const logs = Object.values(logsMap[c.id] || {}) as { dateDone?: string }[]
+      const ultimoEntreno = logs.reduce<string | null>((m, l) => (l?.dateDone && (!m || l.dateDone > m) ? l.dateDone : m), null)
+      const datos = {
+        pesos: pesos.filter(p => p.clientId === c.id),
+        checkins: readiness.filter(r => r.clientId === c.id),
+        ultimoEntreno, altaMs: c.createdAt,
+      }
+      reglas.forEach(r => {
+        const texto = evaluarRegla(r, datos, hoy)
+        if (texto) list.push({ key: `umbral:${c.id}:${r.id}:${hoy}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'umbral', detail: texto, warn: true, tier: 'hoy', score: 52 })
+      })
+    })
+
     // Lo urgente (warn) siempre arriba; dentro de cada bloque, lo más reciente primero.
     return list.sort((a, b) => (Number(!!b.warn) - Number(!!a.warn)) || b.date.localeCompare(a.date))
-  }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews, planes])
+  }, [clients, logsMap, readiness, dolor, videos, borradores, lastReviews, planes, reglas, pesos])
 
   const persistReviewed = (next: Set<string>) => { try { localStorage.setItem(`pf_bandeja_revisados_${trainerId}`, JSON.stringify([...next])) } catch {} }
   const persistSnoozed = (next: Record<string, string>) => { try { localStorage.setItem(`pf_bandeja_pospuestos_${trainerId}`, JSON.stringify(next)) } catch {} }

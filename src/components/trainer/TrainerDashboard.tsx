@@ -76,6 +76,7 @@ const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m
 const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ default: m.PublicPageEditor })))
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
+const AlertasUmbralEditor = lazy(() => import('./AlertasUmbralEditor').then(m => ({ default: m.AlertasUmbralEditor })))
 const CheckinEditor = lazy(() => import('./CheckinEditor').then(m => ({ default: m.CheckinEditor })))
 const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
 // La búsqueda global (Ctrl/⌘+K) solo se descarga la primera vez que se abre.
@@ -1224,6 +1225,7 @@ function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfil
       </div>
       <Suspense fallback={null}><ConsejosEditor trainerId={userProfile.uid} /></Suspense>
       <Suspense fallback={null}><CheckinEditor trainerId={userProfile.uid} /></Suspense>
+      <Suspense fallback={null}><AlertasUmbralEditor trainerId={userProfile.uid} /></Suspense>
       <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">

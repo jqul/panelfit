@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Inbox, UserPlus, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle } from 'lucide-react'
+import { Inbox, UserPlus, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle, Bell } from 'lucide-react'
 import { ClientData } from '../../types'
 import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
 import { ClientWithStats } from '../../hooks/useTrainerClients'
@@ -22,6 +22,7 @@ const KIND_STYLE: Record<InboxKind, { bg: string; fg: string; icon: (props: { cl
   revision:  { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Target {...p} /> },
   sustitucion: { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <Repeat {...p} /> },
   duda:      { bg: 'bg-accent/10', fg: 'text-accent', icon: p => <HelpCircle {...p} /> },
+  umbral:    { bg: 'bg-warn/10',   fg: 'text-warn',   icon: p => <Bell {...p} /> },
   sesion:    { bg: 'bg-ok/10',     fg: 'text-ok',     icon: () => <></> },
 }
 
