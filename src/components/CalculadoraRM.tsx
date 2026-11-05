@@ -302,6 +302,10 @@ export function CalculadoraRM({ onDemo, onRegister, onLogin }: Props) {
 
         <div className="mt-12 space-y-3">
           <h3 className="text-lg font-semibold mb-4">También puede interesarte</h3>
+          <a href="/calculadora-rpe-rir" className="block p-4 border border-border rounded-xl hover:bg-surface transition-colors">
+            <p className="font-medium">Conversor RPE, RIR y %1RM</p>
+            <p className="text-sm text-text-secondary mt-1">A qué % de tu 1RM equivale cada serie según el esfuerzo, con tabla de RPE</p>
+          </a>
           <a href="/blog/mejor-software-entrenador-personal" className="block p-4 border border-border rounded-xl hover:bg-surface transition-colors">
             <p className="font-medium">Mejor software para entrenador personal en 2025</p>
             <p className="text-sm text-text-secondary mt-1">Comparativa entre las herramientas más usadas</p>
