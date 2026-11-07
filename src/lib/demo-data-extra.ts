@@ -3,6 +3,10 @@
 // ids y los clientes para que nada se desincronice.
 import { DEMO_TRAINER_ID, DEMO_CLIENTS, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './demo-data'
 import { localDateKey } from './dates'
+import type { ClaseConPlazas } from './clasesGrupo'
+import type { Documento } from './documentos'
+import type { PlanSiguiente } from './planEnlazado'
+import { DEMO_WEIGHTS_MARIA, DEMO_WEIGHTS_CARLOS, DEMO_WEIGHTS_LAURA, DEMO_WEIGHTS_DIEGO, DEMO_WEIGHTS_MARTA, DEMO_WEIGHTS_BEATRIZ, DEMO_WEIGHTS_LUCAS } from './demo-data'
 import { isDemoClientId, isDemoTrainerId, DEMO_PUBLIC_SLUG } from './demoIds'
 
 export { isDemoClientId, isDemoTrainerId, DEMO_PUBLIC_SLUG }
@@ -447,3 +451,51 @@ export function buildDemoLibraryEnrichment() {
   })
   return out
 }
+
+
+// ── Novedades (noviembre 2026): clases de grupo, documentos, siguiente plan y pesos para las alertas ──
+
+const enDias = (dias: number, hora: number, min = 0) => { const d = new Date(); d.setDate(d.getDate() + dias); d.setHours(hora, min, 0, 0); return d.toISOString() }
+const plaza = (clase_id: string, client_id: string, estado: 'reservada' | 'espera', horasAntes: number, asistio?: boolean | null) =>
+  ({ clase_id, client_id, estado, created_at: new Date(Date.now() - horasAntes * 3600_000).toISOString(), ...(asistio !== undefined ? { asistio } : {}) })
+
+/** Clases de grupo de la demo (lib/clasesGrupo): una llena con lista de espera, una online y una de ayer con la lista pasada. */
+export function demoClasesIniciales(): ClaseConPlazas[] {
+  return [
+    { id: 'demo-clase-1', trainer_id: DEMO_TRAINER_ID, titulo: 'Funcional en grupo', start_at: enDias(1, 19), end_at: enDias(1, 20), aforo: 3, notas: 'Sala 2 · trae toalla', cancelada: false,
+      plazas: [plaza('demo-clase-1', 'demo-client-001', 'reservada', 50), plaza('demo-clase-1', 'demo-client-003', 'reservada', 40), plaza('demo-clase-1', 'demo-client-006', 'reservada', 30), plaza('demo-clase-1', 'demo-client-005', 'espera', 20)] },
+    { id: 'demo-clase-2', trainer_id: DEMO_TRAINER_ID, titulo: 'Movilidad online', start_at: enDias(2, 8), end_at: enDias(2, 8, 45), aforo: 10, notas: '', cancelada: false, enlace: 'https://meet.google.com/abc-defg-hij',
+      plazas: [plaza('demo-clase-2', 'demo-client-005', 'reservada', 60), plaza('demo-clase-2', 'demo-client-001', 'reservada', 30)] },
+    { id: 'demo-clase-3', trainer_id: DEMO_TRAINER_ID, titulo: 'HIIT', start_at: enDias(-1, 18), end_at: enDias(-1, 19), aforo: 6, notas: '', cancelada: false,
+      plazas: [plaza('demo-clase-3', 'demo-client-003', 'reservada', 72, true), plaza('demo-clase-3', 'demo-client-004', 'reservada', 70, true), plaza('demo-clase-3', 'demo-client-006', 'reservada', 60, false)] },
+  ]
+}
+
+/** Documentos de la demo (lib/documentos). Se abren con un archivo de ejemplo de la propia web. */
+export function demoDocumentosIniciales(): Documento[] {
+  const doc = (id: string, titulo: string, descripcion: string, visibilidad: Documento['visibilidad'], etiquetas: string[], diasAtras: number): Documento => ({
+    id, trainer_id: DEMO_TRAINER_ID, titulo, descripcion, ruta: `${DEMO_TRAINER_ID}/${id}.svg`, nombre: `${titulo}.svg`, tipo: 'image/svg+xml', tamano: 4096,
+    visibilidad, etiquetas, created_at: new Date(Date.now() - diasAtras * 86400000).toISOString(),
+  })
+  return [
+    doc('demo-doc-1', 'Normas del centro', 'Horarios, reservas y uso del material', 'todos', [], 30),
+    doc('demo-doc-2', 'Guía de técnica: sentadilla, banca y peso muerto', 'Puntos clave y errores comunes', 'etiquetas', ['demo-lbl-powerlifting'], 12),
+    doc('demo-doc-3', 'Plan de vuelta tras la lesión (borrador)', '', 'oculto', [], 2),
+  ]
+}
+/** Archivo que abre cada documento de la demo. */
+export const DEMO_DOCUMENTO_URL = '/og-image.svg'
+
+/** Lo que ya tienen preparado para cuando termine su plan (lib/planEnlazado). */
+export function demoSiguienteInicial(clientId: string): PlanSiguiente | null {
+  if (clientId !== 'demo-client-002') return null
+  const semanas = DEMO_PLAN_MAP['demo-client-002']?.weeks?.slice(0, 2) ?? []
+  if (!semanas.length) return null
+  return { nombre: 'Bloque post-competición', type: 'fuerza', weeks: JSON.parse(JSON.stringify(semanas)) }
+}
+
+/** Pesos de la demo por cliente (para las alertas por umbral de la Bandeja). */
+export const DEMO_PESOS_FLAT: { clientId: string; date: string; weight: number }[] = Object.entries({
+  'demo-client-001': DEMO_WEIGHTS_MARIA, 'demo-client-002': DEMO_WEIGHTS_CARLOS, 'demo-client-003': DEMO_WEIGHTS_LAURA,
+  'demo-client-004': DEMO_WEIGHTS_DIEGO, 'demo-client-005': DEMO_WEIGHTS_MARTA, 'demo-client-006': DEMO_WEIGHTS_BEATRIZ, 'demo-client-007': DEMO_WEIGHTS_LUCAS,
+}).flatMap(([clientId, filas]) => (filas as { date: string; weight: number }[]).map(f => ({ clientId, date: f.date, weight: f.weight })))

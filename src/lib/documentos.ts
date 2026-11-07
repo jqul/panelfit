@@ -58,12 +58,18 @@ export function quienLoVe(d: Pick<Documento, 'visibilidad' | 'etiquetas'>, etiqu
 // En la demo no hay bucket ni filas: los documentos viven en memoria mientras dura la visita.
 const DEMO: Documento[] = []
 const DEMO_URLS: Record<string, string> = {}
+// Una sola siembra aunque se pida dos veces a la vez (todos esperan a la misma)
+let semilla: Promise<void> | null = null
+const sembrarDemo = () => (semilla ??= (async () => {
+  const { demoDocumentosIniciales, DEMO_DOCUMENTO_URL } = await import('./demo-data-extra')
+  for (const d of demoDocumentosIniciales()) { DEMO.push(d); DEMO_URLS[d.ruta] = DEMO_DOCUMENTO_URL }
+})())
 // logError es para errores de PostgREST; los de Storage traen solo el mensaje.
 const logStorage = (ctx: string, e: { message: string } | null) => { if (e) console.error(`[${ctx}]`, e.message) }
 const esDemo = (trainerId: string) => trainerId === DEMO_TRAINER_ID
 
 export async function listarDocumentos(trainerId: string): Promise<Documento[] | null> {
-  if (esDemo(trainerId)) return [...DEMO]
+  if (esDemo(trainerId)) { await sembrarDemo(); return [...DEMO] }
   const { data, error } = await supabase.from('documentos').select('*').eq('trainer_id', trainerId).order('created_at', { ascending: false })
   if (error) { logError('documentos:listar', error); return null }
   return (data || []) as Documento[]

@@ -294,6 +294,17 @@ export const DEMO_TRAINER_PROFILE = {
     { id: 'demo-c2', titulo: 'Los días de descanso', texto: 'Un día sin entrenar no es un día perdido: es cuando el cuerpo asimila el trabajo. Camina un rato, estira suave y come bien.' },
     { id: 'demo-c3', titulo: 'Si un día no puedes entrenar', texto: 'Haz lo principal de la sesión y avísame. Mejor una sesión corta que ninguna.' },
   ],
+  // Check-in configurable (lib/checkinConfig): sin estrés y con una pregunta propia
+  checkin: {
+    escalas: ['motivation', 'sleep', 'soreness'],
+    extra: [{ id: 'x1', label: 'Hidratación', emoji: '💧', bajo: 'Poca agua', alto: 'Bien hidratado' }],
+  },
+  // Alertas por umbral (lib/alertasUmbral): salen en la Bandeja
+  alertasUmbral: [
+    { id: 'r1', tipo: 'peso', kg: 1.5, dias: 14 },
+    { id: 'r2', tipo: 'checkin', escala: 'motivation', max: 2, dias: 2 },
+    { id: 'r3', tipo: 'inactivo', dias: 6 },
+  ],
 }
 
 // ── PLAN MARÍA (Hipertrofia 4 días) ───────────────────
@@ -430,11 +441,23 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
   type: 'fuerza',
   restMain: 240, restAcc: 120, restWarn: 45,
   message: 'La fuerza se construye con paciencia y progresión. ¡A por los récords! 🏋️',
-  fechaInicio: new Date(Date.now() - 42 * 86400000).toISOString().split('T')[0],
+  fechaInicio: new Date(Date.now() - 35 * 86400000).toISOString().split('T')[0],
   autoCheckin: true,
   diasSemana: 3,
   diasElegidos: [0, 2, 4],
   coachNotes: 'Carlos está en fase pico. No tocar técnica ahora — solo progresión de carga. Competición en 3 semanas.',
+  // Marcas de referencia para programar por % (lib/marcaRM)
+  marcas: {
+    'sentadilla barra alta': { kg: 185, fecha: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0] },
+    'press banca': { kg: 122.5, fecha: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0] },
+    'peso muerto convencional': { kg: 210, fecha: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0] },
+  },
+  // Competición que prepara (lib/competicion)
+  competicion: {
+    fecha: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0], nombre: 'Campeonato autonómico', sexo: 'h', pesoCorporal: 85,
+    ejercicios: { sentadilla: 'Sentadilla barra alta', banca: 'Press banca', muerto: 'Peso muerto convencional' },
+    intentos: { sentadilla: [167.5, 177.5, 187.5], banca: [112.5, 117.5, 122.5], muerto: [192.5, 202.5, 212.5] },
+  },
   macros: { kcal: 3200, protein: 200, carbs: 380, fats: 90, notaMacros: 'Surplus calórico moderado. Come bien antes y después de entrenar.' },
   weeks: expandToWeeks({
       label: 'Semana 6 — Pico',
@@ -443,7 +466,7 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
         {
           title: 'DÍA 1 — Sentadilla', focus: 'Fuerza máxima tren inferior',
           exercises: [
-            { name: 'Sentadilla barra alta', sets: '5×3', weight: '120kg', isMain: true, comment: 'RPE 8-9. Si va bien, añade 2.5kg', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 300, restAfter: 240 },
+            { name: 'Sentadilla barra alta', sets: '4×3', weight: '160kg', isMain: true, backoff: { pct: 88, reps: '4' }, comment: 'Top set a RPE 8-9 y 3 bajadas al 88 % de lo que muevas', videoUrl: 'https://www.youtube.com/watch?v=ultWZbUMPL8', restSets: 300, restAfter: 240 },
             { name: 'Sentadilla pausa', sets: '3×3', weight: '95kg', isMain: false, comment: '3 segundos abajo', videoUrl: '', restSets: 180, restAfter: 120 },
             { name: 'Prensa 45°', sets: '3×8', weight: '180kg', isMain: false, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
             { name: 'Extensión cuádriceps', sets: '3×12', weight: '60kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
@@ -461,7 +484,7 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
         {
           title: 'DÍA 3 — Peso muerto', focus: 'Fuerza máxima cadena posterior',
           exercises: [
-            { name: 'Peso muerto convencional', sets: '4×3', weight: '165kg', isMain: true, comment: 'RPE 8-9. Espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q', restSets: 300, restAfter: 240 },
+            { name: 'Peso muerto convencional', sets: '4×3', weight: '80%', isMain: true, comment: 'RPE 8-9. Espalda neutra en todo momento', videoUrl: 'https://www.youtube.com/watch?v=op9kVnSso6Q', restSets: 300, restAfter: 240 },
             { name: 'Peso muerto rumano', sets: '3×6', weight: '125kg', isMain: false, comment: '', videoUrl: '', restSets: 180, restAfter: 120 },
             { name: 'Remo barra', sets: '4×6', weight: '92.5kg', isMain: false, comment: '', videoUrl: '', restSets: 120, restAfter: 90 },
             { name: 'Jalón al pecho', sets: '3×10', weight: '72.5kg', isMain: false, comment: '', videoUrl: '', restSets: 90, restAfter: 60 },
@@ -645,6 +668,8 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
             { name: 'Elevación de piernas tumbado', sets: '3×12', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
             { name: 'Pallof press', sets: '3×12', weight: 'Banda ligera', isMain: false, comment: '', videoUrl: '', restSets: 60, restAfter: 60 },
             { name: 'Estiramientos guiados', sets: '1×10min', weight: '-', isMain: false, comment: '', videoUrl: '', restSets: 0, restAfter: 0 },
+            { name: 'Movilidad de rodilla y cadera', sets: '1x1', weight: '', isMain: false, kind: 'libre', hideRest: true, videoUrl: 'https://www.youtube.com/watch?v=g_tea8ZNk5A',
+              comment: '10 minutos sin prisa, sin llegar a notar dolor.\n\n2 rondas: 10 balanceos de pierna adelante-atrás, 10 círculos de cadera por lado y 8 flexiones de rodilla tumbada boca abajo.' },
           ]
         },
       ]
@@ -1406,5 +1431,8 @@ export const DEMO_CITAS = [
   { id: 'demo-cita-5', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-003', title: 'Sesión — Laura', ...citaAt(-1, 19), status: 'completada' as const, notes: '', recurring: null, recurring_until: null },
   { id: 'demo-cita-6', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-006', title: 'Sesión — Beatriz', ...citaAt(-2, 11), status: 'completada' as const, notes: 'Primera sesión con sentadilla goblet', recurring: null, recurring_until: null },
   { id: 'demo-cita-7', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-004', title: 'Sesión — Diego', ...citaAt(4, 18), status: 'pendiente' as const, notes: '', recurring: null, recurring_until: null },
+  { id: 'demo-cita-9', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-004', title: 'Revisión online — Diego', ...citaAt(1, 20), status: 'confirmada' as const, notes: 'Revisar vídeos de la semana', recurring: null, recurring_until: null, enlace: 'https://meet.google.com/abc-defg-hij' },
+  { id: 'demo-cita-10', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', title: 'Sesión — María', ...citaAt(-3, 9), status: 'completada' as const, notes: '', recurring: null, recurring_until: null },
+  { id: 'demo-cita-11', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-006', title: 'Sesión — Beatriz', ...citaAt(-5, 11), status: 'ausente' as const, notes: 'No vino y no avisó', recurring: null, recurring_until: null },
   { id: 'demo-cita-8', trainer_id: DEMO_TRAINER_ID, client_id: null, title: 'Bloqueado — formación', ...citaAt(5, 16), status: 'confirmada' as const, notes: 'No disponible', recurring: null, recurring_until: null },
 ]
