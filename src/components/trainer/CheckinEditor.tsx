@@ -20,7 +20,7 @@ export function CheckinEditor({ trainerId }: { trainerId: string }) {
 
   useEffect(() => {
     let vigente = true
-    if (demo) { setConfig(limpiarConfigCheckin(null)); return }
+    if (demo) { import('../../lib/demo-data').then(m => { if (vigente) setConfig(limpiarConfigCheckin(m.DEMO_TRAINER_PROFILE.checkin)) }); return () => { vigente = false } }
     supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle().then(({ data }) => {
       if (vigente) setConfig(limpiarConfigCheckin((data?.profile as { checkin?: unknown } | null)?.checkin))
     })

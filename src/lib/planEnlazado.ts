@@ -29,7 +29,11 @@ export function empiezaSiguiente(plan: Pick<TrainingPlan, 'fechaInicio' | 'weeks
 const DEMO_SIGUIENTE: Record<string, PlanSiguiente | null> = {}
 
 export async function leerSiguiente(clientId: string, trainerId: string): Promise<PlanSiguiente | null> {
-  if (trainerId === DEMO_TRAINER_ID) return DEMO_SIGUIENTE[clientId] ?? null
+  if (trainerId === DEMO_TRAINER_ID) {
+    // Carlos ya tiene preparado su bloque de después de la competición (demo-data-extra)
+    if (!(clientId in DEMO_SIGUIENTE)) DEMO_SIGUIENTE[clientId] = (await import('./demo-data-extra')).demoSiguienteInicial(clientId)
+    return DEMO_SIGUIENTE[clientId] ?? null
+  }
   const { data, error } = await supabase.from('planes').select('siguiente').eq('clientId', clientId).maybeSingle()
   if (error) { logError('planEnlazado:leer', error); return null }
   return ((data as { siguiente?: PlanSiguiente | null } | null)?.siguiente) ?? null

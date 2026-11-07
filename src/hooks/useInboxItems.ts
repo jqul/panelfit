@@ -83,7 +83,9 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
     if (clientIds.length === 0) { setLoading(false); return }
     if (trainerId === DEMO_TRAINER_ID) {
       // Los datos de la demo se descargan solo en la demo
-      Promise.all([import('../lib/demo-data'), import('../lib/demo-data-extra')]).then(([{ DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP }, { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP }]) => {
+      Promise.all([import('../lib/demo-data'), import('../lib/demo-data-extra')]).then(([{ DEMO_READINESS_FLAT, DEMO_DOLOR_FLAT, DEMO_VIDEO_FEEDBACK_MAP, DEMO_TRAINER_PROFILE }, { DEMO_BORRADOR_CLIENT_IDS, DEMO_WEEKLY_REVIEWS_MAP, DEMO_PESOS_FLAT }]) => {
+      setReglas(limpiarReglas(DEMO_TRAINER_PROFILE.alertasUmbral))
+      setPesos(DEMO_PESOS_FLAT)
       setReadiness(DEMO_READINESS_FLAT)
       setDolor(DEMO_DOLOR_FLAT)
       setVideos(Object.values(DEMO_VIDEO_FEEDBACK_MAP).flat() as VideoRow[])

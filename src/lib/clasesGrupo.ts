@@ -61,10 +61,17 @@ export function mensajeError(e: { message?: string; hint?: string | null } | nul
 
 // ── Entrenador ── (en la demo, en memoria)
 const DEMO: ClaseConPlazas[] = []
+// La demo arranca con sus clases de ejemplo (demo-data-extra, que solo se descarga en la demo)
+// Una sola siembra aunque se pida dos veces a la vez (todos esperan a la misma)
+let semilla: Promise<void> | null = null
+const sembrarDemo = () => (semilla ??= (async () => {
+  const { demoClasesIniciales } = await import('./demo-data-extra')
+  DEMO.push(...demoClasesIniciales())
+})())
 const esDemo = (t: string) => t === DEMO_TRAINER_ID
 
 export async function listarClases(trainerId: string, desde: Date = new Date()): Promise<ClaseConPlazas[] | null> {
-  if (esDemo(trainerId)) return DEMO.filter(c => !c.cancelada && new Date(c.end_at) >= desde).sort((a, b) => a.start_at.localeCompare(b.start_at))
+  if (esDemo(trainerId)) { await sembrarDemo(); return DEMO.filter(c => !c.cancelada && new Date(c.end_at) >= desde).sort((a, b) => a.start_at.localeCompare(b.start_at)) }
   const { data, error } = await supabase.from('clases').select('*')
     .eq('trainer_id', trainerId).eq('cancelada', false).gte('end_at', desde.toISOString()).order('start_at')
   if (error) { logError('clases:listar', error); return null }

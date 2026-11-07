@@ -18,7 +18,7 @@ export function AlertasUmbralEditor({ trainerId }: { trainerId: string }) {
 
   useEffect(() => {
     let vivo = true
-    if (demo) { setReglas([]); return }
+    if (demo) { import('../../lib/demo-data').then(m => { if (vivo) setReglas(limpiarReglas(m.DEMO_TRAINER_PROFILE.alertasUmbral)) }); return () => { vivo = false } }
     supabase.from('entrenadores').select('profile').eq('uid', trainerId).maybeSingle().then(({ data }) => {
       if (vivo) setReglas(limpiarReglas((data?.profile as { alertasUmbral?: unknown } | null)?.alertasUmbral))
     })
