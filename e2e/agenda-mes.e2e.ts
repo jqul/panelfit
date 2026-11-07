@@ -29,7 +29,7 @@ test('vista de mes: cada día con sus citas y, al pulsar uno, su semana', async 
   await expect(page.getByTestId('periodo-agenda')).toHaveText(new RegExp(nombreMes, 'i'))
   const etiqueta = `${d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: 1 cita`
   const dia = page.getByRole('gridcell', { name: etiqueta })
-  await expect(dia).toContainText(/d{2}:d{2} María/) // la hora depende de la zona horaria del navegador (en CI, Madrid frente a UTC)
+  await expect(dia).toContainText(/\d{2}:\d{2} María/) // la hora depende de la zona horaria del navegador (en CI, Madrid frente a UTC)
   await dia.click()
   await expect(page.getByRole('radio', { name: 'Semana', exact: true })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByText('Sesión', { exact: true }).first()).toBeVisible()
