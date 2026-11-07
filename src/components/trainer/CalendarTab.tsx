@@ -13,6 +13,8 @@ import { localDateKey } from '../../lib/dates'
 import { limpiarTipos, type TipoCita } from '../../lib/tiposCita'
 import { limpiarEnlace } from '../../lib/sesionOnline'
 import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
+import { citasDeProfesional, semanasDelMes } from '../../lib/agendaMes'
+import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
 const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
@@ -91,6 +93,10 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const [citas, setCitas] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
+  // Semana (lista por días) o mes (cuadrícula); y, con equipo, de qué profesional (lib/agendaMes)
+  const [vista, setVista] = useState<'semana' | 'mes'>('semana')
+  const [profesional, setProfesional] = useState('')
+  const profesionales = useProfesionalesEquipo(trainerId)
   const [showForm, setShowForm] = useState<{ dateISO: string } | null>(null)
   const [verHorario, setVerHorario] = useState(false)
   const [verTipos, setVerTipos] = useState(false)
@@ -117,16 +123,17 @@ export function CalendarTab({ trainerId, clients }: Props) {
   }
 
   const days = useMemo(() => weekDays(anchor), [anchor])
+  const citasVisibles = useMemo(() => citasDeProfesional(citas, clients, profesional, trainerId), [citas, clients, profesional, trainerId])
   const citasByDay = useMemo(() => {
     const map: Record<string, Cita[]> = {}
-    citas.forEach(c => {
+    citasVisibles.forEach(c => {
       const key = localDateKey(new Date(c.start_at))
       if (!map[key]) map[key] = []
       map[key].push(c)
     })
     Object.values(map).forEach(list => list.sort((a, b) => a.start_at.localeCompare(b.start_at)))
     return map
-  }, [citas])
+  }, [citasVisibles])
 
   const openNew = (dateISO: string) => { setForm(emptyForm(dateISO)); setShowForm({ dateISO }) }
 
@@ -230,17 +237,67 @@ export function CalendarTab({ trainerId, clients }: Props) {
       {verHorario && <Suspense fallback={null}><HorarioCitasEditor trainerId={trainerId} demo={trainerId === DEMO_TRAINER_ID} onClose={() => setVerHorario(false)} /></Suspense>}
       {/* Se vuelve a montar al cerrar Clases de grupo: así recoge la lista que se acaba de pasar */}
       <Suspense fallback={null}><CifrasAgenda key={verClases ? 'clases-abiertas' : 'clases-cerradas'} trainerId={trainerId} citas={citas} /></Suspense>
-      {/* Navegación semanal */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => setAnchor(addDays(anchor, -7))} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
-        <p className="text-sm font-semibold">
-          {days[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} – {days[6].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-        </p>
-        <button onClick={() => setAnchor(addDays(anchor, 7))} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronRight className="w-4 h-4" /></button>
+      {/* Semana o mes, y de qué profesional (solo con equipo) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1" role="radiogroup" aria-label="Vista de la agenda">
+          {([['semana', 'Semana'], ['mes', 'Mes']] as const).map(([v, l]) => (
+            <button key={v} type="button" role="radio" aria-checked={vista === v} onClick={() => setVista(v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${vista === v ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:text-ink'}`}>{l}</button>
+          ))}
+        </div>
+        {profesionales.length > 1 && (
+          <select value={profesional} onChange={e => setProfesional(e.target.value)} aria-label="Profesional"
+            className="ml-auto text-xs bg-card border border-border rounded-xl px-2.5 py-1.5">
+            <option value="">Todo el equipo</option>
+            {profesionales.map(p => <option key={p.uid} value={p.uid}>{p.uid === trainerId ? `${p.nombre} (tú)` : p.nombre}</option>)}
+          </select>
+        )}
       </div>
 
+      {/* Navegación */}
+      <div className="flex items-center justify-between">
+        <button onClick={() => setAnchor(vista === 'mes' ? new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1) : addDays(anchor, -7))}
+          aria-label={vista === 'mes' ? 'Mes anterior' : 'Semana anterior'} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronLeft className="w-4 h-4" /></button>
+        <p className="text-sm font-semibold capitalize" data-testid="periodo-agenda">
+          {vista === 'mes'
+            ? anchor.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+            : <>{days[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} – {days[6].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</>}
+        </p>
+        <button onClick={() => setAnchor(vista === 'mes' ? new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1) : addDays(anchor, 7))}
+          aria-label={vista === 'mes' ? 'Mes siguiente' : 'Semana siguiente'} className="p-2 rounded-xl hover:bg-bg-alt text-muted"><ChevronRight className="w-4 h-4" /></button>
+      </div>
+
+      {/* Mes: cada día con sus citas; al pulsar uno se abre su semana */}
+      {vista === 'mes' && (
+        <div className="bg-card border border-border rounded-2xl p-2" role="grid" aria-label="Mes">
+          <div className="grid grid-cols-7 gap-1 mb-1" role="row">
+            {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(d => <span key={d} role="columnheader" className="text-[11px] font-bold text-muted text-center">{d}</span>)}
+          </div>
+          {semanasDelMes(anchor).map(sem => (
+            <div key={sem[0].fecha} className="grid grid-cols-7 gap-1" role="row">
+              {sem.map(d => {
+                const delDia = (citasByDay[d.fecha] || []).filter(c => c.status !== 'cancelada')
+                return (
+                  <button key={d.fecha} type="button" role="gridcell" onClick={() => { setAnchor(new Date(d.fecha + 'T12:00:00')); setVista('semana') }}
+                    aria-label={`${new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${delDia.length} cita${delDia.length === 1 ? '' : 's'}`}
+                    className={`min-h-[56px] rounded-lg p-1 text-left flex flex-col gap-0.5 hover:bg-bg-alt ${d.delMes ? '' : 'opacity-40'} ${d.hoy ? 'ring-2 ring-accent' : ''}`}>
+                    <span className="text-xs font-semibold">{d.dia}</span>
+                    {delDia.slice(0, 2).map(c => (
+                      <span key={c.id} className="text-[11px] leading-tight truncate px-1 rounded bg-bg-alt" style={tipoDe(c.tipo_id) ? { borderLeft: `3px solid ${tipoDe(c.tipo_id)!.color}` } : undefined}>
+                        {new Date(c.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} {clientName(c.client_id) || c.title}
+                      </span>
+                    ))}
+                    {delDia.length > 2 && <span className="text-[11px] text-muted">+{delDia.length - 2} más</span>}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Días de la semana */}
-      <div className="space-y-3">
+      {vista === 'semana' && <div className="space-y-3">
         {days.map(day => {
           const key = toISODate(day)
           const dayCitas = citasByDay[key] || []
@@ -313,7 +370,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
             </div>
           )
         })}
-      </div>
+      </div>}
 
       {/* Modal nueva sesión */}
       {showForm && (
