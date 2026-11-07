@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FileText, ExternalLink } from 'lucide-react'
+import { FileText, ExternalLink, PlayCircle } from 'lucide-react'
 import { toast } from '../../shared/Toast'
-import { documentosDelCliente, tamanoLegible, urlDocumento, type Documento } from '../../../lib/documentos'
+import { documentosDelCliente, tamanoLegible, enlaceDe, esVideo, miniaturaVideo, plataformaVideo, type Documento } from '../../../lib/documentos'
 
 // Más → Archivos: los documentos que el entrenador ha compartido con este cliente. Qué le toca lo decide la base de
 // datos (visibilidad y etiquetas, lib/documentos); sin ninguno, la tarjeta no sale.
@@ -19,10 +19,12 @@ export function ArchivosCard({ trainerId }: { trainerId: string }) {
   if (!docs.length) return null
 
   const abrir = async (d: Documento) => {
+    // Un vídeo es un enlace: se abre tal cual
+    if (d.url) { window.open(d.url, '_blank', 'noopener'); return }
     // La pestaña se abre ya, dentro del toque: si se abre después de esperar la URL, Safari la bloquea
     const ventana = window.open('', '_blank')
     setAbriendo(d.id)
-    const url = await urlDocumento(d.ruta)
+    const url = await enlaceDe(d)
     setAbriendo(null)
     if (url && ventana) ventana.location.href = url
     else if (url) window.location.href = url
@@ -32,17 +34,19 @@ export function ArchivosCard({ trainerId }: { trainerId: string }) {
   return (
     <section aria-label="Archivos" className="bg-card border border-border rounded-2xl overflow-hidden">
       <div className="px-5 py-3 border-b border-border">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted">Archivos</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted">Archivos y vídeos</p>
       </div>
       <ul className="divide-y divide-border">
         {docs.map(d => (
           <li key={d.id}>
             <button onClick={() => abrir(d)} disabled={abriendo === d.id} aria-label={`Abrir ${d.titulo}`}
               className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-bg-alt disabled:opacity-60" style={{ minHeight: '56px' }}>
-              <FileText className="w-5 h-5 text-muted flex-shrink-0" aria-hidden />
+              {esVideo(d) && miniaturaVideo(d.url!)
+                ? <img src={miniaturaVideo(d.url!)!} alt="" className="w-16 h-10 rounded-md object-cover flex-shrink-0" loading="lazy" />
+                : esVideo(d) ? <PlayCircle className="w-5 h-5 text-accent flex-shrink-0" aria-hidden /> : <FileText className="w-5 h-5 text-muted flex-shrink-0" aria-hidden />}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{d.titulo}</p>
-                <p className="text-xs text-muted truncate">{d.descripcion || tamanoLegible(d.tamano)}</p>
+                <p className="text-xs text-muted truncate">{d.descripcion || (esVideo(d) ? `Vídeo · ${plataformaVideo(d.url!)}` : tamanoLegible(d.tamano))}</p>
               </div>
               <ExternalLink className="w-4 h-4 text-muted flex-shrink-0" aria-hidden />
             </button>

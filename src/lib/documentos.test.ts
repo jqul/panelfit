@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 vi.mock('./supabase', () => ({ supabase: {} }))
-import { nombreSeguro, problemaArchivo, quienLoVe, tamanoLegible, tituloDesdeNombre } from './documentos'
+import { limpiarVideo, miniaturaVideo, nombreSeguro, plataformaVideo, problemaArchivo, quienLoVe, tamanoLegible, tituloDesdeNombre } from './documentos'
 
 describe('problemaArchivo', () => {
   it('admite PDF, imágenes y ofimática hasta 20 MB', () => {
@@ -39,5 +39,22 @@ describe('quienLoVe', () => {
     expect(quienLoVe({ visibilidad: 'todos', etiquetas: [] }, etiquetas)).toBe('Todos tus clientes')
     expect(quienLoVe({ visibilidad: 'etiquetas', etiquetas: ['a', 'b'] }, etiquetas)).toBe('Clientes con Online, VIP')
     expect(quienLoVe({ visibilidad: 'etiquetas', etiquetas: ['borrada'] }, etiquetas)).toBe('Nadie (no has elegido etiquetas)')
+  })
+})
+
+describe('vídeos por enlace', () => {
+  it('solo enlaces https completos', () => {
+    expect(limpiarVideo(' https://www.youtube.com/watch?v=dQw4w9WgXcQ ')).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    expect(limpiarVideo('http://youtube.com/x')).toBeNull()
+    expect(limpiarVideo('youtube.com/watch?v=x')).toBeNull()
+    expect(limpiarVideo('')).toBeNull()
+  })
+  it('plataforma y miniatura de YouTube', () => {
+    expect(plataformaVideo('https://youtu.be/dQw4w9WgXcQ')).toBe('YouTube')
+    expect(plataformaVideo('https://vimeo.com/123')).toBe('Vimeo')
+    expect(plataformaVideo('https://mis-clases.example.com/v/1')).toBe('Vídeo')
+    expect(miniaturaVideo('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg')
+    expect(miniaturaVideo('https://youtube.com/shorts/dQw4w9WgXcQ')).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg')
+    expect(miniaturaVideo('https://vimeo.com/123')).toBeNull()
   })
 })
