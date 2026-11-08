@@ -1,26 +1,37 @@
-import { TrainingLogs } from '../../types'
+import { TrainingLogs, TrainingPlan } from '../../types'
 import { getBadgeProgress } from '../../lib/badges'
+import { hitosConseguidos } from '../../lib/hitos'
 
-export function BadgesWidget({ logs }: { logs: TrainingLogs }) {
+// Logros: hitos (primer entreno, récords, toneladas, semanas completas, test de RM, competición — lib/hitos), insignias
+// de racha y de sesiones (lib/badges) y lo próximo que está por conseguir. En Hoy del cliente y, con `enFicha`, en el
+// Resumen de su ficha del entrenador.
+export function BadgesWidget({ logs, plan, enFicha = false }: { logs: TrainingLogs; plan?: TrainingPlan | null; enFicha?: boolean }) {
   const { earned, nextStreak, nextSessions } = getBadgeProgress(logs)
-  if (!earned.length && !nextStreak && !nextSessions) return null
+  const hitos = hitosConseguidos(logs, plan)
+  if (!hitos.length && !earned.length && !nextStreak && !nextSessions) return null
 
   return (
-    <div className="px-4 pt-4">
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+    <div className={enFicha ? '' : 'px-4 pt-4'}>
+      <section aria-label="Logros" className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="px-4 py-2.5 border-b border-border">
           <p className="text-xs font-bold uppercase tracking-wider text-muted">Logros</p>
         </div>
         <div className="p-4 space-y-3">
-          {earned.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {earned.map(b => (
-                <span key={b.id} title={b.label}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-accent/10 text-accent rounded-full text-xs font-semibold">
-                  <span className="text-base">{b.emoji}</span> {b.label}
-                </span>
+          {(hitos.length > 0 || earned.length > 0) && (
+            <ul className="flex flex-wrap gap-2" aria-label="Logros conseguidos">
+              {hitos.map(h => (
+                <li key={h.id} title={h.detalle}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-ok/10 text-ok rounded-full text-xs font-semibold">
+                  <span className="text-base" aria-hidden>{h.emoji}</span> {h.label}
+                </li>
               ))}
-            </div>
+              {earned.map(b => (
+                <li key={b.id} title={b.label}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-accent/10 text-accent rounded-full text-xs font-semibold">
+                  <span className="text-base" aria-hidden>{b.emoji}</span> {b.label}
+                </li>
+              ))}
+            </ul>
           )}
           {(nextStreak || nextSessions) && (
             <div className="space-y-2">
@@ -49,7 +60,7 @@ export function BadgesWidget({ logs }: { logs: TrainingLogs }) {
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   )
 }

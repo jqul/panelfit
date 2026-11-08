@@ -567,7 +567,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       <ResumenSemana clientId={client.id} plan={plan} logs={logs} />
                       <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} configRaw={trainerProfile.checkin} /></div>
                       <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
-                      <BadgesWidget logs={logs} />
+                      <BadgesWidget logs={logs} plan={plan} />
                       <div id="hoy-habitos" className="scroll-mt-2"><HabitosWidget clientId={client.id} /></div>
                     </Suspense>
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />

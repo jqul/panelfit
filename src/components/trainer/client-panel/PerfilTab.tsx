@@ -6,6 +6,8 @@ import { toast } from '../../shared/Toast'
 import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
 import { ReadinessSummary } from './ReadinessSummary'
+// Los mismos logros que ve el cliente en Hoy (se descargan aparte)
+const BadgesWidget = lazy(() => import('../../client/BadgesWidget').then(m => ({ default: m.BadgesWidget })))
 import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
 import { OnboardingChecklist } from './OnboardingChecklist'
@@ -339,6 +341,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
       </div>
 
       <ReadinessSummary clientId={client.id} trainerId={client.trainerId} />
+      <Suspense fallback={null}><BadgesWidget logs={logs} plan={plan} enFicha /></Suspense>
 
       <IntakeSummary clientId={client.id} />
 
