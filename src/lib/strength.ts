@@ -95,8 +95,14 @@ export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: s
  * hacer la serie (fila de la tabla, o la tarjeta de "siguiente serie" del
  * temporizador de descanso). null si no hay referencia previa.
  */
+/** ¿Es un peso en kilos ("82,5", "80")? Un porcentaje u otro texto no lo es. */
+export function esPesoKg(w?: string | null): boolean {
+  return !!w && /^\s*\d+(?:[.,]\d+)?\s*(?:kg)?\s*$/i.test(w)
+}
+
 export function getTargetRangeLabel(prevWeight?: string, prevRir?: number, weekRpe?: string): string | null {
-  const prevW = parseFloat(prevWeight || '')
+  if (!esPesoKg(prevWeight)) return null
+  const prevW = parseFloat((prevWeight || '').replace(',', '.'))
   if (!prevW) return null
   const suggestion = getSuggestedWeightChange(prevRir, prevWeight, weekRpe)
   if (!suggestion || suggestion.direction === 'hold' || !suggestion.deltaKg) return `${prevW}kg`

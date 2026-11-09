@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { kg } from '../../lib/formatoKg'
 import { X } from 'lucide-react'
 
 interface Props {
@@ -183,7 +184,7 @@ export function CalculadoraDiscos({ pesoObjetivo, onClose }: Props) {
                       )}
                     </p>
                     <p className="text-xs text-muted mt-0.5">
-                      Barra {barra.peso}kg + {discos.reduce((a, d) => a + d, 0) * 2}kg en discos
+                      Barra {kg(barra.peso)}kg + {discos.reduce((a, d) => a + d, 0) * 2}kg en discos
                     </p>
                   </div>
                   {diferencia === 0

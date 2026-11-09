@@ -7,7 +7,7 @@ import { FinishButton } from './FinishButton'
 import { RirTargetChip } from './RirTargetChip'
 import { useSwipe } from '../../../lib/swipe'
 import { SyncBadge } from '../client-view/SyncStatus'
-import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, velocityLossPct, tracksVelocity } from '../../../lib/strength'
+import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, esPesoKg, velocityLossPct, tracksVelocity } from '../../../lib/strength'
 import { SelectorTipoSerie } from './SelectorTipoSerie'
 import { TIPOS_SERIE, letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
 import { escalaEsfuerzo, etiquetaEsfuerzo, preguntaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
@@ -83,7 +83,9 @@ export function FocusWorkout(p: Props) {
   const exSets = p.sets[p.ri] || {}
   const total = totalSets(ex, exSets)
   const cur: FocusSet = exSets[p.si] || { weight: '', reps: String(numReps), done: false }
-  const prev = p.prevSets(p.ri)[p.si]
+  // La serie de la última vez; si su peso no es un número (p. ej. un "80%" guardado tal cual), no sirve de referencia
+  const prevRaw = p.prevSets(p.ri)[p.si]
+  const prev = prevRaw && !esPesoKg(prevRaw.weight) ? { ...prevRaw, weight: '' } : prevRaw
   // Carrera y sesión libre llevan su propio bloque (renderRun) en vez de la serie con kg y reps
   const isRun = (ex.kind === 'run' && !!ex.run) || ex.kind === 'libre'
 

@@ -1,4 +1,5 @@
 import { Check, Clock, Dumbbell, Flame, Trophy, Zap } from 'lucide-react'
+import { kg } from '../../../lib/formatoKg'
 import { ZONAS_DOLOR } from '../../../lib/clientPain'
 import { REACTION_EMOJIS, MOLESTIA_EMOJI } from './utils'
 import { escalaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
@@ -99,7 +100,7 @@ export function FinishWorkoutModal({
               <div key={i} className="flex items-center gap-2">
                 <Trophy className="w-3.5 h-3.5 text-warn flex-shrink-0" />
                 <p className="text-sm flex-1 truncate"><span className="font-semibold">{r.name}</span></p>
-                <p className="text-sm font-bold text-warn">{r.best}kg</p>
+                <p className="text-sm font-bold text-warn">{kg(r.best)}kg</p>
               </div>
             ))}
           </div>

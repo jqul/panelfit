@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { kg } from '../../lib/formatoKg'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { Modal } from '../shared/Modal'
 import { toast } from '../shared/Toast'
@@ -75,7 +76,7 @@ export function QuickLogSheet({ open, onClose, day, dayKey, logs, onLogsChange }
                     <p className="text-xs text-muted">
                       {r.state === 'ya-hecho' ? 'Ya registrado'
                         : r.state === 'pista' ? 'La pista se registra desde el entreno (tiempos y distancias)'
-                        : `${r.numSets} × ${r.reps}${r.weight ? ` · ${r.weight} kg` : ''}`}
+                        : `${r.numSets} × ${r.reps}${r.weight ? ` · ${kg(r.weight)} kg` : ''}`}
                     </p>
                   </div>
                   {!locked && r.included && (

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { kg } from '../../lib/formatoKg'
 import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
@@ -140,14 +141,14 @@ function HistorialPorFecha({ logs, plan }: { logs: TrainingLogs; plan?: Training
                     <div className="flex gap-1 mt-0.5 flex-wrap">
                       {ex.sets.map((s, si) => (
                         <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
-                          {s.weight}kg×{s.reps}
+                          {kg(s.weight)}kg×{s.reps}
                         </span>
                       ))}
                     </div>
                   </div>
                   {ex.best > 0 && (
                     <div className="text-right flex-shrink-0">
-                      <p className="text-xs font-bold text-accent">{ex.best}kg</p>
+                      <p className="text-xs font-bold text-accent">{kg(ex.best)}kg</p>
                       <p className="text-[11px] text-muted">mejor</p>
                     </div>
                   )}
@@ -328,7 +329,7 @@ function RecordsTab({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | 
               )}
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-sm font-bold text-accent">{rec.best} kg</p>
+              <p className="text-sm font-bold text-accent">{kg(rec.best)} kg</p>
               <p className="text-[11px] text-muted">×{rec.reps} reps</p>
             </div>
           </div>
@@ -816,7 +817,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
                 <div key={w.date} className="flex items-center gap-4 px-4 py-3">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${i === 0 ? 'bg-accent' : 'bg-bg-alt border border-border'}`} />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold">{w.weight} kg</p>
+                    <p className="text-sm font-semibold">{kg(w.weight)} kg</p>
                     <p className="text-xs text-muted">{new Date(w.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                   </div>
                   {i > 0 && (

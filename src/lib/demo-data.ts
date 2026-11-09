@@ -255,12 +255,15 @@ function buildDemoLogsFromPlan(plan: TrainingPlan, doneInLastWeek?: number, last
           logs[`ex_w${weekIdx}_d${dayIdx}_r${ri}`] = { sets: runSets, done: true, dateDone: fecha }
           return
         }
-        const plannedW = parseWeightNum(ex.weight)
+        // Por % ("80%"): kilos de la marca de referencia del plan; sin marca, sin peso (nunca "80%" como kilos)
+        const pct = ex.weight?.trim().match(/^(\d+(?:[.,]\d+)?)\s*%$/)
+        const marca = pct ? plan.marcas?.[ex.name.trim().toLowerCase()]?.kg : undefined
+        const plannedW = pct ? (marca ? Math.round((marca * parseFloat(pct[1].replace(',', '.')) / 100) / 2.5) * 2.5 : null) : parseWeightNum(ex.weight)
         const { numSets, repsText } = parseSetsStrDemo(ex.sets)
         const sets: Record<number, { weight: string; reps: string; rir: number }> = {}
         for (let si = 0; si < numSets; si++) {
           const w = plannedW !== null ? Math.max(0, plannedW - si * stepFor(plannedW)) : null
-          sets[si] = { weight: w !== null ? String(w) : ex.weight, reps: repsText, rir: Math.max(0, baseRir - Math.floor(si / 2)) }
+          sets[si] = { weight: w !== null ? String(w) : (pct ? '' : ex.weight), reps: repsText, rir: Math.max(0, baseRir - Math.floor(si / 2)) }
         }
         // Ejercicios "en readaptación" (ver ActiveWorkout: escala EVA 0-10):
         // simula la misma mejora progresiva que su historial de dolor, para

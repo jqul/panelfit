@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { kg } from '../../../lib/formatoKg'
 import { ClipboardList, CheckCircle2, Dumbbell, TrendingUp, X, EyeOff, Pencil } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet, Sustitucion } from '../../../types'
 import { ETIQUETA_MOTIVO, ETIQUETA_APROBACION } from '../../../lib/sustitucionPlan'
@@ -150,7 +151,7 @@ export function EntrenosTab({ logs, plan, clientId, onLogsChange }: { logs: Trai
                         <p className="text-xs font-semibold text-warn flex items-center gap-1 flex-wrap">🔄 {substituteName}{sustitucion && <span className="font-normal text-muted">· {ETIQUETA_MOTIVO[sustitucion.reason]} · {ETIQUETA_APROBACION[sustitucion.approvedBy]}</span>}</p>
                       )}
                       <div className="flex gap-1.5 mt-0.5 flex-wrap">
-                        {setsArr.map((s, si) => <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{s.weight}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}
+                        {setsArr.map((s, si) => <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">{kg(s.weight)}kg×{s.reps}{s.rir !== undefined ? ` · RIR ${s.rir}` : ''}</span>)}
                         {noContar && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-warn/10 text-warn">No cuenta en el progreso</span>}
                         {corregido && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded bg-accent/10 text-accent" title={`Corregido el ${new Date(corregido).toLocaleDateString('es-ES')}`}>Corregido por ti</span>}
                         {dolorEva !== undefined && (

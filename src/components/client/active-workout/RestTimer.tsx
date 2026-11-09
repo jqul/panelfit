@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { kg } from '../../../lib/formatoKg'
 import { Play, Pause, Check } from 'lucide-react'
 import { NextSetInfo } from './utils'
 
@@ -61,7 +62,7 @@ export function RestTimer({ seconds, next, onDone, onSkip }: Props) {
             {next.exerciseName} · Serie {next.setNum} de {next.totalSets}
           </p>
           <p className="text-white font-mono font-bold text-2xl tabular-nums mt-1">
-            {next.weight ? `${next.weight}kg` : '—'} × {next.reps}
+            {next.weight ? `${kg(next.weight)}kg` : '—'} × {next.reps}
           </p>
           {next.targetLabel && (
             <p className="text-accent2 text-xs font-semibold mt-0.5">🎯 objetivo: {next.targetLabel}</p>
