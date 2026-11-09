@@ -1,4 +1,5 @@
 import { X, Timer } from 'lucide-react'
+import { kg } from '../../../lib/formatoKg'
 import { Exercise, LibraryExercise, TrainingLogs, TrainingPlan, LogSet } from '../../../types'
 import { SeriesTypeDef, DEFAULT_SERIES_TYPES } from './seriesTypes'
 import { getYTId } from './utils'
@@ -143,7 +144,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
                   <div key={i} className="flex items-center gap-2">
                     <span className="w-4 h-4 rounded bg-bg-alt text-[11px] font-bold flex items-center justify-center text-muted flex-shrink-0">{i+1}</span>
                     <div className="flex-1 bg-bg rounded px-2 py-1 flex justify-between">
-                      <span className="text-xs font-bold">{s.weight}kg</span>
+                      <span className="text-xs font-bold">{kg(s.weight)}kg</span>
                       <span className="text-xs text-muted">×{s.reps}</span>
                     </div>
                   </div>
@@ -151,7 +152,7 @@ export function ExerciseAnalyticsPanel({ ex, libEx, logs, plan, exName, clientNa
               </div>
               {prevLog && (
                 <p className="text-[11px] text-muted mt-1.5">
-                  Anterior: <span className="font-semibold">{prevLog.bestWeight}kg</span>
+                  Anterior: <span className="font-semibold">{kg(prevLog.bestWeight)}kg</span>
                   {trend !== 0 && <span className={`ml-1 font-bold ${trend > 0 ? 'text-ok' : 'text-warn'}`}>{trend > 0 ? `↑+${trend}kg` : `↓${trend}kg`}</span>}
                 </p>
               )}

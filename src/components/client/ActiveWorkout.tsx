@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react'
+import { kg } from '../../lib/formatoKg'
 import {
   MoreHorizontal, Trophy,
   Plus, Dumbbell, Flame, X, CheckCircle2, Repeat
@@ -792,7 +793,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 return (
                   <div key={h.date} className="flex items-center gap-2 text-xs">
                     <span className="text-muted w-14 flex-shrink-0">{new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
-                    <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                    <span className="font-semibold flex-1">{kg(h.weight)}kg × {h.reps}</span>
                     {delta !== null && delta !== 0 && <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>{delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg</span>}
                   </div>
                 )
@@ -1024,7 +1025,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                               <span className="text-muted w-14 flex-shrink-0">
                                 {new Date(h.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                               </span>
-                              <span className="font-semibold flex-1">{h.weight}kg × {h.reps}</span>
+                              <span className="font-semibold flex-1">{kg(h.weight)}kg × {h.reps}</span>
                               {delta !== null && delta !== 0 && (
                                 <span className={`font-bold ${delta > 0 ? 'text-ok' : 'text-warn'}`}>
                                   {delta > 0 ? '▲' : '▼'} {Math.abs(delta)}kg

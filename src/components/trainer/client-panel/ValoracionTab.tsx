@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { kg } from '../../../lib/formatoKg'
 import { ChevronLeft, Save, Plus, Edit2, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import { ClientData } from '../../../types'
 import { supabase } from '../../../lib/supabase'
@@ -332,7 +333,7 @@ export function ValoracionTab({ client, trainerId }: { client: ClientData; train
                     </p>
                     {hasData && (
                       <div className="flex gap-3 mt-1 flex-wrap">
-                        {val.peso && <span className="text-xs text-muted">⚖️ {val.peso}kg</span>}
+                        {val.peso && <span className="text-xs text-muted">⚖️ {kg(val.peso)}kg</span>}
                         {val.grasa_corporal && <span className="text-xs text-muted">🔬 {val.grasa_corporal}% grasa</span>}
                         {val.imc && <span className="text-xs text-muted">📊 IMC {val.imc}</span>}
                       </div>

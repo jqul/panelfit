@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
+import { kg } from '../../../lib/formatoKg'
 import { Bell, Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react'
 import { ClientData, TrainingLogs, TrainingPlan } from '../../../types'
 import { TrainerLabel } from '../labels'
@@ -121,7 +122,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           { label: 'Adherencia', value: adherencia !== undefined ? `${adherencia}%` : '—', icon: '🎯', color: adherencia !== undefined && adherencia < 40 ? 'text-warn' : 'text-ok' },
           { label: 'Última sesión', value: lastSession ? new Date(lastSession + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—', icon: '📅', color: 'text-ink' },
           { label: 'Sesiones totales', value: totalSessions, icon: '🏋️', color: 'text-accent' },
-          { label: 'Peso actual', value: c.weight ? `${c.weight} kg` : '—', icon: '⚖️', color: 'text-ink' },
+          { label: 'Peso actual', value: c.weight ? `${kg(c.weight)} kg` : '—', icon: '⚖️', color: 'text-ink' },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-2xl p-4 text-center" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             <p className="text-xl mb-1">{s.icon}</p>
@@ -301,7 +302,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
               { label: 'WhatsApp', value: c.phone || '—' },
               { label: 'Objetivo', value: c.objetivo || '—' },
               { label: 'Altura', value: c.altura ? `${c.altura} cm` : '—' },
-              { label: 'Peso', value: c.weight ? `${c.weight} kg` : '—' },
+              { label: 'Peso', value: c.weight ? `${kg(c.weight)} kg` : '—' },
               { label: 'Género', value: c.genero === 'h' ? 'Masculino' : c.genero === 'm' ? 'Femenino' : '—' },
               { label: 'Fecha de nacimiento', value: c.fechanacimiento ? new Date(c.fechanacimiento + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
               { label: 'Edad', value: edad ? `${edad} años` : '—' },

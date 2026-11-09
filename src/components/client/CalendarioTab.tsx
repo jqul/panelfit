@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { kg } from '../../lib/formatoKg'
 import { Flame, Calendar, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { localDateKey } from '../../lib/dates'
@@ -184,12 +185,12 @@ export function CalendarioTab({ logs, plan, clientId }: { logs: TrainingLogs; pl
                       {ex.sets.map((s, si) => (
                         <span key={si} className="text-[11px] bg-bg-alt text-muted px-1.5 py-0.5 rounded">
                           {/* "Peso corporal" no lleva kg detrás */}
-                          {isNaN(parseFloat(s.weight)) ? s.weight : `${s.weight}kg`}×{s.reps}
+                          {isNaN(parseFloat(s.weight)) ? s.weight : `${kg(s.weight)}kg`}×{s.reps}
                         </span>
                       ))}
                     </div>
                   </div>
-                  {ex.best > 0 && <span className="text-xs font-bold text-accent flex-shrink-0">{ex.best}kg</span>}
+                  {ex.best > 0 && <span className="text-xs font-bold text-accent flex-shrink-0">{kg(ex.best)}kg</span>}
                 </div>
               ))}
             </div>
