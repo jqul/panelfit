@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { esSuCumple } from '../../lib/cumpleanos'
+import { localDateKey } from '../../lib/dates'
 import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { dietaConContenido } from '../../lib/dietaCliente'
@@ -564,6 +566,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
                     <Suspense fallback={null}>
+                      {esSuCumple(client.fechanacimiento, localDateKey()) && (
+                        <div className="px-4 pt-4"><p role="status" className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 rounded-2xl px-4 py-3 text-sm font-semibold">🎂 ¡Feliz cumpleaños, {client.name}! Hoy toca celebrarlo 🎉</p></div>
+                      )}
                       <ResumenSemana clientId={client.id} plan={plan} logs={logs} />
                       <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} configRaw={trainerProfile.checkin} clientName={clientName} /></div>
                       <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>

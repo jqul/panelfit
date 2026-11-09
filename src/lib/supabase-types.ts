@@ -15,6 +15,7 @@ export interface ClienteRow {
   objetivo?: string
   /** Aviso de las 18:00 con lo que le queda del día (lo enciende y apaga el propio cliente). */
   recordatorio_diario?: boolean
+  fechanacimiento?: string | null  // 'YYYY-MM-DD'; para felicitarle el día de su cumpleaños
   createdAt: number
 }
 

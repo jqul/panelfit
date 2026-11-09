@@ -61,7 +61,7 @@ export const DEMO_CLIENTS: ClientData[] = [
     name: 'Laura', surname: 'Martín',
     trainerId: DEMO_TRAINER_ID,
     token: 'demo-laura-003',
-    genero: 'm', altura: 168, fechanacimiento: '1991-11-02',
+    genero: 'm', altura: 168, fechanacimiento: (() => { const d = new Date(); d.setDate(d.getDate() + 2); return `1991-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })(), // cumple en dos días: se ve en la agenda,
     main_goal: 'Perder 8 kg antes de su boda en primavera',
     equipo_disponible: 'Mancuernas en casa + gimnasio low-cost',
     notas_privadas: 'Muy sensible a la báscula: enfocar en medidas y fotos.',

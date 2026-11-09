@@ -15,6 +15,9 @@ import { limpiarEnlace } from '../../lib/sesionOnline'
 import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 import { citasDeProfesional, semanasDelMes } from '../../lib/agendaMes'
 import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
+import { cumpleanosEnRango } from '../../lib/cumpleanos'
+import { useScheduledMessages } from '../../lib/scheduledMessages'
+import { CumplesDia } from './CumplesDia'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
 const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
@@ -105,6 +108,8 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const tipoDe = (id?: string | null) => (id ? tipos.find(t => t.id === id) : undefined)
   const [form, setForm] = useState(emptyForm(toISODate(new Date())))
   const [saving, setSaving] = useState(false)
+  // Cumpleaños de los clientes en lo que se ve (lib/cumpleanos) y las felicitaciones ya programadas
+  const { messages: programados, schedule } = useScheduledMessages(trainerId)
 
   useEffect(() => { loadCitas() }, [trainerId])
 
@@ -123,6 +128,18 @@ export function CalendarTab({ trainerId, clients }: Props) {
   }
 
   const days = useMemo(() => weekDays(anchor), [anchor])
+  const cumplesPorDia = useMemo(() => {
+    const sems = vista === 'mes' ? semanasDelMes(anchor) : null
+    const desde = sems ? sems[0][0].fecha : toISODate(days[0])
+    const hasta = sems ? sems[sems.length - 1][6].fecha : toISODate(days[6])
+    return cumpleanosEnRango(clients, desde, hasta)
+  }, [clients, vista, anchor, days])
+  const hoyISO = toISODate(new Date())
+  const programadosDe = (fecha: string) => new Set(programados.filter(m => m.tipo === 'cumpleanos' && m.fechaEnvio === fecha).map(m => m.clientId))
+  const programarFelicitacion = async (c: ClientData, texto: string, fecha: string) => {
+    const ok = await schedule(c.id, 'cumpleanos', texto, fecha)
+    toast(ok ? `Felicitación programada para ${c.name} ✓` : 'No se pudo programar', ok ? 'ok' : 'warn')
+  }
   const citasVisibles = useMemo(() => citasDeProfesional(citas, clients, profesional, trainerId), [citas, clients, profesional, trainerId])
   const citasByDay = useMemo(() => {
     const map: Record<string, Cita[]> = {}
@@ -277,11 +294,12 @@ export function CalendarTab({ trainerId, clients }: Props) {
             <div key={sem[0].fecha} className="grid grid-cols-7 gap-1" role="row">
               {sem.map(d => {
                 const delDia = (citasByDay[d.fecha] || []).filter(c => c.status !== 'cancelada')
+                const cumples = cumplesPorDia[d.fecha] || []
                 return (
                   <button key={d.fecha} type="button" role="gridcell" onClick={() => { setAnchor(new Date(d.fecha + 'T12:00:00')); setVista('semana') }}
-                    aria-label={`${new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${delDia.length} cita${delDia.length === 1 ? '' : 's'}`}
+                    aria-label={`${new Date(d.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}: ${delDia.length} cita${delDia.length === 1 ? '' : 's'}${cumples.length ? `, cumpleaños de ${cumples.map(x => x.cliente.name).join(' y ')}` : ''}`}
                     className={`min-h-[56px] rounded-lg p-1 text-left flex flex-col gap-0.5 hover:bg-bg-alt ${d.delMes ? '' : 'opacity-40'} ${d.hoy ? 'ring-2 ring-accent' : ''}`}>
-                    <span className="text-xs font-semibold">{d.dia}</span>
+                    <span className="text-xs font-semibold">{d.dia}{cumples.length > 0 && <span aria-hidden> 🎂</span>}</span>
                     {delDia.slice(0, 2).map(c => (
                       <span key={c.id} className="text-[11px] leading-tight truncate px-1 rounded bg-bg-alt" style={tipoDe(c.tipo_id) ? { borderLeft: `3px solid ${tipoDe(c.tipo_id)!.color}` } : undefined}>
                         {new Date(c.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} {clientName(c.client_id) || c.title}
@@ -314,6 +332,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
+              {cumplesPorDia[key] && <CumplesDia fecha={key} cumples={cumplesPorDia[key]} hoy={hoyISO} programados={programadosDe(key)} onProgramar={(c, t) => programarFelicitacion(c, t, key)} />}
               {dayCitas.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-muted">Sin sesiones</p>
               ) : (
