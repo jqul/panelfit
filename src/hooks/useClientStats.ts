@@ -2,12 +2,14 @@ import { useMemo } from 'react'
 import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
 import { estadoPlan } from '../lib/estadoPlan'
+import { clientStatus } from '../lib/clientStatus'
+import { esNuevo, type ClientFilter } from '../lib/filtrosClientes'
 
 interface Options {
   clients: ClientWithStats[]
   logsMap: Record<string, any>
   search: string
-  clientFilter: 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar' | 'empieza' | 'termina' | 'terminado'
+  clientFilter: ClientFilter
   /** Solo los que llevan esta etiqueta (se combina con el filtro de estado). */
   labelId?: string | null
 }
@@ -31,6 +33,9 @@ export function useClientStats({ clients, logsMap, search, clientFilter, labelId
   const highAcwrCount = clients.filter(c => c.highAcwr).length
   const jumpDropCount = clients.filter(c => c.highJumpDrop).length
   const sinEntrarCount = clients.filter(sinEntrar).length
+  // «Revisar»: el nivel intermedio del estado de la lista (lib/clientStatus); «Nuevos»: alta en los últimos 30 días
+  const revisarCount = clients.filter(c => clientStatus(c).level === 'review').length
+  const nuevosCount = clients.filter(c => esNuevo(c.createdAt)).length
   const estados = clients.map(c => estadoPlan(c))
   const empiezaCount = estados.filter(e => e === 'empieza').length
   const terminaCount = estados.filter(e => e === 'termina').length
@@ -67,6 +72,8 @@ export function useClientStats({ clients, logsMap, search, clientFilter, labelId
     else if (clientFilter === 'high-acwr') list = list.filter(c => c.highAcwr)
     else if (clientFilter === 'jump-drop') list = list.filter(c => c.highJumpDrop)
     else if (clientFilter === 'sin-entrar') list = list.filter(sinEntrar)
+    else if (clientFilter === 'revisar') list = list.filter(c => clientStatus(c).level === 'review')
+    else if (clientFilter === 'nuevos') list = list.filter(c => esNuevo(c.createdAt))
     // En qué punto del plan están (lib/estadoPlan)
     else if (clientFilter === 'empieza' || clientFilter === 'termina' || clientFilter === 'terminado') list = list.filter(c => estadoPlan(c) === clientFilter)
     if (labelId) list = list.filter(c => (c.label_ids || []).includes(labelId))
@@ -122,7 +129,7 @@ export function useClientStats({ clients, logsMap, search, clientFilter, labelId
 
   return {
     activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, empiezaCount, terminaCount, terminadoCount,
-    adherenciaMap, filteredClients, chartData, activityFeed,
+    revisarCount, nuevosCount, adherenciaMap, filteredClients, chartData, activityFeed,
     alerts, formatLastActive,
   }
 }
