@@ -82,7 +82,7 @@ export function ProximasSesiones({ clientId, trainerId, clientName }: { clientId
     })
     setSaving(false)
     if (error) { logError('ProximasSesiones:solicitar', error); return }
-    sendPush({ trainerId }, 'Nueva solicitud de cita', `${clientName} pidió una cita para el ${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} a las ${time}`)
+    sendPush({ trainerId }, 'Nueva solicitud de cita', `${clientName} pidió una cita para el ${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} a las ${time}`, { tipo: 'reserva' })
     setShowForm(false)
     load()
   }

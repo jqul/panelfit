@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import type { TipoAviso } from './preferenciasAvisos'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
@@ -68,13 +69,15 @@ export function usePushNotifications(owner: Owner) {
   return { supported, subscribed, loading, subscribe, unsubscribe }
 }
 
-/** Dispara un push real vía la Edge Function send-push. Falla en silencio si no hay suscripciones. */
-export async function sendPush(target: Owner, title: string, body: string, url?: string) {
+/** Dispara un push real vía la Edge Function send-push. Falla en silencio si no hay suscripciones. Con `tipo`, si va al
+ * entrenador y lo tiene apagado en Ajustes → Notificaciones (lib/preferenciasAvisos), la función no lo manda. */
+export async function sendPush(target: Owner, title: string, body: string, opts: { url?: string; tipo?: TipoAviso } = {}) {
+  const { url, tipo } = opts
   // Modo demo: los ids son ficticios, no hay nadie suscrito — no se llama a la
   // Edge Function de producción desde una demo.
   if (target.trainerId?.startsWith('demo-trainer-') || target.clientId?.startsWith('demo-client-')) return
   try {
-    await supabase.functions.invoke('send-push', { body: { ...target, title, body, url } })
+    await supabase.functions.invoke('send-push', { body: { ...target, title, body, url, tipo } })
   } catch {
     // no bloquear el flujo principal si falla el push
   }

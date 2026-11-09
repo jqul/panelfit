@@ -5,10 +5,12 @@ import { useClientPain, ZONAS_DOLOR } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
 import { avisarCambioHoy } from '../../lib/hoyEventos'
 import { ESCALAS_BASE, filaCheckin, limpiarConfigCheckin } from '../../lib/checkinConfig'
+import { sendPush } from '../../lib/usePushNotifications'
+import { escalasBajas } from '../../lib/preferenciasAvisos'
 
 // Las preguntas las elige el entrenador (Ajustes → Check-in diario, lib/checkinConfig): de las cuatro escalas de
 // siempre, las que quiera, y hasta tres propias. Lo que no se pregunta se guarda vacío.
-export function ReadinessCheckin({ clientId, trainerId, configRaw }: { clientId: string; trainerId?: string; configRaw?: unknown }) {
+export function ReadinessCheckin({ clientId, trainerId, configRaw, clientName }: { clientId: string; trainerId?: string; configRaw?: unknown; clientName?: string }) {
   const config = limpiarConfigCheckin(configRaw)
   const METRICS = [
     ...config.escalas.map(k => ({ key: k as string, label: ESCALAS_BASE[k].label, emoji: ESCALAS_BASE[k].emoji, lowLabel: ESCALAS_BASE[k].bajo, highLabel: ESCALAS_BASE[k].alto })),
@@ -55,6 +57,9 @@ export function ReadinessCheckin({ clientId, trainerId, configRaw }: { clientId:
     setSaving(false)
     if (!error) {
       setDoneToday(true)
+      // Aviso al entrenador si alguna escala sale baja (1 o 2): lo puede apagar en Ajustes → Notificaciones
+      const bajas = escalasBajas(METRICS.map(m => ({ label: m.label, valor: valor(m.key) })))
+      if (trainerId && bajas.length) sendPush({ trainerId }, '📉 Check-in bajo', `${clientName || 'Tu cliente'}: ${bajas.join(' · ')}`, { tipo: 'checkin_bajo' })
       // Autorregulación: si la energía de hoy es baja, sugiere aliviar la sesión
       if (energiaBaja) setShowSuggestion(true)
       // Mucho dolor marcado en "Agujetas" — puede ser solo fatiga de una buena

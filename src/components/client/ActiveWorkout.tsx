@@ -664,7 +664,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     try {
     // Un solo aviso al entrenador: de récord si ha batido alguno (aunque no lo haya hecho todo); si no, el de sesión completada
     const aviso = trainerId && !trainerMode ? avisoFinSesion({ nombre: nombreCliente, dia: day.title, completa: allComplete, records: newRecords }) : null
-    if (aviso && trainerId) sendPush({ trainerId }, aviso.titulo, aviso.cuerpo)
+    if (aviso && trainerId) sendPush({ trainerId }, aviso.titulo, aviso.cuerpo, { tipo: newRecords.length ? 'record' : 'sesion' })
     if (reactionEmoji) {
       const today = localDateKey()
       if (isDemoClientId(plan.clientId)) {

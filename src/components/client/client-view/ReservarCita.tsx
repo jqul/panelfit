@@ -53,7 +53,7 @@ export function ReservarCita({ trainerId, clientName, onSinHorario, onHecho }: {
       return
     }
     const cuando = `${elegido.inicio.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })} a las ${elegido.hora}`
-    sendPush({ trainerId }, r.status === 'confirmada' ? 'Nueva cita reservada' : 'Nueva solicitud de cita', `${clientName} · ${cuando}`)
+    sendPush({ trainerId }, r.status === 'confirmada' ? 'Nueva cita reservada' : 'Nueva solicitud de cita', `${clientName} · ${cuando}`, { tipo: 'reserva' })
     toast(r.status === 'confirmada' ? `Cita reservada: ${cuando} ✓` : `Solicitada: ${cuando}. Tu entrenador la confirmará.`, 'ok')
     onHecho()
   }

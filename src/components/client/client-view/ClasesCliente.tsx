@@ -25,7 +25,7 @@ export function ClasesCliente({ trainerId, clientName }: { trainerId: string; cl
     setOcupado(null)
     if ('error' in r) { toast(r.error, 'warn'); return }
     toast(r.estado === 'reservada' ? `Tienes plaza en «${c.titulo}» ✓` : `Estás en la lista de espera de «${c.titulo}»: si alguien cancela, pasas tú`, 'ok')
-    if (r.estado === 'reservada') sendPush({ trainerId }, 'Nueva reserva de clase', `${clientName} se ha apuntado a «${c.titulo}» (${cuando(c.start_at)})`)
+    if (r.estado === 'reservada') sendPush({ trainerId }, 'Nueva reserva de clase', `${clientName} se ha apuntado a «${c.titulo}» (${cuando(c.start_at)})`, { tipo: 'reserva' })
     cargar()
   }
   const cancelar = async (c: ClaseCliente) => {

@@ -76,6 +76,7 @@ const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m
 const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ default: m.PublicPageEditor })))
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
+const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
 const AlertasUmbralEditor = lazy(() => import('./AlertasUmbralEditor').then(m => ({ default: m.AlertasUmbralEditor })))
 const CheckinEditor = lazy(() => import('./CheckinEditor').then(m => ({ default: m.CheckinEditor })))
 const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
@@ -1181,9 +1182,10 @@ function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfil
       <div className="bg-card rounded-2xl p-6 space-y-3 shadow-sm">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Notificaciones</h3>
-          <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo cuando un cliente complete una sesión o suba un vídeo.</p>
+          <p className="text-xs text-muted mt-0.5">Recibe avisos en este dispositivo: sesiones, récords, reservas, check-ins bajos… Elige abajo cuáles.</p>
         </div>
         <PushToggle trainerId={userProfile.uid} />
+        <Suspense fallback={null}><AvisosEditor trainerId={userProfile.uid} /></Suspense>
         <div className="flex items-start justify-between gap-4 pt-3 border-t border-border/40">
           <div>
             <p className="text-sm font-medium">Check-in semanal automático</p>
