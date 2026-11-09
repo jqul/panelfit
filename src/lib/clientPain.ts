@@ -69,7 +69,7 @@ export function useClientPain(clientId?: string, trainerId?: string) {
     if (trainerId && !isDemo && (tipo === 'articular' || intensidad >= 7)) {
       const { data: c } = await supabase.from('clientes').select('name, surname').eq('id', clientId).maybeSingle()
       const nombre = c ? `${c.name} ${c.surname}`.trim() : 'Un cliente'
-      sendPush({ trainerId }, '⚠️ Molestia reportada', `${nombre} — ${zona} (${intensidad}/10)${nota ? `: "${nota}"` : ''}`)
+      sendPush({ trainerId }, '⚠️ Molestia reportada', `${nombre} — ${zona} (${intensidad}/10)${nota ? `: "${nota}"` : ''}`, { tipo: 'molestia' })
     }
   }, [clientId, trainerId, entries, reload])
 

@@ -56,6 +56,15 @@ async function resolveAllowedTarget(authHeader: string, trainerId?: string, clie
   return null
 }
 
+// ¿Ha apagado el entrenador este tipo de aviso? (Ajustes → Notificaciones; profile.avisos, ver
+// src/lib/preferenciasAvisos.ts). Lo que no está guardado como false se manda.
+async function avisoApagado(trainerId: string, tipo: unknown): Promise<boolean> {
+  if (typeof tipo !== "string" || !tipo) return false
+  const { data } = await supabase.from("entrenadores").select("profile").eq("uid", trainerId).maybeSingle()
+  const avisos = (data?.profile as { avisos?: Record<string, unknown> } | null)?.avisos
+  return !!avisos && avisos[tipo] === false
+}
+
 // Solo rutas internas relativas — nunca una URL externa (la notificación
 // pushea "url" tal cual y el service worker la abre al pulsarla).
 function safeUrl(url: unknown): string {
@@ -70,7 +79,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { trainerId, clientId, title, body, url } = await req.json()
+    const { trainerId, clientId, title, body, url, tipo } = await req.json()
     if (!trainerId && !clientId) {
       return new Response(JSON.stringify({ error: "trainerId or clientId required" }), { status: 400 })
     }
@@ -78,6 +87,10 @@ Deno.serve(async (req: Request) => {
     const target = await resolveAllowedTarget(req.headers.get('Authorization') || '', trainerId, clientId)
     if (!target) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
+
+    if (target.trainerId && await avisoApagado(target.trainerId, tipo)) {
+      return new Response(JSON.stringify({ sent: 0, total: 0, apagado: true }), { headers: { "Content-Type": "application/json" } })
     }
 
     let query = supabase.from("push_subscriptions").select("*")

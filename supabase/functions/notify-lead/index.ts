@@ -28,6 +28,15 @@ function igual(a: string, b: string): boolean {
   return r === 0
 }
 
+// ¿Ha apagado el entrenador este tipo de aviso? (Ajustes → Notificaciones; profile.avisos, ver
+// src/lib/preferenciasAvisos.ts). Lo que no está guardado como false se manda.
+async function avisoApagado(trainerId: string, tipo: unknown): Promise<boolean> {
+  if (typeof tipo !== "string" || !tipo) return false
+  const { data } = await supabase.from("entrenadores").select("profile").eq("uid", trainerId).maybeSingle()
+  const avisos = (data?.profile as { avisos?: Record<string, unknown> } | null)?.avisos
+  return !!avisos && avisos[tipo] === false
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 })
 
@@ -48,6 +57,10 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: "trainer_id required" }), { status: 400 })
     }
     const quien = String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 60) || "Alguien"
+
+    if (await avisoApagado(trainer_id, "contacto")) {
+      return new Response(JSON.stringify({ sent: 0, total: 0, apagado: true }), { headers: { "Content-Type": "application/json" } })
+    }
 
     const { data: subs, error } = await supabase.from("push_subscriptions").select("*").eq("trainer_id", trainer_id)
     if (error) throw error
