@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react'
+import { textoObjetivo, type Objetivo, type ModoProgresion } from '../../../lib/progresionAuto'
 import { resumenSeries } from '../../../lib/backoff'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame, Moon, Sun } from 'lucide-react'
 import { Exercise } from '../../../types'
@@ -31,6 +32,8 @@ interface Props {
   isRecord: (ri: number) => boolean
   /** Peso calculado para un ejercicio por %1RM con la marca de referencia (lib/marcaRM), si lo hay. */
   pesoObjetivo?: (ri: number) => number | null
+  /** Progresión automática (lib/progresionAuto): el objetivo de hoy para el ejercicio, si su entrenador la usa y no es solo una guía para él. */
+  objetivoProgresion?: (ri: number) => (Objetivo & { modo: ModoProgresion }) | null
   onSelect: (ri: number, si: number) => void
   onBack: () => void
   onFinishClick: () => void
@@ -95,7 +98,9 @@ export function FocusWorkout(p: Props) {
   const lastWeight = (() => {
     for (let i = p.si - 1; i >= 0; i--) if (exSets[i]?.weight) return exSets[i].weight
     const objetivo = p.pesoObjetivo?.(p.ri)
-    return prescribedWeight(ex.weight) || (objetivo ? String(objetivo) : '') || prev?.weight || ''
+    const prog = p.objetivoProgresion?.(p.ri)
+    // En automático, el objetivo de la progresión va por delante del peso escrito en el plan (que se queda atrás)
+    return (prog?.modo === 'auto' ? String(prog.kg) : '') || prescribedWeight(ex.weight) || (objetivo ? String(objetivo) : '') || prev?.weight || ''
   })()
   const [weight, setWeight] = useState(cur.weight || lastWeight)
   const [reps, setReps] = useState(cur.reps)
@@ -114,7 +119,14 @@ export function FocusWorkout(p: Props) {
 
   const prevW = parseFloat(prev?.weight || '')
   const suggestion = prev?.rir !== undefined ? getSuggestedWeightChange(prev.rir, prev.weight, p.weekRpe) : null
-  const targetRange = p.showTarget ? getTargetRangeLabel(prev?.weight, prev?.rir, p.weekRpe) : null
+  // Con progresión automática manda su objetivo (peso y reps); si no, la recomendación por RIR de siempre
+  const prog = p.objetivoProgresion?.(p.ri) ?? null
+  const targetRange = prog ? null : p.showTarget ? getTargetRangeLabel(prev?.weight, prev?.rir, p.weekRpe) : null
+  const usarObjetivo = () => {
+    if (!prog) return
+    const w = String(prog.kg), r = String(prog.reps)
+    setWeight(w); setReps(r); p.onCommit(p.ri, p.si, w, r)
+  }
 
   const useSuggested = () => {
     if (!prevW) return
@@ -311,11 +323,22 @@ export function FocusWorkout(p: Props) {
               </div>
 
               {/* Referencia: la última vez y lo recomendado hoy */}
-              {(prev?.weight || targetRange) && (
+              {(prev?.weight || targetRange || prog) && (
                 <div className="mt-5 pt-4 border-t border-border/60 text-center space-y-1.5">
                   {prev?.weight && <p className="text-sm font-medium text-muted">La última vez: {fmt(prev.weight)} kg × {prev.reps}{prev.rir !== undefined ? ` · ${etiquetaEsfuerzo(prev.rir, escala)}` : ''}</p>}
+                  {prog && (
+                    <div data-testid="objetivo-progresion">
+                      <p className={`text-sm font-bold ${prog.cambio === 'baja' ? 'text-warn' : 'text-ok'}`}>🎯 Objetivo hoy: {textoObjetivo(prog)}</p>
+                      <p className="text-[11px] text-muted">{prog.motivo}</p>
+                    </div>
+                  )}
                   {targetRange && <p className="text-sm font-bold" style={{ color: suggestion?.color || 'var(--color-accent)' }}>🎯 Recomendado hoy: {fmt(targetRange)}</p>}
-                  {!cur.done && prev?.weight && (
+                  {!cur.done && prog && (String(prog.kg) !== weight || String(prog.reps) !== reps) && (
+                    <button onClick={usarObjetivo} className="inline-flex items-center gap-1 text-sm font-semibold text-accent py-1">
+                      <CornerLeftDown className="w-3.5 h-3.5" /> Usar el objetivo
+                    </button>
+                  )}
+                  {!cur.done && !prog && prev?.weight && (
                     <button onClick={useSuggested} className="inline-flex items-center gap-1 text-sm font-semibold text-accent py-1">
                       <CornerLeftDown className="w-3.5 h-3.5" /> Usar {targetRange ? 'lo recomendado' : 'lo de la última vez'}
                     </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react'
+import { objetivoDe } from '../../lib/progresionAuto'
 import { kg } from '../../lib/formatoKg'
 import {
   MoreHorizontal, Trophy,
@@ -619,6 +620,16 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
     return m ? resolveWeightFromPercent(ex.weight, m.kg) : null
   }
 
+  // Progresión automática (lib/progresionAuto): el objetivo de hoy de cada ejercicio, si su entrenador la usa para el
+  // cliente (una regla "solo para ti" no se le enseña). Desde el panel del entrenador se ve todo.
+  const hoyProg = localDateKey()
+  const objetivoProgresion = (ri: number) => {
+    const ex = day.exercises[ri]
+    if (!ex) return null
+    const o = objetivoDe(plan, logs, substitutions[ri] ? { ...ex, name: substitutions[ri]! } : ex, hoyProg)
+    return o && (o.modo !== 'guia' || trainerMode) ? o : null
+  }
+
   // Perfil carga-velocidad histórico para un ejercicio (VBT)
   const getVelocityProfile = (exName: string) => getVelocityProfileFromLogs(exName, logs)
 
@@ -859,7 +870,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
           title={day.title} clientName={clientName} elapsedLabel={formatElapsed()} pct={pct}
           exercises={day.exercises} sets={sets} prevSets={getPrevSets} weekRpe={plan.weeks?.[weekIdx]?.rpe} showTarget={showPesosSugeridos}
           ri={pos.ri} si={pos.si} allComplete={allComplete}
-          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord} pesoObjetivo={pesoObjetivo}
+          substitutionName={(ri) => substitutions[ri]} isRecord={isNewRecord} pesoObjetivo={pesoObjetivo} objetivoProgresion={objetivoProgresion}
           onSelect={(ri, si) => setFocusOverride({ ri, si })}
           onBack={() => onBack ? onBack() : setShowFinish(true)} onFinishClick={() => setShowFinish(true)} onToggleView={toggleView}
           onCommit={commitSet}

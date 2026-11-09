@@ -13,6 +13,9 @@ import { TrainingPlan, WeekPlan, DayPlan, Exercise, LibraryExercise, TrainingLog
 import { RunEditor } from './training-plan-editor/RunEditor'
 import { PlanBEditor } from './training-plan-editor/PlanBEditor'
 import { BackoffEditor } from './training-plan-editor/BackoffEditor'
+import { ProgresionRegla, resumenRegla } from './training-plan-editor/ProgresionRegla'
+import { admiteProgresion, conRegla, objetivoDe, textoObjetivo } from '../../lib/progresionAuto'
+import { localDateKey } from '../../lib/dates'
 import { LibreEditor } from './training-plan-editor/LibreEditor'
 import { nuevaSesionLibre } from '../../lib/sesionLibre'
 import { conPlanB } from '../../lib/sustitucionPlan'
@@ -527,6 +530,15 @@ export function TrainingPlanEditor({
                                     return (<>
                                       {n > 0 && <span className="flex-shrink-0 text-[11px] font-bold text-ok" title="Series registradas por el cliente">{n}×✓</span>}
                                       {log?.substituteName && <span title={`Sustituido por: ${log.substituteName}`} className="flex-shrink-0 text-[11px] font-semibold text-warn">🔄</span>}
+                                      {(() => {
+                                        // Progresión automática: el objetivo de la próxima sesión, como guía (lib/progresionAuto)
+                                        if (isTemplate || n > 0) return null
+                                        const obj = objetivoDe(plan, logs, ex, localDateKey())
+                                        return obj ? (
+                                          <span title={`Progresión: ${obj.motivo}`} aria-label={`Objetivo de ${ex.name}: ${textoObjetivo(obj)}`}
+                                            className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded ${obj.cambio === 'baja' ? 'bg-warn/10 text-warn' : 'bg-ok/10 text-ok'}`}>↗ {textoObjetivo(obj)}</span>
+                                        ) : null
+                                      })()}
                                     </>)
                                   })()}
                                 </div>
@@ -745,6 +757,14 @@ export function TrainingPlanEditor({
                                       )}
                                       {ex.kind !== 'run' && (
                                         <BackoffEditor exercise={ex} onChange={patch => updateExercise(activeWeek, di, ri, patch)} />
+                                      )}
+                                      {!isTemplate && ex.name.trim() && admiteProgresion(ex) && (
+                                        <div className="px-3 py-2.5 rounded-lg border border-border/50 space-y-2" role="group" aria-label={`Progresión de ${ex.name}`}>
+                                          <p className="text-xs font-semibold flex items-center gap-1.5"><span aria-hidden>↗</span> Progresión automática <span className="font-normal text-muted">(en todas las semanas)</span></p>
+                                          <ProgresionRegla nombre={ex.name} regla={plan.progresion?.ejercicios?.[ex.name.trim().toLowerCase()]}
+                                            heredada={resumenRegla(plan.progresion?.defecto)}
+                                            onChange={r => updatePlan({ progresion: conRegla(plan, ex.name, r) })} />
+                                        </div>
                                       )}
                                       {ex.kind !== 'run' && (
                                         <PlanBEditor exercise={ex} library={library} libraryMap={libraryMap}
