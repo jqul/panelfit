@@ -26,6 +26,7 @@ import { BandejaTab } from './BandejaTab'
 import { ClientList } from './ClientList'
 import { useClientSelection } from './bulk/useClientSelection'
 import { sortClients, ClientSort } from '../../lib/clientStatus'
+import { leerFiltros, guardarFiltros, type ClientFilter } from '../../lib/filtrosClientes'
 import { ThemeToggle } from '../shared/ThemeToggle'
 import { PushToggle } from '../shared/PushToggle'
 import { OnboardingChecklist } from './OnboardingChecklist'
@@ -97,7 +98,6 @@ type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'cal
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
 const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'documentos', 'insights', 'adherencia', 'negocio', 'settings']
-type ClientFilter = 'all' | 'active' | 'no-plan' | 'no-activity' | 'at-risk' | 'high-acwr' | 'jump-drop' | 'sin-entrar' | 'empieza' | 'termina' | 'terminado'
 
 interface Props {
   userProfile: UserProfile
@@ -128,11 +128,16 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const [wizard, setWizard] = useState<null | { step: 'cliente' } | { step: 'plan' | 'acceso'; clientId: string }>(null)
   const onboarding = useOnboarding(userProfile.uid, clients.map(c => ({ id: c.id, hasPlan: c.hasPlan, openedAt: c.plan_last_opened_at })), !demoClients)
   const [search, setSearch] = useState('')
-  const [clientFilter, setClientFilter] = useState<ClientFilter>('all')
-  const [labelFilter, setLabelFilter] = useState<string | null>(null)
+  // Los filtros de la lista se recuerdan entre visitas (por entrenador, en este dispositivo: lib/filtrosClientes)
+  const [filtrosGuardados] = useState(() => leerFiltros(userProfile.uid))
+  const [clientFilter, setClientFilter] = useState<ClientFilter>(filtrosGuardados.estado)
+  const [labelFilter, setLabelFilter] = useState<string | null>(filtrosGuardados.etiqueta)
   // Por profesional del equipo: null = todos; '' = sin asignar; un uid = los suyos
-  const [profFilter, setProfFilter] = useState<string | null>(null)
-  const [clientSort, setClientSort] = useState<ClientSort>('attention')
+  const [profFilter, setProfFilter] = useState<string | null>(filtrosGuardados.profesional)
+  const [clientSort, setClientSort] = useState<ClientSort>(filtrosGuardados.orden)
+  useEffect(() => {
+    guardarFiltros(userProfile.uid, { estado: clientFilter, etiqueta: labelFilter, profesional: profFilter, orden: clientSort })
+  }, [userProfile.uid, clientFilter, labelFilter, profFilter, clientSort])
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
@@ -179,13 +184,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     })
   }, [realUid, demoClients])
 
-  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, empiezaCount, terminaCount, terminadoCount, adherenciaMap,
+  const { activeToday, noPlan, noActivity7d, activePrevWeek, atRiskCount, highAcwrCount, jumpDropCount, sinEntrarCount, empiezaCount, terminaCount, terminadoCount, revisarCount, nuevosCount, adherenciaMap,
     filteredClients, chartData, activityFeed, alerts, formatLastActive } =
-    useClientStats({ clients, logsMap, search, clientFilter, labelId: labelFilter })
+    // Un filtro recordado de una etiqueta borrada, o de un equipo que ya no existe, no se aplica (no hay con qué quitarlo)
+    useClientStats({ clients, logsMap, search, clientFilter, labelId: labels.some(l => l.id === labelFilter) ? labelFilter : null })
   const profesionales = useProfesionalesEquipo(userProfile.uid)
+  const profActivo = profesionales.length > 1 ? profFilter : null
   const sortedClients = useMemo(() => sortClients(
-    profFilter === null ? filteredClients : filteredClients.filter(c => (c.profesional_id || '') === profFilter), clientSort,
-  ), [filteredClients, clientSort, profFilter])
+    profActivo === null ? filteredClients : filteredClients.filter(c => (c.profesional_id || '') === profActivo), clientSort,
+  ), [filteredClients, clientSort, profActivo])
   // Acciones masivas: lo seleccionado es siempre lo que se ve (al filtrar o buscar se recorta) y se olvida al salir de Clientes.
   const selection = useClientSelection()
   const { sync: syncSelection, stop: stopSelection } = selection
@@ -782,6 +789,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'no-plan', label: 'Sin plan', n: noPlan, always: true },
                   { id: 'no-activity', label: 'Inactivos', n: noActivity7d, always: true },
                   { id: 'at-risk', label: 'En riesgo', n: atRiskCount },
+                  { id: 'revisar', label: 'Revisar', n: revisarCount },
+                  { id: 'nuevos', label: 'Nuevos', n: nuevosCount },
                   { id: 'high-acwr', label: 'Carga alta', n: highAcwrCount },
                   { id: 'jump-drop', label: 'Caída de salto', n: jumpDropCount },
                   { id: 'sin-entrar', label: 'Sin entrar', n: sinEntrarCount },
