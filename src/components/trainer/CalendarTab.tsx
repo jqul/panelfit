@@ -18,6 +18,7 @@ import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
 import { cumpleanosEnRango } from '../../lib/cumpleanos'
 import { useScheduledMessages } from '../../lib/scheduledMessages'
 import { CumplesDia } from './CumplesDia'
+import { EVENTOS, ORDEN_EVENTOS, finEvento, type EventoAgenda } from '../../lib/eventosAgenda'
 // Solo se abre de vez en cuando: se descarga al abrirlo.
 const HorarioCitasEditor = lazy(() => import('./HorarioCitasEditor').then(m => ({ default: m.HorarioCitasEditor })))
 const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
@@ -63,12 +64,14 @@ interface Cita {
   recurring_until: string | null
   tipo_id?: string | null
   enlace?: string | null
+  evento?: EventoAgenda | null  // reunión, personal o recordatorio: sin cliente (lib/eventosAgenda)
 }
 
 function emptyForm(dateISO: string) {
   return {
     title: 'Sesión', clientId: '', date: dateISO, time: '09:00', durationMin: 60,
     recurring: false, recurringUntil: '', tipoId: '' as string,
+    evento: '' as '' | EventoAgenda,  // '' = sesión
     enlace: null as string | null,  // null = presencial
   }
 }
@@ -160,17 +163,19 @@ export function CalendarTab({ trainerId, clients }: Props) {
     }
     setSaving(true)
     const start = new Date(`${form.date}T${form.time}:00`)
-    const end = new Date(start.getTime() + form.durationMin * 60000)
+    const evento = form.evento || null
+    const end = finEvento(start, form.durationMin, evento)
     const base = {
       trainer_id: trainerId,
-      client_id: form.clientId || null,
-      title: form.title.trim() || 'Sesión',
+      client_id: evento ? null : form.clientId || null,
+      title: form.title.trim() || (evento ? EVENTOS[evento].label : 'Sesión'),
       start_at: start.toISOString(),
       end_at: end.toISOString(),
       status: 'confirmada' as const,
       notes: '',
-      tipo_id: form.tipoId || null,
-      enlace: form.enlace === null ? null : limpiarEnlace(form.enlace),
+      tipo_id: evento ? null : form.tipoId || null,
+      enlace: form.enlace === null || (evento && !EVENTOS[evento].conEnlace) ? null : limpiarEnlace(form.enlace),
+      evento,
     }
 
     let newRows: Cita[]
@@ -179,7 +184,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
       const rows = []
       let cursor = start
       while (cursor <= until) {
-        const cEnd = new Date(cursor.getTime() + form.durationMin * 60000)
+        const cEnd = finEvento(cursor, form.durationMin, evento)
         rows.push({ ...base, start_at: cursor.toISOString(), end_at: cEnd.toISOString(), recurring: 'weekly' as const, recurring_until: form.recurringUntil })
         cursor = addDays(cursor, 7)
       }
@@ -302,7 +307,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                     <span className="text-xs font-semibold">{d.dia}{cumples.length > 0 && <span aria-hidden> 🎂</span>}</span>
                     {delDia.slice(0, 2).map(c => (
                       <span key={c.id} className="text-[11px] leading-tight truncate px-1 rounded bg-bg-alt" style={tipoDe(c.tipo_id) ? { borderLeft: `3px solid ${tipoDe(c.tipo_id)!.color}` } : undefined}>
-                        {new Date(c.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} {clientName(c.client_id) || c.title}
+                        {new Date(c.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} {c.evento ? `${EVENTOS[c.evento].emoji} ` : ''}{clientName(c.client_id) || c.title}
                       </span>
                     ))}
                     {delDia.length > 2 && <span className="text-[11px] text-muted">+{delDia.length - 2} más</span>}
@@ -349,6 +354,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                            {cita.evento && <span aria-hidden>{EVENTOS[cita.evento].emoji}</span>}
                             {cita.title}
                             {cita.recurring && <Repeat className="w-3 h-3 text-muted" />}
                           </p>
@@ -356,10 +362,12 @@ export function CalendarTab({ trainerId, clients }: Props) {
                           {tipoDe(cita.tipo_id) && <p className="text-[11px] text-muted">{tipoDe(cita.tipo_id)!.nombre}</p>}
                           {cita.enlace && <a href={cita.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-0.5"><EtiquetaOnline enlace={cita.enlace} /></a>}
                         </div>
-                        <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
+                        {cita.evento
+                          ? <span className="text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 text-muted bg-bg-alt">{EVENTOS[cita.evento].label}</span>
+                          : <span className={`text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${meta.cls}`}>
                           {meta.label}
-                        </span>
-                        {cita.status === 'pendiente' && (
+                        </span>}
+                        {!cita.evento && cita.status === 'pendiente' && (
                           <>
                             <button onClick={() => updateStatus(cita, 'confirmada')}
                               className="px-2.5 py-1.5 bg-ok text-white rounded-lg text-[11px] font-bold flex-shrink-0">Confirmar</button>
@@ -367,7 +375,7 @@ export function CalendarTab({ trainerId, clients }: Props) {
                               className="p-1.5 text-muted hover:text-warn rounded-lg flex-shrink-0"><Ban className="w-3.5 h-3.5" /></button>
                           </>
                         )}
-                        {cita.status === 'confirmada' && (
+                        {!cita.evento && cita.status === 'confirmada' && (
                           <>
                             <button onClick={() => updateStatus(cita, 'completada')} title="Vino (completada)" aria-label={`Vino a ${cita.title}`}
                               className="p-1.5 text-muted hover:text-ok rounded-lg flex-shrink-0"><CheckCircle2 className="w-3.5 h-3.5" /></button>
@@ -400,7 +408,21 @@ export function CalendarTab({ trainerId, clients }: Props) {
               <button onClick={() => setShowForm(null)} className="p-1.5 text-muted hover:text-ink"><X className="w-4 h-4" /></button>
             </div>
 
-            {tipos.length > 0 && (
+            <div>
+              <p className="block text-xs font-semibold text-muted mb-1.5">Qué es</p>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Qué es">
+                {([['', '🏋️', 'Sesión'], ...ORDEN_EVENTOS.map(e => [e, EVENTOS[e].emoji, EVENTOS[e].label])] as ['' | EventoAgenda, string, string][]).map(([v, emoji, label]) => (
+                  <button key={label} type="button" role="radio" aria-checked={form.evento === v}
+                    onClick={() => setForm(f => ({ ...f, evento: v, title: v ? EVENTOS[v].label : 'Sesión', clientId: v ? '' : f.clientId, tipoId: v ? '' : f.tipoId }))}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${form.evento === v ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>
+                    <span aria-hidden>{emoji}</span> {label}
+                  </button>
+                ))}
+              </div>
+              {form.evento && <p className="text-[11px] text-muted mt-1">{EVENTOS[form.evento].ayuda}</p>}
+            </div>
+
+            {tipos.length > 0 && !form.evento && (
               <div>
                 <p className="block text-xs font-semibold text-muted mb-1.5">Tipo</p>
                 <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Tipo de cita">
@@ -417,18 +439,18 @@ export function CalendarTab({ trainerId, clients }: Props) {
 
             <div>
               <label className="block text-xs font-semibold text-muted mb-1.5">Título</label>
-              <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              <input aria-label="Título" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
             </div>
 
-            <div>
+            {!form.evento && <div>
               <label className="block text-xs font-semibold text-muted mb-1.5">Cliente (opcional)</label>
               <select value={form.clientId} onChange={e => setForm(f => ({ ...f, clientId: e.target.value }))}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
                 <option value="">Sin asignar (bloqueo de agenda)</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.surname}</option>)}
               </select>
-            </div>
+            </div>}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -443,14 +465,14 @@ export function CalendarTab({ trainerId, clients }: Props) {
               </div>
             </div>
 
-            <div>
+            {form.evento !== 'recordatorio' && <div>
               <label className="block text-xs font-semibold text-muted mb-1.5">Duración (min)</label>
               <input type="number" min={15} step={15} value={form.durationMin}
                 onChange={e => setForm(f => ({ ...f, durationMin: parseInt(e.target.value) || 60 }))}
                 className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />
-            </div>
+            </div>}
 
-            <CampoEnlaceOnline value={form.enlace} onChange={v => setForm(f => ({ ...f, enlace: v }))} />
+            {(!form.evento || EVENTOS[form.evento].conEnlace) && <CampoEnlaceOnline value={form.enlace} onChange={v => setForm(f => ({ ...f, enlace: v }))} />}
 
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={form.recurring} onChange={e => setForm(f => ({ ...f, recurring: e.target.checked }))} />
@@ -464,9 +486,9 @@ export function CalendarTab({ trainerId, clients }: Props) {
               </div>
             )}
 
-            <button onClick={saveCita} disabled={saving || (form.recurring && !form.recurringUntil) || (form.enlace !== null && !limpiarEnlace(form.enlace))}
+            <button onClick={saveCita} disabled={saving || (form.recurring && !form.recurringUntil) || ((!form.evento || EVENTOS[form.evento].conEnlace) && form.enlace !== null && !limpiarEnlace(form.enlace))}
               className="w-full py-3.5 bg-ink text-white rounded-2xl font-bold text-sm disabled:opacity-50">
-              {saving ? 'Guardando...' : 'Crear sesión'}
+              {saving ? 'Guardando...' : form.evento ? `Crear ${EVENTOS[form.evento].label.toLowerCase()}` : 'Crear sesión'}
             </button>
           </div>
 </Modal>
