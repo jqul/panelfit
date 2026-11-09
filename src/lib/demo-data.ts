@@ -1435,4 +1435,6 @@ export const DEMO_CITAS = [
   { id: 'demo-cita-10', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-001', title: 'Sesión — María', ...citaAt(-3, 9), status: 'completada' as const, notes: '', recurring: null, recurring_until: null },
   { id: 'demo-cita-11', trainer_id: DEMO_TRAINER_ID, client_id: 'demo-client-006', title: 'Sesión — Beatriz', ...citaAt(-5, 11), status: 'ausente' as const, notes: 'No vino y no avisó', recurring: null, recurring_until: null },
   { id: 'demo-cita-8', trainer_id: DEMO_TRAINER_ID, client_id: null, title: 'Bloqueado — formación', ...citaAt(5, 16), status: 'confirmada' as const, notes: 'No disponible', recurring: null, recurring_until: null },
+  { id: 'demo-cita-12', trainer_id: DEMO_TRAINER_ID, client_id: null, title: 'Reunión con el gimnasio', ...citaAt(2, 13), status: 'confirmada' as const, notes: '', recurring: null, recurring_until: null, evento: 'reunion' as const },
+  { id: 'demo-cita-13', trainer_id: DEMO_TRAINER_ID, client_id: null, title: 'Pedir presupuesto de discos', start_at: citaAt(1, 12).start_at, end_at: citaAt(1, 12).start_at, status: 'confirmada' as const, notes: '', recurring: null, recurring_until: null, evento: 'recordatorio' as const },
 ]
