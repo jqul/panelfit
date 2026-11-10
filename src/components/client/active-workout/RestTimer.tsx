@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { cancelarAvisoDescanso, mostrarDescansoEnCurso, programarAvisoDescanso, quitarNotificacionDescanso, textoSiguiente } from '../../../lib/avisoDescanso'
 import { kg } from '../../../lib/formatoKg'
 import { Play, Pause, Check } from 'lucide-react'
 import { NextSetInfo } from './utils'
@@ -39,14 +40,50 @@ interface Props {
 // que hace falta saber está aquí sin tener que agacharse ni desbloquear nada
 // más: cuánto queda de descanso y qué serie viene (peso × reps objetivo).
 export function RestTimer({ seconds, next, onDone, onSkip }: Props) {
-  const [remaining, setRemaining] = useState(seconds)
-  const [paused, setPaused] = useState(false)
+  // La cuenta va por la hora de fin, no restando de segundo en segundo: con el móvil bloqueado el navegador congela
+  // los temporizadores y, al volver, lo que queda tiene que ser lo real.
+  const [finMs, setFinMs] = useState(() => Date.now() + seconds * 1000)
+  const [pausadoQueda, setPausadoQueda] = useState<number | null>(null) // segundos que quedaban al pausar
+  const [ahora, setAhora] = useState(() => Date.now())
+  const paused = pausadoQueda !== null
+  const remaining = pausadoQueda ?? Math.max(0, Math.ceil((finMs - ahora) / 1000))
+  const terminado = useRef(false)
 
   useEffect(() => {
-    if (paused || remaining <= 0) { if (remaining <= 0) { notifyRestDone(); onDone() }; return }
-    const t = setInterval(() => setRemaining(r => r - 1), 1000)
+    if (paused) return
+    const t = setInterval(() => setAhora(Date.now()), 250)
     return () => clearInterval(t)
+  }, [paused])
+  useEffect(() => {
+    if (!paused && remaining <= 0 && !terminado.current) { terminado.current = true; notifyRestDone(); onDone() }
   }, [remaining, paused])
+
+  // Aviso con el móvil bloqueado (lib/avisoDescanso): se pide al empezar y cada vez que cambia la hora de fin; se anula
+  // al pausar y al salir del descanso (saltarlo o terminarlo con la app delante)
+  const cuerpo = textoSiguiente(next)
+  useEffect(() => {
+    if (paused) { cancelarAvisoDescanso(); return }
+    const t = setTimeout(() => programarAvisoDescanso((finMs - Date.now()) / 1000, cuerpo), 400)
+    return () => clearTimeout(t)
+  }, [finMs, paused])
+  useEffect(() => () => { cancelarAvisoDescanso(); quitarNotificacionDescanso() }, [])
+  useEffect(() => {
+    const cambio = () => {
+      if (document.visibilityState === 'hidden' && !paused) mostrarDescansoEnCurso(finMs, cuerpo)
+      else if (document.visibilityState === 'visible') { quitarNotificacionDescanso(); setAhora(Date.now()) }
+    }
+    document.addEventListener('visibilitychange', cambio)
+    return () => document.removeEventListener('visibilitychange', cambio)
+  }, [finMs, paused, cuerpo])
+
+  const ajustar = (d: number) => {
+    if (paused) setPausadoQueda(q => Math.max(0, (q ?? 0) + d))
+    else setFinMs(f => Math.max(Date.now(), f + d * 1000))
+  }
+  const pausarOSeguir = () => {
+    if (paused) { setFinMs(Date.now() + (pausadoQueda ?? 0) * 1000); setAhora(Date.now()); setPausadoQueda(null) }
+    else setPausadoQueda(remaining)
+  }
 
   const pct = ((seconds - remaining) / seconds) * 100
   const min = Math.floor(remaining / 60)
@@ -87,7 +124,7 @@ export function RestTimer({ seconds, next, onDone, onSkip }: Props) {
 
       <div className="flex gap-2">
         {[-30, -15, +15, +30].map(d => (
-          <button key={d} onClick={() => setRemaining(r => Math.max(0, r + d))}
+          <button key={d} onClick={() => ajustar(d)}
             className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs font-semibold hover:bg-white/20">
             {d > 0 ? `+${d}s` : `${d}s`}
           </button>
@@ -100,7 +137,7 @@ export function RestTimer({ seconds, next, onDone, onSkip }: Props) {
           style={{ minHeight: '56px' }}>
           <Check className="w-5 h-5" /> Listo, siguiente serie
         </button>
-        <button onClick={() => setPaused(p => !p)}
+        <button onClick={pausarOSeguir}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-white/10 text-white rounded-xl text-sm font-semibold">
           {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
           {paused ? 'Reanudar' : 'Pausar'}

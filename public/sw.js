@@ -111,6 +111,9 @@ self.addEventListener('push', e => {
     badge: '/icon-96x96.png',
     data: { url: data.url || '/' },
   }
+  // Aviso de fin de descanso: sustituye a la notificación fija del descanso (misma etiqueta) y vibra
+  if (typeof data.tag === 'string') { options.tag = data.tag; options.renotify = true }
+  if (data.vibrar) options.vibrate = [200, 100, 200]
   e.waitUntil(self.registration.showNotification(title, options))
 })
 
