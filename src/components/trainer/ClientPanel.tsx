@@ -103,6 +103,14 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [showInforme, setShowInforme] = useState(false)
+  // Progreso serie a serie para Excel (lib/exportSeries): se descarga el código al pulsar
+  const exportarSeries = async () => {
+    const { filasSeries, csvSeries, nombreArchivo, descargarCSV } = await import('../../lib/exportSeries')
+    const filas = filasSeries(logs, plan)
+    if (!filas.length) { toast('Aún no ha registrado ninguna serie', 'info'); return }
+    descargarCSV(nombreArchivo(`${client.name} ${client.surname || ''}`, localDateKey()), csvSeries(filas))
+    toast(`${filas.length} series exportadas ✓`, 'ok')
+  }
   const [showTemplates, setShowTemplates] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardTemplate, setWizardTemplate] = useState<TrainingTemplate | null>(null)
@@ -412,6 +420,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <span className={`hidden sm:block text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
+            {activeTab === 'progreso' && (
+              <button onClick={exportarSeries} title="Todas sus series, para abrir en Excel"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">⬇ Series (CSV)</button>
+            )}
             {activeTab === 'progreso' && (
               <PlanGate feature="pdf_report" planName={userProfile.planName} fallback={
                 <button disabled className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted/40 cursor-not-allowed">🔒 Informe PDF</button>
