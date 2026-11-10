@@ -72,7 +72,23 @@ function safeUrl(url: unknown): string {
   return url.slice(0, 200)
 }
 
+// CORS: la app llama a esta función desde el navegador (supabase.functions.invoke), que antes de cada POST pregunta
+// con un OPTIONS si puede. Sin estas cabeceras el navegador bloqueaba la llamada y ningún aviso salía de la app. La
+// autorización sigue siendo el token de sesión (resolveAllowedTarget), no el origen.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+}
+
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS })
+  const res = await manejar(req)
+  for (const [k, v] of Object.entries(CORS)) res.headers.set(k, v)
+  return res
+})
+
+async function manejar(req: Request): Promise<Response> {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 })
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
     return new Response(JSON.stringify({ error: "VAPID keys not configured" }), { status: 500 })
@@ -126,4 +142,4 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   }
-})
+}
