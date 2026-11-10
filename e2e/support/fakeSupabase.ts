@@ -244,6 +244,14 @@ export class FakeSupabase {
       }
       // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
       case 'encuestas_pendientes': return json(route, 200, [])
+      // Aviso de fin de descanso (la seguridad real la prueba bloque39): una fila por cliente con su token
+      case 'marcar_descanso': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        if (!c) return json(route, 403, { message: 'No eres un cliente', code: '42501' })
+        const resto = this.rows('descansos').filter(d => d.client_id !== c.id)
+        this.tables.descansos = args.p_token ? [...resto, { client_id: c.id, token: args.p_token, segundos: args.p_segundos }] : resto
+        return json(route, 200, c.id)
+      }
       case 'recordatorio_diario_cliente': {
         const c = this.rows('clientes').find(x => x.auth_user_id === me)
         if (c) c.recordatorio_diario = !!args.p_activo
