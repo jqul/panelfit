@@ -41,7 +41,7 @@ export function textoTarjeta(d: DatosTarjeta): string {
 
 const W = 1080, H = 1350, M = 90
 
-function recortar(ctx: CanvasRenderingContext2D, t: string, max: number) {
+export function recortar(ctx: CanvasRenderingContext2D, t: string, max: number) {
   if (ctx.measureText(t).width <= max) return t
   let s = t
   while (s.length > 1 && ctx.measureText(s + '…').width > max) s = s.slice(0, -1)
@@ -49,7 +49,7 @@ function recortar(ctx: CanvasRenderingContext2D, t: string, max: number) {
 }
 
 /** Hasta `lineas` líneas, partiendo por palabras; la última se recorta con «…». */
-function partir(ctx: CanvasRenderingContext2D, t: string, max: number, lineas: number) {
+export function partir(ctx: CanvasRenderingContext2D, t: string, max: number, lineas: number) {
   const out: string[] = []
   let cur = ''
   for (const p of t.split(/\s+/)) {
@@ -163,9 +163,14 @@ export async function compartirTarjeta(d: DatosTarjeta): Promise<'compartida' | 
   const blob = await dibujarTarjeta(d)
   const y = d.fecha
   const nombre = `entreno-${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}.png`
+  return compartirImagen(blob, nombre, textoTarjeta(d))
+}
+
+/** Comparte una imagen con el menú del sistema (con su texto) o, si no se puede compartir un archivo, la descarga. */
+export async function compartirImagen(blob: Blob, nombre: string, texto: string): Promise<'compartida' | 'descargada' | 'cancelada'> {
   const file = new File([blob], nombre, { type: 'image/png' })
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], text: textoTarjeta(d) }); return 'compartida' }
+    try { await navigator.share({ files: [file], text: texto }); return 'compartida' }
     catch (e) { if ((e as Error)?.name === 'AbortError') return 'cancelada' }
   }
   const url = URL.createObjectURL(blob)

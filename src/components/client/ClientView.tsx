@@ -589,7 +589,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             )}
             {activeTab === 'progreso' && (
               <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
-                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan}
+                <ProgresoClienteTab clientId={client.id} trainerId={client.trainerId} logs={logs} plan={plan} marca={trainerProfile.brandName}
                   fotosConsent={consent.fotos} onGrantFotos={() => consent.grant(true, true)}
                   onOpenCalendar={() => { setEntrenoView('calendario'); setActiveTab('entreno') }} />
               </Suspense>
