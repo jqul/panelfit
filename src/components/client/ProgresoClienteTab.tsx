@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { kg } from '../../lib/formatoKg'
-import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
+import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Video, Clock, Upload, Loader2, HeartPulse, Share2 } from 'lucide-react'
+import { toast } from '../shared/Toast'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
 import { supabase } from '../../lib/supabase'
 import { DEMO_VIDEO_FEEDBACK_MAP } from '../../lib/demo-data'
@@ -42,6 +43,8 @@ interface Props {
   // Consentimiento específico para fotos (RGPD art. 9). Si no se pasa, se asume concedido.
   fotosConsent?: boolean
   onGrantFotos?: () => Promise<boolean>
+  /** Marca del entrenador, para el pie de la tarjeta «Mi mes» que se comparte en redes. */
+  marca?: string
 }
 
 interface PhotoSession { id: string; date: string; front?: string; side?: string; back?: string; note?: string }
@@ -174,8 +177,33 @@ const fmtKg = (n: number) => String(n).replace('.', ',')
 const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })
 
 // ── Resumen: la conclusión primero, los datos después ──────
-function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso, formaClientId }: {
+// Tarjeta «Mi mes» para redes (lib/tarjetaMes, se descarga al pulsar): el mes en curso o, si aún no ha entrenado en él, el anterior
+function CompartirMes({ logs, plan, marca }: { logs: TrainingLogs; plan?: TrainingPlan | null; marca?: string }) {
+  const [ocupado, setOcupado] = useState(false)
+  const compartir = async () => {
+    setOcupado(true)
+    try {
+      const { resumenMes, compartirTarjetaMes } = await import('../../lib/tarjetaMes')
+      const actual = localDateKey().slice(0, 7)
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1)
+      let r = resumenMes(logs, plan, actual)
+      if (!r.sesiones) r = resumenMes(logs, plan, localDateKey(d).slice(0, 7))
+      if (!r.sesiones) { toast('Aún no hay entrenos este mes para compartir', 'info'); return }
+      const res = await compartirTarjetaMes(r, marca)
+      if (res === 'descargada') toast('Imagen descargada ✓ — súbela a tus redes', 'ok')
+    } catch { toast('No se pudo crear la imagen', 'warn') } finally { setOcupado(false) }
+  }
+  return (
+    <button type="button" onClick={compartir} disabled={ocupado}
+      className="w-full flex items-center justify-center gap-2 py-2.5 bg-card border border-border rounded-2xl text-sm font-semibold hover:border-accent hover:text-accent disabled:opacity-50 transition-colors">
+      <Share2 className="w-4 h-4" /> {ocupado ? 'Preparando…' : 'Compartir mi mes'}
+    </button>
+  )
+}
+
+function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, showRecords, showPeso, formaClientId, marca }: {
   logs: TrainingLogs; plan?: TrainingPlan | null
+  marca?: string
   pesoActual?: number; pesoCambio: number | null
   onGo: (t: 'records' | 'peso' | 'historial') => void
   onOpenCalendar?: () => void
@@ -212,6 +240,7 @@ function ResumenTab({ logs, plan, pesoActual, pesoCambio, onGo, onOpenCalendar, 
   return (
     <div className="space-y-4">
       <IndiceProgresoCard logs={logs} plan={plan} />
+      <CompartirMes logs={logs} plan={plan} marca={marca} />
       {/* Los ejercicios que sigue; «ver» abre el historial ya en «Por ejercicio» */}
       <FavoritosResumen logs={logs} plan={plan} onVer={() => { try { localStorage.setItem('pf_historial_modo', 'ejercicio') } catch { /* sin almacenamiento */ } onGo('historial') }} />
       {showRecords && (
@@ -594,7 +623,7 @@ function FeedbackTab({ clientId, trainerId }: { clientId: string; trainerId: str
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCalendar, fotosConsent = true, onGrantFotos }: Props) {
+export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCalendar, fotosConsent = true, onGrantFotos, marca }: Props) {
   const lastLeafRef = useRef<Record<string, string>>({})
   const [subtab, setSubtab] = useState<'resumen' | 'historial' | 'peso' | 'fotos' | 'records' | 'feedback' | 'dolor' | 'metricas'>('resumen')
   const { weights, addWeight: addWeightEntry, deleteWeight } = useClientWeights(clientId)
@@ -754,7 +783,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
       )}
 
       {currentLeaf === 'resumen'    && (
-        <ResumenTab logs={logs} plan={plan} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab} onOpenCalendar={onOpenCalendar}
+        <ResumenTab logs={logs} plan={plan} marca={marca} pesoActual={pesoActual} pesoCambio={pesoCambio} onGo={setSubtab} onOpenCalendar={onOpenCalendar}
           showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')}
           formaClientId={metricasVisibles.includes('fatiga') ? clientId : undefined} />
       )}
