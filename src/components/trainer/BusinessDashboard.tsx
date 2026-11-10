@@ -4,6 +4,8 @@ import { TrendingUp, Users, CheckCircle2, BarChart2, Euro } from 'lucide-react'
 
 // Asistencia y ocupación del mes (las mismas cifras que en el Calendario): se descarga aparte
 const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
+// Sesiones completas, valoraciones y esfuerzo por mes (lib/cifrasServicio)
+const CifrasServicio = lazy(() => import('./CifrasServicio').then(m => ({ default: m.CifrasServicio })))
 
 interface Props {
   trainerId: string
@@ -58,6 +60,7 @@ export function BusinessDashboard({ trainerId, clients, logsMap, planName }: Pro
       </div>
 
       <Suspense fallback={null}><CifrasAgenda trainerId={trainerId} /></Suspense>
+      <Suspense fallback={null}><CifrasServicio trainerId={trainerId} clients={clients} logsMap={logsMap} /></Suspense>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {KPIs.map(({ label, value, icon: Icon, color, border }) => (
