@@ -13,10 +13,10 @@ test('en la galería, los programas de PanelFit se filtran por días, nivel y ob
 
   const programas = page.getByRole('region', { name: 'Programas de PanelFit' })
   const anadir = programas.getByRole('button', { name: /^Añadir .* a mi librería$/ })
-  await expect(anadir).toHaveCount(8)
+  await expect(anadir).toHaveCount(16)
 
   await programas.getByRole('group', { name: 'Nivel' }).getByRole('button', { name: 'Avanzado' }).click()
-  await expect(anadir).toHaveCount(2)
+  await expect(anadir).toHaveCount(3)
   await programas.getByRole('group', { name: 'Objetivo' }).getByRole('button', { name: 'Fuerza' }).click()
   await expect(anadir).toHaveCount(1)
   await programas.getByRole('group', { name: 'Días' }).getByRole('button', { name: '5 días' }).click()
