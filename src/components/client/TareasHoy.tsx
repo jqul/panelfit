@@ -2,6 +2,8 @@ import { CheckSquare, Square, ExternalLink } from 'lucide-react'
 import { useTareasCliente } from '../../hooks/useTareasCliente'
 import { tareasDelDia, ICONO_TAREA } from '../../lib/tareas'
 import { localDateKey } from '../../lib/dates'
+import { useActividades } from '../../hooks/useActividades'
+import { ImportarReloj } from '../shared/ImportarReloj'
 
 // En Hoy: las tareas sueltas que le ha puesto su entrenador para hoy (caminar, movilidad, un vídeo…), para
 // marcarlas. Sin tareas hoy no pinta nada. Se carga aparte (lazy): la carga inicial de la app no crece.
@@ -31,6 +33,9 @@ export function TareasHoy({ clientId }: { clientId: string }) {
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className={`text-sm font-medium ${hecha ? 'text-muted line-through' : ''}`}><span aria-hidden>{ICONO_TAREA[t.tipo]} </span>{t.titulo}</p>
                 {t.nota && <p className="text-xs text-muted mt-0.5 whitespace-pre-wrap">{t.nota}</p>}
+                {t.tipo === 'cardio' && !hecha && (
+                  <div className="mt-1.5"><RelojEnTarea clientId={clientId} titulo={t.titulo} onHecha={() => alternarHecha(t.id, hoy)} /></div>
+                )}
                 {t.enlace && (
                   <a href={t.enlace} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-accent font-semibold mt-1">
                     Abrir <ExternalLink className="w-3 h-3" />
@@ -43,5 +48,14 @@ export function TareasHoy({ clientId }: { clientId: string }) {
       </div>
     </div>
     </div>
+  )
+}
+
+// En una tarea de cardio: subir el entreno del reloj y, al guardarlo, darla por hecha
+function RelojEnTarea({ clientId, titulo, onHecha }: { clientId: string; titulo: string; onHecha: () => void }) {
+  const { guardar } = useActividades(clientId)
+  return (
+    <ImportarReloj compacto etiqueta="Desde el reloj" extra={`Se marcará «${titulo}» como hecha`}
+      onGuardar={async a => { const ok = await guardar(a); if (ok) onHecha(); return ok }} />
   )
 }

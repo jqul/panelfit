@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { kg } from '../../lib/formatoKg'
 import { Scale, Camera, Trophy, Plus, Trash2, ChevronDown, ChevronUp, Dumbbell, Video, Clock, Upload, Loader2, HeartPulse } from 'lucide-react'
 import { TrainingPlan, TrainingLogs, LogSet } from '../../types'
@@ -28,6 +28,9 @@ import { HistorialPorEjercicio, FavoritosResumen } from './HistorialEjercicio'
 import { IndiceProgresoCard } from '../shared/IndiceProgresoCard'
 import { volumenSeries } from '../../lib/volumen'
 import { cuentaEnProgreso } from '../../lib/cuentaEnProgreso'
+
+// Entrenos del reloj: se descarga al abrir Entrenos
+const ActividadesReloj = lazy(() => import('../shared/ActividadesReloj').then(m => ({ default: m.ActividadesReloj })))
 
 
 interface Props {
@@ -755,7 +758,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
           showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')}
           formaClientId={metricasVisibles.includes('fatiga') ? clientId : undefined} />
       )}
-      {currentLeaf === 'historial'  && <HistorialTab  logs={logs} plan={plan} />}
+      {currentLeaf === 'historial'  && <><Suspense fallback={null}><ActividadesReloj clientId={clientId} /></Suspense><HistorialTab  logs={logs} plan={plan} /></>}
       {currentLeaf === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
       {currentLeaf === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
       {currentLeaf === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ActividadesReloj } from '../shared/ActividadesReloj'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { FuerzaChart } from './progreso-tab/FuerzaChart'
 import { CardioChart } from './progreso-tab/CardioChart'
@@ -90,7 +91,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
-        {section === 'cardio'       && <CardioChart       logs={logs} />}
+        {section === 'cardio'       && <div className="space-y-4"><ActividadesReloj clientId={client.id} paraEntrenador /><CardioChart logs={logs} /></div>}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
