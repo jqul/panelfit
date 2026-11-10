@@ -312,6 +312,8 @@ export const DEMO_TRAINER_PROFILE = {
 
 // ── PLAN MARÍA (Hipertrofia 4 días) ───────────────────
 export const DEMO_PLAN_MARIA: TrainingPlan = {
+  // Progresión automática (lib/progresionAuto): sugerencia en todo y el press banca, automático
+  progresion: { defecto: { tipo: 'auto', modo: 'sugerencia' }, ejercicios: { 'press banca': { tipo: 'lineal', paso: 2.5, modo: 'auto' } } },
   clientId: 'demo-client-001',
   type: 'hipertrofia',
   restMain: 180, restAcc: 90, restWarn: 30,

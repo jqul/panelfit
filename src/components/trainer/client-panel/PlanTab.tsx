@@ -1,4 +1,5 @@
 import { useState, lazy, Suspense } from 'react'
+import { ProgresionPlan } from './ProgresionPlan'
 import { X, Check } from 'lucide-react'
 import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs, TrainingTemplate } from '../../../types'
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
@@ -195,6 +196,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
 
       <SiguientePlan clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
+      <ProgresionPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <CompeticionPlan plan={plan} logs={logs} client={client} onPlanChange={onPlanChange} />
 
       {/* Modal selector de programa */}
