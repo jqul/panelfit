@@ -6,15 +6,16 @@ import type { ActividadReloj, Deporte } from '../lib/actividadReloj'
 
 // Entrenos del reloj de un cliente (tabla `actividades`): los últimos, guardar uno importado y borrarlo. En la demo,
 // en memoria.
-export interface ActividadGuardada extends ActividadReloj { id: string; fecha: string }
+export interface ActividadGuardada extends ActividadReloj { id: string; fecha: string; origen?: 'archivo' | 'strava' }
 
 interface Fila {
   id: string; fecha: string; inicio: string | null; deporte: Deporte; nombre: string; duracion_s: number
   distancia_m: number | null; desnivel_m: number | null; fc_media: number | null; fc_max: number | null; kcal: number | null
+  origen?: 'archivo' | 'strava'
 }
 const deFila = (f: Fila): ActividadGuardada => ({
   id: f.id, fecha: f.fecha, inicio: f.inicio, deporte: f.deporte, nombre: f.nombre, duracionS: f.duracion_s,
-  distanciaM: f.distancia_m, desnivelM: f.desnivel_m, fcMedia: f.fc_media, fcMax: f.fc_max, kcal: f.kcal,
+  distanciaM: f.distancia_m, desnivelM: f.desnivel_m, fcMedia: f.fc_media, fcMax: f.fc_max, kcal: f.kcal, origen: f.origen,
 })
 
 const demoPorCliente = new Map<string, ActividadGuardada[]>()
@@ -29,6 +30,9 @@ const esDemo = (id: string) => id.startsWith('demo-client-')
 export function useActividades(clientId: string) {
   const [actividades, setActividades] = useState<ActividadGuardada[]>([])
   const [cargando, setCargando] = useState(true)
+  const [version, setVersion] = useState(0)
+  /** Vuelve a leerlos (p. ej. tras sincronizar con Strava). */
+  const recargar = useCallback(() => setVersion(v => v + 1), [])
 
   useEffect(() => {
     let vivo = true
@@ -36,7 +40,7 @@ export function useActividades(clientId: string) {
     supabase.from('actividades').select('*').eq('client_id', clientId).order('fecha', { ascending: false }).limit(50)
       .then(({ data }) => { if (vivo) { setActividades(((data || []) as Fila[]).map(deFila)); setCargando(false) } })
     return () => { vivo = false }
-  }, [clientId])
+  }, [clientId, version])
 
   /** Guarda un entreno importado. true si se guardó (o ya estaba). */
   const guardar = useCallback(async (a: ActividadReloj): Promise<boolean> => {
@@ -68,5 +72,5 @@ export function useActividades(clientId: string) {
     setActividades(prev => prev.filter(a => a.id !== id))
   }, [clientId])
 
-  return { actividades, cargando, guardar, borrar }
+  return { actividades, cargando, guardar, borrar, recargar }
 }

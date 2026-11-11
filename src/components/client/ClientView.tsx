@@ -87,6 +87,15 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   clientRef.current = client
   const consent = useConsent(client?.id, authState === 'authenticated')
 
+  // Vuelta de Strava tras autorizar (?strava=1&code=…): termina la conexión (lib/strava, que solo se descarga entonces)
+  useEffect(() => {
+    if (authState !== 'authenticated' || !new URLSearchParams(window.location.search).has('strava')) return
+    Promise.all([import('../../lib/strava'), import('../shared/Toast')]).then(async ([m, t]) => {
+      const r = await m.completarConexion()
+      if (r) t.toast(r.texto, r.ok ? 'ok' : 'warn')
+    }).catch(() => {})
+  }, [authState])
+
   useEffect(() => {
     const online = () => { setIsOnline(true); setSyncState('idle') }
     const offline = () => { setIsOnline(false); setSyncState('offline') }
