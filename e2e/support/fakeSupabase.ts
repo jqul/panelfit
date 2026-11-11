@@ -244,6 +244,12 @@ export class FakeSupabase {
       }
       // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
       case 'encuestas_pendientes': return json(route, 200, [])
+      // Strava (la seguridad real la prueba bloque41): ¿hay conexión para el cliente que llama?
+      case 'strava_estado': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const con = c ? this.rows('strava_conexiones').find(x => x.client_id === c.id) : undefined
+        return json(route, 200, [{ conectado: !!con, ultima_sync: con?.ultima_sync ?? null }])
+      }
       // Aviso de fin de descanso (la seguridad real la prueba bloque39): una fila por cliente con su token
       case 'marcar_descanso': {
         const c = this.rows('clientes').find(x => x.auth_user_id === me)

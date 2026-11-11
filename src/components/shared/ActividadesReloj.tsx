@@ -3,11 +3,12 @@ import { useActividades } from '../../hooks/useActividades'
 import { DEPORTES, formatoDuracion, ritmoOVelocidad } from '../../lib/actividadReloj'
 import { ImportarReloj } from './ImportarReloj'
 import { localDateKey } from '../../lib/dates'
+import { StravaConexion } from './StravaConexion'
 
 // "Entrenos del reloj": lo importado de su reloj (tabla actividades), con distancia, tiempo, ritmo y pulso, y el botón
 // para importar otro. En Progreso del cliente y en la ficha del entrenador (los dos pueden importar y borrar).
 export function ActividadesReloj({ clientId, paraEntrenador = false }: { clientId: string; paraEntrenador?: boolean }) {
-  const { actividades, cargando, guardar, borrar } = useActividades(clientId)
+  const { actividades, cargando, guardar, borrar, recargar } = useActividades(clientId)
   if (cargando) return null
   const km = (m: number | null) => (m ? `${(m / 1000).toLocaleString('es-ES', { maximumFractionDigits: 2 })} km` : null)
   const semana = actividades.filter(a => a.fecha >= localDateKey(new Date(Date.now() - 6 * 86400000)))
@@ -32,6 +33,7 @@ export function ActividadesReloj({ clientId, paraEntrenador = false }: { clientI
               <span className="text-xl" aria-hidden>{DEPORTES[a.deporte].icono}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{a.nombre || DEPORTES[a.deporte].nombre}
+                  {a.origen === 'strava' && <span className="ml-1 text-[11px] font-bold text-[#FC4C02] align-middle">STRAVA</span>}
                   <span className="font-normal text-muted"> · {new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</span></p>
                 <p className="text-xs text-muted">{[km(a.distanciaM), formatoDuracion(a.duracionS), ritmoOVelocidad(a), a.fcMedia ? `♥ ${a.fcMedia}` : null, a.desnivelM ? `↗ ${a.desnivelM} m` : null].filter(Boolean).join(' · ')}</p>
               </div>
@@ -42,6 +44,7 @@ export function ActividadesReloj({ clientId, paraEntrenador = false }: { clientI
         </ul>
       )}
       <ImportarReloj onGuardar={guardar} />
+      {!paraEntrenador && <StravaConexion onNuevas={recargar} />}
     </section>
   )
 }
