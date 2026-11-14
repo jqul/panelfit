@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Copy, ChevronDown, ChevronUp, Dumbbell, Sparkles } from 'lucide-react'
+import { Copy, ChevronDown, ChevronUp, Dumbbell, Sparkles, Star } from 'lucide-react'
+import { idPanelfit } from '../../lib/programasGuardados'
+import { useProgramasGuardados } from '../../hooks/useProgramasGuardados'
 import type { TrainingTemplate } from '../../types'
 import { PROGRAMAS_PANELFIT, NIVELES_PROGRAMA, OBJETIVOS_PROGRAMA, filtrarProgramas, starterToTemplate, type NivelPrograma, type ObjetivoPrograma, type StarterTemplate } from '../../lib/starterTemplates'
 import { recomendarProgramas, type Lugar } from '../../lib/recomendarPrograma'
@@ -61,7 +63,10 @@ export function ProgramasPanelfit({ trainerId, onAdd }: { trainerId: string; onA
   const [abierto, setAbierto] = useState<string | null>(null)
   const [anadiendo, setAnadiendo] = useState<string | null>(null)
   const [cuestionario, setCuestionario] = useState(false)
-  const lista =filtrarProgramas(PROGRAMAS_PANELFIT, { dias, nivel, objetivo })
+  const { guardados, esGuardado, alternar } = useProgramasGuardados(trainerId)
+  const [soloGuardados, setSoloGuardados] = useState(false)
+  const nGuardados = PROGRAMAS_PANELFIT.filter(p => guardados.includes(idPanelfit(p.key))).length
+  const lista = filtrarProgramas(PROGRAMAS_PANELFIT, { dias, nivel, objetivo }).filter(p => !soloGuardados || esGuardado(idPanelfit(p.key)))
 
   const anadir = async (p: StarterTemplate) => {
     setAnadiendo(p.key)
@@ -91,11 +96,19 @@ export function ProgramasPanelfit({ trainerId, onAdd }: { trainerId: string; onA
         {fila('Días', DIAS.map(d => ({ id: d, label: `${d} días` })), dias, setDias)}
         {fila('Nivel', NIVELES_PROGRAMA, nivel, setNivel)}
         {fila('Objetivo', OBJETIVOS_PROGRAMA, objetivo, setObjetivo)}
+        {(nGuardados > 0 || soloGuardados) && (
+          <button type="button" aria-pressed={soloGuardados} onClick={() => setSoloGuardados(v => !v)} className={chip(soloGuardados)}>★ Guardados ({nGuardados})</button>
+        )}
       </div>
       {lista.length === 0 && <p className="text-sm text-muted text-center py-4">Ningún programa con esos filtros.</p>}
       {lista.map(p => (
         <div key={p.key} className="bg-bg border border-border rounded-2xl overflow-hidden">
           <div className="px-4 py-3 flex items-center gap-3">
+            <button type="button" onClick={() => alternar(idPanelfit(p.key))} aria-pressed={esGuardado(idPanelfit(p.key))}
+              aria-label={esGuardado(idPanelfit(p.key)) ? `Quitar ${p.name} de guardados` : `Guardar ${p.name}`}
+              className="p-1.5 -m-1 rounded-lg flex-shrink-0 hover:bg-bg-alt">
+              <Star className={`w-4 h-4 ${esGuardado(idPanelfit(p.key)) ? 'fill-warn text-warn' : 'text-muted/60'}`} />
+            </button>
             <button type="button" onClick={() => setAbierto(abierto === p.key ? null : p.key)} aria-expanded={abierto === p.key} className="flex-1 min-w-0 text-left flex items-center gap-2">
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold truncate">{p.name}</span>
