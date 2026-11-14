@@ -30,6 +30,7 @@ export interface ClientData {
   main_goal?: string  // objetivo principal del cliente en sus palabras — distinto de objetivo (especialidad/categoría)
   plan_last_opened_at?: string | null  // cuándo abrió el cliente su plan por última vez (null = nunca abrió el enlace)
   archivedAt?: number  // ms; archivado = no cuenta en el límite del plan y no puede abrir su panel
+  archivadoMotivo?: string  // 'plan_terminado' si se archivó solo al terminar el plan (lib/autoArchivar)
 }
 
 // ── PLAN ──────────────────────────────────────────────

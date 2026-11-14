@@ -78,6 +78,7 @@ const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ de
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
+const AutoArchivarEditor = lazy(() => import('./AutoArchivarEditor').then(m => ({ default: m.AutoArchivarEditor })))
 const AlertasUmbralEditor = lazy(() => import('./AlertasUmbralEditor').then(m => ({ default: m.AlertasUmbralEditor })))
 const CheckinEditor = lazy(() => import('./CheckinEditor').then(m => ({ default: m.CheckinEditor })))
 const ConsejosEditor = lazy(() => import('./ConsejosEditor').then(m => ({ default: m.ConsejosEditor })))
@@ -870,7 +871,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             </div>
           )}
 
-          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
+          {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} archivados={archivedClients} onRecuperar={id => restoreClients([id])} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
           {activeTab === 'contactos'  && (
             <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
               <ContactosTab leadsState={leadsState} trainerId={userProfile.uid} miNombre={userProfile.displayName} onConvertir={convertirContacto} onIrAAjustes={() => setActiveTab('settings')} />
@@ -1237,6 +1238,7 @@ function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfil
       <Suspense fallback={null}><ConsejosEditor trainerId={userProfile.uid} /></Suspense>
       <Suspense fallback={null}><CheckinEditor trainerId={userProfile.uid} /></Suspense>
       <Suspense fallback={null}><AlertasUmbralEditor trainerId={userProfile.uid} /></Suspense>
+      <Suspense fallback={null}><AutoArchivarEditor trainerId={userProfile.uid} /></Suspense>
       <div className="bg-card rounded-2xl p-6 space-y-4 shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Foto de perfil</h3>
         <div className="flex items-center gap-5">
