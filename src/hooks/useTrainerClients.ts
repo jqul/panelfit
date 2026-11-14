@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { ClientData } from '../types'
 import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
-import { computeACWR, computeSessionLoadACWR, worseAcwr } from '../lib/loadRisk'
+import { computeACWR, computeSessionLoadACWR, worseAcwr, computeLoadTrend, computeSessionLoadTrend } from '../lib/loadRisk'
+import { RAMPA_ALTA, rampaActual } from '../lib/rampaCarga'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
@@ -25,6 +26,9 @@ export interface ClientWithStats extends ClientData {
   atRisk?: boolean
   highAcwr?: boolean
   acwrRatio?: number | null
+  /** Ritmo de subida de la carga de la última semana (lib/rampaCarga): el peor entre tonelaje y carga de sesión. */
+  rampaPct?: number | null
+  rampaAlta?: boolean
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   jumpDropTestName?: string | null
@@ -159,6 +163,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           atRisk: computeAtRisk(true, dates[0], c.createdAt),
           highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
           acwrRatio: acwr.ratio,
+          ...rampaDe(logs, []),
           highJumpDrop: jumpFatigue.isDrop,
           jumpDropPct: jumpFatigue.dropPct,
           jumpDropTestName: jumpFatigue.testName,
@@ -252,6 +257,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
           ...(ausencia ? { ausencia: { texto: `${MOTIVO_LABEL[ausencia.motivo] ?? 'Fuera'} hasta el ${new Date(ausencia.hasta + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`, hasta: ausencia.hasta } } : {}),
           highAcwr: acwr.ratio !== null && acwr.ratio > ACWR_HIGH_THRESHOLD,
           acwrRatio: acwr.ratio,
+          ...rampaDe(logs, loadByClient[c.id] || []),
           highJumpDrop: jumpFatigue.isDrop,
           jumpDropPct: jumpFatigue.dropPct,
           jumpDropTestName: jumpFatigue.testName,
@@ -392,4 +398,11 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
   const limitReached = !demoClients && clients.length >= clientLimit
 
   return { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached }
+}
+
+/** Ritmo de subida de la carga: el mayor entre el del tonelaje y el de la carga de sesión (lib/rampaCarga). */
+function rampaDe(logs: Record<string, any>, sesiones: { date: string; duration_min: number; rpe: number }[]): { rampaPct: number | null; rampaAlta: boolean } {
+  const rs = [rampaActual(computeLoadTrend(logs, 7)), rampaActual(computeSessionLoadTrend(sesiones, 7))].filter((r): r is number => r !== null)
+  const rampaPct = rs.length ? Math.max(...rs) : null
+  return { rampaPct, rampaAlta: rampaPct !== null && rampaPct > RAMPA_ALTA }
 }
