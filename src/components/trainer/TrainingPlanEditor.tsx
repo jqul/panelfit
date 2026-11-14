@@ -27,6 +27,7 @@ import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } fr
 import { usePainWarning } from '../../lib/painWarning'
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
+import { PAPELES, papelDe, clasificarLevantamiento, etiquetaPapel, type PapelEjercicio } from '../../lib/papelEjercicio'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
 import { DayTestsSection } from './training-plan-editor/DayTestsSection'
 import { ExerciseAnalyticsPanel } from './training-plan-editor/ExerciseAnalyticsPanel'
@@ -653,6 +654,23 @@ export function TrainingPlanEditor({
                                       className="flex items-center gap-1 px-2 py-1 bg-card border border-accent/20 rounded-lg text-[11px] text-accent font-semibold hover:bg-accent/5 flex-shrink-0">
                                       <Info className="w-3 h-3" /> Saber más
                                     </button>
+                                  </div>
+
+                                  {/* Papel: competición / variante / accesorio. Sin marcar, se deduce del nombre (solo una ayuda) */}
+                                  <div className="px-4 py-2.5 border-b border-accent/10 flex flex-wrap items-center gap-x-3 gap-y-2">
+                                    <div className="flex-1 min-w-[140px]">
+                                      <p className="text-xs font-bold text-ink">Papel en el plan</p>
+                                      <p className="text-[11px] text-muted leading-tight">
+                                        {ex.papel ? PAPELES.find(p => p.id === ex.papel)?.desc : 'Se deduce del nombre; cámbialo si no acierta'}
+                                      </p>
+                                    </div>
+                                    <select value={ex.papel ?? ''}
+                                      onChange={e => updateExercise(activeWeek, di, ri, { papel: (e.target.value || undefined) as PapelEjercicio | undefined })}
+                                      aria-label="Papel del ejercicio"
+                                      className="text-[11px] font-bold bg-card border border-border rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer flex-shrink-0">
+                                      <option value="">Automático ({etiquetaPapel(papelDe(ex))}{clasificarLevantamiento(ex.name) ? '' : ', no es un levantamiento'})</option>
+                                      {PAPELES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                    </select>
                                   </div>
 
                                   {painWarning && (
