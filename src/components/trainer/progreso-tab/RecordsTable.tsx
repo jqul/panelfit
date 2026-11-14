@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { mejoresMarcas } from '../../../lib/mejoresMarcas'
+import { historialPorEjercicio } from '../../../lib/historialEjercicio'
+import { MarcasPorReps } from '../../shared/MarcasPorReps'
 
 // Mejores marcas por ejercicio con su podio (🥇🥈🥉: las tres mejores sesiones), de este año o de siempre.
 const MEDALLAS = ['🥇', '🥈', '🥉']
@@ -9,6 +11,7 @@ const fecha = (f: string) => new Date(f + 'T00:00:00').toLocaleDateString('es-ES
 export function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const anio = new Date().getFullYear()
   const [periodo, setPeriodo] = useState<'anio' | 'siempre'>('anio')
+  const historial = useMemo(() => new Map(historialPorEjercicio(logs, plan).map(h => [h.name.toLowerCase(), h.sesiones])), [logs, plan])
   const marcas = useMemo(() => mejoresMarcas(logs, plan, periodo === 'anio' ? `${anio}-01-01` : undefined), [logs, plan, periodo, anio])
 
   const chip = (activo: boolean) => `px-3 min-h-[36px] rounded-full text-xs font-semibold border transition-all ${activo ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-ink hover:text-ink'}`
@@ -33,6 +36,7 @@ export function RecordsTable({ logs, plan }: { logs: TrainingLogs; plan?: Traini
                   </li>
                 ))}
               </ol>
+              {historial.get(nombre.toLowerCase()) && <div className="mt-2"><MarcasPorReps nombre={nombre} sesiones={historial.get(nombre.toLowerCase())!} desde={periodo === 'anio' ? `${anio}-01-01` : undefined} /></div>}
             </div>
           ))}
         </div>
