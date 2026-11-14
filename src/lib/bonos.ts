@@ -11,10 +11,11 @@ export function estadoBono(b: Bono, usadas: number, hoy: string): EstadoBono {
   return { usadas, quedan, estado }
 }
 
-/** Citas no canceladas por bono. */
-export function usadasPorBono(citas: { bono_id: string | null; status: string }[]): Record<string, number> {
+/** Citas que gastan sesión de cada bono: las no canceladas y las canceladas tarde (`consume_bono`, migración
+ * 20261114000003: cancelar a tiempo devuelve la sesión, tarde la gasta salvo que el entrenador la devuelva). */
+export function usadasPorBono(citas: { bono_id: string | null; status: string; consume_bono?: boolean | null }[]): Record<string, number> {
   const n: Record<string, number> = {}
-  for (const c of citas) if (c.bono_id && c.status !== 'cancelada') n[c.bono_id] = (n[c.bono_id] || 0) + 1
+  for (const c of citas) if (c.bono_id && (c.status !== 'cancelada' || c.consume_bono)) n[c.bono_id] = (n[c.bono_id] || 0) + 1
   return n
 }
 

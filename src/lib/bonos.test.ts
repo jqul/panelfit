@@ -9,6 +9,9 @@ describe('bonos', () => {
     expect(usadasPorBono([{ bono_id: 'a', status: 'confirmada' }, { bono_id: 'a', status: 'cancelada' }, { bono_id: 'a', status: 'completada' }, { bono_id: null, status: 'confirmada' }]))
       .toEqual({ a: 2 })
   })
+  it('una cancelada tarde sigue gastando la sesión', () => {
+    expect(usadasPorBono([{ bono_id: 'a', status: 'cancelada', consume_bono: true }, { bono_id: 'a', status: 'cancelada', consume_bono: false }])).toEqual({ a: 1 })
+  })
   it('activo, agotado o caducado', () => {
     expect(estadoBono(b('a', 10), 4, HOY)).toEqual({ usadas: 4, quedan: 6, estado: 'activo' })
     expect(estadoBono(b('a', 10), 10, HOY).estado).toBe('agotado')

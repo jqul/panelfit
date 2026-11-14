@@ -65,6 +65,8 @@ interface Cita {
   tipo_id?: string | null
   enlace?: string | null
   evento?: EventoAgenda | null  // reunión, personal o recordatorio: sin cliente (lib/eventosAgenda)
+  bono_id?: string | null
+  consume_bono?: boolean  // cancelada tarde: gasta la sesión del bono (lib/bonos)
 }
 
 function emptyForm(dateISO: string) {
@@ -214,6 +216,22 @@ export function CalendarTab({ trainerId, clients }: Props) {
       if (error) { logError('CalendarTab:status', error); toast('Error al actualizar', 'warn'); return }
     }
     setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, status } : c))
+    // Con bono, la base de datos decide si la cancelación llega a tiempo (vuelve la sesión) o tarde (se gasta)
+    if (status === 'cancelada' && cita.bono_id && trainerId !== DEMO_TRAINER_ID) {
+      const { data } = await supabase.from('citas').select('consume_bono').eq('id', cita.id).maybeSingle()
+      const gasta = !!(data as { consume_bono?: boolean } | null)?.consume_bono
+      setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, consume_bono: gasta } : c))
+      toast(gasta ? 'Cancelada fuera de plazo: gasta la sesión del bono (puedes devolverla)' : 'Cancelada a tiempo: la sesión vuelve a su bono', gasta ? 'info' : 'ok')
+    }
+  }
+
+  const devolverAlBono = async (cita: Cita) => {
+    if (trainerId !== DEMO_TRAINER_ID) {
+      const { error } = await supabase.from('citas').update({ consume_bono: false }).eq('id', cita.id)
+      if (error) { logError('CalendarTab:devolverBono', error); toast('No se pudo devolver', 'warn'); return }
+    }
+    setCitas(prev => prev.map(c => c.id === cita.id ? { ...c, consume_bono: false } : c))
+    toast('Sesión devuelta a su bono ✓', 'ok')
   }
 
   const deleteCita = async (cita: Cita) => {
@@ -361,6 +379,10 @@ export function CalendarTab({ trainerId, clients }: Props) {
                           {name && <p className="text-xs text-muted flex items-center gap-1"><Users className="w-3 h-3" />{name}</p>}
                           {tipoDe(cita.tipo_id) && <p className="text-[11px] text-muted">{tipoDe(cita.tipo_id)!.nombre}</p>}
                           {cita.enlace && <a href={cita.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-0.5"><EtiquetaOnline enlace={cita.enlace} /></a>}
+                          {cita.status === 'cancelada' && cita.consume_bono && (
+                            <p className="text-[11px] text-warn flex items-center gap-2 mt-0.5">Cancelada tarde: gasta sesión del bono
+                              <button onClick={() => devolverAlBono(cita)} className="font-bold underline">Devolver al bono</button></p>
+                          )}
                         </div>
                         {cita.evento
                           ? <span className="text-[11px] font-bold px-2 py-1 rounded-full flex-shrink-0 text-muted bg-bg-alt">{EVENTOS[cita.evento].label}</span>
