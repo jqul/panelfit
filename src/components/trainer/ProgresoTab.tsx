@@ -6,6 +6,7 @@ import { CardioChart } from './progreso-tab/CardioChart'
 import { PesoChart } from './progreso-tab/PesoChart'
 import { VolumenChart, VolumenGrupoChart } from './progreso-tab/VolumenCharts'
 import { useContribuciones } from '../../hooks/useContribuciones'
+import { TrabajoEspecificoChart } from './progreso-tab/TrabajoEspecificoChart'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
 import { RecordsTable } from './progreso-tab/RecordsTable'
 import { ComparativaChart } from './progreso-tab/ComparativaChart'
@@ -98,6 +99,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
         {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} contrib={contrib} />}
+        {section === 'trabajo_especifico' && <TrabajoEspecificoChart logs={logs} plan={plan} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
