@@ -3,6 +3,7 @@ import { ChevronDown, Dumbbell, Search, Star, TrendingDown, TrendingUp } from 'l
 import { TrainingLogs, TrainingPlan } from '../../types'
 import { historialPorEjercicio, cambioE1rm, HistorialDeEjercicio } from '../../lib/historialEjercicio'
 import { useFavoritos } from '../../lib/favoritos'
+import { MarcasPorReps } from '../shared/MarcasPorReps'
 
 const kg = (n: number) => n.toLocaleString('es-ES', { maximumFractionDigits: 1 })
 const fecha = (d: string, year = false) => new Date(d + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) })
@@ -42,6 +43,7 @@ export function DetalleEjercicio({ historial, max = 12 }: { historial: Historial
         </div>
       </div>
       <Tendencia valores={serie} label={`Evolución del ${usaE1rm ? '1RM estimado' : 'mejor peso'} de ${historial.name}`} />
+      <MarcasPorReps nombre={historial.name} sesiones={sesiones} />
       <ul className="divide-y divide-border/70">
         {sesiones.slice(0, max).map(s => {
           const iMejor = s.series.findIndex(x => s.mejor && x.weight === s.mejor.weight && x.reps === s.mejor.reps)
