@@ -9,6 +9,7 @@ import { DEMO_TRAINER_ID } from '../../lib/demoIds'
 import { toast } from '../shared/Toast'
 import { contactoDe, haceCuanto, llevaEsperando, textoEspera } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
+import { archivadosSolos } from '../../lib/autoArchivar'
 
 const DAYS_BACK = 14
 const PRIMERAS = 5 // filas que se enseñan por nivel antes de "Ver N más" (lo urgente se enseña entero)
@@ -36,9 +37,12 @@ const fechaCorta = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('
 
 type Vista = 'cola' | 'aparte' | 'actividad'
 
-export function BandejaTab({ trainerId, clients, logsMap, onSelectClient, leadsState, onVerContactos }: {
+export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, logsMap, onSelectClient, leadsState, onVerContactos }: {
   trainerId: string
   clients: ClientWithStats[]
+  /** Archivados: los que se archivaron solos al terminar el plan salen arriba para recuperarlos (lib/autoArchivar). */
+  archivados?: ClientData[]
+  onRecuperar?: (id: string) => void
   logsMap: Record<string, any>
   onSelectClient: (c: ClientData) => void
   /** Contactos de la página pública: los nuevos van arriba de la cola, porque son clientes por ganar. */
@@ -151,6 +155,20 @@ export function BandejaTab({ trainerId, clients, logsMap, onSelectClient, leadsS
         <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-card rounded-2xl animate-pulse shadow-sm" />)}</div>
       ) : vista === 'cola' ? (
         <>
+        {archivadosSolos(archivados).length > 0 && (
+          <section aria-label="Archivados al terminar el plan" className="bg-card rounded-2xl border border-border p-4 space-y-2">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-muted">Archivados al terminar el plan</h3>
+            <ul className="divide-y divide-border/50">
+              {archivadosSolos(archivados).map(c => (
+                <li key={c.id} className="flex items-center gap-3 py-2">
+                  <span className="flex-1 min-w-0 text-sm"><span className="font-semibold">{c.name} {c.surname}</span>
+                    <span className="block text-[11px] text-muted">Terminó su plan y dejó de entrenar · archivado el {new Date(c.archivedAt!).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span></span>
+                  {onRecuperar && <button type="button" onClick={() => onRecuperar(c.id)} className="px-3 py-1.5 rounded-xl text-xs font-bold border border-border hover:border-accent hover:text-accent">Recuperar</button>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {leadsNuevos.length > 0 && (
           <section aria-label="Contactos nuevos">
             <div className="flex items-baseline gap-2 mb-2 px-1">
