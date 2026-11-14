@@ -52,7 +52,7 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 Organizada en 4 grupos (antes eran 14 botones sueltos):
 
 - **Rendimiento**: Fuerza (gráfica de peso/1RM por ejercicio), Récords (marcas personales), 1RM estimado (fórmula de Epley), Nivel de fuerza (estándares por ratio peso corporal: sentadilla/banca/peso muerto), Pesos sugeridos.
-- **Carga y riesgo**: Riesgo (semáforo ACWR real — ratio de carga aguda 7d : crónica 28d, modelo de Gabbett — combinado con bienestar autoinformado), Volumen, Volumen por grupo muscular, Esta semana vs. anterior, Adherencia, Racha.
+- **Carga y riesgo**: Riesgo (semáforo ACWR real — ratio de carga aguda 7d : crónica 28d, modelo de Gabbett — combinado con bienestar autoinformado), Volumen, Volumen por grupo muscular (opción de contar también el trabajo indirecto, estimado: el tríceps en un press, el bíceps en un remo; se enseña «N directas + M indirectas (est.)» y los pesos de partida se pueden cambiar por ejercicio, se guardan en el perfil del entrenador), Esta semana vs. anterior, Adherencia, Racha.
 - **Cuerpo**: Peso corporal, Fotos de progreso, Distribución por grupos musculares.
 - **Vídeos**: bandeja de vídeos de técnica enviados por el cliente, pendientes/comentados.
 
