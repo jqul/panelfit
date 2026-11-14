@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Activity } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { getExName, EmptyState } from './helpers'
+import { ExposicionCargas } from './ExposicionCargas'
 import { localDateKey } from '../../../lib/dates'
 import {
   LEVANTAMIENTOS, semanaVacia, sumarTrabajo, trabajoDeSeries, type TrabajoSemana, type TrabajoSerie,
@@ -85,6 +86,7 @@ export function TrabajoEspecificoChart({ logs, plan }: { logs: TrainingLogs; pla
         cada ejercicio del plan; si no lo marcó, se deduce del nombre. Es una ayuda para repartir el trabajo, no una medida exacta
         del estímulo: mira también el esfuerzo (RIR/RPE) de esas series.
       </p>
+      <ExposicionCargas logs={logs} plan={plan} semanas={semanas.map(([iso]) => iso)} />
     </div>
   )
 }
