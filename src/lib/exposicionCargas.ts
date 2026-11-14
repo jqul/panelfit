@@ -61,6 +61,14 @@ export function lunesDeISO(iso: string): string {
   return `${d.getUTCFullYear()}-${dos(d.getUTCMonth() + 1)}-${dos(d.getUTCDate())}`
 }
 
+/** Suma (o resta) días a una fecha YYYY-MM-DD, sin husos horarios. */
+export function sumarDiasISO(iso: string, dias: number): string {
+  const d = new Date(iso + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + dias)
+  const dos = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${dos(d.getUTCMonth() + 1)}-${dos(d.getUTCDate())}`
+}
+
 /**
  * Repeticiones por semana y papel, con cuántas pasan de cada umbral respecto al 1RM de referencia de su sesión.
  * `sesiones` son las de UN levantamiento (sentadilla, banca o peso muerto), con competición y variantes.
