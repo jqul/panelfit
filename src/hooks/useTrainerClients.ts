@@ -358,7 +358,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
   // Archivar no borra nada: el cliente deja de contar en el límite y no puede abrir su panel
   // (get_client_by_token ignora a los archivados) hasta que se reactive.
-  const setArchived = async (ids: string[], archived: boolean) => {
+  const setArchived = async (ids: string[], archived: boolean, motivo: string | null = null) => {
     if (!ids.length) return false
     const archivedAt = archived ? Date.now() : null
     if (demoClients) {
@@ -369,14 +369,15 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       })
       return true
     }
-    const { error } = await supabase.from('clientes').update({ archived_at: archivedAt }).in('id', ids)
+    const { error } = await supabase.from('clientes').update(archived ? { archived_at: archivedAt, archivado_motivo: motivo } : { archived_at: null }).in('id', ids)
     if (error) { toast(archived ? 'No se pudo archivar' : 'No se pudo reactivar', 'warn'); return false }
     await fetchClients()
     return true
   }
 
-  const archiveClients = async (ids: string[]) => {
-    const ok = await setArchived(ids, true)
+  /** `motivo`: por qué se va (lib/motivosBaja), si el entrenador lo marca. */
+  const archiveClients = async (ids: string[], motivo: string | null = null) => {
+    const ok = await setArchived(ids, true, motivo)
     if (ok) toast(ids.length === 1 ? 'Cliente archivado: ya no cuenta en tu plan' : `${ids.length} clientes archivados: ya no cuentan en tu plan`, 'ok',
       { label: 'Deshacer', onClick: () => { setArchived(ids, false) } })
     return ok
