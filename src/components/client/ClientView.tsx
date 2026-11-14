@@ -45,6 +45,7 @@ import { NoPlanView, SyncIndicator } from './client-view/misc'
 import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
 import { SesionEnCursoProvider } from './SesionEnCurso'
+import { RespuestasEntrenador } from './client-view/RespuestasEntrenador'
 
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
@@ -578,6 +579,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       {esSuCumple(client.fechanacimiento, localDateKey()) && (
                         <div className="px-4 pt-4"><p role="status" className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/20 rounded-2xl px-4 py-3 text-sm font-semibold">🎂 ¡Feliz cumpleaños, {client.name}! Hoy toca celebrarlo 🎉</p></div>
                       )}
+                      <RespuestasEntrenador clientId={client.id} nombreEntrenador={trainerProfile.brandName || trainerProfile.displayName || 'Tu entrenador'} />
                       <ResumenSemana clientId={client.id} plan={plan} logs={logs} />
                       <div id="hoy-checkin" className="scroll-mt-2"><ReadinessCheckin clientId={client.id} trainerId={client.trainerId} configRaw={trainerProfile.checkin} clientName={clientName} /></div>
                       <div id="hoy-citas" className="scroll-mt-2"><ProximasSesiones clientId={client.id} trainerId={client.trainerId} clientName={client.name} /></div>
