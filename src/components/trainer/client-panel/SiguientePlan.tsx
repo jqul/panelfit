@@ -3,12 +3,18 @@ import { ArrowRight } from 'lucide-react'
 import type { TrainingPlan, TrainingTemplate } from '../../../types'
 import { toast } from '../../shared/Toast'
 import { empiezaSiguiente, guardarSiguiente, leerSiguiente, siguienteDesdeWorkout, type PlanSiguiente } from '../../../lib/planEnlazado'
+import { DIAS_RENOVAR, mensajeRenovacion } from '../../../lib/renovacion'
+import { waUrl } from '../../../lib/bulkActions'
+import { localDateKey } from '../../../lib/dates'
 
 const fechaLarga = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // Pestaña Plan: «Cuando termine este plan», el workout que empieza solo al acabar el actual (lib/planEnlazado).
-export function SiguientePlan({ clientId, trainerId, plan, templates, borradorActivo }: {
+export function SiguientePlan({ clientId, trainerId, plan, templates, borradorActivo, nombre = '', telefono }: {
   clientId: string
+  /** Para el mensaje de renovación (lib/renovacion). */
+  nombre?: string
+  telefono?: string
   trainerId: string
   plan: TrainingPlan
   templates: TrainingTemplate[]
@@ -27,6 +33,7 @@ export function SiguientePlan({ clientId, trainerId, plan, templates, borradorAc
   }, [clientId, trainerId])
 
   const empieza = empiezaSiguiente(plan)
+  const diasParaFin = empieza ? Math.round((new Date(empieza + 'T12:00:00').getTime() - new Date(localDateKey() + 'T12:00:00').getTime()) / 86400000) : null
   if (siguiente === undefined || !plan.weeks?.length) return null
 
   const guardar = async (s: PlanSiguiente | null) => {
@@ -91,6 +98,18 @@ export function SiguientePlan({ clientId, trainerId, plan, templates, borradorAc
             </button>
           </div>
         )
+      )}
+      {empieza && !siguiente && diasParaFin !== null && diasParaFin >= 0 && diasParaFin <= DIAS_RENOVAR && (
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <p className="text-xs text-accent font-semibold flex-1 min-w-[180px]">🔄 Termina en {diasParaFin} día{diasParaFin === 1 ? '' : 's'}: buen momento para proponerle seguir.</p>
+          {waUrl(telefono, mensajeRenovacion(nombre, empieza)) ? (
+            <a href={waUrl(telefono, mensajeRenovacion(nombre, empieza))!} target="_blank" rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-ok/10 text-ok hover:bg-ok/20">Proponer por WhatsApp</a>
+          ) : (
+            <button type="button" onClick={() => navigator.clipboard.writeText(mensajeRenovacion(nombre, empieza)).then(() => toast('Mensaje copiado', 'ok'), () => toast('No se pudo copiar', 'warn'))}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-border text-muted hover:text-ink">Copiar mensaje de renovación</button>
+          )}
+        </div>
       )}
       {siguiente && borradorActivo && (
         <p className="mt-2 text-xs text-muted">Mientras tengas el borrador abierto no cambia: empezará cuando lo publiques.</p>
