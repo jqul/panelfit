@@ -24,10 +24,10 @@ export function BonosCliente({ clientId, trainerId, quien }: { clientId: string;
     if (demo) { setBonos([]); return }
     const [b, c] = await Promise.all([
       supabase.from('bonos_cliente').select('id, nombre, sesiones, caduca, created_at').eq('client_id', clientId),
-      supabase.from('citas').select('bono_id, status').eq('client_id', clientId).not('bono_id', 'is', null),
+      supabase.from('citas').select('bono_id, status, consume_bono').eq('client_id', clientId).not('bono_id', 'is', null),
     ])
     setBonos((b.data || []) as Bono[])
-    setUsadas(usadasPorBono((c.data || []) as { bono_id: string | null; status: string }[]))
+    setUsadas(usadasPorBono((c.data || []) as { bono_id: string | null; status: string; consume_bono?: boolean }[]))
   }
   useEffect(() => { cargar() }, [clientId]) // eslint-disable-line react-hooks/exhaustive-deps
 
