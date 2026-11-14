@@ -34,6 +34,7 @@ import { useTestCatalog } from '../../lib/testCatalog'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
 import { estimarMinutos } from '../../lib/duracionSesion'
 import { useMediaQuery } from '../../lib/useMediaQuery'
+import { esConMancuernas } from '../../lib/pesoMancuerna'
 
 export { getYTId } from './training-plan-editor/utils'
 export type { SeriesTypeDef } from './training-plan-editor/seriesTypes'
@@ -735,14 +736,24 @@ export function TrainingPlanEditor({
                                         <span>🩹</span>
                                         {ex.enReadaptacion ? '✓ En readaptación — pide dolor EVA 0-10' : 'Marcar como terapéutico / en readaptación'}
                                       </button>
-                                      {ex.kind !== 'run' && (
+                                      {ex.kind !== 'run' && ex.kind !== 'libre' && esConMancuernas(ex.name) && (
+                                        <div className="w-full flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs border border-border/50" role="radiogroup" aria-label={`Peso de ${ex.name}`}>
+                                          <span aria-hidden>⚖️</span><span className="text-muted font-semibold mr-auto">Peso</span>
+                                          {([[undefined, `Como el plan (${plan.pesoMancuernas === 'por_mancuerna' ? 'una' : 'total'})`], [false, 'Total'], [true, 'Una mancuerna']] as [boolean | undefined, string][]).map(([v, label]) => (
+                                            <button key={label} type="button" role="radio" aria-checked={ex.pesoPorLado === v}
+                                              onClick={() => updateExercise(activeWeek, di, ri, { pesoPorLado: v })}
+                                              className={`px-2 py-1 rounded-md font-semibold ${ex.pesoPorLado === v ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink'}`}>{label}</button>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {ex.kind !== 'run' && !esConMancuernas(ex.name) && (
                                         <button onClick={() => updateExercise(activeWeek, di, ri, { pesoPorLado: !ex.pesoPorLado })} aria-pressed={!!ex.pesoPorLado}
                                           title="Mancuernas, máquinas unilaterales, polea a una mano: el cliente apunta el peso de un lado y el volumen cuenta el doble"
                                           className={`w-full flex items-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold border transition-all ${
                                             ex.pesoPorLado ? 'bg-accent/10 border-accent/30 text-accent' : 'border-border/50 text-muted hover:border-accent/40 hover:text-accent'
                                           }`}>
                                           <span>⚖️</span>
-                                          {ex.pesoPorLado ? '✓ Peso por lado (el volumen cuenta doble)' : 'Peso por lado (mancuernas, unilateral)'}
+                                          {ex.pesoPorLado ? '✓ Peso por lado (el volumen cuenta doble)' : 'Peso por lado (unilateral)'}
                                         </button>
                                       )}
                                       {ex.kind !== 'run' && (

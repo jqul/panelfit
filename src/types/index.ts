@@ -96,6 +96,7 @@ export interface TrainingPlan {
   customMessages?: Record<string, string>  // override por cliente de una plantilla de mensaje, keyed por id de plantilla
   marcas?: Record<string, { kg: number; fecha: string }>  // marcas de referencia puestas a mano, por nombre de ejercicio en minúsculas (lib/marcaRM.ts)
   competicion?: import('../lib/competicion').Competicion  // competición de powerlifting que se prepara: fecha, intentos y puntos (lib/competicion.ts)
+  pesoMancuernas?: import('../lib/pesoMancuerna').PesoMancuernas  // con mancuernas se apunta el total (por defecto) o el de una (lib/pesoMancuerna.ts)
   progresion?: import('../lib/progresionAuto').ProgresionPlan  // progresión automática: regla por defecto y por ejercicio (lib/progresionAuto.ts)
 }
 

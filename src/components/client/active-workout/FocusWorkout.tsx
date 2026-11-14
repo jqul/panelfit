@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, ReactNode } from 'react'
 import { textoObjetivo, type Objetivo, type ModoProgresion } from '../../../lib/progresionAuto'
+import { unidadPeso, ayudaPeso } from '../../../lib/pesoMancuerna'
 import { resumenSeries } from '../../../lib/backoff'
 import { Gauge, ChevronLeft, ChevronRight, Check, Plus, Minus, Clock, List, MoreHorizontal, ChevronUp, Trophy, Repeat, CornerLeftDown, Flame, Moon, Sun } from 'lucide-react'
 import { Exercise } from '../../../types'
@@ -300,7 +301,7 @@ export function FocusWorkout(p: Props) {
                     onChange={e => setWeight(e.target.value)} onBlur={() => p.onCommit(p.ri, p.si, weight, reps)}
                     placeholder={prev?.weight || '0'}
                     className="w-full text-center bg-transparent font-serif font-bold text-6xl outline-none tabular-nums" />
-                  <p className="text-xs text-muted -mt-1">{ex.pesoPorLado ? 'kg por lado' : 'kg'}</p>
+                  <p className="text-xs text-muted -mt-1">{unidadPeso(ex).larga}</p>
                 </div>
                 <button onClick={() => adjustWeight(2.5)} aria-label="Añadir 2,5 kg" className="w-12 h-12 rounded-2xl bg-bg border border-border font-bold text-sm text-muted active:scale-90 transition-transform">+2,5</button>
               </div>
@@ -309,6 +310,7 @@ export function FocusWorkout(p: Props) {
                 <button onClick={() => adjustWeight(5)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-muted bg-bg-alt active:scale-90 transition-transform">+5</button>
                 <button onClick={() => p.onOpenCalc(weight)} className="px-3 py-1.5 rounded-xl text-xs font-bold text-muted bg-bg-alt active:scale-90 transition-transform">Discos</button>
               </div>
+              {ayudaPeso(ex) && <p className="text-center text-[11px] text-muted mt-2">⚖️ {ayudaPeso(ex)}</p>}
 
               <div className="flex items-center justify-center gap-4 mt-5">
                 <button onClick={() => adjustReps(-1)} aria-label="Una repetición menos" className="w-11 h-11 rounded-2xl bg-bg border border-border flex items-center justify-center text-muted active:scale-90 transition-transform"><Minus className="w-4 h-4" /></button>
