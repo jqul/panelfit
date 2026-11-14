@@ -325,6 +325,13 @@ export class FakeSupabase {
         if (quitada.estado === 'reservada' && primera) primera.estado = 'reservada'
         return json(route, 200, true)
       }
+      // Respuesta del entrenador a una sesión: el cliente la marca como leída (la seguridad real la prueba bloque45)
+      case 'marcar_respuesta_leida': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        const r = this.rows('respuestas_sesion').find(x => x.id === args.p_id && x.client_id === c?.id)
+        if (r && !r.leida_at) r.leida_at = new Date().toISOString()
+        return empty(route)
+      }
       case 'profesionales_del_equipo': {
         const owner = args.p_owner
         const miembros = this.rows('team_members').filter(t => t.owner_id === owner).map(t => t.member_uid)
