@@ -11,6 +11,8 @@ export interface StatusInput {
   atRisk?: boolean
   highAcwr?: boolean
   acwrRatio?: number | null
+  rampaAlta?: boolean
+  rampaPct?: number | null
   highJumpDrop?: boolean
   jumpDropPct?: number | null
   planEndingSoon?: boolean
@@ -47,6 +49,8 @@ export function clientStatus(c: StatusInput, now: Date = new Date()): ClientStat
   // La carga y el salto siguen avisando: son del cuerpo, no de la agenda.
   if (c.ausencia) {
     if (c.highAcwr) reasons.push(c.acwrRatio ? `Carga alta (ACWR ${fmt(c.acwrRatio)})` : 'Carga alta')
+  if (c.rampaAlta) reasons.push(c.rampaPct ? `Carga subiendo deprisa (+${c.rampaPct} %/sem)` : 'Carga subiendo deprisa')
+    if (c.rampaAlta) reasons.push(c.rampaPct ? `Carga subiendo deprisa (+${c.rampaPct} %/sem)` : 'Carga subiendo deprisa')
     if (c.highJumpDrop) reasons.push(c.jumpDropPct ? `Caída de salto ${fmt(Math.abs(c.jumpDropPct))}%` : 'Caída de salto')
     return { level: reasons.length ? 'review' : 'ok', label: c.ausencia.texto, reasons }
   }
@@ -54,6 +58,7 @@ export function clientStatus(c: StatusInput, now: Date = new Date()): ClientStat
   if (days === null) reasons.push('Aún no ha entrenado')
   else if (!c.doneToday && days >= 4) reasons.push(`${days} días sin entrenar`)
   if (c.highAcwr) reasons.push(c.acwrRatio ? `Carga alta (ACWR ${fmt(c.acwrRatio)})` : 'Carga alta')
+  if (c.rampaAlta) reasons.push(c.rampaPct ? `Carga subiendo deprisa (+${c.rampaPct} %/sem)` : 'Carga subiendo deprisa')
   if (c.highJumpDrop) reasons.push(c.jumpDropPct ? `Caída de salto ${fmt(Math.abs(c.jumpDropPct))}%` : 'Caída de salto')
   if (c.planEndingSoon) reasons.push('El plan termina pronto')
 

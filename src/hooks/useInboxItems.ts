@@ -34,6 +34,7 @@ function riskInfo(c: ClientWithStats): { detail: string; tier: QueueTier; score:
   if (!c.hasPlan) return { detail: 'Sin plan asignado', tier: 'hoy', score: 70 }
   if (c.highAcwr) return { detail: `⚡ Carga alta (ACWR ${c.acwrRatio})`, tier: 'urgente', score: 90 }
   if (c.highJumpDrop) return { detail: `🦵 Caída de salto (${c.jumpDropPct}%)`, tier: 'urgente', score: 85 }
+  if (c.rampaAlta) return { detail: `📈 Carga subiendo deprisa (+${c.rampaPct} %/sem)`, tier: 'hoy', score: 75 }
   if (c.atRisk) return { detail: '🚩 Riesgo de abandono', tier: 'hoy', score: 60 }
   if (c.planEndingSoon) return { detail: `Plan termina el ${c.planEndDate ? new Date(c.planEndDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'pronto'}`, tier: 'hoy', score: 40 }
   return null

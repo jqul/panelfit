@@ -4,6 +4,7 @@ import { Activity } from 'lucide-react'
 import { TrainingLogs } from '../../../types'
 import { computeLoadTrend, computeSessionLoadTrend, FITNESS_DIAS, SessionLoadRow } from '../../../lib/loadRisk'
 import { estadoForma, SEMANAS_MIN_FORMA, EstadoForma } from '../../../lib/estadoForma'
+import { rampaActual, rampasSemanales, semanasRapidas, valorarRampa, RAMPA_ALTA } from '../../../lib/rampaCarga'
 import { EmptyState } from './helpers'
 
 function CustomTrendTooltip({ active, payload, label }: any) {
@@ -43,6 +44,11 @@ export function CargaTrendChart({ logs, sessionLoadRows = [] }: { logs: Training
     semana: new Date(p.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
   })), [trend])
   const estado = useMemo(() => estadoForma(trend), [trend])
+  // Ritmo de subida (lib/rampaCarga): la última semana, su valoración y las de antes
+  const rampa = useMemo(() => {
+    const pct = rampaActual(trend)
+    return pct === null ? null : { pct, ...valorarRampa(pct, semanasRapidas(trend)), historia: rampasSemanales(trend).slice(-6) }
+  }, [trend])
 
   if (data.length < 2) return <EmptyState icon={<Activity className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita varias semanas de entrenos registrados" />
 
@@ -71,10 +77,20 @@ export function CargaTrendChart({ logs, sessionLoadRows = [] }: { logs: Training
         <div className={`rounded-xl border px-4 py-3 ${TONO_ESTADO[estado.tono]}`} role="status">
           <p className="text-sm font-bold">{estado.etiqueta} <span className="font-semibold opacity-80">· forma {estado.formaPct > 0 ? '+' : ''}{estado.formaPct} %</span></p>
           <p className="text-xs text-ink/80 mt-0.5">{estado.frase}</p>
-          {estado.rampaPct !== null && Math.abs(estado.rampaPct) >= 1 && (
-            <p className="text-[11px] text-muted mt-1">Fitness {estado.rampaPct > 0 ? '↑' : '↓'} {Math.abs(estado.rampaPct)} % respecto a la semana anterior</p>
-          )}
         </div>
+      )}
+
+      {rampa && (
+        <section aria-label="Ritmo de subida de la carga" className={`rounded-xl border px-4 py-3 ${TONO_ESTADO[rampa.tono]}`}>
+          <p className="text-sm font-bold">Ritmo de subida: {rampa.pct > 0 ? '+' : ''}{rampa.pct} %/semana <span className="font-semibold opacity-80">· {rampa.etiqueta}</span></p>
+          <p className="text-xs text-ink/80 mt-0.5">{rampa.frase}</p>
+          <ol className="flex gap-1 mt-2" aria-label="Ritmo de las últimas semanas">
+            {rampa.historia.map((r, i) => (
+              <li key={i} title={`${r > 0 ? '+' : ''}${r} %`}
+                className={`text-[11px] font-bold tabular-nums px-1.5 py-0.5 rounded ${r > RAMPA_ALTA ? 'bg-warn/15 text-warn' : 'bg-bg-alt text-muted'}`}>{r > 0 ? '+' : ''}{r}</li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <div className="grid grid-cols-3 gap-2">
