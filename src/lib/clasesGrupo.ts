@@ -14,6 +14,8 @@ export interface Clase {
   aforo: number; notas: string; cancelada: boolean
   /** Enlace de la videollamada si es online (lib/sesionOnline). */
   enlace?: string | null
+  /** Solo para clientes con alguna de estas etiquetas (migración 20261114000002); vacío = para todos. */
+  etiquetas?: string[]
 }
 export interface Plaza { clase_id: string; client_id: string; estado: EstadoPlaza; created_at: string; asistio?: boolean | null }
 export interface ClaseConPlazas extends Clase { plazas: Plaza[] }
@@ -83,7 +85,7 @@ export async function listarClases(trainerId: string, desde: Date = new Date()):
   return clases.map(c => ({ ...c, plazas: plazas.filter(p => p.clase_id === c.id) }))
 }
 
-export async function crearClase(trainerId: string, c: Pick<Clase, 'titulo' | 'start_at' | 'end_at' | 'aforo' | 'notas' | 'enlace'>): Promise<ClaseConPlazas | null> {
+export async function crearClase(trainerId: string, c: Pick<Clase, 'titulo' | 'start_at' | 'end_at' | 'aforo' | 'notas' | 'enlace' | 'etiquetas'>): Promise<ClaseConPlazas | null> {
   if (esDemo(trainerId)) {
     const nueva = { ...c, id: crypto.randomUUID(), trainer_id: trainerId, cancelada: false, plazas: [] }
     DEMO.push(nueva); return nueva

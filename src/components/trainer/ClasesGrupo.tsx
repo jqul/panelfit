@@ -6,6 +6,7 @@ import { localDateKey } from '../../lib/dates'
 import { limpiarEnlace } from '../../lib/sesionOnline'
 import { CampoEnlaceOnline, EtiquetaOnline } from '../shared/EnlaceOnline'
 import type { ClientData } from '../../types'
+import { useLabels } from '../../hooks/useLabels'
 import {
   apuntar, cambiarAforo, cancelarClaseEntera, crearClase, listarClases, marcarAsistencia, quitar, resumenPlazas, type ClaseConPlazas,
 } from '../../lib/clasesGrupo'
@@ -16,7 +17,10 @@ const contar = (c: ClaseConPlazas) => ({
   aforo: c.aforo, ocupadas: c.plazas.filter(p => p.estado === 'reservada').length, en_espera: c.plazas.filter(p => p.estado === 'espera').length,
 })
 
-function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: string; end_at: string; aforo: number; notas: string; enlace: string | null }) => Promise<boolean> }) {
+type Etiqueta = { id: string; name: string; emoji?: string }
+
+function NuevaClase({ onCrear, labels }: { labels: Etiqueta[]; onCrear: (c: { titulo: string; start_at: string; end_at: string; aforo: number; notas: string; enlace: string | null; etiquetas: string[] }) => Promise<boolean> }) {
+  const [etiquetas, setEtiquetas] = useState<string[]>([]) // vacío = para todos
   const [titulo, setTitulo] = useState('')
   const [fecha, setFecha] = useState(() => localDateKey(new Date(Date.now() + 86400000)))
   const [horaIni, setHoraIni] = useState('19:00')
@@ -31,9 +35,9 @@ function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: stri
     if (ini.getTime() <= Date.now()) { toast('Elige una fecha y hora futuras', 'warn'); return }
     if (enlace !== null && !limpiarEnlace(enlace)) { toast('Pega el enlace completo de la videollamada', 'warn'); return }
     setGuardando(true)
-    const ok = await onCrear({ titulo: titulo.trim(), start_at: ini.toISOString(), end_at: new Date(ini.getTime() + duracion * 60000).toISOString(), aforo, notas: notas.trim(), enlace: enlace === null ? null : limpiarEnlace(enlace) })
+    const ok = await onCrear({ titulo: titulo.trim(), start_at: ini.toISOString(), end_at: new Date(ini.getTime() + duracion * 60000).toISOString(), aforo, notas: notas.trim(), enlace: enlace === null ? null : limpiarEnlace(enlace), etiquetas })
     setGuardando(false)
-    if (ok) { setTitulo(''); setNotas(''); setEnlace(null) }
+    if (ok) { setTitulo(''); setNotas(''); setEnlace(null); setEtiquetas([]) }
   }
   const campo = 'w-full text-sm bg-card border border-border rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-accent/20'
   return (
@@ -48,6 +52,20 @@ function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: stri
       </div>
       <input value={notas} onChange={e => setNotas(e.target.value)} maxLength={500} placeholder="Notas: sala, qué traer… (opcional)" aria-label="Notas de la clase" className={campo} />
       <CampoEnlaceOnline value={enlace} onChange={setEnlace} />
+      {labels.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-muted">Quién puede reservarla: {etiquetas.length ? 'solo los clientes con alguna de estas etiquetas' : 'todos tus clientes'}</p>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Solo para las etiquetas">
+            {labels.map(l => (
+              <button key={l.id} type="button" aria-pressed={etiquetas.includes(l.id)}
+                onClick={() => setEtiquetas(e => e.includes(l.id) ? e.filter(x => x !== l.id) : [...e, l.id])}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${etiquetas.includes(l.id) ? 'bg-ink text-white border-ink' : 'bg-card border-border text-muted'}`}>
+                {l.emoji} {l.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex justify-end">
         <button onClick={crear} disabled={guardando || !titulo.trim()} className="px-4 py-2 bg-ink text-white rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50">
           {guardando ? 'Creando…' : 'Crear clase'}
@@ -57,7 +75,7 @@ function NuevaClase({ onCrear }: { onCrear: (c: { titulo: string; start_at: stri
   )
 }
 
-function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPlazas; clients: ClientData[]; trainerId: string; onCambio: () => void }) {
+function FichaClase({ clase, clients, trainerId, onCambio, labels }: { clase: ClaseConPlazas; clients: ClientData[]; trainerId: string; onCambio: () => void; labels: Etiqueta[] }) {
   const [anadir, setAnadir] = useState('')
   const nombre = (id: string) => { const c = clients.find(x => x.id === id); return c ? `${c.name} ${c.surname || ''}`.trim() : 'Cliente' }
   const n = contar(clase)
@@ -77,6 +95,7 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
           <p className="text-xs text-muted capitalize">{dia(clase.start_at)} · {hora(clase.start_at)}–{hora(clase.end_at)}</p>
           {clase.notas && <p className="text-xs text-muted mt-0.5">{clase.notas}</p>}
           {clase.enlace && <a href={clase.enlace} target="_blank" rel="noopener noreferrer" className="inline-block mt-1"><EtiquetaOnline enlace={clase.enlace} /></a>}
+          {!!clase.etiquetas?.length && <p className="text-[11px] text-muted mt-0.5">🔒 Solo: {clase.etiquetas.map(id => labels.find(l => l.id === id)).filter(Boolean).map(l => `${l!.emoji ?? ''} ${l!.name}`.trim()).join(', ') || 'etiquetas borradas'}</p>}
         </div>
         {empezada ? <span className="text-xs font-semibold text-muted flex-shrink-0">{resumenPlazas(n)}</span> : <div className="flex items-center gap-1 flex-shrink-0" role="group" aria-label={`Plazas de ${clase.titulo}`}>
           <button onClick={() => run(cambiarAforo(trainerId, clase.id, clase.aforo - 1), 'Plazas actualizadas')} disabled={clase.aforo <= Math.max(1, n.ocupadas)}
@@ -133,6 +152,7 @@ function FichaClase({ clase, clients, trainerId, onCambio }: { clase: ClaseConPl
 // Calendario → Clases de grupo: las clases con plazas, quién va y la lista de espera (lib/clasesGrupo).
 export function ClasesGrupo({ trainerId, clients, onClose }: { trainerId: string; clients: ClientData[]; onClose: () => void }) {
   const [clases, setClases] = useState<ClaseConPlazas[] | null>(null)
+  const { labels } = useLabels(trainerId)
   const cargar = () => listarClases(trainerId, new Date(Date.now() - 3 * 86400000)).then(c => { setClases(c ?? []); if (c === null) toast('No se pudieron cargar las clases', 'warn') })
   useEffect(() => { cargar() }, [trainerId])
 
@@ -147,10 +167,10 @@ export function ClasesGrupo({ trainerId, clients, onClose }: { trainerId: string
     <Modal open onClose={onClose} title="Clases de grupo" variant="drawer">
       <div className="space-y-4">
         <p className="text-sm text-muted flex items-center gap-2"><Users className="w-4 h-4 flex-shrink-0" />Tus clientes reservan desde su app. Si se llena, entran en lista de espera y pasan solos cuando alguien cancela.</p>
-        <NuevaClase onCrear={crear} />
+        <NuevaClase onCrear={crear} labels={labels} />
         {clases === null ? <div className="h-20 bg-card border border-border rounded-2xl animate-pulse" />
           : clases.length === 0 ? <p className="text-sm text-muted text-center py-6">No tienes clases programadas.</p>
-          : <ul className="space-y-3" aria-label="Próximas clases">{clases.map(c => <FichaClase key={c.id} clase={c} clients={clients} trainerId={trainerId} onCambio={cargar} />)}</ul>}
+          : <ul className="space-y-3" aria-label="Próximas clases">{clases.map(c => <FichaClase key={c.id} clase={c} clients={clients} trainerId={trainerId} onCambio={cargar} labels={labels} />)}</ul>}
       </div>
     </Modal>
   )
