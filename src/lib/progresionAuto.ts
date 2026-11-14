@@ -1,6 +1,7 @@
 import type { Exercise, TrainingLogs, TrainingPlan } from '../types'
 import { historialPorEjercicio, type SesionEjercicio } from './historialEjercicio'
 import { estimate1RM } from './strength'
+import { convertirPeso, porLadoDe } from './pesoMancuerna'
 
 // Progresión automática: el peso y las reps de la próxima sesión de cada ejercicio, sacados de lo que hizo la última
 // vez. Dos reglas:
@@ -108,18 +109,22 @@ export function calcularObjetivo(ex: Exercise, regla: Required<ReglaProgresion>,
 
 /** La última sesión de ese ejercicio antes de `hoy` (lo de hoy no mueve el objetivo mientras entrena). */
 // El historial se calcula una vez por cada objeto de registros (y plan): en el entreno se pide en cada pintado
-const cache = new WeakMap<object, { plan: unknown; porNombre: Map<string, SesionEjercicio[]> }>()
+const cache = new WeakMap<object, { plan: unknown; porNombre: Map<string, { sesiones: SesionEjercicio[]; porLado: boolean }> }>()
 function historialDe(logs: TrainingLogs, plan: TrainingPlan | null | undefined) {
   const c = cache.get(logs)
   if (c && c.plan === plan) return c.porNombre
-  const porNombre = new Map(historialPorEjercicio(logs, plan).map(h => [clave(h.name), h.sesiones]))
+  const porNombre = new Map(historialPorEjercicio(logs, plan).map(h => [clave(h.name), { sesiones: h.sesiones, porLado: h.porLado }]))
   cache.set(logs, { plan, porNombre })
   return porNombre
 }
 
-export function ultimaSesion(logs: TrainingLogs, plan: TrainingPlan | null | undefined, nombre: string, hoy: string): SesionEjercicio | null {
-  const h = { sesiones: historialDe(logs || {}, plan).get(clave(nombre)) ?? [] }
-  return h?.sesiones.find(s => s.date < hoy) ?? null
+/** La última sesión antes de `hoy`; con `porLado`, sus pesos en esa forma (por mancuerna o total: lib/pesoMancuerna). */
+export function ultimaSesion(logs: TrainingLogs, plan: TrainingPlan | null | undefined, nombre: string, hoy: string, porLado?: boolean): SesionEjercicio | null {
+  const h = historialDe(logs || {}, plan).get(clave(nombre))
+  const s = h?.sesiones.find(x => x.date < hoy) ?? null
+  if (!s || porLado === undefined || porLado === h!.porLado) return s
+  const c = (kg: number) => convertirPeso(kg, h!.porLado, porLado)
+  return { ...s, series: s.series.map(x => ({ ...x, weight: c(x.weight) })), mejor: s.mejor && { ...s.mejor, weight: c(s.mejor.weight) }, e1rm: c(s.e1rm) }
 }
 
 /** RIR más bajo que marcó en ese ejercicio en la sesión de `fecha` (la serie más dura). */
@@ -148,7 +153,7 @@ export function rirPedido(ex: Exercise): number | null {
 export function objetivoDe(plan: TrainingPlan | null | undefined, logs: TrainingLogs, ex: Exercise, hoy: string): (Objetivo & { modo: ModoProgresion }) | null {
   const regla = reglaDe(plan, ex.name)
   if (!regla) return null
-  const ultima = ultimaSesion(logs, plan, ex.name, hoy)
+  const ultima = ultimaSesion(logs, plan, ex.name, hoy, porLadoDe(ex, plan))
   const obj = calcularObjetivo(ex, regla, ultima, rirPedido(ex), ultima ? rirMasBajo(logs, plan, ex.name, ultima.date) : null)
   return obj ? { ...obj, modo: regla.modo } : null
 }

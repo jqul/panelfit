@@ -10,10 +10,10 @@ test('con «peso por lado» el cliente apunta el peso de un lado y el volumen cu
 
   await entrarComoCliente(page)
   await page.getByRole('button', { name: 'Empezar entrenamiento' }).click()
-  await expect(page.getByText('kg por lado', { exact: true })).toBeVisible() // vista de foco
+  await expect(page.getByText('kg por mancuerna', { exact: true })).toBeVisible() // vista de foco
 
   await page.getByRole('button', { name: 'Ver todos los ejercicios en lista' }).click()
-  await expect(page.getByText('Kg/lado', { exact: true })).toBeVisible()
+  await expect(page.getByText('Kg/manc.', { exact: true })).toBeVisible()
   await page.getByLabel('Peso serie 1').first().fill('20')
   await page.getByLabel('Repeticiones serie 1').first().fill('5')
   await page.getByRole('button', { name: 'Marcar serie 1 como hecha' }).first().click()

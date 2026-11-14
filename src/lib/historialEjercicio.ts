@@ -2,6 +2,7 @@ import { TrainingLogs, TrainingPlan } from '../types'
 import { estimate1RM } from './strength'
 import { volumenSeries } from './volumen'
 import { cuentaEnProgreso } from './cuentaEnProgreso'
+import { convertirPeso } from './pesoMancuerna'
 
 // Historial de cada ejercicio para el cliente: qué hizo cada día que lo entrenó (series, mejor serie, 1RM estimado y
 // volumen). Lo usan la vista «Por ejercicio» de Progreso y la ficha del ejercicio dentro del entreno. Puro: recibe
@@ -15,13 +16,29 @@ export interface SesionEjercicio {
   e1rm: number               // mejor 1RM estimado del día (Epley, series de hasta 10 reps)
   volumen: number
 }
-export interface HistorialDeEjercicio { name: string; sesiones: SesionEjercicio[] /* más reciente primero */ }
+export interface HistorialDeEjercicio {
+  name: string
+  sesiones: SesionEjercicio[] /* más reciente primero */
+  /** Los pesos están por mancuerna / lado (los del registro más reciente; los demás se han pasado a esa forma). */
+  porLado: boolean
+}
 
 const KEY_RE = /^ex_w(\d+)_d(\d+)_r(\d+)$/
 const r1 = (n: number) => Math.round(n * 10) / 10
 
 export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | null): HistorialDeEjercicio[] {
-  const porNombre = new Map<string, { name: string; dias: Map<string, { series: SerieHecha[]; volumen: number }> }>()
+  // Con mancuernas, unos registros pueden ir por mancuerna (porLado) y otros en total: todos se comparan en la forma del
+  // más reciente (lib/pesoMancuerna). El volumen no cambia: ya es el peso real movido.
+  const formaActual = new Map<string, { fecha: string; porLado: boolean }>()
+  for (const [key, log] of Object.entries(logs || {})) {
+    if (!log?.done || !log.dateDone || !cuentaEnProgreso(log)) continue
+    const m = key.match(KEY_RE)
+    const planEx = m ? plan?.weeks?.[+m[1]]?.days?.[+m[2]]?.exercises?.[+m[3]] : undefined
+    const clave = (log.substituteName || planEx?.name || '').trim().toLowerCase()
+    const prev = formaActual.get(clave)
+    if (clave && (!prev || log.dateDone > prev.fecha)) formaActual.set(clave, { fecha: log.dateDone, porLado: !!log.porLado })
+  }
+  const porNombre = new Map<string, { name: string; porLado: boolean; dias: Map<string, { series: SerieHecha[]; volumen: number }> }>()
   for (const [key, log] of Object.entries(logs || {})) {
     if (!log?.done || !log.dateDone || !cuentaEnProgreso(log)) continue
     const m = key.match(KEY_RE)
@@ -29,19 +46,20 @@ export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | 
     if (planEx?.kind === 'libre') continue // una sesión libre no tiene kilos ni reps que comparar (lib/sesionLibre)
     const name = (log.substituteName || planEx?.name || '').trim()
     if (!name) continue
+    const clave = name.toLowerCase()
+    const destino = formaActual.get(clave)?.porLado ?? !!log.porLado
     const series = Object.values(log.sets || {})
-      .map(s => ({ weight: parseFloat(String(s?.weight ?? '').replace(',', '.')) || 0, reps: parseInt(String(s?.reps ?? '')) || 0 }))
+      .map(s => ({ weight: convertirPeso(parseFloat(String(s?.weight ?? '').replace(',', '.')) || 0, !!log.porLado, destino), reps: parseInt(String(s?.reps ?? '')) || 0 }))
       .filter(s => s.reps > 0)
     if (!series.length) continue
-    const clave = name.toLowerCase()
-    const e = porNombre.get(clave) ?? { name, dias: new Map() }
+    const e = porNombre.get(clave) ?? { name, porLado: destino, dias: new Map() }
     // El volumen se suma aquí, registro a registro: en los de peso por lado (porLado) cuenta el doble
     const dia = e.dias.get(log.dateDone) ?? { series: [], volumen: 0 }
     e.dias.set(log.dateDone, { series: [...dia.series, ...series], volumen: dia.volumen + volumenSeries(Object.values(log.sets || {}), log.porLado) })
     porNombre.set(clave, e)
   }
   const lista: HistorialDeEjercicio[] = []
-  for (const { name, dias } of porNombre.values()) {
+  for (const { name, porLado, dias } of porNombre.values()) {
     const sesiones = [...dias.entries()].map(([date, { series, volumen }]): SesionEjercicio => {
       let mejor: SerieHecha | null = null, e1rm = 0
       for (const s of series) {
@@ -50,7 +68,7 @@ export function historialPorEjercicio(logs: TrainingLogs, plan?: TrainingPlan | 
       }
       return { date, series, mejor, e1rm: r1(e1rm), volumen: r1(volumen) }
     }).sort((a, b) => b.date.localeCompare(a.date))
-    lista.push({ name, sesiones })
+    lista.push({ name, sesiones, porLado })
   }
   // Primero lo entrenado más recientemente; a igual fecha, por nombre
   return lista.sort((a, b) => b.sesiones[0].date.localeCompare(a.sesiones[0].date) || a.name.localeCompare(b.name, 'es'))

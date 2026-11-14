@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react'
 import { objetivoDe } from '../../lib/progresionAuto'
+import { resolverPesoDia, unidadPeso, ayudaPeso } from '../../lib/pesoMancuerna'
 import { kg } from '../../lib/formatoKg'
 import {
   MoreHorizontal, Trophy,
@@ -76,7 +77,9 @@ interface Props {
   onProgreso?: (p: { hechas: number; total: number }) => void
 }
 
-export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, nombreCliente, trainerMode, inicio, pedirTerminar, onProgreso }: Props) {
+export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, onFinish, onBack, trainerId, clientName, nombreCliente, trainerMode, inicio, pedirTerminar, onProgreso }: Props) {
+  // Con mancuernas, cada ejercicio ya sabe si se apunta por mancuerna o en total (lib/pesoMancuerna)
+  const day = useMemo(() => resolverPesoDia(dayPlan, plan), [dayPlan, plan])
   const dayKeyMatch = dayKey.match(/^w(\d+)_d(\d+)$/)
   const weekIdx = dayKeyMatch ? parseInt(dayKeyMatch[1]) : 0
   const dayIdx = dayKeyMatch ? parseInt(dayKeyMatch[2]) : 0
@@ -1085,6 +1088,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
                 </div>
               )}
 
+              {ex.kind !== 'run' && ex.kind !== 'libre' && ayudaPeso(ex) && <p className="px-4 mb-2 text-[11px] text-muted">⚖️ {ayudaPeso(ex)}</p>}
               {ex.kind !== 'run' && ex.kind !== 'libre' && <ResumenEjercicio hoy={exSets} antes={prevSets} porLado={ex.pesoPorLado} />}
 
               {/* Marcador de tempo/cadencia — solo si el entrenador lo fijó. El RIR objetivo ya va en la columna Plan */}
@@ -1104,7 +1108,7 @@ export function ActiveWorkout({ day, dayKey, plan, logs, onLogsChange, onFinish,
               ) : (<>
               {/* Cabecera tabla */}
               <div className="grid grid-cols-[28px_1fr_72px_56px_36px] gap-1.5 px-3 pb-0.5">
-                {['Set', 'Plan', ex.pesoPorLado ? 'Kg/lado' : 'Kg', 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
+                {['Set', 'Plan', unidadPeso(ex).corta, 'Reps'].map(t => <p key={t} className="text-[11px] uppercase text-muted font-bold tracking-wider text-center">{t}</p>)}
                 <div />
               </div>
 
