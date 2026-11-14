@@ -10,7 +10,7 @@ export const RIR_EFECTIVA = 3
 
 type Serie = { weight?: string; reps?: string; rir?: number; tipo?: TipoSerie }
 
-const hecha = (s: Serie) => (parseFloat(String(s.weight ?? '').replace(',', '.')) || 0) > 0 || (parseInt(String(s.reps ?? '')) || 0) > 0
+export const hecha = (s: Serie) => (parseFloat(String(s.weight ?? '').replace(',', '.')) || 0) > 0 || (parseInt(String(s.reps ?? '')) || 0) > 0
 
 export interface CuentaSeries { todas: number; efectivas: number; faciles: number; sinRir: number }
 

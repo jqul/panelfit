@@ -2,6 +2,7 @@ import { Especialidad } from '../lib/especialidades'
 import { PlanName } from '../lib/plans'
 import type { ObjetivoBloque } from '../lib/mesociclo'
 import type { TipoSerie } from '../lib/tipoSerie'
+import type { PapelEjercicio } from '../lib/papelEjercicio'
 // ── USUARIOS ──────────────────────────────────────────
 export interface UserProfile {
   uid: string; email: string; displayName: string; photoURL?: string
@@ -53,6 +54,7 @@ export interface Exercise {
   pesoPorLado?: boolean    // el peso se apunta por mano/lado (mancuernas, unilaterales): el volumen cuenta el doble (lib/volumen.ts)
   testRM?: boolean         // test de RM / AMRAP («tomar marca»): su mejor serie fija la marca para programar por % (lib/marcaRM.ts)
   backoff?: { pct: number; reps?: string }  // top set + back-off: la 1ª serie es la pesada y las demás bajan a ese % de lo que se movió en ella (lib/backoff.ts)
+  papel?: PapelEjercicio   // competición, variante o accesorio: lo marca el entrenador; si no, se deduce del nombre (lib/papelEjercicio.ts). No es lo mismo que el músculo que trabaja
 }
 
 // Plan B de un ejercicio prescrito. Se identifica por nombre (como todo en el plan) y, si se conoce, por el id de la biblioteca.
