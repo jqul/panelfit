@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Store, Copy, X, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react'
+import { Store, Copy, X, ChevronDown, ChevronUp, Dumbbell, Star } from 'lucide-react'
+import { idComunidad } from '../../lib/programasGuardados'
+import { useProgramasGuardados } from '../../hooks/useProgramasGuardados'
 import { supabase } from '../../lib/supabase'
 import { TrainingTemplate } from '../../types'
 import { Modal } from '../shared/Modal'
@@ -16,6 +18,10 @@ export function TemplateGallery({ trainerId, onClose, onAdd }: {
   const [importing, setImporting] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [pestana, setPestana] = useState<'panelfit' | 'comunidad'>('panelfit')
+  const { esGuardado, alternar } = useProgramasGuardados(trainerId)
+  const [soloGuardados, setSoloGuardados] = useState(false)
+  const nGuardados = rows.filter(r => esGuardado(idComunidad(r.id))).length
+  const visibles = soloGuardados ? rows.filter(r => esGuardado(idComunidad(r.id))) : rows
 
   useEffect(() => {
     supabase.from('plan_templates').select('id, trainer_id, name, description, plan')
@@ -47,6 +53,10 @@ export function TemplateGallery({ trainerId, onClose, onAdd }: {
         <div className="p-5 pt-4 space-y-2 overflow-y-auto flex-1">
           {pestana === 'panelfit' ? <ProgramasPanelfit trainerId={trainerId} onAdd={onAdd} /> : (<>
           <p className="text-xs text-muted mb-2">Workouts que otros entrenadores han compartido públicamente. Añadirlo crea una copia en tu propia librería.</p>
+          {(nGuardados > 0 || soloGuardados) && (
+            <button type="button" aria-pressed={soloGuardados} onClick={() => setSoloGuardados(v => !v)}
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${soloGuardados ? 'bg-ink text-white border-ink' : 'border-border text-muted hover:border-accent'}`}>★ Guardados ({nGuardados})</button>
+          )}
           {loading ? (
             <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-bg border border-border rounded-2xl animate-pulse" />)}</div>
           ) : rows.length === 0 ? (
@@ -54,9 +64,14 @@ export function TemplateGallery({ trainerId, onClose, onAdd }: {
               <Store className="w-8 h-8 mx-auto mb-2 opacity-30" />
               <p className="text-sm">Aún no hay workouts compartidos. ¡Sé el primero!</p>
             </div>
-          ) : rows.map(row => (
+          ) : visibles.map(row => (
             <div key={row.id} className="bg-bg border border-border rounded-2xl overflow-hidden">
               <div className="px-4 py-3 flex items-center gap-3 cursor-pointer" onClick={() => setExpanded(expanded === row.id ? null : row.id)}>
+                <button type="button" onClick={e => { e.stopPropagation(); alternar(idComunidad(row.id)) }} aria-pressed={esGuardado(idComunidad(row.id))}
+              aria-label={esGuardado(idComunidad(row.id)) ? `Quitar ${row.name} de guardados` : `Guardar ${row.name}`}
+              className="p-1.5 -m-1 rounded-lg flex-shrink-0 hover:bg-bg-alt">
+              <Star className={`w-4 h-4 ${esGuardado(idComunidad(row.id)) ? 'fill-warn text-warn' : 'text-muted/60'}`} />
+            </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{row.name}</p>
                   <p className="text-xs text-muted">{row.plan?.weeks?.length || 0} sem · {row.plan?.weeks?.[0]?.days?.length || 0} días{row.plan?.type ? ` · ${row.plan.type}` : ''}</p>
