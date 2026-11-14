@@ -5,6 +5,7 @@ import { FuerzaChart } from './progreso-tab/FuerzaChart'
 import { CardioChart } from './progreso-tab/CardioChart'
 import { PesoChart } from './progreso-tab/PesoChart'
 import { VolumenChart, VolumenGrupoChart } from './progreso-tab/VolumenCharts'
+import { useContribuciones } from '../../hooks/useContribuciones'
 import { TrabajoEspecificoChart } from './progreso-tab/TrabajoEspecificoChart'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
 import { RecordsTable } from './progreso-tab/RecordsTable'
@@ -38,6 +39,7 @@ interface Props {
 export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Props) {
   const tier = useTrainerTier(trainerId)
   const metricasActivasRaw = useTrainerMetricSettings(trainerId) // null = todas activas
+  const contrib = useContribuciones(trainerId) // qué músculos ayuda cada ejercicio (lo que ajustó el entrenador)
   const sectionsByTier = SECTIONS.filter(s => tier !== 'basico' || !ADVANCED_SECTIONS.has(s.id))
   // Si el entrenador ha desmarcado literalmente todas las métricas (o algo dejó
   // la lista corrupta), no lo dejamos sin ninguna sección — mejor mostrarlas
@@ -96,7 +98,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
-        {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} />}
+        {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} contrib={contrib} />}
         {section === 'trabajo_especifico' && <TrabajoEspecificoChart logs={logs} plan={plan} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
