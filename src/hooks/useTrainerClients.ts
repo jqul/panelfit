@@ -5,6 +5,7 @@ import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr, computeLoadTrend, computeSessionLoadTrend } from '../lib/loadRisk'
 import { RAMPA_ALTA, rampaActual } from '../lib/rampaCarga'
+import { tocaRenovar } from '../lib/renovacion'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
@@ -21,6 +22,9 @@ export interface ClientWithStats extends ClientData {
   weeklyDays?: number
   planEndDate?: string
   planEndingSoon?: boolean
+  /** Su plan termina en las próximas 2 semanas y no tiene el siguiente preparado (lib/renovacion): toca proponérselo. */
+  renovar?: boolean
+  diasParaFin?: number
   /** Fecha de inicio del plan (para «Empieza pronto», lib/estadoPlan). */
   planStartDate?: string
   atRisk?: boolean
@@ -84,7 +88,7 @@ function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number
   return days >= AT_RISK_INACTIVE_DAYS
 }
 
-function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string } {
+function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string; diasParaFin?: number } {
   if (!fechaInicio || !weeksLen) return {}
   const start = new Date(fechaInicio + 'T00:00:00')
   const end = new Date(start); end.setDate(start.getDate() + weeksLen * 7)
@@ -94,6 +98,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
     planEndDate: localDateKey(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
     planStartDate: fechaInicio,
+    diasParaFin: daysLeft,
   }
 }
 
@@ -203,7 +208,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       const ids = mapped.map(c => c.id)
       const [{ data: regs }, { data: planes }, { data: sessionLoads }, { data: testCatalogo }, { data: testResultados }, { data: ausenciasRows }] = await Promise.all([
         supabase.from('registros').select('clientId,logs').in('clientId', ids),
-        supabase.from('planes').select('clientId,plan').in('clientId', ids),
+        supabase.from('planes').select('clientId,plan,siguiente').in('clientId', ids),
         supabase.from('session_load').select('client_id,date,duration_min,rpe').in('client_id', ids),
         supabase.from('test_catalogo').select('id,categoria,nombre').eq('trainer_id', trainerId),
         supabase.from('test_resultados').select('client_id,test_id,valor,fecha').in('client_id', ids),
@@ -222,11 +227,12 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
       const planMap: Record<string, boolean> = {}
       const planObjMap: Record<string, any> = {}
-      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string }> = {}
+      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string; diasParaFin?: number; renovar?: boolean }> = {}
       ;(planes || []).forEach((p: any) => {
         planMap[p.clientId] = !!(p.plan?.P?.weeks?.length)
         planObjMap[p.clientId] = p.plan?.P
-        planEndMap[p.clientId] = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
+        const fin = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
+        planEndMap[p.clientId] = { ...fin, renovar: tocaRenovar(fin.diasParaFin, !!p.siguiente) }
       })
 
       const lm: Record<string, any> = {}
