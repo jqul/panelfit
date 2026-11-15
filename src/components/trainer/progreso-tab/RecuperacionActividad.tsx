@@ -11,6 +11,7 @@ import { esNumerico } from '../../../lib/habitoNumerico'
 import { hecha } from '../../../lib/seriesEfectivas'
 import { esCalentamiento } from '../../../lib/tipoSerie'
 import { lunesDeISO } from '../../../lib/exposicionCargas'
+import { relojActivo } from '../../../lib/funcionesEnDesarrollo'
 import { cardioPorSemana, esHabitoSueno, mediasSemanales, ultimasSemanas, type HabitoConNumero, type RegistroDia } from '../../../lib/recuperacion'
 
 // ── Recuperación y actividad ──────────────────────────────────
@@ -26,7 +27,8 @@ const cab = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('es-ES',
 
 export function RecuperacionActividad({ clientId, logs }: { clientId: string; logs: TrainingLogs }) {
   const demo = isDemoClientId(clientId)
-  const { actividades } = useActividades(clientId)
+  const reloj = relojActivo() // el cardio del reloj está apagado hasta que se pueda sacar completo (lib/funcionesEnDesarrollo)
+  const { actividades } = useActividades(clientId, reloj)
   const [habitos, setHabitos] = useState<HabitoConNumero[]>([])
   const [registros, setRegistros] = useState<RegistroDia[]>([])
   const [cargado, setCargado] = useState(demo)
@@ -72,11 +74,11 @@ export function RecuperacionActividad({ clientId, logs }: { clientId: string; lo
   if (!cargado) return <p className="text-xs text-muted">Cargando…</p>
   if (!semanas.length) {
     return (
-      <EmptyState icon={<Moon className="w-8 h-8 opacity-30" />} text="Aún no hay datos de sueño ni de cardio"
-        sub="Crea en la ficha del cliente un hábito con meta (p. ej. «Dormir», 7 h) o importa sus entrenos del reloj" />
+      <EmptyState icon={<Moon className="w-8 h-8 opacity-30" />} text="Aún no hay datos de sueño"
+        sub="Crea en la ficha del cliente un hábito con meta en horas (p. ej. «Dormir», 7 h) y verás aquí su media semanal" />
     )
   }
-  const hayCardio = semanas.some(s => cardio[s])
+  const hayCardio = reloj && semanas.some(s => cardio[s])
   const hayKm = semanas.some(s => (cardio[s]?.distanciaKm ?? 0) > 0)
   const ultimaConCardio = [...semanas].reverse().find(s => cardio[s])
 

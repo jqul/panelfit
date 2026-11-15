@@ -46,6 +46,7 @@ import { useConsent } from '../../lib/consent'
 import { SyncStatusContext } from './client-view/SyncStatus'
 import { SesionEnCursoProvider } from './SesionEnCurso'
 
+import { relojActivo } from '../../lib/funcionesEnDesarrollo'
 interface ClientViewProps { token: string; showEncuesta?: boolean }
 type Tab = 'hoy' | 'entreno' | 'progreso' | 'dieta' | 'mas' | 'encuesta'
 type SyncState = 'idle' | 'saving' | 'saved' | 'error' | 'offline'
@@ -89,7 +90,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
 
   // Vuelta de Strava tras autorizar (?strava=1&code=…): termina la conexión (lib/strava, que solo se descarga entonces)
   useEffect(() => {
-    if (authState !== 'authenticated' || !new URLSearchParams(window.location.search).has('strava')) return
+    if (!relojActivo() || authState !== 'authenticated' || !new URLSearchParams(window.location.search).has('strava')) return
     Promise.all([import('../../lib/strava'), import('../shared/Toast')]).then(async ([m, t]) => {
       const r = await m.completarConexion()
       if (r) t.toast(r.texto, r.ok ? 'ok' : 'warn')

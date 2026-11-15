@@ -27,7 +27,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
   { id: 'adherencia',   icon: '📅', label: 'Adherencia',    desc: '% días entrenados vs planificados' },
   { id: 'racha',        icon: '🔥', label: 'Racha',         desc: 'Racha y estadísticas globales' },
   { id: 'peso',         icon: '⚖️', label: 'Peso',          desc: 'Evolución del peso corporal' },
-  { id: 'recuperacion', icon: '😴', label: 'Sueño y cardio', desc: 'Horas de sueño, pasos y cardio por semana, junto a la carga de fuerza' },
+  { id: 'recuperacion', icon: '😴', label: 'Sueño y hábitos', desc: 'Horas de sueño, pasos y otros hábitos con número por semana, junto a la carga de fuerza' },
   { id: 'dolor',        icon: '🩹', label: 'Dolor',         desc: 'Seguimiento de dolor — útil en rehabilitación' },
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
   { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase actual, guía de intensidad y rendimiento por fase (opcional)' },

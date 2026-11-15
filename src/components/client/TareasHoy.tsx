@@ -3,6 +3,7 @@ import { useTareasCliente } from '../../hooks/useTareasCliente'
 import { tareasDelDia, ICONO_TAREA } from '../../lib/tareas'
 import { localDateKey } from '../../lib/dates'
 import { useActividades } from '../../hooks/useActividades'
+import { relojActivo } from '../../lib/funcionesEnDesarrollo'
 import { ImportarReloj } from '../shared/ImportarReloj'
 
 // En Hoy: las tareas sueltas que le ha puesto su entrenador para hoy (caminar, movilidad, un vídeo…), para
@@ -33,7 +34,7 @@ export function TareasHoy({ clientId }: { clientId: string }) {
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className={`text-sm font-medium ${hecha ? 'text-muted line-through' : ''}`}><span aria-hidden>{ICONO_TAREA[t.tipo]} </span>{t.titulo}</p>
                 {t.nota && <p className="text-xs text-muted mt-0.5 whitespace-pre-wrap">{t.nota}</p>}
-                {t.tipo === 'cardio' && !hecha && (
+                {relojActivo() && t.tipo === 'cardio' && !hecha && (
                   <div className="mt-1.5"><RelojEnTarea clientId={clientId} titulo={t.titulo} onHecha={() => alternarHecha(t.id, hoy)} /></div>
                 )}
                 {t.enlace && (

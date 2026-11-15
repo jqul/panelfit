@@ -2,6 +2,9 @@ import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoCliente } from './support/flows'
 
+// La función del reloj está apagada por defecto (lib/funcionesEnDesarrollo): estas pruebas la encienden
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('pf_reloj', '1')) })
+
 const hoy = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 // Un rodaje de ~2 km en 10 minutos, exportado como GPX con pulso
