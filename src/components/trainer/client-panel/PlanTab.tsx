@@ -12,6 +12,7 @@ import { loadProgramTemplates } from '../../../lib/programTemplates'
 import { DEMO_TRAINER_ID } from '../../../lib/demoIds'
 import { FechaInicioCampo } from '../FechaInicioCampo'
 import { SiguientePlan } from './SiguientePlan'
+import { RevisionBloque } from './RevisionBloque'
 import { MarcasPlan } from './MarcasPlan'
 import { MancuernasPlan } from './MancuernasPlan'
 import { CompeticionPlan } from './CompeticionPlan'
@@ -195,7 +196,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
         )}
       </div>
 
-      <SiguientePlan clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
+      <RevisionBloque plan={plan} logs={logs} nombre={client.name} />
+      <SiguientePlan nombre={client.name} telefono={client.phone} haEntrenado={Object.values(logs || {}).some(l => l?.done)} clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
       <MancuernasPlan plan={plan} onPlanChange={onPlanChange} />
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <ProgresionPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />

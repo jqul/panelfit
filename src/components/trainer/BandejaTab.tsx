@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Inbox, UserPlus, CheckCircle2, Moon, HeartPulse, Video, FileEdit, AlertTriangle, ChevronRight, Target, Check, Clock, Undo2, Repeat, HelpCircle, Bell } from 'lucide-react'
 import { ClientData } from '../../types'
 import { useInboxItems, InboxKind } from '../../hooks/useInboxItems'
@@ -10,6 +10,8 @@ import { toast } from '../shared/Toast'
 import { contactoDe, haceCuanto, llevaEsperando, textoEspera } from '../../lib/leads'
 import type { LeadsState } from '../../hooks/useLeads'
 import { archivadosSolos } from '../../lib/autoArchivar'
+import { RespuestaRapida } from './RespuestaRapida'
+import { claveRespuesta, sesionesRespondidas } from '../../lib/respuestasSesion'
 
 const DAYS_BACK = 14
 const PRIMERAS = 5 // filas que se enseñan por nivel antes de "Ver N más" (lo urgente se enseña entero)
@@ -54,6 +56,12 @@ export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, l
   const [pospongo, setPospongo] = useState<string | null>(null) // fila con el menú de posponer abierto
   const [aceptando, setAceptando] = useState<string | null>(null) // aviso de sustitución que se está guardando
   const { queue, setDone, snooze, unsnooze, loading } = useInboxItems(trainerId, clients, logsMap)
+  // Sesiones ya respondidas desde Actividad (lib/respuestasSesion)
+  const [respondidas, setRespondidas] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const d = new Date(); d.setDate(d.getDate() - DAYS_BACK)
+    sesionesRespondidas(trainerId, localDateKey(d)).then(setRespondidas)
+  }, [trainerId])
   const abrir = (clientId: string) => { const c = clients.find(cl => cl.id === clientId); if (c) onSelectClient(c) }
   const hoy = localDateKey()
 
@@ -255,7 +263,8 @@ export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, l
         ) : (
           <div className="bg-card rounded-2xl overflow-hidden divide-y divide-border/50" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
             {queue.activity.map(a => (
-              <button key={`${a.clientId}:${a.date}`} onClick={() => abrir(a.clientId)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/40">
+              <div key={`${a.clientId}:${a.date}`}>
+              <button onClick={() => abrir(a.clientId)} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-bg-alt/40">
                 <div className="w-8 h-8 rounded-full bg-ok/10 text-ok flex items-center justify-center text-xs font-bold flex-shrink-0">{a.clientName[0]?.toUpperCase()}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{a.clientName}</p>
@@ -263,6 +272,10 @@ export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, l
                 </div>
                 <span className="text-[11px] text-muted flex-shrink-0">{fechaCorta(a.date)}</span>
               </button>
+              <RespuestaRapida trainerId={trainerId} clientId={a.clientId} nombre={a.clientName.split(' ')[0]} fecha={a.date}
+                respondida={respondidas.has(claveRespuesta(a.clientId, a.date))}
+                onRespondida={() => setRespondidas(s => new Set(s).add(claveRespuesta(a.clientId, a.date)))} />
+              </div>
             ))}
           </div>
         )

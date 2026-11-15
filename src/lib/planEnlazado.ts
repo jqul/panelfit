@@ -1,7 +1,7 @@
 import type { TrainingPlan, TrainingTemplate, WeekPlan } from '../types'
 import { supabase } from './supabase'
 import { logError } from './errors'
-import { localDateKey } from './dates'
+import { finDelPlan } from './finPlan'
 import { DEMO_TRAINER_ID } from './demoIds'
 
 // Programas enlazados: lo que viene después del plan actual. Se guarda una copia de las semanas del workout en
@@ -18,11 +18,7 @@ export function siguienteDesdeWorkout(t: Pick<TrainingTemplate, 'id' | 'name' | 
 
 /** Lunes en que empieza el siguiente: el día después del domingo de la última semana. Null sin fecha o sin semanas. */
 export function empiezaSiguiente(plan: Pick<TrainingPlan, 'fechaInicio' | 'weeks'>): string | null {
-  if (!plan.fechaInicio || !plan.weeks?.length) return null
-  const [y, m, d] = plan.fechaInicio.split('-').map(Number)
-  const f = new Date(y, m - 1, d)
-  f.setDate(f.getDate() - ((f.getDay() + 6) % 7) + 7 * plan.weeks.length)
-  return localDateKey(f)
+  return finDelPlan(plan)
 }
 
 // En la demo no hay filas reales: lo preparado vive en memoria mientras dura la visita.

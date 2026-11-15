@@ -5,6 +5,7 @@ import {
   ClipboardCheck, Link, MessageCircle, User
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { isDemoClientId } from '../../lib/demoIds'
 import { ClientData, TrainingPlan, TrainingLogs, UserProfile, TrainingTemplate } from '../../types'
 import { Button } from '../shared/Button'
 import { Modal } from '../shared/Modal'
@@ -110,6 +111,19 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     if (!filas.length) { toast('Aún no ha registrado ninguna serie', 'info'); return }
     descargarCSV(nombreArchivo(`${client.name} ${client.surname || ''}`, localDateKey()), csvSeries(filas))
     toast(`${filas.length} series exportadas ✓`, 'ok')
+  }
+  // Historia de éxito para redes (lib/historiaExito): se descarga el código al pulsar
+  const compartirHistoria = async () => {
+    const { datosHistoria, compartirHistoria: compartir } = await import('../../lib/historiaExito')
+    const { data: pesos } = isDemoClientId(client.id) ? { data: [] } : await supabase.from('registros_peso').select('date, weight').eq('clientId', client.id)
+    const d = datosHistoria(logs, plan, (pesos || []) as { date: string; weight: number }[], localDateKey())
+    if (!d || (!d.mejoras.length && !d.peso)) { toast('Aún no hay progreso suficiente para contar su historia', 'info'); return }
+    let marca = userProfile.displayName
+    try { marca = JSON.parse(localStorage.getItem(`pf_trainer_profile_${userProfile.uid}`) || '{}').brandName || marca } catch { /* sin perfil guardado */ }
+    try {
+      const r = await compartir(d, client.name, marca)
+      if (r === 'descargada') toast('Imagen descargada ✓ — pídele permiso antes de publicarla', 'ok')
+    } catch { toast('No se pudo crear la imagen', 'warn') }
   }
   const [showTemplates, setShowTemplates] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
@@ -423,6 +437,10 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             {activeTab === 'progreso' && (
               <button onClick={exportarSeries} title="Todas sus series, para abrir en Excel"
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">⬇ Series (CSV)</button>
+            )}
+            {activeTab === 'progreso' && (
+              <button onClick={compartirHistoria} title="Tarjeta con su progreso para tus redes (con su permiso)"
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">⭐ Historia de éxito</button>
             )}
             {activeTab === 'progreso' && (
               <PlanGate feature="pdf_report" planName={userProfile.planName} fallback={

@@ -5,6 +5,7 @@ import { mapClientes } from '../lib/mappers'
 import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr, computeLoadTrend, computeSessionLoadTrend } from '../lib/loadRisk'
 import { RAMPA_ALTA, rampaActual } from '../lib/rampaCarga'
+import { tocaRenovar } from '../lib/renovacion'
 import { worstJumpFatigue, JumpResultado } from '../lib/jumpFatigue'
 import { localDateKey } from '../lib/dates'
 import { programToPlanWeeks, workoutTemplateIds } from '../lib/programPlan'
@@ -21,6 +22,9 @@ export interface ClientWithStats extends ClientData {
   weeklyDays?: number
   planEndDate?: string
   planEndingSoon?: boolean
+  /** Su plan termina en las próximas 2 semanas y no tiene el siguiente preparado (lib/renovacion): toca proponérselo. */
+  renovar?: boolean
+  diasParaFin?: number
   /** Fecha de inicio del plan (para «Empieza pronto», lib/estadoPlan). */
   planStartDate?: string
   atRisk?: boolean
@@ -84,7 +88,7 @@ function computeAtRisk(hasPlan: boolean, lastActive?: string, createdAt?: number
   return days >= AT_RISK_INACTIVE_DAYS
 }
 
-function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string } {
+function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string; diasParaFin?: number } {
   if (!fechaInicio || !weeksLen) return {}
   const start = new Date(fechaInicio + 'T00:00:00')
   const end = new Date(start); end.setDate(start.getDate() + weeksLen * 7)
@@ -94,6 +98,7 @@ function computePlanEnd(fechaInicio?: string, weeksLen?: number): { planEndDate?
     planEndDate: localDateKey(end),
     planEndingSoon: daysLeft >= 0 && daysLeft <= PLAN_ENDING_SOON_DAYS,
     planStartDate: fechaInicio,
+    diasParaFin: daysLeft,
   }
 }
 
@@ -203,7 +208,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       const ids = mapped.map(c => c.id)
       const [{ data: regs }, { data: planes }, { data: sessionLoads }, { data: testCatalogo }, { data: testResultados }, { data: ausenciasRows }] = await Promise.all([
         supabase.from('registros').select('clientId,logs').in('clientId', ids),
-        supabase.from('planes').select('clientId,plan').in('clientId', ids),
+        supabase.from('planes').select('clientId,plan,siguiente').in('clientId', ids),
         supabase.from('session_load').select('client_id,date,duration_min,rpe').in('client_id', ids),
         supabase.from('test_catalogo').select('id,categoria,nombre').eq('trainer_id', trainerId),
         supabase.from('test_resultados').select('client_id,test_id,valor,fecha').in('client_id', ids),
@@ -222,11 +227,12 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
       const planMap: Record<string, boolean> = {}
       const planObjMap: Record<string, any> = {}
-      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string }> = {}
+      const planEndMap: Record<string, { planEndDate?: string; planEndingSoon?: boolean; planStartDate?: string; diasParaFin?: number; renovar?: boolean }> = {}
       ;(planes || []).forEach((p: any) => {
         planMap[p.clientId] = !!(p.plan?.P?.weeks?.length)
         planObjMap[p.clientId] = p.plan?.P
-        planEndMap[p.clientId] = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
+        const fin = computePlanEnd(p.plan?.P?.fechaInicio, p.plan?.P?.weeks?.length)
+        planEndMap[p.clientId] = { ...fin, renovar: tocaRenovar(fin.diasParaFin, !!p.siguiente) }
       })
 
       const lm: Record<string, any> = {}
@@ -358,7 +364,7 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
 
   // Archivar no borra nada: el cliente deja de contar en el límite y no puede abrir su panel
   // (get_client_by_token ignora a los archivados) hasta que se reactive.
-  const setArchived = async (ids: string[], archived: boolean) => {
+  const setArchived = async (ids: string[], archived: boolean, motivo: string | null = null) => {
     if (!ids.length) return false
     const archivedAt = archived ? Date.now() : null
     if (demoClients) {
@@ -369,14 +375,15 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       })
       return true
     }
-    const { error } = await supabase.from('clientes').update({ archived_at: archivedAt }).in('id', ids)
+    const { error } = await supabase.from('clientes').update(archived ? { archived_at: archivedAt, archivado_motivo: motivo } : { archived_at: null }).in('id', ids)
     if (error) { toast(archived ? 'No se pudo archivar' : 'No se pudo reactivar', 'warn'); return false }
     await fetchClients()
     return true
   }
 
-  const archiveClients = async (ids: string[]) => {
-    const ok = await setArchived(ids, true)
+  /** `motivo`: por qué se va (lib/motivosBaja), si el entrenador lo marca. */
+  const archiveClients = async (ids: string[], motivo: string | null = null) => {
+    const ok = await setArchived(ids, true, motivo)
     if (ok) toast(ids.length === 1 ? 'Cliente archivado: ya no cuenta en tu plan' : `${ids.length} clientes archivados: ya no cuentan en tu plan`, 'ok',
       { label: 'Deshacer', onClick: () => { setArchived(ids, false) } })
     return ok
