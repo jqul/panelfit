@@ -78,6 +78,7 @@ const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ de
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
+const RecordsSemana = lazy(() => import('./RecordsSemana').then(m => ({ default: m.RecordsSemana })))
 const AutoArchivarEditor = lazy(() => import('./AutoArchivarEditor').then(m => ({ default: m.AutoArchivarEditor })))
 const AlertasUmbralEditor = lazy(() => import('./AlertasUmbralEditor').then(m => ({ default: m.AlertasUmbralEditor })))
 const CheckinEditor = lazy(() => import('./CheckinEditor').then(m => ({ default: m.CheckinEditor })))
@@ -636,6 +637,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 {/* Las citas que quedan hoy y las de mañana */}
                 <ProximasCitasCard trainerId={userProfile.uid} clients={clients} onVerAgenda={() => handleTabChange('calendario')} />
+
+                {/* Récords de la semana de todos los clientes: a quién felicitar (lib/recordsSemana) */}
+                <Suspense fallback={null}><RecordsSemana trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onAbrir={onSelectClient} /></Suspense>
 
                 {/* Bandeja unificada — sesiones, check-ins, dolor, vídeos sin
                     responder, borradores sin publicar y clientes en riesgo,
