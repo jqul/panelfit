@@ -27,6 +27,8 @@ import { getMuscleGroup, useLibraryMuscleMap, GROUP_COLORS, getVolumeStatus } fr
 import { usePainWarning } from '../../lib/painWarning'
 import { fmtRest, REST_PRESETS, RestPopup } from './training-plan-editor/RestPopup'
 import { DEFAULT_SERIES_TYPES, useSeriesTypes, SeriesTypesManager, SeriesInfoModal } from './training-plan-editor/seriesTypes'
+import { contribucionesDe, sumarSeries, redondear, type VolumenGrupo } from '../../lib/contribucionMuscular'
+import { useContribuciones } from '../../hooks/useContribuciones'
 import { PAPELES, papelDe, clasificarLevantamiento, etiquetaPapel, type PapelEjercicio } from '../../lib/papelEjercicio'
 import { WarmupSection } from './training-plan-editor/WarmupSection'
 import { DayTestsSection } from './training-plan-editor/DayTestsSection'
@@ -106,16 +108,22 @@ export function TrainingPlanEditor({
   // Molestia articular activa (últimos 7 días) del cliente — para avisar al
   // añadir un ejercicio que carga esa misma zona.
   const getPainWarning = usePainWarning(plan.clientId, libraryMap)
+  // Contribuciones musculares que el entrenador ajustó (lib/contribucionMuscular): el grupo principal cuenta entero (directas)
+  // y los que ayudan, una fracción estimada (indirectas)
+  const { propias: contribPropias } = useContribuciones(trainerId)
+  const esN = (x: number) => redondear(x).toLocaleString('es-ES')
   const weeklyVolumeByGroup = (() => {
-    const tally: Record<string, number> = {}
+    const tally: Record<string, VolumenGrupo> = {}
     currentWeek?.days.forEach(day => {
       day.exercises.forEach(ex => {
         if (ex.kind === 'run') return
         const group = getMuscleGroup(ex.name, libraryMap)
-        tally[group] = (tally[group] || 0) + parseNumSets(ex.sets)
+        sumarSeries(tally, contribucionesDe(ex.name, group, contribPropias), parseNumSets(ex.sets))
       })
     })
-    return Object.entries(tally).filter(([, sets]) => sets > 0).sort((a, b) => b[1] - a[1])
+    return Object.entries(tally)
+      .filter(([, v]) => v.directas + v.indirectas > 0)
+      .sort((a, b) => (b[1].directas + b[1].indirectas) - (a[1].directas + a[1].indirectas))
   })()
 
   const updatePlan = (updates: Partial<TrainingPlan>) => onChange({ ...plan, ...updates })
@@ -398,15 +406,19 @@ export function TrainingPlanEditor({
 
             {weeklyVolumeByGroup.length > 0 && (
               <div className="px-4 py-2.5 border-b border-border bg-bg-alt/20 flex flex-wrap gap-1.5">
-                {weeklyVolumeByGroup.map(([group, sets]) => {
-                  const status = getVolumeStatus(group, sets)
+                {weeklyVolumeByGroup.map(([group, v]) => {
+                  const status = getVolumeStatus(group, v.directas + v.indirectas)
                   const color = GROUP_COLORS[group] || GROUP_COLORS['Otros']
+                  const desglose = v.indirectas > 0
+                    ? `${esN(v.directas)} directas + ${esN(v.indirectas)} indirectas (estimado)`
+                    : `${esN(v.directas)} directas`
                   return (
-                    <div key={group} title={status ? `${status.label} para ${group} (referencia MEV/MAV/MRV)` : undefined}
+                    <div key={group} title={`${group}: ${desglose}.${status ? ` ${status.label} (rango habitual, no un límite: si progresa y recupera bien, no hace falta cambiarlo).` : ''}`}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
                       style={{ backgroundColor: color + '15', color: `color-mix(in srgb, ${color} 55%, var(--color-ink))` }}>
                       <span>{group}</span>
-                      <span className="font-bold">{sets}</span>
+                      <span className="font-bold">{esN(v.directas)}</span>
+                      {v.indirectas > 0 && <span className="opacity-70">+{esN(v.indirectas)} ind.</span>}
                       {status && <span className="opacity-70">· {status.label}</span>}
                     </div>
                   )

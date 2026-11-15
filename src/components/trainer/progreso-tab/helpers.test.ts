@@ -1,33 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { getMuscleGroup, getExName } from './helpers'
-import type { TrainingPlan } from '../../../types'
+import { getVolumeStatus, VOLUME_LANDMARKS } from './helpers'
 
-describe('getMuscleGroup', () => {
-  it('curl abdominal es Core, no Bíceps', () => {
-    expect(getMuscleGroup('Curl abdominal')).toBe('Core')
+describe('getVolumeStatus', () => {
+  const l = VOLUME_LANDMARKS['Pecho'] // mev 8, mav 16, mrv 22
+
+  it('describe el volumen frente a un rango habitual, sin decir nunca que algo está mal', () => {
+    expect(getVolumeStatus('Pecho', l.mev - 1)?.label).toBe('Por debajo del rango')
+    expect(getVolumeStatus('Pecho', l.mev)?.label).toBe('Dentro del rango')
+    expect(getVolumeStatus('Pecho', l.mav)?.label).toBe('Dentro del rango')
+    expect(getVolumeStatus('Pecho', l.mav + 1)?.label).toBe('Por encima del rango')
+    expect(getVolumeStatus('Pecho', l.mrv)?.label).toBe('Por encima del rango')
+    expect(getVolumeStatus('Pecho', l.mrv + 1)?.label).toBe('Muy por encima del rango')
   })
 
-  it('curl de bíceps sigue siendo Bíceps', () => {
-    expect(getMuscleGroup('Curl de bíceps con barra')).toBe('Bíceps')
+  it('ningún tramo es rojo ni se llama «excesivo»: pasarse del rango no es un error si el cliente progresa', () => {
+    for (const sets of [0, l.mev, l.mav + 1, l.mrv + 10]) {
+      const s = getVolumeStatus('Pecho', sets)!
+      expect(s.label.toLowerCase()).not.toContain('excesivo')
+      expect(s.color.toLowerCase()).not.toBe('#dc2626')
+    }
   })
 
-  it('la biblioteca manda sobre las palabras clave', () => {
-    expect(getMuscleGroup('Curl abdominal', new Map([['curl abdominal', 'Core']]))).toBe('Core')
-  })
-})
-
-describe('getExName', () => {
-  const plan = { weeks: [{ days: [{ exercises: [{ name: 'Press banca' }, { name: 'Series 400 m', kind: 'run' }] }] }] } as unknown as TrainingPlan
-  it('el ejercicio del plan en esa posición', () => {
-    expect(getExName('ex_w0_d0_r0', plan)).toBe('Press banca')
-  })
-  it('si ese día lo cambió por otro, el que hizo de verdad (aunque la semana ya no esté en el plan)', () => {
-    expect(getExName('ex_w0_d0_r0', plan, { substituteName: 'Flexiones' })).toBe('Flexiones')
-    expect(getExName('ex_w9_d0_r0', plan, { substituteName: 'Remo' })).toBe('Remo')
-  })
-  it('las carreras no cuentan, y sin plan ni sustitución no hay nombre', () => {
-    expect(getExName('ex_w0_d0_r1', plan)).toBeNull()
-    expect(getExName('ex_w9_d0_r0', plan)).toBeNull()
-    expect(getExName('otra_cosa', plan, { substituteName: 'X' })).toBeNull()
+  it('un grupo sin rango (Otros) no tiene estado', () => {
+    expect(getVolumeStatus('Otros', 12)).toBeNull()
   })
 })
