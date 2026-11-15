@@ -6,6 +6,8 @@ test('si el plan termina pronto y no hay siguiente, el plan trae el mensaje list
   await page.setViewportSize({ width: 1280, height: 900 })
   seedWorld(fake) // su plan es de una semana desde hoy: termina en menos de 14 días
   fake.rows('clientes').find(c => c.id === ids.client)!.phone = '+34 600 111 222'
+  const hoy = new Date(); const f = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+  fake.seed('registros', { clientId: ids.client, updatedAt: 1, logs: { ex_w0_d0_r0: { done: true, dateDone: f, sets: { 0: { weight: '80', reps: '5' } } } } })
 
   await entrarComoEntrenador(page)
   await page.getByRole('button', { name: /María García/ }).first().click()

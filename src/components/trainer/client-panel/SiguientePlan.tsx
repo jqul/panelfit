@@ -10,11 +10,12 @@ import { localDateKey } from '../../../lib/dates'
 const fechaLarga = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })
 
 // Pestaña Plan: «Cuando termine este plan», el workout que empieza solo al acabar el actual (lib/planEnlazado).
-export function SiguientePlan({ clientId, trainerId, plan, templates, borradorActivo, nombre = '', telefono }: {
+export function SiguientePlan({ clientId, trainerId, plan, templates, borradorActivo, nombre = '', telefono, haEntrenado = false }: {
   clientId: string
   /** Para el mensaje de renovación (lib/renovacion). */
   nombre?: string
   telefono?: string
+  haEntrenado?: boolean
   trainerId: string
   plan: TrainingPlan
   templates: TrainingTemplate[]
@@ -99,7 +100,7 @@ export function SiguientePlan({ clientId, trainerId, plan, templates, borradorAc
           </div>
         )
       )}
-      {empieza && !siguiente && diasParaFin !== null && diasParaFin >= 0 && diasParaFin <= DIAS_RENOVAR && (
+      {haEntrenado && empieza && !siguiente && diasParaFin !== null && diasParaFin >= 0 && diasParaFin <= DIAS_RENOVAR && (
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <p className="text-xs text-accent font-semibold flex-1 min-w-[180px]">🔄 Termina en {diasParaFin} día{diasParaFin === 1 ? '' : 's'}: buen momento para proponerle seguir.</p>
           {waUrl(telefono, mensajeRenovacion(nombre, empieza)) ? (
