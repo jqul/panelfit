@@ -78,6 +78,7 @@ const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ de
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
+const ArchivarCliente = lazy(() => import('./ArchivarCliente').then(m => ({ default: m.ArchivarCliente })))
 const AutoArchivarEditor = lazy(() => import('./AutoArchivarEditor').then(m => ({ default: m.AutoArchivarEditor })))
 const AlertasUmbralEditor = lazy(() => import('./AlertasUmbralEditor').then(m => ({ default: m.AlertasUmbralEditor })))
 const CheckinEditor = lazy(() => import('./CheckinEditor').then(m => ({ default: m.CheckinEditor })))
@@ -157,6 +158,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   }
   const [adding, setAdding] = useState(false)
   const [linkModal, setLinkModal] = useState<ClientData | null>(null)
+  // Archivar a uno: se pregunta por qué se va (lib/motivosBaja)
+  const [archivando, setArchivando] = useState<ClientData | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [quickNote, setQuickNote] = useState(() => localStorage.getItem('pf_quick_note') || '')
   const library = useExerciseLibrary(userProfile.uid)
@@ -857,7 +860,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </label>
                   )}
                   <ClientList clients={sortedClients} adherenciaMap={adherenciaMap} formatLastActive={formatLastActive}
-                    onOpen={onSelectClient} onSend={setLinkModal} onArchive={id => archiveClients([id])} trainerId={userProfile.uid} labels={labels}
+                    onOpen={onSelectClient} onSend={setLinkModal} onArchive={id => setArchivando(clients.find(c => c.id === id) ?? null)} trainerId={userProfile.uid} labels={labels}
                     selection={selection.selecting ? { selected: selection.selected, onToggle: selection.toggle } : undefined} />
                 </>
               )}
@@ -909,7 +912,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           )}
           {activeTab === 'negocio' && misPermisos.ver_negocio && (
             <PlanGate feature="business_dashboard" planName={userProfile.planName}>
-              <Suspense fallback={null}><BusinessDashboard trainerId={userProfile.uid} clients={clients} logsMap={logsMap} planName={userProfile.planName} /></Suspense>
+              <Suspense fallback={null}><BusinessDashboard trainerId={userProfile.uid} clients={clients} archivados={archivedClients} logsMap={logsMap} planName={userProfile.planName} /></Suspense>
             </PlanGate>
           )}
           {activeTab === 'mas' && (
@@ -1066,6 +1069,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         </div>
       </Modal>
 
+      {archivando && (
+        <Suspense fallback={null}><ArchivarCliente nombre={`${archivando.name} ${archivando.surname || ''}`.trim()} onCerrar={() => setArchivando(null)}
+          onArchivar={motivo => { const id = archivando.id; setArchivando(null); archiveClients([id], motivo) }} /></Suspense>
+      )}
       {linkModal && (
         <Modal open={!!linkModal} onClose={() => setLinkModal(null)} title={`Acceso de ${linkModal.name}`}>
           <div className="space-y-4">
