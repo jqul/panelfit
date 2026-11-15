@@ -43,7 +43,7 @@ export function SiguientePlan({ clientId, trainerId, plan, templates, borradorAc
   }
 
   return (
-    <section aria-label="Cuando termine este plan" className="flex-shrink-0 mb-3 px-4 py-3 bg-card border border-border rounded-2xl">
+    <section id="siguiente-plan" aria-label="Cuando termine este plan" className="flex-shrink-0 mb-3 px-4 py-3 bg-card border border-border rounded-2xl">
       <div className="flex items-center gap-3 flex-wrap">
         <ArrowRight className="w-4 h-4 text-muted flex-shrink-0" aria-hidden />
         <div className="flex-1 min-w-[200px]">
