@@ -2,6 +2,9 @@ import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoCliente } from './support/flows'
 
+// La función del reloj está apagada por defecto (lib/funcionesEnDesarrollo): estas pruebas la encienden
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('pf_reloj', '1')) })
+
 async function irAEntrenos(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Progreso', exact: true }).click()
   await page.getByRole('tab', { name: 'Entrenos' }).click()

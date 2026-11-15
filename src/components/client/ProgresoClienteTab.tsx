@@ -31,6 +31,7 @@ import { volumenSeries } from '../../lib/volumen'
 import { cuentaEnProgreso } from '../../lib/cuentaEnProgreso'
 
 // Entrenos del reloj: se descarga al abrir Entrenos
+import { relojActivo } from '../../lib/funcionesEnDesarrollo'
 const ActividadesReloj = lazy(() => import('../shared/ActividadesReloj').then(m => ({ default: m.ActividadesReloj })))
 
 
@@ -787,7 +788,7 @@ export function ProgresoClienteTab({ clientId, trainerId, logs, plan, onOpenCale
           showRecords={metricaActiva('records')} showPeso={metricaActiva('peso')}
           formaClientId={metricasVisibles.includes('fatiga') ? clientId : undefined} />
       )}
-      {currentLeaf === 'historial'  && <><Suspense fallback={null}><ActividadesReloj clientId={clientId} /></Suspense><HistorialTab  logs={logs} plan={plan} /></>}
+      {currentLeaf === 'historial'  && <>{relojActivo() && <Suspense fallback={null}><ActividadesReloj clientId={clientId} /></Suspense>}<HistorialTab  logs={logs} plan={plan} /></>}
       {currentLeaf === 'records'    && <RecordsTab    logs={logs} plan={plan} />}
       {currentLeaf === 'feedback'   && <FeedbackTab    clientId={clientId} trainerId={trainerId} />}
       {currentLeaf === 'dolor'      && <DolorTab       clientId={clientId} trainerId={trainerId} />}

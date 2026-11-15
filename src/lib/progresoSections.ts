@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 // Secciones de ProgresoTab (entrenador) — extraído a módulo compartido para que
 // tanto ProgresoTab como los Ajustes del entrenador (activar/desactivar) y el
 // portal del cliente (qué le enseño) trabajen con la misma lista de ids.
-export type Section = 'fuerza' | 'cardio' | 'peso' | 'volumen' | 'volumen_grupo' | 'trabajo_especifico' | 'esfuerzo_tipo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'fv_profile' | 'dolor'
+export type Section = 'fuerza' | 'cardio' | 'peso' | 'volumen' | 'volumen_grupo' | 'trabajo_especifico' | 'esfuerzo_tipo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'recuperacion' | 'fv_profile' | 'dolor'
 
 export const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado — si lo desactivas, tampoco se le muestra al cliente durante la serie' },
@@ -27,6 +27,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
   { id: 'adherencia',   icon: '📅', label: 'Adherencia',    desc: '% días entrenados vs planificados' },
   { id: 'racha',        icon: '🔥', label: 'Racha',         desc: 'Racha y estadísticas globales' },
   { id: 'peso',         icon: '⚖️', label: 'Peso',          desc: 'Evolución del peso corporal' },
+  { id: 'recuperacion', icon: '😴', label: 'Sueño y hábitos', desc: 'Horas de sueño, pasos y otros hábitos con número por semana, junto a la carga de fuerza' },
   { id: 'dolor',        icon: '🩹', label: 'Dolor',         desc: 'Seguimiento de dolor — útil en rehabilitación' },
   { id: 'fotos',        icon: '📸', label: 'Fotos',         desc: 'Fotos de progreso del cliente' },
   { id: 'ciclo',        icon: '🌙', label: 'Ciclo',          desc: 'Fase actual, guía de intensidad y rendimiento por fase (opcional)' },
@@ -35,7 +36,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
 export const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
   { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'cardio', 'pruebas', 'fv_profile'] },
   { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'trabajo_especifico', 'esfuerzo_tipo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
-  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'dolor', 'fotos', 'distribucion', 'ciclo'] },
+  { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'recuperacion', 'dolor', 'fotos', 'distribucion', 'ciclo'] },
   { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
 ]
 

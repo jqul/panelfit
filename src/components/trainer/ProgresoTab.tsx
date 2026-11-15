@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ActividadesReloj } from '../shared/ActividadesReloj'
+import { relojActivo } from '../../lib/funcionesEnDesarrollo'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { FuerzaChart } from './progreso-tab/FuerzaChart'
 import { CardioChart } from './progreso-tab/CardioChart'
@@ -7,6 +8,7 @@ import { PesoChart } from './progreso-tab/PesoChart'
 import { VolumenChart, VolumenGrupoChart } from './progreso-tab/VolumenCharts'
 import { useContribuciones } from '../../hooks/useContribuciones'
 import { TrabajoEspecificoChart } from './progreso-tab/TrabajoEspecificoChart'
+import { RecuperacionActividad } from './progreso-tab/RecuperacionActividad'
 import { EsfuerzoPorPapel } from './progreso-tab/EsfuerzoPorPapel'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
 import { RecordsTable } from './progreso-tab/RecordsTable'
@@ -95,8 +97,9 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
         {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
         {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
-        {section === 'cardio'       && <div className="space-y-4"><ActividadesReloj clientId={client.id} paraEntrenador /><CardioChart logs={logs} /></div>}
+        {section === 'cardio'       && <div className="space-y-4">{relojActivo() && <ActividadesReloj clientId={client.id} paraEntrenador />}<CardioChart logs={logs} /></div>}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
+        {section === 'recuperacion' && <RecuperacionActividad clientId={client.id} logs={logs} />}
         {section === 'dolor'        && <DolorChart        clientId={client.id} logs={logs} />}
         {section === 'volumen'      && <VolumenChart       logs={logs} />}
         {section === 'volumen_grupo' && <VolumenGrupoChart logs={logs} plan={plan} library={library} contrib={contrib} />}

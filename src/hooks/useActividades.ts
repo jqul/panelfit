@@ -27,7 +27,8 @@ demoPorCliente.set('demo-client-001', [
 ])
 const esDemo = (id: string) => id.startsWith('demo-client-')
 
-export function useActividades(clientId: string) {
+/** `activo = false` no lee nada (la función del reloj está apagada, lib/funcionesEnDesarrollo). */
+export function useActividades(clientId: string, activo = true) {
   const [actividades, setActividades] = useState<ActividadGuardada[]>([])
   const [cargando, setCargando] = useState(true)
   const [version, setVersion] = useState(0)
@@ -36,11 +37,12 @@ export function useActividades(clientId: string) {
 
   useEffect(() => {
     let vivo = true
+    if (!activo) { setActividades([]); setCargando(false); return }
     if (esDemo(clientId)) { setActividades(demoPorCliente.get(clientId) || []); setCargando(false); return }
     supabase.from('actividades').select('*').eq('client_id', clientId).order('fecha', { ascending: false }).limit(50)
       .then(({ data }) => { if (vivo) { setActividades(((data || []) as Fila[]).map(deFila)); setCargando(false) } })
     return () => { vivo = false }
-  }, [clientId, version])
+  }, [clientId, version, activo])
 
   /** Guarda un entreno importado. true si se guardó (o ya estaba). */
   const guardar = useCallback(async (a: ActividadReloj): Promise<boolean> => {
