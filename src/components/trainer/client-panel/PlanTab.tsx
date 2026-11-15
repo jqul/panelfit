@@ -197,7 +197,7 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       </div>
 
       <RevisionBloque plan={plan} logs={logs} nombre={client.name} />
-      <SiguientePlan clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
+      <SiguientePlan nombre={client.name} telefono={client.phone} haEntrenado={Object.values(logs || {}).some(l => l?.done)} clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
       <MancuernasPlan plan={plan} onPlanChange={onPlanChange} />
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <ProgresionPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
