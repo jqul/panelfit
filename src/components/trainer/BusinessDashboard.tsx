@@ -5,16 +5,19 @@ import { TrendingUp, Users, CheckCircle2, BarChart2, Euro } from 'lucide-react'
 // Asistencia y ocupación del mes (las mismas cifras que en el Calendario): se descarga aparte
 const CifrasAgenda = lazy(() => import('./CifrasAgenda').then(m => ({ default: m.CifrasAgenda })))
 // Sesiones completas, valoraciones y esfuerzo por mes (lib/cifrasServicio)
+const MotivosBaja = lazy(() => import('./MotivosBaja').then(m => ({ default: m.MotivosBaja })))
 const CifrasServicio = lazy(() => import('./CifrasServicio').then(m => ({ default: m.CifrasServicio })))
 
 interface Props {
   trainerId: string
   clients: ClientData[]
+  /** Para «Por qué se van» (lib/motivosBaja). */
+  archivados?: ClientData[]
   logsMap: Record<string, any>
   planName?: string
 }
 
-export function BusinessDashboard({ trainerId, clients, logsMap, planName }: Props) {
+export function BusinessDashboard({ trainerId, clients, archivados = [], logsMap, planName }: Props) {
   const haceUnaS = new Date(); haceUnaS.setDate(haceUnaS.getDate() - 7)
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30)
 
@@ -61,6 +64,7 @@ export function BusinessDashboard({ trainerId, clients, logsMap, planName }: Pro
 
       <Suspense fallback={null}><CifrasAgenda trainerId={trainerId} /></Suspense>
       <Suspense fallback={null}><CifrasServicio trainerId={trainerId} clients={clients} logsMap={logsMap} /></Suspense>
+      <Suspense fallback={null}><MotivosBaja archivados={archivados} /></Suspense>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {KPIs.map(({ label, value, icon: Icon, color, border }) => (
