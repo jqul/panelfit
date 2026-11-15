@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { e1rmDeSerie, referenciaE1RM, exposicionPorSemana, lunesDeISO, type SesionLevantamiento } from './exposicionCargas'
+import { e1rmDeSerie, referenciaE1RM, exposicionPorSemana, lunesDeISO, sumarDiasISO, type SesionLevantamiento } from './exposicionCargas'
 
 const ses = (fecha: string, series: [number, number, number?][], papel: SesionLevantamiento['papel'] = 'competicion'): SesionLevantamiento =>
   ({ fecha, papel, series: series.map(([weight, reps, rir]) => ({ weight, reps, rir })) })
@@ -74,6 +74,14 @@ describe('exposicionPorSemana', () => {
   it('las series sin referencia fiable cuentan como repeticiones pero no pasan ningún umbral', () => {
     const r = exposicionPorSemana([ses('2026-11-10', [[60, 15]])])
     expect(r['2026-11-09'].competicion).toMatchObject({ reps: 15, sinReferencia: 15, porUmbral: { 70: 0, 80: 0, 90: 0 } })
+  })
+})
+
+describe('sumarDiasISO', () => {
+  it('suma y resta días, también cruzando mes y año', () => {
+    expect(sumarDiasISO('2026-11-09', 7)).toBe('2026-11-16')
+    expect(sumarDiasISO('2026-11-09', -21)).toBe('2026-10-19')
+    expect(sumarDiasISO('2026-12-28', 7)).toBe('2027-01-04')
   })
 })
 
