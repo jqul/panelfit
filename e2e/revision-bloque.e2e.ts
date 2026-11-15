@@ -24,7 +24,8 @@ test('al terminar el plan, la revisión del bloque dice qué subió, qué se est
   await page.getByRole('button', { name: /^Plan/ }).first().click()
 
   const revision = page.getByRole('region', { name: 'Revisión del bloque' })
-  await expect(revision).toContainText('Terminó el')
+  await expect(revision).toContainText('terminó el')
+  await revision.getByRole('button', { name: /Revisión del bloque/ }).click()
   await expect(revision).toContainText('2 de 2 sesiones hechas')
   await expect(revision.getByRole('list', { name: 'Ejercicios del bloque' })).toContainText('Press banca')
   await expect(revision.getByRole('list', { name: 'Ejercicios del bloque' })).toContainText('+6 %')

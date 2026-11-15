@@ -68,5 +68,5 @@ export function revisionBloque(plan: TrainingPlan | null | undefined, logs: Trai
   }
 }
 
-/** Se enseña en su última semana y cuando ya ha terminado. */
-export const tocaRevisar = (r: RevisionBloque | null) => !!r && (r.terminado || r.diasRestantes <= 7)
+/** Se enseña en su última semana y cuando ya ha terminado, si ha entrenado algo en el bloque (sin sesiones no hay nada que revisar). */
+export const tocaRevisar = (r: RevisionBloque | null) => !!r && r.sesionesHechas > 0 && (r.terminado || r.diasRestantes <= 7)

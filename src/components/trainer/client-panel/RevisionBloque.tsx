@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { ClipboardCheck, TrendingUp, TrendingDown, Copy } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ClipboardCheck, TrendingUp, TrendingDown, Copy, ChevronDown } from 'lucide-react'
 import type { TrainingLogs, TrainingPlan } from '../../../types'
 import { localDateKey } from '../../../lib/dates'
 import { finDelPlan } from '../../../lib/finPlan'
@@ -24,6 +24,8 @@ export function textoRevision(r: Revision, nombre: string): string {
 // se estancó y cuánto se cumplió, con un texto para mandárselo al cliente y el paso al siguiente bloque.
 export function RevisionBloque({ plan, logs, nombre }: { plan: TrainingPlan; logs: TrainingLogs; nombre: string }) {
   const r = useMemo(() => revisionBloque(plan, logs, localDateKey()), [plan, logs])
+  // Plegada por defecto: la pestaña Plan deja el resto del alto al editor
+  const [abierta, setAbierta] = useState(false)
   if (!r || !tocaRevisar(r)) return null
   const fin = finDelPlan(plan)!
 
@@ -34,12 +36,14 @@ export function RevisionBloque({ plan, logs, nombre }: { plan: TrainingPlan; log
   const irASiguiente = () => document.getElementById('siguiente-plan')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
   return (
-    <section aria-label="Revisión del bloque" className="flex-shrink-0 mb-3 px-4 py-3 bg-card border border-accent/30 rounded-2xl space-y-2">
-      <div className="flex items-center gap-2 flex-wrap">
+    <section aria-label="Revisión del bloque" className="flex-shrink-0 mb-3 px-4 py-2.5 bg-card border border-accent/30 rounded-2xl space-y-2">
+      <button type="button" onClick={() => setAbierta(a => !a)} aria-expanded={abierta} className="w-full flex items-center gap-2 flex-wrap text-left">
         <ClipboardCheck className="w-4 h-4 text-accent flex-shrink-0" aria-hidden />
-        <p className="text-xs font-bold text-muted uppercase tracking-wider flex-1">Revisión del bloque</p>
-        <span className="text-xs text-muted">{r.terminado ? `Terminó el ${fecha(fin)}` : `Termina en ${r.diasRestantes} día${r.diasRestantes === 1 ? '' : 's'}`}</span>
-      </div>
+        <span className="text-xs font-bold text-muted uppercase tracking-wider">Revisión del bloque</span>
+        <span className="text-xs text-muted flex-1">· {r.terminado ? `terminó el ${fecha(fin)}` : `termina en ${r.diasRestantes} día${r.diasRestantes === 1 ? '' : 's'}`}{r.cumplimientoPct !== null ? ` · ${r.cumplimientoPct} % hecho` : ''}{r.suben.length ? ` · ${r.suben.length} suben` : ''}{r.estancados.length ? ` · ${r.estancados.length} estancados` : ''}</span>
+        <ChevronDown className={`w-4 h-4 text-muted transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden />
+      </button>
+      {abierta && <>
       {r.cumplimientoPct !== null && (
         <p className="text-sm"><strong>{r.sesionesHechas} de {r.sesionesPrevistas}</strong> sesiones hechas <span className="text-muted">({r.cumplimientoPct} %)</span></p>
       )}
@@ -66,6 +70,7 @@ export function RevisionBloque({ plan, logs, nombre }: { plan: TrainingPlan; log
         </button>
         <button type="button" onClick={irASiguiente} className="px-3 py-1.5 bg-ink text-white rounded-xl text-xs font-bold hover:opacity-90">Preparar el siguiente bloque ↓</button>
       </div>
+      </>}
     </section>
   )
 }
