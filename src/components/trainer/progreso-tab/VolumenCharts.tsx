@@ -8,6 +8,8 @@ import { getExName, CustomTooltip, EmptyState, GROUP_COLORS, getMuscleGroup, use
 import { localDateKey } from '../../../lib/dates'
 import { volumenLog } from '../../../lib/volumen'
 import { contarSeries, RIR_EFECTIVA } from '../../../lib/seriesEfectivas'
+import { contribucionesDe, sumarSeries, redondear, type ContribucionesPropias, type VolumenGrupo } from '../../../lib/contribucionMuscular'
+import { ContribucionesEditor } from './ContribucionesEditor'
 
 // ── Volumen semanal ───────────────────────────────────────
 export function VolumenChart({ logs }: { logs: TrainingLogs }) {
@@ -57,14 +59,21 @@ export function VolumenChart({ logs }: { logs: TrainingLogs }) {
 }
 
 // ── Volumen semanal por grupo muscular ─────────────────────
-export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[] }) {
+export function VolumenGrupoChart({ logs, plan, library, contrib }: {
+  logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; category?: string }[]
+  /** Contribuciones que el entrenador ajustó por ejercicio y cómo guardarlas (hooks/useContribuciones). */
+  contrib?: { propias: ContribucionesPropias; guardar: (nuevas: ContribucionesPropias) => Promise<boolean> }
+}) {
   const libraryMap = useLibraryMuscleMap(library)
+  const contribPropias = contrib?.propias
   // Todas las series o solo las efectivas (RIR ≤ 3): los rangos MEV/MAV/MRV se pensaron para series duras
   const [modo, setModo] = useState<'todas' | 'efectivas'>('todas')
+  // Contar también el trabajo indirecto (el tríceps en un press...), ponderado y estimado (lib/contribucionMuscular)
+  const [conIndirectas, setConIndirectas] = useState(false)
 
-  const { data, groups, faciles, sinRir } = useMemo(() => {
-    const byWeek: Record<string, Record<string, number>> = {}
-    const groupSet = new Set<string>()
+  const { data, groups, faciles, sinRir, detalle, ejercicios } = useMemo(() => {
+    const nombres = new Map<string, string>() // ejercicio → su grupo principal, para el editor de contribuciones
+    const byWeek: Record<string, Record<string, VolumenGrupo>> = {}
     const porSemana: Record<string, { faciles: number; sinRir: number }> = {}
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done || !log.dateDone) return
@@ -78,22 +87,29 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
       const lunes = new Date(d); lunes.setDate(diff)
       const weekKey = localDateKey(lunes)
       if (!byWeek[weekKey]) byWeek[weekKey] = {}
-      byWeek[weekKey][g] = (byWeek[weekKey][g] || 0) + setsDone
+      sumarSeries(byWeek[weekKey], contribucionesDe(name, g, contribPropias), setsDone)
+      nombres.set(name, g)
       const p = porSemana[weekKey] ?? (porSemana[weekKey] = { faciles: 0, sinRir: 0 })
       p.faciles += cuenta.faciles; p.sinRir += cuenta.sinRir
-      groupSet.add(g)
     })
-    const groups = [...groupSet].sort()
     const semanas = Object.entries(byWeek).sort(([a], [b]) => a.localeCompare(b)).slice(-8)
-    const data = semanas.map(([date, counts]) => ({
+    // Sin indirectas, un grupo solo aparece si tiene alguna serie directa; con ellas, también los que solo reciben indirecto
+    const valor = (v: VolumenGrupo) => redondear(conIndirectas ? v.directas + v.indirectas : v.directas)
+    const groupSet = new Set<string>()
+    semanas.forEach(([, grupos]) => Object.entries(grupos).forEach(([g, v]) => { if (valor(v) > 0) groupSet.add(g) }))
+    const groups = [...groupSet].sort()
+    const data = semanas.map(([date, grupos]) => ({
       semana: new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
-      ...counts,
+      ...Object.fromEntries(Object.entries(grupos).filter(([, v]) => valor(v) > 0).map(([g, v]) => [g, valor(v)])),
     }))
+    // Directas e indirectas de la última semana por grupo, para enseñarlas por separado
+    const detalle: Record<string, VolumenGrupo> = semanas.length ? byWeek[semanas[semanas.length - 1][0]] : {}
     // Lo que se deja fuera (o se da por bueno) en las semanas que se ven, para explicarlo debajo del selector
     const faciles = semanas.reduce((a, [w]) => a + (porSemana[w]?.faciles || 0), 0)
     const sinRir = semanas.reduce((a, [w]) => a + (porSemana[w]?.sinRir || 0), 0)
-    return { data, groups, faciles, sinRir }
-  }, [logs, plan, libraryMap, modo])
+    const ejercicios = [...nombres].map(([nombre, principal]) => ({ nombre, principal })).sort((a, b) => a.nombre.localeCompare(b.nombre))
+    return { data, groups, faciles, sinRir, detalle, ejercicios }
+  }, [logs, plan, libraryMap, modo, conIndirectas, contribPropias])
 
   if (data.length < 2) return <EmptyState icon={<Activity className="w-8 h-8 opacity-30" />} text="Sin datos suficientes" sub="Necesita actividad en al menos 2 semanas" />
 
@@ -111,6 +127,18 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
             </button>
           ))}
         </div>
+        <label className="flex items-center gap-2 text-xs font-semibold text-ink cursor-pointer">
+          <input type="checkbox" checked={conIndirectas} onChange={e => setConIndirectas(e.target.checked)} className="accent-accent" />
+          Contar el trabajo indirecto (estimado)
+        </label>
+        {conIndirectas && (
+          <p className="text-[11px] text-muted" data-testid="nota-indirectas">
+            Además de las directas, cada serie suma una fracción a los músculos que ayudan (el tríceps en un press, el bíceps en un remo).
+            Es una estimación con pesos de partida que puedes cambiar por ejercicio: una serie indirecta no aporta lo mismo a todas las
+            personas, depende de la técnica, el recorrido, el esfuerzo y el músculo que limita la serie.
+          </p>
+        )}
+        {conIndirectas && contrib && <ContribucionesEditor ejercicios={ejercicios} propias={contrib.propias} guardar={contrib.guardar} />}
         {modo === 'efectivas' && (
           <p className="text-[11px] text-muted" data-testid="nota-efectivas">
             Solo cuentan las series hechas cerca del fallo (RIR {RIR_EFECTIVA} o menos).
@@ -134,7 +162,9 @@ export function VolumenGrupoChart({ logs, plan, library }: { logs: TrainingLogs;
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold">{g}</span>
                   <span className="flex items-center gap-1.5">
-                    <span className="font-bold">{sets} {modo === 'efectivas' ? 'efectivas' : 'series'}</span>
+                    {conIndirectas && detalle[g]
+                      ? <span className="font-bold" data-testid={`desglose-${g}`}>{redondear(detalle[g].directas).toLocaleString('es-ES')} directas + {redondear(detalle[g].indirectas).toLocaleString('es-ES')} indirectas (est.)</span>
+                      : <span className="font-bold">{sets} {modo === 'efectivas' ? 'efectivas' : 'series'}</span>}
                     <span className="px-1.5 py-0.5 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: status.color }}>{status.label}</span>
                   </span>
                 </div>

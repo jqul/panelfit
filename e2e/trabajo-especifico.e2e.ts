@@ -27,10 +27,11 @@ test('Progreso separa el trabajo de competición, las variantes y los accesorios
   await page.getByRole('button', { name: /Carga y riesgo/ }).click()
   await page.getByRole('button', { name: /Trabajo específico/ }).click()
 
+  // (Las filas de arriba son las de series y repeticiones; debajo hay otra tabla, la de exposición a cargas altas)
   // Sentadilla: 4 series de competición (el calentamiento no cuenta) y 20 repeticiones
-  await expect(page.getByRole('row', { name: /Sentadilla Competición/ })).toContainText('4 · 20')
+  await expect(page.getByRole('row', { name: /Sentadilla Competición/ }).first()).toContainText('4 · 20')
   // Banca con agarre cerrado: variante, 3 series y 18 repeticiones
-  await expect(page.getByRole('row', { name: /Press banca Variantes/ })).toContainText('3 · 18')
+  await expect(page.getByRole('row', { name: /Press banca Variantes/ }).first()).toContainText('3 · 18')
   // El remo marcado como variante no es ninguno de los tres levantamientos: queda en accesorios
   await expect(page.getByRole('row', { name: /Accesorios/ })).toContainText('2 · 20')
   // No aparece una fila de peso muerto sin datos
