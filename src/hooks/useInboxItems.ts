@@ -9,6 +9,7 @@ import { ClientWithStats } from './useTrainerClients'
 import { localDateKey } from '../lib/dates'
 import { buildQueue, isSnoozed, type QueueItem, type QueueKind, type QueueTier } from '../lib/dailyQueue'
 import { evaluarRegla, limpiarReglas, type ReglaUmbral } from '../lib/alertasUmbral'
+import { ejerciciosEstancados, tendenciaAbandono } from '../lib/tendencias'
 
 interface ReadinessRow { clientId: string; date: string; sleep: number | null; soreness: number | null; stress: number | null; motivation: number | null }
 interface VideoRow { id: string; client_id: string; exercise_name: string; status: 'pendiente' | 'comentado'; created_at: number }
@@ -250,6 +251,23 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       if (last && last >= hace7Key) return
       list.push({ key: `revision:${c.id}:${weekKey}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'revision',
         detail: '🎯 Toca revisión semanal del objetivo', warn: true, tier: 'hoy', score: 35 })
+    })
+
+    // Avisos tempranos (lib/tendencias): cada semana entrena menos (antes de que lo deje) y ejercicios estancados (toca
+    // cambiar variante o meter una descarga). Clave por semana: si se marca como hecho, vuelve la semana que viene si sigue.
+    const hace3Sem = new Date(); hace3Sem.setDate(hace3Sem.getDate() - 21)
+    const hace3SemKey = localDateKey(hace3Sem)
+    clients.forEach(c => {
+      const logs = logsMap[c.id] || {}
+      if (!c.ausencia) {
+        const fechas = [...new Set(Object.values(logs).filter((l: any) => l?.done && l.dateDone).map((l: any) => l.dateDone as string))]
+        const serie = tendenciaAbandono(fechas, hoy)
+        if (serie) list.push({ key: `tendencia:${c.id}:${weekKey}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'riesgo',
+          detail: `📉 Cada semana entrena menos (${serie.join(' → ')} días)`, warn: true, tier: 'hoy', score: 68 })
+      }
+      const estancados = ejerciciosEstancados(logs, planes[c.id], hace3SemKey)
+      if (estancados.length) list.push({ key: `estancado:${c.id}:${weekKey}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: hoy, kind: 'revision',
+        detail: `🔧 Estancado: ${estancados.slice(0, 3).join(', ')}${estancados.length > 3 ? ` y ${estancados.length - 3} más` : ''}`, warn: true, tier: 'luego', score: 30 })
     })
 
     // Alertas por umbral: una fila por cliente y regla que se cumple. Clave por día: si se marca como hecha, vuelve
