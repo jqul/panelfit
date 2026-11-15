@@ -104,7 +104,7 @@ export function RecuperacionActividad({ clientId, logs }: { clientId: string; lo
                   <tr key={h.id} className="border-t border-border/50">
                     <th scope="row" className="py-2 pr-3 text-left font-normal">
                       <span className="font-semibold">{h.text}</span>{h.unidad ? <span className="text-muted text-xs"> ({h.unidad})</span> : null}
-                      {esHabitoSueno(h) && <span className="ml-1.5 text-[10px] font-bold uppercase text-accent">Sueño</span>}
+                      {esHabitoSueno(h) && <span className="ml-1.5 text-[11px] font-bold uppercase text-accent">Sueño</span>}
                     </th>
                     {semanas.map(s => <Celda key={s}>{m[s] ? `${n1(m[s].media)} · ${m[s].dias} ${m[s].dias === 1 ? 'día' : 'días'}` : '—'}</Celda>)}
                   </tr>
