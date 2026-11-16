@@ -24,21 +24,25 @@ export function resumenMes(logs: TrainingLogs, plan: TrainingPlan | null | undef
   const records: RecordMes[] = []
   for (const h of historialPorEjercicio(logs, plan)) {
     const ahora = Math.max(0, ...h.sesiones.filter(x => x.date.startsWith(mes)).map(x => x.e1rm))
-    const antes = Math.max(0, ...h.sesiones.filter(x => x.date < `${mes}-01`).map(x => x.e1rm))
+    const antes = Math.max(0, ...h.sesiones.filter(x => x.date < (esAnio(mes) ? `${mes}-01-01` : `${mes}-01`)).map(x => x.e1rm))
     if (antes > 0 && ahora > antes) records.push({ name: h.name, ahora: r1(ahora), antes: r1(antes) })
   }
   records.sort((a, b) => (b.ahora - b.antes) - (a.ahora - a.antes) || a.name.localeCompare(b.name, 'es'))
   return { mes, sesiones, volumen, series, records }
 }
 
+/** `mes` 'YYYY-MM', o 'YYYY' para el año entero (todo lo de este módulo vale para los dos). */
+export const esAnio = (periodo: string) => /^\d{4}$/.test(periodo)
+
 export function nombreMes(mes: string): string {
+  if (esAnio(mes)) return mes
   const t = new Date(`${mes}-15T12:00:00`).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
   return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
 export function textoMes(r: ResumenMes, marca?: string): string {
   return [
-    `📅 Mi ${nombreMes(r.mes).toLowerCase()} en números`,
+    esAnio(r.mes) ? `📅 Mi ${r.mes} en números` : `📅 Mi ${nombreMes(r.mes).toLowerCase()} en números`,
     `🏋️ ${r.sesiones} entrenos · ${kg(r.volumen / 1000)} t movidas · ${r.series} series`,
     r.records.length ? `🏆 ${r.records.slice(0, 3).map(x => `${x.name} ${kg(x.ahora)} kg (+${kg(r1(x.ahora - x.antes))})`).join(', ')}` : null,
     marca ? `Entrenando con ${marca}` : 'Hecho con PanelFit',
@@ -64,7 +68,7 @@ export async function dibujarTarjetaMes(r: ResumenMes, marca?: string): Promise<
   let y = M + 40
   ctx.fillStyle = acento
   ctx.font = `700 30px ${fuente}`
-  ctx.fillText('MI MES EN NÚMEROS', M, y)
+  ctx.fillText(esAnio(r.mes) ? 'MI AÑO EN NÚMEROS' : 'MI MES EN NÚMEROS', M, y)
   y += 110
   ctx.fillStyle = texto
   ctx.font = `700 84px ${serif}`
@@ -88,7 +92,8 @@ export async function dibujarTarjetaMes(r: ResumenMes, marca?: string): Promise<
 
   ctx.fillStyle = suave
   ctx.font = `700 26px ${fuente}`
-  ctx.fillText(r.records.length ? 'RÉCORDS DEL MES · 1RM ESTIMADO' : 'RÉCORDS DEL MES', M, y)
+  const etiquetaRecords = esAnio(r.mes) ? 'RÉCORDS DEL AÑO' : 'RÉCORDS DEL MES'
+  ctx.fillText(r.records.length ? `${etiquetaRecords} · 1RM ESTIMADO` : etiquetaRecords, M, y)
   y += 70
   if (!r.records.length) {
     ctx.fillStyle = suave
@@ -129,5 +134,5 @@ export async function dibujarTarjetaMes(r: ResumenMes, marca?: string): Promise<
 }
 
 export async function compartirTarjetaMes(r: ResumenMes, marca?: string) {
-  return compartirImagen(await dibujarTarjetaMes(r, marca), `mi-mes-${r.mes}.png`, textoMes(r, marca))
+  return compartirImagen(await dibujarTarjetaMes(r, marca), `${esAnio(r.mes) ? 'mi-anio' : 'mi-mes'}-${r.mes}.png`, textoMes(r, marca))
 }
