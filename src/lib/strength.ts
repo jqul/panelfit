@@ -1,6 +1,8 @@
 // Cálculos de fuerza: 1RM estimado y autoregulación por RIR
 // (inspirado en el motor de autoregulación de JuggernautAI / RP Hypertrophy App)
 
+import { parseRirTarget, type RirTarget } from './rirTarget'
+
 /** 1RM estimado con la fórmula de Epley. Solo fiable hasta ~10 reps. */
 export function estimate1RM(weight: number, reps: number): number {
   if (!weight || !reps || reps < 1) return 0
@@ -18,6 +20,23 @@ export function rpeToTargetRIR(rpe?: string): number | null {
   return Math.max(0, 10 - val)
 }
 
+/**
+ * RIR previsto para una serie: el del EJERCICIO si el entrenador lo puso en el plan (un rango como «2-3», que es el que ve
+ * el cliente al hacer la serie) y, si no, el que sale del RPE de la semana. Antes los pesos sugeridos solo miraban el RPE de
+ * la semana y podían llevar la contraria a lo que el cliente tenía delante.
+ */
+export function objetivoRir(rirEjercicio?: string | number | null, weekRpe?: string): RirTarget | null {
+  const e = parseRirTarget(rirEjercicio === undefined || rirEjercicio === null ? null : String(rirEjercicio))
+  if (e) return e
+  const t = rpeToTargetRIR(weekRpe)
+  return t === null ? null : { min: t, max: t }
+}
+
+/** Repeticiones de margen de MÁS (positivo) o de MENOS (negativo) respecto al rango previsto; 0 si cae dentro. */
+export function desvioRir(actual: number, t: RirTarget): number {
+  return actual > t.max ? actual - t.max : actual < t.min ? actual - t.min : 0
+}
+
 export interface LoadSuggestion {
   direction: 'up' | 'down' | 'hold'
   deltaKg: number
@@ -30,8 +49,10 @@ export interface LoadSuggestion {
  * Mismo principio que la autoregulación de JuggernautAI: si sobró margen,
  * sube; si faltó margen (RIR real menor de lo esperado), baja o mantiene.
  */
-export function suggestNextLoad(lastWeight: number, actualRIR: number, targetRIR: number): LoadSuggestion {
-  const diff = actualRIR - targetRIR
+export function suggestNextLoad(lastWeight: number, actualRIR: number, targetRIR: number | RirTarget): LoadSuggestion {
+  // Lo que cuenta es la DESVIACIÓN respecto a lo previsto, no el esfuerzo en sí: un RIR 1 (RPE 9) no es lo mismo si tocaba
+  // RIR 1 que si tocaba RIR 3. Con un rango («2-3») no hay desviación mientras caiga dentro.
+  const diff = typeof targetRIR === 'number' ? actualRIR - targetRIR : desvioRir(actualRIR, targetRIR)
   if (!lastWeight) return { direction: 'hold', deltaKg: 0, reason: 'Sin datos de peso previo' }
   if (diff >= 2) {
     return { direction: 'up', deltaKg: round(lastWeight * 0.05), reason: `Sobraron ${diff} reps de margen — sube la carga` }
@@ -70,13 +91,13 @@ export const RIR_OPTIONS = [
  * autoregulación que JuggernautAI: si sobró margen, sube; si faltó margen,
  * baja o mantiene. Se muestra junto al peso, antes de hacer la serie.
  */
-export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string): { pct: number; label: string; color: string; direction: 'up' | 'down' | 'hold'; deltaKg: number } | null {
+export function getSuggestedWeightChange(rir: number | undefined, prevWeight?: string, weekRpe?: string, rirEjercicio?: string | number | null): { pct: number; label: string; color: string; direction: 'up' | 'down' | 'hold'; deltaKg: number } | null {
   if (rir === undefined || rir === null) return null
 
-  const targetRIR = rpeToTargetRIR(weekRpe)
+  const objetivo = objetivoRir(rirEjercicio, weekRpe) // el del ejercicio manda sobre el de la semana
   const weight = parseFloat(prevWeight || '')
-  if (targetRIR !== null && weight) {
-    const s = suggestNextLoad(weight, rir, targetRIR)
+  if (objetivo !== null && weight) {
+    const s = suggestNextLoad(weight, rir, objetivo)
     const color = s.direction === 'up' ? '#22c55e' : s.direction === 'down' ? '#ef4444' : '#f59e0b'
     const label = s.direction === 'up' ? `Subir +${s.deltaKg}kg` : s.direction === 'down' ? `Bajar -${s.deltaKg}kg` : 'Mantener peso'
     return { pct: s.direction === 'up' ? 5 : s.direction === 'down' ? -5 : 0, label, color, direction: s.direction, deltaKg: s.deltaKg }
@@ -100,11 +121,11 @@ export function esPesoKg(w?: string | null): boolean {
   return !!w && /^\s*\d+(?:[.,]\d+)?\s*(?:kg)?\s*$/i.test(w)
 }
 
-export function getTargetRangeLabel(prevWeight?: string, prevRir?: number, weekRpe?: string): string | null {
+export function getTargetRangeLabel(prevWeight?: string, prevRir?: number, weekRpe?: string, rirEjercicio?: string | number | null): string | null {
   if (!esPesoKg(prevWeight)) return null
   const prevW = parseFloat((prevWeight || '').replace(',', '.'))
   if (!prevW) return null
-  const suggestion = getSuggestedWeightChange(prevRir, prevWeight, weekRpe)
+  const suggestion = getSuggestedWeightChange(prevRir, prevWeight, weekRpe, rirEjercicio)
   if (!suggestion || suggestion.direction === 'hold' || !suggestion.deltaKg) return `${prevW}kg`
   const round1 = (n: number) => Math.round(n * 10) / 10
   return suggestion.direction === 'up'

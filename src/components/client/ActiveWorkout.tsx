@@ -454,7 +454,7 @@ export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, 
         totalSets: totalForRow,
         weight: existing?.weight || prevWk?.weight || '',
         reps: existing?.reps || prevWk?.reps || String(numReps),
-        targetLabel: showPesosSugeridos ? getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe) : null,
+        targetLabel: showPesosSugeridos ? getTargetRangeLabel(prevWk?.weight, prevWk?.rir, plan.weeks?.[weekIdx]?.rpe, rowEx.rir) : null,
       }
     }
 
@@ -1143,6 +1143,7 @@ export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, 
                     prevReps={prev?.reps}
                     prevRir={prev?.rir}
                     weekRpe={plan.weeks?.[weekIdx]?.rpe}
+                    rirObjetivo={ex.rir ? String(ex.rir) : undefined}
                     isMain={ex.isMain}
                     showVelocity={tracksVelocity(ex)}
                     showTarget={showPesosSugeridos}

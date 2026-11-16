@@ -18,6 +18,8 @@ interface SetRowProps {
   prevReps?: string
   prevRir?: number
   weekRpe?: string
+  /** RIR objetivo del ejercicio («2-3»): manda sobre el RPE de la semana al sugerir el peso. */
+  rirObjetivo?: string
   isMain: boolean
   /** Lo que pide el plan para esta serie, p. ej. "8" o "6-8 @2" (reps @RIR). */
   planLabel?: string
@@ -39,7 +41,7 @@ interface SetRowProps {
 // Una serie de la vista de lista, en una sola línea (nº · plan y lo anterior · kg · reps · ✓) para ver la rutina
 // entera de un vistazo. Los ajustes rápidos (±2,5/±5 kg, ±1 rep, discos, repetir lo anterior) solo aparecen debajo
 // de la serie activa, en vez de repetirse en todas.
-export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, isMain, planLabel, activa = false, onActivar, tipo, onSetTipo, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
+export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity, firstVelocity, prevWeight, prevReps, prevRir, weekRpe, rirObjetivo, isMain, planLabel, activa = false, onActivar, tipo, onSetTipo, showVelocity = isMain, showTarget = true, onCommit, onToggle, onOpenCalc, onSetRir, onSetVelocity }: SetRowProps) => {
   const [weight, setWeight] = useState(initWeight)
   const [reps, setReps] = useState(initReps)
   const [showRir, setShowRir] = useState(false)
@@ -63,12 +65,12 @@ export const SetRow = memo(({ setNum, initWeight, initReps, done, rir, velocity,
   // entero — sin esto, la insignia perdía el color/descripción y volvía a
   // mostrar "Añadir RIR" como si no se hubiera registrado nada.
   const rirMeta = rir !== undefined ? RIR_OPTIONS.find(o => o.value === Math.floor(rir)) : null
-  const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe) : null
+  const suggestion = prevRir !== undefined ? getSuggestedWeightChange(prevRir, prevWeight, weekRpe, rirObjetivo) : null
 
   // Rango objetivo para hoy a partir de la autorregulación (ej. "75-77.5 kg")
   // — null si el entrenador ha desactivado "pesos sugeridos" en Ajustes.
   const prevW = parseFloat(prevWeight || '')
-  const targetRange = showTarget ? getTargetRangeLabel(prevWeight, prevRir, weekRpe) : null
+  const targetRange = showTarget ? getTargetRangeLabel(prevWeight, prevRir, weekRpe, rirObjetivo) : null
 
   // "Rellenar con anterior": con pesos sugeridos activos, copia el objetivo
   // calculado; si no, simplemente repite el peso de la vez anterior (el
