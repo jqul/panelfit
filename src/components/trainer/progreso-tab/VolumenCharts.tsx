@@ -149,7 +149,7 @@ export function VolumenGrupoChart({ logs, plan, library, contrib }: {
       </div>
       {withLandmarks.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Esta semana vs. rango recomendado</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted">Esta semana frente al rango habitual</p>
           {withLandmarks.map(g => {
             const sets = lastWeek[g] || 0
             const status = getVolumeStatus(g, sets)!
@@ -176,7 +176,7 @@ export function VolumenGrupoChart({ logs, plan, library, contrib }: {
               </div>
             )
           })}
-          <p className="text-[11px] text-muted">Estimación orientativa (principios de volumen MEV/MAV/MRV para lifters intermedios), no sustituye el criterio del entrenador.</p>
+          <p className="text-[11px] text-muted">Rango habitual (MEV/MAV/MRV para lifters intermedios), no un límite: si el cliente progresa y recupera bien, no hace falta cambiar su volumen por salirse del rango. Mira siempre cómo progresa ese músculo.</p>
         </div>
       )}
       <div className="flex flex-wrap gap-2">

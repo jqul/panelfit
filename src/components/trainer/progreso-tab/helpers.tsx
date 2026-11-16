@@ -75,13 +75,15 @@ export const VOLUME_LANDMARKS: Record<string, { mev: number; mav: number; mrv: n
   'Glúteos':  { mev: 6,  mav: 13, mrv: 20 },
 }
 
+// Es una referencia habitual, NO un límite: si el cliente progresa y recupera bien, estar por encima del rango no es un
+// problema, y estar por debajo tampoco lo es si progresa. Por eso el lenguaje es neutro y ningún tramo va en rojo.
 export function getVolumeStatus(group: string, sets: number): { label: string; color: string } | null {
   const l = VOLUME_LANDMARKS[group]
   if (!l) return null
-  if (sets < l.mev) return { label: 'Bajo', color: '#e07b54' }
-  if (sets <= l.mav) return { label: 'Óptimo', color: '#4caf7d' }
-  if (sets <= l.mrv) return { label: 'Alto', color: '#e0a854' }
-  return { label: 'Excesivo', color: '#dc2626' }
+  if (sets < l.mev) return { label: 'Por debajo del rango', color: '#8a96a8' }
+  if (sets <= l.mav) return { label: 'Dentro del rango', color: '#4caf7d' }
+  if (sets <= l.mrv) return { label: 'Por encima del rango', color: '#d9a441' }
+  return { label: 'Muy por encima del rango', color: '#c9823a' }
 }
 
 export function getMuscleGroup(name: string, libraryMap?: Map<string, string>) {
