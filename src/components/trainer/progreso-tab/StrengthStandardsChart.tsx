@@ -3,12 +3,12 @@ import { kg } from '../../../lib/formatoKg'
 import { Award } from 'lucide-react'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../../types'
 import { estimate1RM } from '../../../lib/strength'
-import { matchLiftKey, getStrengthStandard, LEVEL_LABELS, LIFT_LABELS, LiftKey } from '../../../lib/strengthStandards'
+import { matchLiftKey, getStrengthStandard, puntuacionFuerza, equilibrioFuerza, LEVEL_LABELS, LIFT_LABELS, LiftKey } from '../../../lib/strengthStandards'
 import { getExName, EmptyState } from './helpers'
 
 export function StrengthStandardsChart({ client, logs, plan }: { client: ClientData; logs: TrainingLogs; plan?: TrainingPlan | null }) {
   const results = useMemo(() => {
-    const bestByLift: Record<LiftKey, number> = { squat: 0, bench: 0, deadlift: 0 }
+    const bestByLift: Record<LiftKey, number> = { squat: 0, bench: 0, deadlift: 0, press: 0 }
     Object.entries(logs).forEach(([key, log]) => {
       if (!log.done) return
       const name = getExName(key, plan, log)
@@ -27,16 +27,38 @@ export function StrengthStandardsChart({ client, logs, plan }: { client: ClientD
 
     return (Object.keys(bestByLift) as LiftKey[])
       .filter(lift => bestByLift[lift] > 0)
-      .map(lift => ({ lift, oneRM: Math.round(bestByLift[lift] * 10) / 10, standard: getStrengthStandard(lift, bestByLift[lift], bodyweight, sex) }))
+      .map(lift => ({ lift, oneRM: Math.round(bestByLift[lift] * 10) / 10, standard: getStrengthStandard(lift, bestByLift[lift], bodyweight, sex), nota: puntuacionFuerza(lift, bestByLift[lift], bodyweight, sex) }))
       .filter(r => r.standard)
   }, [logs, plan, client.genero, client.weight])
 
   if (!client.weight) return <EmptyState icon={<Award className="w-8 h-8 opacity-30" />} text="Falta el peso corporal del cliente" sub="Añádelo en la pestaña Perfil para calcular el nivel de fuerza" />
-  if (!results.length) return <EmptyState icon={<Award className="w-8 h-8 opacity-30" />} text="Sin datos de sentadilla, press banca o peso muerto" sub="Se calcula automáticamente al registrar estos ejercicios" />
+  if (!results.length) return <EmptyState icon={<Award className="w-8 h-8 opacity-30" />} text="Sin datos de sentadilla, press banca, peso muerto o press militar" sub="Se calcula automáticamente al registrar estos ejercicios" />
+
+  // Nota de 0 a 100 por levantamiento y global, y si uno va muy por detrás (lib/strengthStandards)
+  const eq = equilibrioFuerza(Object.fromEntries(results.filter(r => r.nota !== null).map(r => [r.lift, r.nota!])))
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted">Estimación orientativa según el ratio 1RM/peso corporal — no es una referencia médica.</p>
+      {eq && (
+        <section aria-label="Nivel de fuerza" className="bg-card border border-border rounded-2xl p-4 space-y-2">
+          <div className="flex items-baseline justify-between">
+            <p className="text-sm font-semibold">Nivel de fuerza</p>
+            <p className="text-2xl font-serif font-bold tabular-nums">{eq.global}<span className="text-sm text-muted font-sans">/100</span></p>
+          </div>
+          <ul className="space-y-1.5" aria-label="Nota por levantamiento">
+            {results.filter(r => r.nota !== null).map(r => (
+              <li key={r.lift} className="text-xs">
+                <div className="flex justify-between mb-0.5"><span>{LIFT_LABELS[r.lift]}</span><span className="tabular-nums font-semibold">{r.nota}</span></div>
+                <div className="h-1.5 bg-bg-alt rounded-full overflow-hidden"><div className="h-full bg-accent" style={{ width: `${r.nota}%` }} /></div>
+              </li>
+            ))}
+          </ul>
+          {eq.flojo && eq.fuerte && (
+            <p className="text-xs text-warn">⚖️ {LIFT_LABELS[eq.flojo]} va {eq.diferencia} puntos por detrás de {LIFT_LABELS[eq.fuerte].toLowerCase()}: dale prioridad en el próximo bloque.</p>
+          )}
+        </section>
+      )}
       {results.map(({ lift, oneRM, standard }) => {
         if (!standard) return null
         const meta = LEVEL_LABELS[standard.level]
