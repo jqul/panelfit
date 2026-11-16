@@ -50,3 +50,23 @@ describe('umbralesKg', () => {
     expect(umbralesKg('bench', 0, 'm')).toEqual([])
   })
 })
+
+describe('nota de fuerza y equilibrio', () => {
+  it('press militar reconocido', () => {
+    expect(matchLiftKey('Press militar de pie')).toBe('press')
+    expect(matchLiftKey('Press banca')).toBe('bench')
+  })
+  it('20 puntos por nivel, repartidos según el ratio', async () => {
+    const { puntuacionFuerza } = await import('./strengthStandards')
+    expect(puntuacionFuerza('squat', 100, 80, 'm')).toBe(50)   // ratio 1,25: a medio camino entre novato (1,0 = 40) e intermedio (1,5 = 60)
+    expect(puntuacionFuerza('bench', 20, 80, 'm')).toBe(10)    // ratio 0,25: medio camino hacia principiante (0,5 = 20)
+    expect(puntuacionFuerza('deadlift', 300, 80, 'm')).toBe(100)
+    expect(puntuacionFuerza('squat', 100, 0, 'm')).toBeNull()
+  })
+  it('equilibrio: global y el que va 20 puntos o más por detrás', async () => {
+    const { equilibrioFuerza } = await import('./strengthStandards')
+    expect(equilibrioFuerza({ squat: 60, bench: 35, deadlift: 62 })).toEqual({ global: 52, flojo: 'bench', fuerte: 'deadlift', diferencia: 27 })
+    expect(equilibrioFuerza({ squat: 60, bench: 55 })).toEqual({ global: 58, flojo: null, fuerte: null, diferencia: 5 })
+    expect(equilibrioFuerza({})).toBeNull()
+  })
+})

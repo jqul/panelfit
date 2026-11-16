@@ -14,7 +14,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
   { id: 'cardio',       icon: '🏃', label: 'Cardio',        desc: 'Carrera y pista: distancia, tiempos por tirada y ritmo' },
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
-  { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Sentadilla/banca/peso muerto vs. estándares' },
+  { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Nota de 0 a 100 y equilibrio entre sentadilla, banca, peso muerto y press militar' },
   { id: 'pruebas',      icon: '🧪', label: 'Pruebas físicas', desc: 'Salto, Cooper, flexibilidad y más' },
   { id: 'fv_profile',   icon: '🚀', label: 'Perfil F-V',     desc: 'Fuerza-Velocidad del salto (Samozino/Morin)' },
   { id: 'volumen',      icon: '📊', label: 'Volumen',        desc: 'Carga total semanal' },
