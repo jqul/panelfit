@@ -31,3 +31,18 @@ describe('textoMes', () => {
     expect(nombreMes('2026-11')).toBe('Noviembre de 2026')
   })
 })
+
+describe('mi año', () => {
+  it('el mismo resumen con un año: entrenos, volumen y récords frente a años anteriores', () => {
+    const logs: TrainingLogs = {
+      a: log('2025-11-10', 'Sentadilla', 100),
+      b: log('2026-03-03', 'Sentadilla', 105),
+      c: log('2026-10-03', 'Sentadilla', 110),
+    }
+    const r = resumenMes(logs, null, '2026')
+    expect(r).toMatchObject({ sesiones: 2, series: 2 })
+    expect(r.records).toEqual([{ name: 'Sentadilla', ahora: 128.3, antes: 116.7 }])
+    expect(textoMes(r).split('\n')[0]).toBe('📅 Mi 2026 en números')
+    expect(nombreMes('2026')).toBe('2026')
+  })
+})

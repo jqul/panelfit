@@ -181,24 +181,35 @@ const fmtDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('es-
 // Tarjeta «Mi mes» para redes (lib/tarjetaMes, se descarga al pulsar): el mes en curso o, si aún no ha entrenado en él, el anterior
 function CompartirMes({ logs, plan, marca }: { logs: TrainingLogs; plan?: TrainingPlan | null; marca?: string }) {
   const [ocupado, setOcupado] = useState(false)
-  const compartir = async () => {
+  // En diciembre y enero, también «Mi año» (en enero, el que acaba de terminar)
+  const hoy = new Date()
+  const anio = hoy.getMonth() === 11 ? String(hoy.getFullYear()) : hoy.getMonth() === 0 ? String(hoy.getFullYear() - 1) : null
+  const compartir = async (periodo: 'mes' | 'anio' = 'mes') => {
     setOcupado(true)
     try {
       const { resumenMes, compartirTarjetaMes } = await import('../../lib/tarjetaMes')
       const actual = localDateKey().slice(0, 7)
       const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1)
-      let r = resumenMes(logs, plan, actual)
-      if (!r.sesiones) r = resumenMes(logs, plan, localDateKey(d).slice(0, 7))
-      if (!r.sesiones) { toast('Aún no hay entrenos este mes para compartir', 'info'); return }
+      let r = periodo === 'anio' && anio ? resumenMes(logs, plan, anio) : resumenMes(logs, plan, actual)
+      if (!r.sesiones && periodo === 'mes') r = resumenMes(logs, plan, localDateKey(d).slice(0, 7))
+      if (!r.sesiones) { toast(periodo === 'anio' ? 'Aún no hay entrenos este año para compartir' : 'Aún no hay entrenos este mes para compartir', 'info'); return }
       const res = await compartirTarjetaMes(r, marca)
       if (res === 'descargada') toast('Imagen descargada ✓ — súbela a tus redes', 'ok')
     } catch { toast('No se pudo crear la imagen', 'warn') } finally { setOcupado(false) }
   }
   return (
-    <button type="button" onClick={compartir} disabled={ocupado}
-      className="w-full flex items-center justify-center gap-2 py-2.5 bg-card border border-border rounded-2xl text-sm font-semibold hover:border-accent hover:text-accent disabled:opacity-50 transition-colors">
-      <Share2 className="w-4 h-4" /> {ocupado ? 'Preparando…' : 'Compartir mi mes'}
-    </button>
+    <div className="flex gap-2">
+      <button type="button" onClick={() => compartir('mes')} disabled={ocupado}
+        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-card border border-border rounded-2xl text-sm font-semibold hover:border-accent hover:text-accent disabled:opacity-50 transition-colors">
+        <Share2 className="w-4 h-4" /> {ocupado ? 'Preparando…' : 'Compartir mi mes'}
+      </button>
+      {anio && (
+        <button type="button" onClick={() => compartir('anio')} disabled={ocupado}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-card border border-accent/40 rounded-2xl text-sm font-semibold text-accent hover:border-accent disabled:opacity-50 transition-colors">
+          🎉 Mi {anio}
+        </button>
+      )}
+    </div>
   )
 }
 
