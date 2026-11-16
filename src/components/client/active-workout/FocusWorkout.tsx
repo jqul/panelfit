@@ -119,10 +119,10 @@ export function FocusWorkout(p: Props) {
   }, [p.ri, p.si])
 
   const prevW = parseFloat(prev?.weight || '')
-  const suggestion = prev?.rir !== undefined ? getSuggestedWeightChange(prev.rir, prev.weight, p.weekRpe) : null
+  const suggestion = prev?.rir !== undefined ? getSuggestedWeightChange(prev.rir, prev.weight, p.weekRpe, ex.rir) : null
   // Con progresión automática manda su objetivo (peso y reps); si no, la recomendación por RIR de siempre
   const prog = p.objetivoProgresion?.(p.ri) ?? null
-  const targetRange = prog ? null : p.showTarget ? getTargetRangeLabel(prev?.weight, prev?.rir, p.weekRpe) : null
+  const targetRange = prog ? null : p.showTarget ? getTargetRangeLabel(prev?.weight, prev?.rir, p.weekRpe, ex.rir) : null
   const usarObjetivo = () => {
     if (!prog) return
     const w = String(prog.kg), r = String(prog.reps)
