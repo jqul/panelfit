@@ -67,13 +67,17 @@ export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, l
 
   // Aceptar la sustitución de un cliente como alternativa habitual: pasa al plan B de ese ejercicio (en todas sus
   // semanas) y el aviso se da por revisado.
-  const aceptar = async ({ key, accion }: { key: string; accion: { clientId: string; ejercicio: string; alternativa: string; exerciseId?: string } }) => {
+  // O, si el cliente lo pidió, cambiarlo en el plan desde la semana en que lo hizo (el de antes queda de plan B).
+  const aceptar = async ({ key, accion }: { key: string; accion: { tipo: string; clientId: string; ejercicio: string; alternativa: string; exerciseId?: string; semana?: number } }) => {
     setAceptando(key)
-    const res = trainerId === DEMO_TRAINER_ID ? { ok: true as const } : await import('../../lib/serverSync').then(m => m.addPlanAlternative(accion.clientId, accion.ejercicio, { name: accion.alternativa, ...(accion.exerciseId ? { exerciseId: accion.exerciseId } : {}) }))
+    const alt = { name: accion.alternativa, ...(accion.exerciseId ? { exerciseId: accion.exerciseId } : {}) }
+    const enAdelante = accion.tipo === 'cambiar-en-adelante'
+    const res = trainerId === DEMO_TRAINER_ID ? { ok: true as const } : await import('../../lib/serverSync').then(m =>
+      enAdelante ? m.changePlanExerciseFrom(accion.clientId, accion.ejercicio, alt, accion.semana ?? 0) : m.addPlanAlternative(accion.clientId, accion.ejercicio, alt))
     setAceptando(null)
-    if (!res.ok) { toast('No se pudo añadir al plan. Inténtalo de nuevo', 'warn'); return }
+    if (!res.ok) { toast('No se pudo cambiar el plan. Inténtalo de nuevo', 'warn'); return }
     setDone([key], true)
-    toast(`«${accion.alternativa}» ya es una alternativa habitual de «${accion.ejercicio}» ✓`, 'ok')
+    toast(enAdelante ? `«${accion.ejercicio}» cambiado por «${accion.alternativa}» en el plan ✓` : `«${accion.alternativa}» ya es una alternativa habitual de «${accion.ejercicio}» ✓`, 'ok')
   }
 
   const leadsNuevos = leadsState?.nuevos ?? []
@@ -118,9 +122,9 @@ export function BandejaTab({ trainerId, clients, archivados = [], onRecuperar, l
                 <p className="text-xs leading-snug">{a.detail}</p>
                 <div className="flex flex-wrap gap-2">
                   <button onClick={() => aceptar(a)} disabled={aceptando === a.key}
-                    aria-label={`Aceptar ${a.accion.alternativa} como alternativa habitual de ${a.accion.ejercicio}`}
+                    aria-label={a.accion.tipo === 'cambiar-en-adelante' ? `Cambiar ${a.accion.ejercicio} por ${a.accion.alternativa} en el plan` : `Aceptar ${a.accion.alternativa} como alternativa habitual de ${a.accion.ejercicio}`}
                     className="px-3 py-1.5 rounded-lg bg-ink text-white text-xs font-semibold disabled:opacity-50">
-                    {aceptando === a.key ? 'Guardando…' : 'Aceptar como alternativa habitual'}
+                    {aceptando === a.key ? 'Guardando…' : a.accion.tipo === 'cambiar-en-adelante' ? 'Cambiarlo en el plan (desde esa semana)' : 'Aceptar como alternativa habitual'}
                   </button>
                   <button onClick={() => abrir(row.clientId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-bg-alt">Revisar</button>
                 </div>

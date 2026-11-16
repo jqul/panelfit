@@ -162,3 +162,23 @@ test('una sustitución que ya estaba en el plan B no pide decidir nada', async (
   await page.getByRole('button', { name: /^Bandeja/ }).first().click()
   await expect(page.getByRole('button', { name: /Aceptar .* como alternativa habitual/ })).toHaveCount(0)
 })
+
+test('el cliente pide cambiarlo de aquí en adelante y el entrenador lo cambia en el plan desde la Bandeja', async ({ page, fake }) => {
+  sembrar(fake, { alternativas: [{ name: 'Press banca con mancuernas' }] })
+  const panel = await abrirPanelDeSustitucion(page)
+  await panel.getByRole('button', { name: 'Material ocupado' }).click()
+  await panel.getByRole('checkbox', { name: 'Pedir a mi entrenador cambiarlo de aquí en adelante' }).check()
+  await panel.getByRole('button', { name: /Press banca con mancuernas/ }).click()
+  await expect.poll(() => logsDelServidor(fake)[CLAVE]?.sustitucion?.enAdelante).toBe(true)
+  expect(ejercicioDelPlan(fake).name).toBe('Press banca') // el cliente no cambia el plan: lo decide el entrenador
+
+  await page.context().clearCookies()
+  await page.evaluate(() => localStorage.clear())
+  await entrarComoEntrenador(page)
+  await page.getByRole('button', { name: /^Bandeja/ }).first().click()
+  await expect(page.getByText(/pide cambiarlo de aquí en adelante/).last()).toBeVisible()
+  await page.getByRole('button', { name: 'Cambiar Press banca por Press banca con mancuernas en el plan' }).click()
+  await expect(page.getByText(/«Press banca» cambiado por «Press banca con mancuernas» en el plan/)).toBeVisible()
+  await expect.poll(() => ejercicioDelPlan(fake).name).toBe('Press banca con mancuernas')
+  expect(ejercicioDelPlan(fake).alternativas).toEqual([{ name: 'Press banca' }])
+})

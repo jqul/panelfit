@@ -16,7 +16,7 @@ interface Props {
   zonaSugerida?: string | null
   /** Ya le ha preguntado a su entrenador por este ejercicio. */
   asked: boolean
-  onSubstitute: (opcion: Opcion, reason: SustitucionMotivo, extra?: { zona: string; intensidad: number }) => void
+  onSubstitute: (opcion: Opcion, reason: SustitucionMotivo, extra?: { zona: string; intensidad: number }, enAdelante?: boolean) => void
   onRevert: () => void
   /** Registra la molestia y avisa al entrenador, sin cambiar de ejercicio. */
   onPain: (zona: string, intensidad: number) => void
@@ -43,10 +43,12 @@ export function ExerciseSubstitution({
   const [zona, setZona] = useState<string | null>(null)
   const [intensidad, setIntensidad] = useState<number | null>(null)
   const [avisado, setAvisado] = useState(false)
+  // ¿Solo hoy o también las próximas? Lo segundo lo decide el entrenador: le llega a su Bandeja
+  const [enAdelante, setEnAdelante] = useState(false)
 
-  const cerrar = () => { setPaso('cerrado'); setLibre(false); setDraft(''); setZona(null); setIntensidad(null); setAvisado(false) }
+  const cerrar = () => { setPaso('cerrado'); setLibre(false); setDraft(''); setZona(null); setIntensidad(null); setAvisado(false); setEnAdelante(false) }
   const abrir = () => { setZona(zonaSugerida ?? null); setPaso('motivo') }
-  const elegir = (o: Opcion, reason: SustitucionMotivo, extra?: { zona: string; intensidad: number }) => { onSubstitute(o, reason, extra); cerrar() }
+  const elegir = (o: Opcion, reason: SustitucionMotivo, extra?: { zona: string; intensidad: number }) => { onSubstitute(o, reason, extra, enAdelante); cerrar() }
 
   const sugerencias = draft.trim().length >= 2 ? rankByQuery(library, draft).slice(0, 6) : []
   const videos = [exercise.videoUrl, ...(exercise.videoUrls ?? [])].filter((v): v is string => !!v)
@@ -96,6 +98,13 @@ export function ExerciseSubstitution({
           </div>
           <button onClick={cerrar} aria-label="Cerrar" className="p-1 -m-1 text-muted"><X className="w-4 h-4" /></button>
         </div>
+
+        {paso !== 'motivo' && paso !== 'entender' && (
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <input type="checkbox" checked={enAdelante} onChange={e => setEnAdelante(e.target.checked)} className="w-4 h-4 accent-accent" />
+            Pedir a mi entrenador cambiarlo de aquí en adelante
+          </label>
+        )}
 
         {paso === 'motivo' && (
           <div className="grid grid-cols-3 gap-2">

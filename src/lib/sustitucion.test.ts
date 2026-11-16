@@ -153,7 +153,7 @@ describe('avisos para el entrenador', () => {
   it('lee el ejercicio prescrito del plan por la posición de la clave', () => {
     const logs: TrainingLogs = { ex_w1_d0_r0: log({ substituteName: 'Press con mancuernas', sustitucion: { performedName: 'Press con mancuernas', reason: 'material', approvedBy: 'pendiente', fecha: '2026-10-24' } }) }
     const { sustituciones } = avisosDeEjercicios(logs, p, '2026-10-10')
-    expect(sustituciones).toEqual([{ key: 'ex_w1_d0_r0', prescrita: 'Press banca con barra', hecha: 'Press con mancuernas', exerciseId: undefined, reason: 'material', conocida: false, fecha: '2026-10-24', detalle: '1×10 con 20 kg' }])
+    expect(sustituciones).toEqual([{ key: 'ex_w1_d0_r0', prescrita: 'Press banca con barra', hecha: 'Press con mancuernas', exerciseId: undefined, reason: 'material', conocida: false, semana: 1, fecha: '2026-10-24', detalle: '1×10 con 20 kg' }])
   })
   it('está "conocida" si el entrenador la aprobó o ya está en su plan B', () => {
     const logs: TrainingLogs = {
@@ -183,5 +183,23 @@ describe('avisos para el entrenador', () => {
   })
   it('sin plan no inventa nada', () => {
     expect(avisosDeEjercicios({ ex_w0_d0_r0: log({ duda: '2026-10-24T09:30:00.000Z' }) }, null, '2026-10-10')).toEqual({ sustituciones: [], dudas: [] })
+  })
+})
+
+describe('cambiar un ejercicio de aquí en adelante', () => {
+  it('desde la semana pedida, con la misma receta; el de antes queda de plan B', async () => {
+    const { cambiarEnAdelante } = await import('./sustitucionPlan')
+    const p = plan([ex('Press banca con barra', { sets: '4x6', weight: '80' }), ex('Remo con barra')], 3)
+    const r = cambiarEnAdelante(p.weeks, 'press banca con barra', { name: 'Press banca con mancuernas' }, 1)
+    expect(r.changed).toBe(true)
+    expect(r.weeks[0].days[0].exercises[0].name).toBe('Press banca con barra') // la semana anterior no se toca
+    for (const w of r.weeks.slice(1)) {
+      expect(w.days[0].exercises[0]).toMatchObject({ name: 'Press banca con mancuernas', sets: '4x6', weight: '80', alternativas: [{ name: 'Press banca con barra' }] })
+      expect(w.days[0].exercises[1].name).toBe('Remo con barra')
+    }
+    expect(cambiarEnAdelante(p.weeks, 'Press banca con barra', { name: 'press banca con barra' }, 0).changed).toBe(false)
+  })
+  it('construirSustitucion guarda la petición', () => {
+    expect(construirSustitucion({ ex: ex('Press banca'), performedName: 'Flexiones', reason: 'material', origen: 'libre', fecha: '2026-11-16', enAdelante: true }).enAdelante).toBe(true)
   })
 })

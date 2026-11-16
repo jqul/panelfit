@@ -223,7 +223,13 @@ export function useInboxItems(trainerId: string, clients: ClientWithStats[], log
       const { sustituciones, dudas } = avisosDeEjercicios(logsMap[c.id] || {}, planes[c.id], sinceKey)
       sustituciones.forEach(x => {
         const motivo = ETIQUETA_MOTIVO[x.reason]
-        const texto = `🔄 ${c.name} cambió «${x.prescrita}» por «${x.hecha}» · ${motivo}${x.detalle ? ` · ${x.detalle}` : ''}`
+        const texto = `🔄 ${c.name} cambió «${x.prescrita}» por «${x.hecha}» · ${motivo}${x.detalle ? ` · ${x.detalle}` : ''}${x.enAdelante ? ' · pide cambiarlo de aquí en adelante' : ''}`
+        if (x.enAdelante) {
+          list.push({ key: `sustitucion:${c.id}:${x.key}:${x.hecha}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: x.fecha, kind: 'sustitucion',
+            detail: texto, warn: true, tier: 'hoy', score: 45,
+            accion: { tipo: 'cambiar-en-adelante' as const, clientId: c.id, ejercicio: x.prescrita, alternativa: x.hecha, semana: x.semana, ...(x.exerciseId ? { exerciseId: x.exerciseId } : {}) } })
+          return
+        }
         list.push({ key: `sustitucion:${c.id}:${x.key}:${x.hecha}`, clientId: c.id, clientName: `${c.name} ${c.surname}`, date: x.fecha, kind: 'sustitucion',
           detail: x.conocida ? `${texto} (alternativa aprobada)` : texto, warn: !x.conocida,
           tier: x.conocida ? 'luego' : 'hoy', score: x.conocida ? 8 : 40,

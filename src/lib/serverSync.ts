@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { logError } from './errors'
 import { TrainingLogs, ExerciseAlternative, WeekPlan } from '../types'
-import { conAlternativa } from './sustitucionPlan'
+import { conAlternativa, cambiarEnAdelante } from './sustitucionPlan'
 
 // Sincronización de los entrenos entre el dispositivo del cliente, el servidor y el entrenador.
 // Reglas (docs/sincronizacion.md):
@@ -121,6 +121,16 @@ type PlanRow = { plan: { P: { weeks?: WeekPlan[] } & Record<string, unknown> } |
  * `changed` es false si ya estaba (no se escribe nada).
  */
 export async function addPlanAlternative(clientId: string, exerciseName: string, alt: ExerciseAlternative): Promise<{ ok: true; changed: boolean } | { ok: false }> {
+  return modificarSemanas(clientId, weeks => conAlternativa(weeks, exerciseName, alt))
+}
+
+/** El entrenador acepta cambiar un ejercicio por otro desde la semana `desdeSemana` (lo pidió el cliente al sustituirlo). */
+export async function changePlanExerciseFrom(clientId: string, exerciseName: string, nuevo: ExerciseAlternative, desdeSemana: number): Promise<{ ok: true; changed: boolean } | { ok: false }> {
+  return modificarSemanas(clientId, weeks => cambiarEnAdelante(weeks, exerciseName, nuevo, desdeSemana))
+}
+
+/** Aplica un cambio a las semanas del plan publicado (y del borrador si lo hay) con lectura-escritura con versión. */
+async function modificarSemanas(clientId: string, fn: (weeks: WeekPlan[]) => { weeks: WeekPlan[]; changed: boolean }): Promise<{ ok: true; changed: boolean } | { ok: false }> {
   let changed = false
   let hadBorrador = false
   const res = await casUpdate<PlanRow>({
@@ -134,7 +144,7 @@ export async function addPlanAlternative(clientId: string, exerciseName: string,
       hadBorrador = !!cur!.borrador?.P
       const apply = (p: PlanRow['plan']): PlanRow['plan'] => {
         if (!p?.P?.weeks) return p
-        const r = conAlternativa(p.P.weeks, exerciseName, alt)
+        const r = fn(p.P.weeks)
         if (r.changed) changed = true
         return r.changed ? { ...p, P: { ...p.P, weeks: r.weeks } } : p
       }

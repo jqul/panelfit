@@ -63,6 +63,7 @@ export function construirSustitucion(p: {
   zona?: string
   intensidad?: number
   fecha: string
+  enAdelante?: boolean
 }): Sustitucion {
   const approvedBy: Sustitucion['approvedBy'] =
     p.origen === 'plan-b' || esAlternativaConocida(p.ex, p.performedName) ? 'entrenador'
@@ -75,6 +76,7 @@ export function construirSustitucion(p: {
     approvedBy,
     ...(p.zona ? { zona: p.zona } : {}),
     ...(p.intensidad !== undefined ? { intensidad: p.intensidad } : {}),
+    ...(p.enAdelante ? { enAdelante: true } : {}),
     fecha: p.fecha,
   }
 }
