@@ -746,10 +746,10 @@ export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, 
       libraryMap={libraryMuscleMap}
       zonaSugerida={guessZonaForExercise(ex.name, libraryMuscleMap)}
       asked={!!logs[`ex_${dayKey}_r${ri}`]?.duda}
-      onSubstitute={(opcion, reason, extra) => {
+      onSubstitute={(opcion, reason, extra, enAdelante) => {
         setSubstitute(ri, opcion.name, construirSustitucion({
           ex, performedName: opcion.name, performedExerciseId: opcion.exerciseId, reason, origen: opcion.origen,
-          zona: extra?.zona, intensidad: extra?.intensidad, fecha: localDateKey(),
+          zona: extra?.zona, intensidad: extra?.intensidad, fecha: localDateKey(), enAdelante,
         }))
         if (extra) addPainEntry(extra.zona, extra.intensidad, `Sustituido "${ex.name}" por molestia en la sesión`, undefined, 'articular')
       }}

@@ -156,6 +156,7 @@ export interface Sustitucion {
   zona?: string        // solo por dolor
   intensidad?: number  // solo por dolor, 0-10
   fecha: string        // AAAA-MM-DD
+  enAdelante?: boolean // el cliente pide cambiarlo también en las próximas sesiones (lo decide el entrenador desde la Bandeja)
 }
 export type TrainingLogs = Record<string, ExerciseLog>
 

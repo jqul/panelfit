@@ -47,6 +47,27 @@ export function conAlternativa(weeks: WeekPlan[], exName: string, alt: ExerciseA
     esAlternativaConocida(ex, alt.name) ? ex : { ...ex, alternativas: [...(ex.alternativas ?? []), { name: alt.name.trim(), ...(alt.exerciseId ? { exerciseId: alt.exerciseId } : {}) }] })
 }
 
+/** Cambia un ejercicio por otro desde la semana `desdeSemana` (índice) en adelante, conservando series, reps, peso y
+ * notas. El que se deja pasa al plan B del nuevo, por si un día hace falta volver. */
+export function cambiarEnAdelante(weeks: WeekPlan[], exName: string, nuevo: ExerciseAlternative, desdeSemana: number): { weeks: WeekPlan[]; changed: boolean } {
+  const objetivo = normNombre(exName)
+  if (!nuevo.name.trim() || normNombre(nuevo.name) === objetivo) return { weeks, changed: false }
+  let changed = false
+  const out = (weeks || []).map((w, wi) => wi < desdeSemana ? w : ({
+    ...w,
+    days: (w.days || []).map(d => ({
+      ...d,
+      exercises: (d.exercises || []).map(ex => {
+        if (normNombre(ex.name) !== objetivo) return ex
+        changed = true
+        const planB = [{ name: ex.name }, ...(ex.alternativas ?? []).filter(a => normNombre(a.name) !== normNombre(nuevo.name))]
+        return { ...ex, name: nuevo.name.trim(), alternativas: planB }
+      }),
+    })),
+  }))
+  return { weeks: changed ? out : weeks, changed }
+}
+
 /** Fija el plan B y la regla de dolor de ese ejercicio (en todas sus apariciones). */
 export function conPlanB(weeks: WeekPlan[], exName: string, patch: { alternativas?: ExerciseAlternative[]; dolorSinSustituir?: boolean }): { weeks: WeekPlan[]; changed: boolean } {
   return aplicarAEjercicio(weeks, exName, ex => {
@@ -77,6 +98,9 @@ export interface SustitucionAviso {
   reason: SustitucionMotivo
   /** Ya está en el plan B (lo aprobó el entrenador, o lo añadió después): no hace falta decidir nada. */
   conocida: boolean
+  /** El cliente pide cambiarlo también en las próximas sesiones; `semana`: índice de la semana en que lo pidió. */
+  enAdelante?: boolean
+  semana: number
   fecha: string
   detalle: string
 }
@@ -105,6 +129,7 @@ export function avisosDeEjercicios(logs: TrainingLogs, plan: TrainingPlan | null
         sustituciones.push({
           key, prescrita: ex.name, hecha: sust.performedName, exerciseId: sust.performedExerciseId, reason: sust.reason,
           conocida: sust.approvedBy === 'entrenador' || esAlternativaConocida(ex, sust.performedName),
+          ...(sust.enAdelante ? { enAdelante: true } : {}), semana: +m[1],
           fecha, detalle: resumenSeries(log),
         })
       }

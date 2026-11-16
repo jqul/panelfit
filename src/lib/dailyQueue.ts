@@ -11,7 +11,7 @@ export type QueueTier = 'urgente' | 'hoy' | 'luego'
 export type QueueKind = 'sesion' | 'readiness' | 'dolor' | 'video' | 'borrador' | 'riesgo' | 'revision' | 'sustitucion' | 'duda' | 'umbral'
 
 /** Lo que el entrenador puede resolver desde la propia fila, sin abrir la ficha. */
-export interface QueueAccion { tipo: 'aceptar-alternativa'; clientId: string; ejercicio: string; alternativa: string; exerciseId?: string }
+export interface QueueAccion { tipo: 'aceptar-alternativa' | 'cambiar-en-adelante'; clientId: string; ejercicio: string; alternativa: string; exerciseId?: string; semana?: number }
 
 /** Aviso tal como lo genera useInboxItems, ya con su prioridad. */
 export interface QueueItem {
