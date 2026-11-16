@@ -32,3 +32,10 @@ export async function verEjerciciosDelDia(page: Page) {
   await page.getByRole('button', { name: 'Entreno', exact: true }).click()
   await page.getByText('DÍA A — EMPUJE').click()
 }
+
+/** Despliega «Ajustes del plan» (programa, revisión del bloque, siguiente plan, progresión, marcas, competición), que van plegados. */
+export async function abrirAjustesDelPlan(page: Page) {
+  const boton = page.getByRole('button', { name: 'Ajustes del plan' })
+  await boton.waitFor()
+  if ((await boton.getAttribute('aria-expanded')) !== 'true') await boton.click()
+}

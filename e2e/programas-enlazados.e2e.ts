@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
-import { entrarComoEntrenador } from './support/flows'
+import { entrarComoEntrenador, abrirAjustesDelPlan } from './support/flows'
 
 test('el entrenador deja preparado el siguiente workout para cuando termine el plan', async ({ page, fake }) => {
   seedWorld(fake) // plan de una semana que empieza hoy
@@ -17,6 +17,7 @@ test('el entrenador deja preparado el siguiente workout para cuando termine el p
   const menu = page.getByRole('button', { name: 'Abrir menú' }) // en pantallas estrechas las pestañas de la ficha van en un menú
   if (await menu.isVisible().catch(() => false)) await menu.click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
 
   const siguiente = page.getByRole('region', { name: 'Cuando termine este plan' })
   await siguiente.getByRole('button', { name: 'Preparar siguiente' }).click()
