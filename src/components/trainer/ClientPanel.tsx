@@ -32,6 +32,9 @@ import { DEMO_ALERTS_MAP, DEMO_BORRADOR_CLIENT_IDS } from '../../lib/demo-data-e
 import { getEffectiveWeekIdx, weekIdxFromStart } from '../../lib/planWeek'
 import { localDateKey } from '../../lib/dates'
 import { FechasPlan } from './FechasPlan'
+import { useAtencionCliente } from '../../hooks/useAtencionCliente'
+import type { Destino } from '../../lib/atencionCliente'
+import type { Section } from '../../lib/progresoSections'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
 
@@ -133,6 +136,14 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const [wizardAutoCheckin, setWizardAutoCheckin] = useState(true)
   const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
   const [alerts, setAlerts] = useState<ClientAlert[]>([])
+  // «Atención hoy»: lo accionable de este cliente, y a dónde lleva cada aviso (pestaña + sección de Progreso o ancla del Resumen)
+  const atencion = useAtencionCliente(client.id, logs, !!plan, alerts)
+  const [seccionProgreso, setSeccionProgreso] = useState<string | undefined>(undefined)
+  const irA = (d: Destino) => {
+    setSeccionProgreso(d.tab === 'progreso' ? d.seccion : undefined)
+    setActiveTab(d.tab)
+    if (d.tab === 'perfil' && d.seccion) setTimeout(() => document.getElementById(d.seccion!)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
   const [programs, setPrograms] = useState<any[]>([])
   const [labels, setLabels] = useState<any[]>([])
   const [showDayPicker, setShowDayPicker] = useState(false)
@@ -532,6 +543,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     onSaveAlerts={saveAlerts}
                     plan={plan} onPlanChange={handlePlanChange} trainerId={userProfile.uid}
                     adherencia={adherencia}
+                    atencion={atencion} onIr={irA}
                   />
                 </div>
               )}
@@ -563,7 +575,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'progreso' && (
                 <div className="flex-1 overflow-y-auto">
                   <Suspense fallback={<div className="p-6 text-sm text-muted">Cargando progreso...</div>}>
-                    <ProgresoTab client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} />
+                    <ProgresoTab key={seccionProgreso ?? 'inicio'} seccionInicial={seccionProgreso as Section | undefined} client={client} logs={logs} plan={plan} library={library.exercises} trainerId={userProfile.uid} />
                   </Suspense>
                 </div>
               )}

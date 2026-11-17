@@ -18,6 +18,8 @@ const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then
 const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
 import { localDateKey } from '../../../lib/dates'
 import { useProfesionalesEquipo } from '../../../hooks/useProfesionalesEquipo'
+import { AtencionHoy } from './AtencionHoy'
+import type { AtencionItem, Destino } from '../../../lib/atencionCliente'
 
 export interface ClientAlert {
   id: string
@@ -35,8 +37,11 @@ export const ALERT_TYPES = [
   { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
 ] as const
 
-export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia }: {
+export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia, atencion = [], onIr }: {
   adherencia?: number  // % de ejercicios del plan completados
+  /** Lo accionable ahora mismo (lib/atencionCliente): si no hay nada, la tarjeta «Atención hoy» no sale. */
+  atencion?: AtencionItem[]
+  onIr?: (d: Destino) => void
   client: ClientData; logs: TrainingLogs; alerts: ClientAlert[]
   onUpdate: (updates: Record<string, any>) => Promise<void>
   labels?: TrainerLabel[]
@@ -116,6 +121,9 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         </button>
       </div>
 
+      {/* Lo urgente, lo primero: molestia, check-in bajo, vídeos, sesiones sin hacer y recordatorios, cada uno con su atajo */}
+      <AtencionHoy items={atencion} onIr={d => onIr?.(d)} />
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -131,11 +139,6 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         ))}
       </div>
-      {alerts.filter(a => !a.done).length > 0 && (
-        <p className="flex items-center gap-2 px-4 py-2.5 bg-warn/10 border border-warn/20 rounded-xl text-sm font-semibold text-warn">
-          ⚠️ {alerts.filter(a => !a.done).length} recordatorio{alerts.filter(a => !a.done).length > 1 ? 's' : ''} pendiente{alerts.filter(a => !a.done).length > 1 ? 's' : ''}
-        </p>
-      )}
 
       <OnboardingChecklist client={c} plan={plan} totalSessions={totalSessions} />
 
@@ -181,7 +184,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         </div>
       )}
       {/* ── RECORDATORIOS / ALERTAS ── */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+      <div id="recordatorios" className="bg-card border border-border rounded-2xl overflow-hidden scroll-mt-4" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
         <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="w-4 h-4 text-warn" />
