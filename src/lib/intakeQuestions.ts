@@ -38,5 +38,19 @@ export function respuestasDeAdmision(parq: Record<number, boolean | null>, libre
   ]
 }
 
+/** Qué dice el PAR-Q de un vistazo, para la cabecera de la ficha cuando va plegada: un «Sí» nunca queda escondido tras un título neutro.
+ *  Solo cuentan las siete preguntas del PAR-Q (por su texto): un «Sí» en una respuesta libre no es una alerta de salud. */
+export function resumenParq(respuestas: { pregunta: string; respuesta: string }[]) {
+  const parq = respuestas.filter(r => PARQ_QUESTIONS.includes(r.pregunta))
+  const requierenAtencion = parq.filter(r => r.respuesta === 'Sí').length
+  const sinResponder = parq.filter(r => r.respuesta !== 'Sí' && r.respuesta !== 'No').length
+  const texto = requierenAtencion > 0
+    ? `PAR-Q · ${requierenAtencion} respuesta${requierenAtencion > 1 ? 's requieren' : ' requiere'} atención`
+    : sinResponder > 0
+      ? `PAR-Q · ${sinResponder} sin responder`
+      : 'PAR-Q · sin respuestas de riesgo'
+  return { requierenAtencion, sinResponder, texto, atencion: requierenAtencion > 0 }
+}
+
 export const WAIVER_TEXT_VERSION = 'v1'
 export const WAIVER_TEXT = `Declaro que la información de salud que he proporcionado es veraz y que participo en el programa de entrenamiento de forma voluntaria, siendo consciente de los riesgos asociados a la actividad física. Soy responsable de informar a mi entrenador de cualquier molestia o cambio en mi estado de salud durante el programa. El entrenador no se hace responsable de lesiones derivadas de información de salud omitida o inexacta por mi parte.`

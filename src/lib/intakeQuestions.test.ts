@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { respuestasDeAdmision, PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS } from './intakeQuestions'
+import { respuestasDeAdmision, resumenParq, PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS } from './intakeQuestions'
 
 const etiqueta = (key: string) => INTAKE_FREE_QUESTIONS.find(q => q.key === key)!.label
 
@@ -32,5 +32,29 @@ describe('respuestasDeAdmision', () => {
     const r = respuestasDeAdmision({ 1: null, 2: false }, {})
     expect(r[1].respuesta).toBe('Sin responder')
     expect(r[2].respuesta).toBe('No')
+  })
+})
+
+describe('resumenParq', () => {
+  const r = (parq: Record<number, boolean | null>, libres: Record<string, string> = {}) => respuestasDeAdmision(parq, libres)
+  const todasNo = Object.fromEntries(PARQ_QUESTIONS.map((_, i) => [i, false]))
+
+  it('un «Sí» se anuncia en el título, con el singular y el plural bien escritos', () => {
+    expect(resumenParq(r({ ...todasNo, 4: true }))).toMatchObject({ requierenAtencion: 1, atencion: true, texto: 'PAR-Q · 1 respuesta requiere atención' })
+    expect(resumenParq(r({ ...todasNo, 1: true, 4: true })).texto).toBe('PAR-Q · 2 respuestas requieren atención')
+  })
+
+  it('todo «No»: sin respuestas de riesgo y sin alerta', () => {
+    expect(resumenParq(r(todasNo))).toMatchObject({ requierenAtencion: 0, atencion: false, texto: 'PAR-Q · sin respuestas de riesgo' })
+  })
+
+  it('lo no contestado no se da por «No»: se dice que falta', () => {
+    expect(resumenParq(r({ 0: false })).texto).toBe('PAR-Q · 6 sin responder')
+    expect(resumenParq(r({ ...todasNo, 2: null })).texto).toBe('PAR-Q · 1 sin responder')
+  })
+
+  it('un «Sí» sigue mandando aunque haya otras sin responder; y un «Sí» en una respuesta libre no cuenta', () => {
+    expect(resumenParq(r({ 4: true })).atencion).toBe(true)
+    expect(resumenParq(r(todasNo, { lesiones: 'Sí' })).atencion).toBe(false)
   })
 })
