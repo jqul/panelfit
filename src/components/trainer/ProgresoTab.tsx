@@ -32,6 +32,8 @@ import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
 import { Section, SECTIONS, GROUPS, useTrainerMetricSettings } from '../../lib/progresoSections'
 
 interface Props {
+  /** Sección con la que abre (p. ej. desde un aviso de la ficha: «dolor», «videos»). */
+  seccionInicial?: Section
   client: ClientData
   plan?: TrainingPlan | null
   logs?: TrainingLogs
@@ -39,7 +41,7 @@ interface Props {
   trainerId?: string
 }
 
-export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Props) {
+export function ProgresoTab({ client, plan, logs = {}, library, trainerId, seccionInicial }: Props) {
   const tier = useTrainerTier(trainerId)
   const metricasActivasRaw = useTrainerMetricSettings(trainerId) // null = todas activas
   const contrib = useContribuciones(trainerId) // qué músculos ayuda cada ejercicio (lo que ajustó el entrenador)
@@ -52,7 +54,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId }: Pro
   const visibleIds = new Set(visibleSections.map(s => s.id))
   const groups = GROUPS.map(g => ({ ...g, sections: g.sections.filter(id => visibleIds.has(id)) })).filter(g => g.sections.length > 0)
 
-  const [section, setSection] = useState<Section>('fuerza')
+  const [section, setSection] = useState<Section>(seccionInicial ?? 'fuerza')
   const activeGroup = groups.find(g => g.sections.includes(section)) || groups[0]
   const current = visibleSections.find(s => s.id === section) || visibleSections[0]
 
