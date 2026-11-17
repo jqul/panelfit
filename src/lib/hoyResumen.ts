@@ -54,6 +54,14 @@ export function nombreDePila(nombre?: string | null): string {
   return (nombre ?? '').trim().split(/\s+/)[0] ?? ''
 }
 
+/** Cómo llamar al cliente en un mensaje que se le manda («Hola María»), nunca por nombre y apellidos.
+ *  Si hay apellido aparte, `name` ya es el nombre de pila y se respeta entero («María José», «José Luis»); si todo
+ *  está en un solo campo («María García»), se toma el nombre de pila con `nombreDePila`. */
+export function nombreParaMensaje(c: { name?: string | null; surname?: string | null }): string {
+  const nombre = (c.name ?? '').trim()
+  return (c.surname ?? '').trim() ? nombre : nombreDePila(nombre)
+}
+
 export interface Celebracion { icono: 'trofeo' | 'llama' | 'semana'; texto: string }
 
 /** Frase de racha al cerrar una sesión: los hitos (una semana, dos, un mes) se dicen con nombre; null si aún no hay racha. */

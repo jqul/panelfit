@@ -1,4 +1,5 @@
 import type { AbrirPlegable } from '../../../lib/anadirFicha'
+import { nombreParaMensaje } from '../../../lib/hoyResumen'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { ProgresionPlan } from './ProgresionPlan'
 import { X, Check, ChevronDown } from 'lucide-react'
@@ -219,8 +220,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
         )}
       </div>
 
-      <RevisionBloque plan={plan} logs={logs} nombre={client.name} />
-      <SiguientePlan nombre={client.name} telefono={client.phone} haEntrenado={Object.values(logs || {}).some(l => l?.done)} clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
+      <RevisionBloque plan={plan} logs={logs} nombre={nombreParaMensaje(client)} />
+      <SiguientePlan nombre={nombreParaMensaje(client)} telefono={client.phone} haEntrenado={Object.values(logs || {}).some(l => l?.done)} clientId={client.id} trainerId={trainerId} plan={plan} templates={templates} borradorActivo={borradorActivo} />
       <MancuernasPlan plan={plan} onPlanChange={onPlanChange} />
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <ProgresionPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />

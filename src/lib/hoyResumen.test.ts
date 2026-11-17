@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, celebraciones, fraseRachaAlTerminar, semanasCompletasSeguidas } from './hoyResumen'
+import { semanaResumen, fraseSemana, fraseRacha, fraseAdherencia, tendenciaFuerza, nombreDePila, nombreParaMensaje, celebraciones, fraseRachaAlTerminar, semanasCompletasSeguidas } from './hoyResumen'
 import type { TrainingLogs } from '../types'
 
 const ej = (n: number) => Array.from({ length: n }, (_, i) => ({ name: `E${i}`, sets: '3x5', weight: '', isMain: false, comment: '' }))
@@ -110,5 +110,13 @@ describe('frases de las métricas', () => {
     expect(nombreDePila('  Ana  ')).toBe('Ana')
     expect(nombreDePila('')).toBe('')
     expect(nombreDePila(undefined)).toBe('')
+  })
+
+  it('nombre para un mensaje: respeta el nombre de pila compuesto si hay apellido aparte, y recorta si viene todo junto', () => {
+    expect(nombreParaMensaje({ name: 'María José', surname: 'García' })).toBe('María José')
+    expect(nombreParaMensaje({ name: 'María García', surname: '' })).toBe('María')
+    expect(nombreParaMensaje({ name: ' Ana ' })).toBe('Ana')
+    expect(nombreParaMensaje({ name: '', surname: 'Ruiz' })).toBe('')
+    expect(nombreParaMensaje({})).toBe('')
   })
 })

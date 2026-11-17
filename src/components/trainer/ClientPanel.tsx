@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import {
   X, Save, ChevronLeft, FileText, Dumbbell,
@@ -324,7 +325,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     if (!borradorActivo) {
       if (autoWelcome) {
         const url = `${window.location.origin}?c=${client.token}`
-        const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe he asignado tu nuevo plan de entrenamiento:\n\n${url}\n\n💪`)
+        const msg = encodeURIComponent(`Hola ${nombreParaMensaje(client)} 👋\n\nTe he asignado tu nuevo plan de entrenamiento:\n\n${url}\n\n💪`)
         setTimeout(() => window.open(`https://wa.me/?text=${msg}`, '_blank'), 500)
         // Push real y automático al cliente — esto sí llega sin que nadie tenga que pulsar nada
         sendPush({ clientId: client.id }, 'Nueva rutina disponible 💪', `${client.name}, tu entrenador te ha asignado un nuevo plan de entrenamiento`)
@@ -423,7 +424,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
           </button>
           <button onClick={() => {
               const phone = client.phone?.replace(/\s+/g, '').replace(/^\+/, '')
-              const msg = encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)
+              const msg = encodeURIComponent(`Hola ${nombreParaMensaje(client)} 👋\n\nTe comparto tu panel:\n\n${clientUrl}\n\n💪`)
               window.open(phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank')
             }}
             className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-[#25D366] border border-[#25D366]/30 rounded-xl hover:bg-[#25D366]/5 transition-colors">

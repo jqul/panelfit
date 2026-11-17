@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../../lib/hoyResumen'
 import { useState } from 'react'
 import { ClientData, TrainingPlan } from '../../../types'
 import { supabase } from '../../../lib/supabase'
@@ -90,7 +91,7 @@ export function ConfigTab({ client, plan, onChange, trainerId }: { client: Clien
           <input readOnly value={currentUrl} className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs text-muted outline-none font-mono" />
           <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(currentUrl); toast('Copiado ✓', 'ok') }}>Copiar</Button>
         </div>
-        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\n${currentUrl}\n\n💪`)}`, '_blank')}
+        <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${nombreParaMensaje(client)} 👋\n\n${currentUrl}\n\n💪`)}`, '_blank')}
           className="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:opacity-90">📱 Enviar por WhatsApp</button>
         <div className="space-y-1.5">
           <label htmlFor="caducidad-enlace" className="text-xs font-semibold">Caducidad del enlace</label>

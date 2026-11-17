@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../../lib/hoyResumen'
 import { useState, lazy, Suspense } from 'react'
 import { kg } from '../../../lib/formatoKg'
 import { Bell, Plus, Trash2, Calendar, CheckCircle2 } from 'lucide-react'
@@ -399,7 +400,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         <button onClick={() => {
             const url = `${window.location.origin}?c=${client.token}`
             const phone = c.phone!.replace(/\s+/g, '').replace(/^\+/, '')
-            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${c.name} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)}`, '_blank')
+            window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`Hola ${nombreParaMensaje(c)} 👋\n\nTe comparto tu panel:\n\n${url}\n\n💪`)}`, '_blank')
           }}
           className="w-full flex items-center justify-center gap-3 py-3.5 bg-[#25D366] text-white rounded-2xl text-sm font-bold hover:opacity-90 transition-opacity">
           📱 Abrir WhatsApp con {c.name}

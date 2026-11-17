@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag, Printer, UserPlus } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
@@ -360,7 +361,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
     const targetClients = schedule.client_id ? clients.filter(c => c.id === schedule.client_id) : clients
     targetClients.forEach(c => {
       const url = `${window.location.origin}?c=${c.token}&encuesta=1`
-      window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name} 👋\n\n📋 Te mando la encuesta:\n\n${url}\n\n¡Solo 2 minutos! 🙏`)}`, '_blank')
+      window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${nombreParaMensaje(c)} 👋\n\n📋 Te mando la encuesta:\n\n${url}\n\n¡Solo 2 minutos! 🙏`)}`, '_blank')
     })
     toast(`Enviada a ${targetClients.length} cliente${targetClients.length > 1 ? 's' : ''} ✓`, 'ok')
   }
