@@ -34,6 +34,8 @@ import { localDateKey } from '../../lib/dates'
 import { FechasPlan } from './FechasPlan'
 import { useAtencionCliente } from '../../hooks/useAtencionCliente'
 import type { Destino } from '../../lib/atencionCliente'
+import { AnadirMenu } from './AnadirMenu'
+import type { AbrirPlegable, OpcionAnadir } from '../../lib/anadirFicha'
 import type { Section } from '../../lib/progresoSections'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
@@ -139,10 +141,20 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   // «Atención hoy»: lo accionable de este cliente, y a dónde lleva cada aviso (pestaña + sección de Progreso o ancla del Resumen)
   const atencion = useAtencionCliente(client.id, logs, !!plan, alerts)
   const [seccionProgreso, setSeccionProgreso] = useState<string | undefined>(undefined)
+  // Plegable que se despliega al llegar (valoración del Resumen, ajustes del plan): la orden lleva un contador para poder repetirse
+  const [abrir, setAbrir] = useState<AbrirPlegable | null>(null)
   const irA = (d: Destino) => {
     setSeccionProgreso(d.tab === 'progreso' ? d.seccion : undefined)
+    setAbrir(d.abrir ? { id: d.abrir, n: Date.now() } : null)
     setActiveTab(d.tab)
-    if (d.tab === 'perfil' && d.seccion) setTimeout(() => document.getElementById(d.seccion!)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (d.tab === 'perfil' && d.seccion) setTimeout(() => document.getElementById(d.seccion!)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
+  }
+  // «Añadir» de la cabecera: asignar un workout se abre aquí mismo; lo demás lleva al sitio donde ya se hace
+  const elegirAnadir = (o: OpcionAnadir) => {
+    if (o.accion === 'asignar-workout') {
+      if (templates.length) setShowTemplates(true)
+      else toast('Aún no tienes workouts: créalos en la sección Workouts', 'info')
+    } else if (o.destino) irA(o.destino)
   }
   const [programs, setPrograms] = useState<any[]>([])
   const [labels, setLabels] = useState<any[]>([])
@@ -445,6 +457,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <span className={`hidden sm:block text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
+            <AnadirMenu tab={activeTab} onElegir={elegirAnadir} />
             {activeTab === 'progreso' && (
               <button onClick={exportarSeries} title="Todas sus series, para abrir en Excel"
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">⬇ Series (CSV)</button>
@@ -542,7 +555,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
                     labels={labels}
                     onSaveAlerts={saveAlerts}
                     plan={plan} onPlanChange={handlePlanChange} trainerId={userProfile.uid}
-                    adherencia={adherencia}
+                    adherencia={adherencia} abrir={abrir}
                     atencion={atencion} onIr={irA}
                   />
                 </div>
@@ -550,6 +563,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
               {activeTab === 'plan' && plan && (
                 <div className="flex-1 overflow-hidden flex flex-col gap-4 min-h-0">
                   <PlanTab
+                    abrir={abrir}
                     client={client}
                     plan={plan}
                     programs={programs}

@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense } from 'react'
+import type { AbrirPlegable } from '../../../lib/anadirFicha'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { ProgresionPlan } from './ProgresionPlan'
 import { X, Check, ChevronDown } from 'lucide-react'
 import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs, TrainingTemplate } from '../../../types'
@@ -28,7 +29,8 @@ interface ProgramWeek { label: string; days: ProgramDay[] }
 interface Program { id: string; name: string; tipo: string; label_ids?: string[]; weeks: ProgramWeek[] }
 interface Label { id: string; name: string; emoji: string; color: string }
 
-export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo, templates }: {
+export function PlanTab({ client, plan, programs, labels, onPlanChange, onImportFromClient, library, logs, otherClients, trainerId, borradorActivo, templates, abrir }: {
+  abrir?: AbrirPlegable | null
   client: ClientData
   plan: TrainingPlan
   programs: Program[]
@@ -50,6 +52,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   const [vista, setVista] = useState<'semanas' | 'calendario'>('semanas')
   // Los ajustes del plan van plegados por defecto y se recuerda lo que prefiera el entrenador en este navegador
   const [ajustesAbiertos, setAjustesAbiertos] = useState(() => { try { return localStorage.getItem('pf_plan_ajustes') === '1' } catch { return false } })
+  // «Añadir → Programa» (cabecera de la ficha) pide ver los ajustes aunque estén plegados
+  useEffect(() => { if (abrir?.id === 'ajustes-plan') setAjustesAbiertos(true) }, [abrir])
   const alternarAjustes = () => setAjustesAbiertos(a => {
     try { localStorage.setItem('pf_plan_ajustes', a ? '0' : '1') } catch { /* sin almacenamiento: no se recuerda */ }
     return !a
