@@ -11,6 +11,7 @@
 
 import type { TrainingPlan, WeekPlan } from '../types'
 import { resolveMessage } from './messageText'
+import { nombreParaMensaje } from './hoyResumen'
 
 // ── Selección ──────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ export function waUrl(phone: string | null | undefined, text: string): string | 
 /** Un mensaje personalizado por cliente ({{cliente}} → su nombre), con su enlace si se pide. */
 export function buildMessages(targets: readonly MessageTarget[], template: string, opts: { origin: string; includeLink: boolean }): BuiltMessage[] {
   return targets.map(c => {
-    const base = resolveMessage(template, c.name).trim()
+    const base = resolveMessage(template, nombreParaMensaje(c)).trim()
     const text = opts.includeLink ? `${base}\n\n${opts.origin}?c=${c.token}` : base
     return { clientId: c.id, name: `${c.name} ${c.surname || ''}`.trim(), phone: c.phone || null, text, url: waUrl(c.phone, text) }
   })
@@ -140,7 +141,7 @@ export function buildMessages(targets: readonly MessageTarget[], template: strin
 /** Mensaje con el enlace a una encuesta (el cliente la abre dentro de su panel). */
 export function buildSurveyMessages(targets: readonly MessageTarget[], surveyName: string, origin: string): BuiltMessage[] {
   return targets.map(c => {
-    const text = `Hola ${c.name} 👋\n\n📋 *${surveyName}*\n\nTe mando la encuesta. Solo te llevará 2 minutos:\n\n${origin}?c=${c.token}&encuesta=1\n\n¡Gracias! 🙏`
+    const text = `Hola ${nombreParaMensaje(c)} 👋\n\n📋 *${surveyName}*\n\nTe mando la encuesta. Solo te llevará 2 minutos:\n\n${origin}?c=${c.token}&encuesta=1\n\n¡Gracias! 🙏`
     return { clientId: c.id, name: `${c.name} ${c.surname || ''}`.trim(), phone: c.phone || null, text, url: waUrl(c.phone, text) }
   })
 }

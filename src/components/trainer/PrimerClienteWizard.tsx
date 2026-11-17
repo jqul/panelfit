@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useEffect, useState } from 'react'
 import { Check, Copy, ArrowRight } from 'lucide-react'
 import { Modal } from '../shared/Modal'
@@ -125,7 +126,7 @@ export function PrimerClienteWizard({ trainerId, clients, start, addClient, refr
 
   const enviar = () => {
     if (!client) return
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${client.name} 👋\n\nTe comparto el enlace a tu panel:\n\n${url}\n\n💪`)}`, '_blank')
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${nombreParaMensaje(client)} 👋\n\nTe comparto el enlace a tu panel:\n\n${url}\n\n💪`)}`, '_blank')
     onSent(client.id)
     setSent(true)
   }

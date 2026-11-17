@@ -146,3 +146,17 @@ describe('mensajes por WhatsApp', () => {
     expect(m[0].text).toContain('*Check-in semanal*')
   })
 })
+
+describe('el mensaje llama al cliente por su nombre de pila', () => {
+  const t = (name: string, surname?: string) => ({ id: '1', name, surname, phone: '600', token: 'tok' })
+
+  it('con el apellido aparte, el nombre se respeta entero (también el compuesto)', () => {
+    expect(buildMessages([t('María José', 'García')], 'Hola {{cliente}}', { origin: 'o', includeLink: false })[0].text).toBe('Hola María José')
+    expect(buildSurveyMessages([t('Ana', 'Ruiz')], 'Check-in', 'https://app')[0].text).toMatch(/^Hola Ana 👋/)
+  })
+
+  it('si el nombre y los apellidos vienen en un solo campo, solo se usa el nombre de pila', () => {
+    expect(buildMessages([t('Pedro Ruiz Gómez')], 'Hola {{cliente}}', { origin: 'o', includeLink: false })[0].text).toBe('Hola Pedro')
+    expect(buildSurveyMessages([t('Pedro Ruiz')], 'Check-in', 'https://app')[0].text).toMatch(/^Hola Pedro 👋/)
+  })
+})

@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../../lib/hoyResumen'
 import { useState } from 'react'
 import { Pencil, Check, Plus, Trash2, MessageSquareText, CalendarClock } from 'lucide-react'
 import { ClientData, TrainingPlan } from '../../../types'
@@ -28,13 +29,13 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
 
   const sendWhatsApp = (text: string) => {
     const phone = (client.phone || '').replace(/\D/g, '')
-    const resolved = resolveMessage(text, client.name)
+    const resolved = resolveMessage(text, nombreParaMensaje(client))
     window.open(phone ? `https://wa.me/${phone}?text=${encodeURIComponent(resolved)}` : `https://wa.me/?text=${encodeURIComponent(resolved)}`, '_blank')
   }
 
   const confirmSchedule = async (tipo: string, text: string) => {
     if (!scheduleDate) { toast('Elige una fecha', 'warn'); return }
-    const resolved = resolveMessage(text, client.name)
+    const resolved = resolveMessage(text, nombreParaMensaje(client))
     const ok = await schedule(client.id, tipo, resolved, scheduleDate)
     if (ok) toast(`Programado para ${new Date(scheduleDate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ✓`, 'ok')
     else toast('No se pudo programar', 'warn')
@@ -87,7 +88,7 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
                 </div>
               ) : (
                 <>
-                  <p className="text-sm italic">"{resolveMessage(effectiveText, client.name)}"</p>
+                  <p className="text-sm italic">"{resolveMessage(effectiveText, nombreParaMensaje(client))}"</p>
                   <div className="flex items-center gap-2">
                     {override !== undefined
                       ? <span className="text-[11px] text-accent font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Personalizado para {client.name}</span>
