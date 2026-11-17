@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { MessageCircle, CalendarClock, Check } from 'lucide-react'
 import type { ClientData } from '../../types'
 import { textoFelicitacion, type Cumple } from '../../lib/cumpleanos'
@@ -17,7 +18,7 @@ export function CumplesDia({ fecha, cumples, hoy, programados, onProgramar }: {
       className="divide-y divide-border border-b border-border bg-amber-50/60 dark:bg-amber-500/5">
       {cumples.map(({ cliente: c, edad }) => {
         const nombre = `${c.name} ${c.surname || ''}`.trim()
-        const texto = textoFelicitacion(c.name)
+        const texto = textoFelicitacion(nombreParaMensaje(c))
         const wa = waUrl(c.phone, texto)
         return (
           <li key={c.id} className="px-4 py-2.5 flex items-center gap-2 flex-wrap">

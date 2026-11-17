@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { DEMO_SURVEY_SCHEDULES, DEMO_SURVEY_TEMPLATE } from '../../lib/demo-data'
@@ -149,7 +150,7 @@ export function MensajesTab({ userProfile, clients }: Props) {
     }
     setSending(`${sched.id}_${client.id}`)
     const url = `${origin}?c=${client.token}&encuesta=1`
-    const msg = `Hola ${client.name} 👋\n\n📋 *${tmplName}*\n\nTe mando el check-in semanal. Solo te llevará 2 minutos:\n\n${url}\n\n¡Gracias! 🙏`
+    const msg = `Hola ${nombreParaMensaje(client)} 👋\n\n📋 *${tmplName}*\n\nTe mando el check-in semanal. Solo te llevará 2 minutos:\n\n${url}\n\n¡Gracias! 🙏`
     window.open(buildWAUrl(phone, msg), '_blank')
 
     // Marcar como enviado
@@ -170,8 +171,8 @@ export function MensajesTab({ userProfile, clients }: Props) {
 
     const url = `${origin}?c=${client.token}`
     const msgs = {
-      inactividad: `Hola ${client.name} 👋\n\n¿Todo bien? Llevas unos días sin entrenar 💪\n\nRecuerda que tienes tu plan listo:\n\n${url}\n\n¡Cualquier cosa me dices! 🙌`,
-      panel: `Hola ${client.name} 👋\n\nTe comparto el enlace a tu panel de entrenamiento:\n\n${url}\n\n💪`,
+      inactividad: `Hola ${nombreParaMensaje(client)} 👋\n\n¿Todo bien? Llevas unos días sin entrenar 💪\n\nRecuerda que tienes tu plan listo:\n\n${url}\n\n¡Cualquier cosa me dices! 🙌`,
+      panel: `Hola ${nombreParaMensaje(client)} 👋\n\nTe comparto el enlace a tu panel de entrenamiento:\n\n${url}\n\n💪`,
     }
     window.open(buildWAUrl(phone, msgs[tipo]), '_blank')
     toast(`WhatsApp abierto con ${client.name}`, 'ok')

@@ -5,7 +5,7 @@ import { Home, Dumbbell, BarChart2, Utensils, MoreHorizontal, WifiOff } from 'lu
 import { supabase } from '../../lib/supabase'
 import { dietaConContenido } from '../../lib/dietaCliente'
 import { limpiarConsejos } from '../../lib/consejos'
-import { nombreDePila } from '../../lib/hoyResumen'
+import { nombreDePila, nombreParaMensaje } from '../../lib/hoyResumen'
 import { isDemoClientId } from '../../lib/demoIds'
 import { TrainingPlan, TrainingLogs } from '../../types'
 import { ClientDashboard, SelectorDias } from './ClientDashboard'
@@ -506,7 +506,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
     const tmpl = messageTemplates.find(t => t.tipo === tipo)
     if (!tmpl) return ''
     const override = plan?.customMessages?.[tmpl.id]
-    return resolveMessage(override ?? tmpl.texto, clientName)
+    return resolveMessage(override ?? tmpl.texto, nombreParaMensaje(client))
   }
   const welcomeMsg = resolveTemplate('nueva_rutina')
   const motivMsg = resolveTemplate('descanso')

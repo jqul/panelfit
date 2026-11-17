@@ -186,3 +186,20 @@ test('encuesta: enlace de cada cliente con su acceso a la encuesta', async ({ pa
   expect(hrefPedro).toContain('*Check-in semanal*')
   expect(hrefPedro).toContain('Hola Pedro')
 })
+
+test('mensaje: si nombre y apellidos vienen en un solo campo, el texto saluda solo por el nombre de pila', async ({ page, fake, context }) => {
+  sembrar(fake)
+  const pedro = fake.rows('clientes').find(c => c.id === PEDRO)!
+  pedro.name = 'Pedro Ruiz Gómez'
+  pedro.surname = ''
+  await context.route('https://wa.me/**', r => r.fulfill({ status: 200, contentType: 'text/html', body: 'ok' }))
+  await abrirClientesEnModoSeleccion(page)
+  await page.getByLabel(/Seleccionar todos los que se ven/).check()
+  await page.getByRole('region', { name: /Acciones para/ }).getByRole('button', { name: 'Mensaje' }).click()
+
+  const hoja = page.getByRole('dialog', { name: 'Enviar mensaje' })
+  await hoja.getByLabel('Mensaje', { exact: true }).fill('Hola {{cliente}}, mañana toca pierna')
+  await hoja.getByRole('button', { name: 'Preparar mensaje para 3 clientes' }).click()
+  const href = await hoja.getByRole('link', { name: 'Abrir WhatsApp con Pedro Ruiz Gómez' }).getAttribute('href')
+  expect(decodeURIComponent(href!.split('?text=')[1])).toBe('Hola Pedro, mañana toca pierna')
+})

@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useMemo, useState } from 'react'
 import { ClientData, TrainingLogs } from '../../types'
 import { getNudge, Objetivo } from '../../lib/nudges'
@@ -88,7 +89,7 @@ function getWhatsAppMsg(client: ClientData, stats: ClientStats, tipo: 'recordato
   const url = `${window.location.origin}?c=${client.token}`
   const encuestaUrl = `${window.location.origin}?c=${client.token}&encuesta=1`
   const objetivo = (client.objetivo as Objetivo) || 'general'
-  const ctx = { clientName: client.name, diasSinEntrenar: stats.diasSinEntrenar, racha: stats.racha, adherencia: stats.adherencia, url }
+  const ctx = { clientName: nombreParaMensaje(client), diasSinEntrenar: stats.diasSinEntrenar, racha: stats.racha, adherencia: stats.adherencia, url }
   if (tipo === 'recordatorio') return getNudge('recordatorio', objetivo, ctx)
   return getNudge('checkin', objetivo, { ...ctx, url: encuestaUrl })
 }

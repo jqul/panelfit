@@ -1,3 +1,4 @@
+import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { track } from '../../lib/analytics'
 import { AlertasWidget } from './AlertasWidget'
 import { useTrainerClients } from '../../hooks/useTrainerClients'
@@ -259,7 +260,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const handleBulkArchive = async (ids: string[]) => { if (await archiveClients(ids)) stopSelection() }
   const getClientUrl = (c: ClientData) => `${window.location.origin}?c=${c.token}`
   const sendWhatsApp = (c: ClientData) => {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${c.name}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Hola ${nombreParaMensaje(c)}\n\nTe comparto el enlace a tu panel:\n\n${getClientUrl(c)}\n\n`)}`, '_blank')
   }
   const handleTabChange = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false) }
   // Al pulsar "Planificar" desde fuera del grupo, entra por Workouts; si ya
