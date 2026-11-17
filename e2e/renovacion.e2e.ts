@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
-import { entrarComoEntrenador } from './support/flows'
+import { entrarComoEntrenador, abrirAjustesDelPlan } from './support/flows'
 
 test('si el plan termina pronto y no hay siguiente, el plan trae el mensaje listo y la Bandeja pide renovar', async ({ page, fake }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
@@ -15,6 +15,7 @@ test('si el plan termina pronto y no hay siguiente, el plan trae el mensaje list
   const menu = page.getByRole('button', { name: 'Abrir menú' })
   if (await menu.isVisible().catch(() => false)) await menu.click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
   const siguiente = page.getByRole('region', { name: 'Cuando termine este plan' })
   await expect(siguiente).toContainText('buen momento para proponerle seguir')
   await expect(siguiente.getByRole('link', { name: 'Proponer por WhatsApp' })).toHaveAttribute('href', /^https:\/\/wa\.me\/34600111222\?text=Hola%20Mar%C3%ADa/)

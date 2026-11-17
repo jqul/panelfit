@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
-import { entrarComoCliente, entrarComoEntrenador } from './support/flows'
+import { entrarComoCliente, entrarComoEntrenador, abrirAjustesDelPlan } from './support/flows'
 
 const dia = (atras: number) => { const d = new Date(); d.setDate(d.getDate() - atras); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 const planDe = (fake: Parameters<typeof seedWorld>[0]) => fake.rows('planes').find(r => r.clientId === ids.client)!.plan.P
@@ -20,6 +20,7 @@ test('el entrenador activa la progresión para el plan y ve el objetivo de la pr
   const menu = page.getByRole('button', { name: 'Abrir menú' })
   if (await menu.isVisible().catch(() => false)) await menu.click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
 
   const prog = page.getByRole('region', { name: 'Progresión automática' })
   await prog.getByRole('radio', { name: 'Según las series' }).click()

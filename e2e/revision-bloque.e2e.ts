@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
-import { entrarComoEntrenador } from './support/flows'
+import { entrarComoEntrenador, abrirAjustesDelPlan } from './support/flows'
 
 const haceDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
@@ -22,6 +22,7 @@ test('al terminar el plan, la revisión del bloque dice qué subió, qué se est
   const menu = page.getByRole('button', { name: 'Abrir menú' })
   if (await menu.isVisible().catch(() => false)) await menu.click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
 
   const revision = page.getByRole('region', { name: 'Revisión del bloque' })
   await expect(revision).toContainText('terminó el')

@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense } from 'react'
 import { ProgresionPlan } from './ProgresionPlan'
-import { X, Check } from 'lucide-react'
+import { X, Check, ChevronDown } from 'lucide-react'
 import { ClientData, TrainingPlan, LibraryExercise, TrainingLogs, TrainingTemplate } from '../../../types'
 import { TrainingPlanEditor } from '../TrainingPlanEditor'
 import { toast } from '../../shared/Toast'
@@ -48,6 +48,12 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
   const [filterLabel, setFilterLabel] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
   const [vista, setVista] = useState<'semanas' | 'calendario'>('semanas')
+  // Los ajustes del plan van plegados por defecto y se recuerda lo que prefiera el entrenador en este navegador
+  const [ajustesAbiertos, setAjustesAbiertos] = useState(() => { try { return localStorage.getItem('pf_plan_ajustes') === '1' } catch { return false } })
+  const alternarAjustes = () => setAjustesAbiertos(a => {
+    try { localStorage.setItem('pf_plan_ajustes', a ? '0' : '1') } catch { /* sin almacenamiento: no se recuerda */ }
+    return !a
+  })
 
   // Etiquetas del cliente
   const clientLabelIds: string[] = client.label_ids || []
@@ -160,6 +166,19 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
         </div>
       )}
 
+      {/* El plan va primero. Programa, revisión del bloque, siguiente plan, progresión, marcas y competición se despliegan desde
+          esta barra, que resume su estado en una línea: antes eran siete tarjetas apiladas encima de la rutina. */}
+      <div className="flex-shrink-0 mb-3 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={alternarAjustes} aria-expanded={ajustesAbiertos} aria-controls="ajustes-plan"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-xl text-sm font-semibold hover:border-accent transition-colors">
+          <ChevronDown className={`w-4 h-4 transition-transform ${ajustesAbiertos ? 'rotate-180' : ''}`} aria-hidden /> Ajustes del plan
+        </button>
+        <span className="text-xs text-muted">{plan.programName ? `Programa: ${plan.programName}` : 'Sin programa asignado'}</span>
+        {plan.progresion?.defecto && <span className="text-xs text-muted">· Progresión automática</span>}
+        {plan.competicion && <span className="text-xs text-muted">· Competición</span>}
+      </div>
+      {ajustesAbiertos && (
+      <div id="ajustes-plan" className="flex-shrink-0 mb-3 max-h-[55vh] overflow-y-auto">
       {/* Banner programa asignado + botón cambiar */}
       <div className="flex-shrink-0 mb-3">
         {plan.programName ? (
@@ -202,6 +221,8 @@ export function PlanTab({ client, plan, programs, labels, onPlanChange, onImport
       <MarcasPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <ProgresionPlan plan={plan} logs={logs} onPlanChange={onPlanChange} />
       <CompeticionPlan plan={plan} logs={logs} client={client} onPlanChange={onPlanChange} />
+      </div>
+      )}
 
       {/* Modal selector de programa */}
       {showProgramSelector && (

@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, samplePlan, ids } from './support/seed'
-import { entrarComoEntrenador, abrirFichaDelCliente } from './support/flows'
+import { entrarComoEntrenador, abrirFichaDelCliente, abrirAjustesDelPlan } from './support/flows'
 
 const fecha = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const enDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return fecha(d) }
@@ -23,11 +23,14 @@ test('quitar un programa conserva el plan y lo ya hecho, y quita solo las tareas
   await abrirFichaDelCliente(page)
   await page.getByRole('button', { name: 'Abrir menú' }).click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
 
-  await expect(page.getByText('Bloque de fuerza')).toBeVisible()
+  // El nombre también sale en el resumen de la barra: se mira dentro de los ajustes desplegados
+  const ajustes = page.locator('#ajustes-plan')
+  await expect(ajustes.getByText('Bloque de fuerza')).toBeVisible()
   await page.getByRole('button', { name: 'Quitar', exact: true }).click()
 
-  await expect(page.getByText('Sin programa asignado')).toBeVisible()
+  await expect(ajustes.getByText('Sin programa asignado')).toBeVisible()
   await expect(page.getByText(/quitado: el plan y lo ya hecho se conservan/)).toBeVisible()
   const plan = () => fake.rows('planes').find(r => r.clientId === ids.client)!.plan.P // se guarda con el autoguardado
   await expect.poll(() => plan().programId).toBeUndefined()

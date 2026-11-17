@@ -1,6 +1,6 @@
 import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
-import { entrarComoCliente, entrarComoEntrenador } from './support/flows'
+import { entrarComoCliente, entrarComoEntrenador, abrirAjustesDelPlan } from './support/flows'
 
 const planDe = (fake: Parameters<typeof seedWorld>[0]) => fake.rows('planes').find(r => r.clientId === ids.client)!.plan.P
 
@@ -15,6 +15,7 @@ test('el entrenador decide que con mancuernas se apunta el peso de una', async (
   const menu = page.getByRole('button', { name: 'Abrir menú' })
   if (await menu.isVisible().catch(() => false)) await menu.click()
   await page.getByRole('button', { name: /^Plan/ }).first().click()
+  await abrirAjustesDelPlan(page)
 
   const tarjeta = page.getByRole('region', { name: 'Peso con mancuernas' })
   await expect(tarjeta).toContainText('1 ejercicio con mancuernas')
