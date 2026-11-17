@@ -6,6 +6,7 @@ import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
 import { contactoDe, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
+import { ContextoCliente } from './ContextoCliente'
 import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import {
@@ -480,7 +481,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                 )}
 
                 {/* Stat cards — borde de color + número prominente */}
-                <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
+                {/* Siete tarjetas no caben en una fila junto a la columna derecha (se cortaban los títulos): cuatro y tres */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-7 gap-3">
                   {[
                     { label: 'Clientes',       value: clients.length, prev: undefined,     icon: Users,        color: 'text-ink',  accent: '#6e5438', border: '#6e5438', onClick: () => handleTabChange('clients') },
                     { label: 'Entrenaron hoy', value: activeToday,    prev: activePrevWeek, icon: CheckCircle2, color: 'text-ok',   accent: '#4caf7d', border: '#4caf7d', onClick: () => { setClientFilter('active'); handleTabChange('clients') } },
@@ -560,6 +562,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold truncate">{c.name} {c.surname}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 flex-wrap empty:hidden"><ContextoCliente client={c} labels={labels} /></div>
                               <div className="flex items-center gap-2 mt-1">
                                 <div className="flex-1 h-1.5 bg-bg-alt rounded-full overflow-hidden">
                                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
@@ -594,6 +597,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                             {!c.hasPlan && <span className="text-[11px] text-warn font-semibold bg-warn/10 px-1.5 py-0.5 rounded-full">Sin plan</span>}
                             {c.hasPlan && <span className="text-[11px] text-muted">{formatLastActive(c.lastActive)}</span>}
                             {!!c.weeklyDays && <span className="text-[11px] text-ok font-semibold">{c.weeklyDays}d esta semana</span>}
+                            <ContextoCliente client={c} labels={labels} />
                           </div>
                         </div>
                         <ChevronRight className="w-3.5 h-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
