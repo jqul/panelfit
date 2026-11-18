@@ -4,6 +4,8 @@ import { localDateKey } from '../lib/dates'
 import { fetchClientPain } from '../lib/clientPain'
 import { DEMO_READINESS_MAP } from '../lib/demo-data'
 import { construirAtencion, diasDesde, type AtencionItem, type EntradaAtencion } from '../lib/atencionCliente'
+import { listarDecisiones } from '../lib/decisionesEntrenador'
+import { estaPorRevisar } from '../lib/diarioDecisiones'
 import type { TrainingLogs } from '../types'
 
 // Lo accionable de un cliente, para la tarjeta «Atención hoy» de su ficha (lib/atencionCliente). Solo lee lo de ESE cliente:
@@ -15,12 +17,15 @@ export function useAtencionCliente(clientId: string, logs: TrainingLogs, tienePl
   const [dolor, setDolor] = useState<EntradaAtencion['dolor']>([])
   const [checkin, setCheckin] = useState<EntradaAtencion['checkin']>(null)
   const [videos, setVideos] = useState(0)
+  const [decisiones, setDecisiones] = useState(0)
   const demo = clientId.startsWith('demo-client-')
 
   useEffect(() => {
     let vivo = true
     const hace = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return localDateKey(d) }
     fetchClientPain(clientId).then(p => { if (vivo) setDolor(p.filter(x => x.date >= hace(14))) })
+    // Decisiones del diario cuyo plazo ya llegó (solo las ve el entrenador)
+    listarDecisiones(clientId).then(ds => { if (vivo) setDecisiones(ds.filter(d => estaPorRevisar(d, localDateKey())).length) })
     if (demo) {
       const filas = [...(DEMO_READINESS_MAP[clientId] || [])].sort((a, b) => b.date.localeCompare(a.date))
       setCheckin(filas[0] ?? null)
@@ -39,9 +44,9 @@ export function useAtencionCliente(clientId: string, logs: TrainingLogs, tienePl
     const ultima = Object.values(logs).filter(l => l?.done && l.dateDone).map(l => l.dateDone as string).sort().pop() ?? null
     const pendientes = recordatorios.filter(a => !a.done)
     return construirAtencion({
-      dolor, checkin, videosPendientes: videos,
+      dolor, checkin, videosPendientes: videos, decisionesPorRevisar: decisiones,
       diasSinEntrenar: tienePlan ? diasDesde(ultima, hoy) : null,
       recordatorios: { pendientes: pendientes.length, vencidos: pendientes.filter(a => a.date && a.date < hoy).length },
     })
-  }, [dolor, checkin, videos, logs, tienePlan, recordatorios])
+  }, [dolor, checkin, videos, decisiones, logs, tienePlan, recordatorios])
 }

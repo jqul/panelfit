@@ -4,7 +4,7 @@
 
 import { algunaBaja } from './checkinConfig'
 
-export type AtencionKind = 'dolor' | 'checkin' | 'video' | 'sesion' | 'recordatorio'
+export type AtencionKind = 'dolor' | 'checkin' | 'video' | 'sesion' | 'decision' | 'recordatorio'
 export type TabFicha = 'perfil' | 'plan' | 'entrenos' | 'progreso'
 
 export interface Destino {
@@ -30,6 +30,8 @@ export interface EntradaAtencion {
   /** Días desde su última sesión hecha; null si no tiene plan o nunca ha entrenado (ahí no hay «sesión perdida»). */
   diasSinEntrenar: number | null
   recordatorios: { pendientes: number; vencidos: number }
+  /** Decisiones del diario (Progreso → Estancamiento) cuyo plazo de revisión ya llegó. */
+  decisionesPorRevisar?: number
 }
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
@@ -56,6 +58,11 @@ export function construirAtencion(e: EntradaAtencion): AtencionItem[] {
 
   if (e.diasSinEntrenar !== null && e.diasSinEntrenar >= DIAS_SIN_ENTRENAR) {
     out.push({ kind: 'sesion', texto: `Lleva ${e.diasSinEntrenar} días sin entrenar`, destino: { tab: 'entrenos' }, urgente: false, accion: 'Ver entrenos' })
+  }
+
+  const nd = e.decisionesPorRevisar ?? 0
+  if (nd > 0) {
+    out.push({ kind: 'decision', texto: `${nd} ${plural(nd, 'decisión toca revisarla', 'decisiones tocan revisarse')}`, destino: { tab: 'progreso', seccion: 'estancamiento' }, urgente: false, accion: 'Revisar' })
   }
 
   if (e.recordatorios.pendientes > 0) {

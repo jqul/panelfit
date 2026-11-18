@@ -11,6 +11,7 @@ import { useClientWeights } from '../../../lib/clientWeight'
 import { useContextoEstancamiento } from '../../../hooks/useContextoEstancamiento'
 import { localDateKey } from '../../../lib/dates'
 import { EmptyState } from './helpers'
+import { DiarioDecisiones } from './DiarioDecisiones'
 
 const MARCA: Record<EstadoPaso, { icono: typeof CheckCircle2; clase: string; texto: string }> = {
   senal: { icono: AlertTriangle, clase: 'text-warn', texto: 'Mirar' },
@@ -20,7 +21,7 @@ const MARCA: Record<EstadoPaso, { icono: typeof CheckCircle2; clase: string; tex
 
 // Ante un ejercicio que no sube: qué dicen los datos en cada paso (¿es real?, ¿comparable?, técnica, esfuerzo, volumen, recuperación,
 // peso, adherencia). No receta: separa el dato de la hipótesis y deja la decisión al entrenador.
-export function EstancamientoChecklist({ clientId, logs, plan }: { clientId: string; logs: TrainingLogs; plan?: TrainingPlan | null }) {
+export function EstancamientoChecklist({ clientId, logs, plan, trainerId }: { clientId: string; logs: TrainingLogs; plan?: TrainingPlan | null; trainerId?: string }) {
   const historial = useMemo(() => historialPorEjercicio(logs, plan).filter(h => h.sesiones.length >= 2), [logs, plan])
   const primero = historial.find(h => estaEstancado(h.sesiones)) ?? historial[0]
   const [elegido, setElegido] = useState<string | null>(null)
@@ -77,6 +78,8 @@ export function EstancamientoChecklist({ clientId, logs, plan }: { clientId: str
 
       <p className="text-sm bg-bg-alt/60 rounded-xl px-4 py-3" role="note">{resumen.texto}</p>
       <p className="text-[11px] text-muted">Son datos para pensar, no un diagnóstico: una señal aislada no demuestra una causa. La hipótesis y la decisión son tuyas.</p>
+
+      <DiarioDecisiones clientId={clientId} trainerId={trainerId} ejercicio={nombre} />
     </div>
   )
 }
