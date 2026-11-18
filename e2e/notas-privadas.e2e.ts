@@ -60,6 +60,8 @@ test('demo: la ficha enseña las notas de ejemplo y recuerda lo que se edita', a
   expect.configure({ timeout: 30_000 })
   await page.goto('/?demo=1')
   await page.getByRole('button', { name: /María García/ }).first().click()
+  // La caja del Perfil arranca con la observación de ejemplo de María
+  await expect(page.getByRole('textbox', { name: 'Observaciones privadas' })).toHaveValue(/Evitar mensajes los domingos/)
   const seccion = page.getByRole('button', { name: /^Notas privadas/ })
   await expect(seccion).toContainText('Tienes notas guardadas')
   await seccion.click()
@@ -68,4 +70,38 @@ test('demo: la ficha enseña las notas de ejemplo y recuerda lo que se edita', a
   await caja.fill('Cambio de nota en el demo')
   await expect(page.getByText('Guardado ✓')).toBeVisible()
   await expect.poll(() => page.evaluate(() => localStorage.getItem('pf_notas_privadas_demo-client-001'))).toBe('Cambio de nota en el demo')
+})
+
+// Las «Notas privadas» del Perfil (observaciones) y los recordatorios (alertas) tampoco van en la fila de clientes, que el cliente
+// puede leer: viven en la misma tabla solo-entrenador, cada campo por su lado.
+test('observaciones y recordatorios del Perfil se guardan en la tabla privada, no en clientes, sin pisarse con las notas', async ({ page, fake }) => {
+  test.setTimeout(150_000)
+  expect.configure({ timeout: 30_000 })
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  fake.seed('notas_privadas_cliente', { client_id: ids.client, trainer_id: ids.trainer, notas: 'Notas de la ficha', observaciones: 'Prefiere entrenar por la mañana', alertas: [], updated_at: new Date().toISOString() })
+
+  await entrarComoEntrenador(page)
+  await abrirFichaDelCliente(page)
+
+  // Las observaciones guardadas se ven al abrir (antes la caja salía siempre vacía) y al editarlas se guardan en su campo
+  const caja = page.getByRole('textbox', { name: 'Observaciones privadas' })
+  await expect(caja).toHaveValue('Prefiere entrenar por la mañana')
+  await caja.fill('Prefiere entrenar por la mañana\nAlergia a los frutos secos')
+  await caja.blur()
+  await expect.poll(() => fake.rows('notas_privadas_cliente')[0].observaciones).toBe('Prefiere entrenar por la mañana\nAlergia a los frutos secos')
+  expect(fake.rows('notas_privadas_cliente')[0].notas).toBe('Notas de la ficha')
+
+  // Un recordatorio nuevo va a `alertas`, también sin tocar lo demás
+  await page.getByRole('button', { name: '+ Añadir recordatorio' }).click()
+  await page.getByRole('textbox', { name: 'Descripción del recordatorio' }).fill('Llamar para revisar el hombro')
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click()
+  await expect.poll(() => fake.rows('notas_privadas_cliente')[0].alertas?.length).toBe(1)
+  expect(fake.rows('notas_privadas_cliente')[0].alertas[0]).toMatchObject({ note: 'Llamar para revisar el hombro', type: 'llamar', done: false })
+  expect(fake.rows('notas_privadas_cliente')[0].observaciones).toContain('Alergia')
+  expect(fake.rows('notas_privadas_cliente')[0].notas).toBe('Notas de la ficha')
+
+  // La fila de clientes no ha recibido nada de esto
+  const fila = fake.rows('clientes').find(c => c.id === ids.client)!
+  expect(fila.notas_privadas ?? '').toBe('')
+  expect(fila.alerts ?? []).toEqual([])
 })

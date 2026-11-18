@@ -20,7 +20,6 @@ export interface ClientData {
   phone?: string  // WhatsApp del cliente
   objetivo?: Especialidad | 'resistencia' | 'general'  // unificado con Especialidad
   altura?: number; genero?: string; fechanacimiento?: string
-  notas_privadas?: string  // notas privadas del entrenador, nunca se muestran al cliente
   label_ids?: string[]
   precio_mensual?: number  // solo para seguimiento del negocio del entrenador, no implica cobro real
   lesiones?: string        // limitaciones/lesiones relevantes para programar — solo lo ve el entrenador

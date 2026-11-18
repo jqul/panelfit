@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { ClientData } from '../types'
 import { mapClientes } from '../lib/mappers'
+import { guardarObservaciones } from '../lib/notasPrivadasCliente'
 import { toast } from '../components/shared/Toast'
 import { computeACWR, computeSessionLoadACWR, worseAcwr, computeLoadTrend, computeSessionLoadTrend } from '../lib/loadRisk'
 import { RAMPA_ALTA, rampaActual } from '../lib/rampaCarga'
@@ -315,10 +316,11 @@ export function useTrainerClients({ trainerId, demoClients, demoLogsMap, clientL
       fechanacimiento: newClient.fechanacimiento || null,
       fatPercentage: 0, muscleMass: 0, totalLifted: 0, planDescription: '',
       label_ids: labelIds,
-      ...(extra.notas_privadas ? { notas_privadas: extra.notas_privadas } : {}),
     }).select('id').single()
     if (error) { toast('Error: ' + error.message, 'warn'); return false }
     toast('Cliente creado ✓', 'ok')
+    // El contexto del contacto va a las observaciones privadas (tabla solo-entrenador, no a la fila de clientes que lee el cliente)
+    if (inserted?.id && extra.notas_privadas) await guardarObservaciones(trainerId, inserted.id, extra.notas_privadas)
     if (inserted?.id) await autoAssignProgram(inserted.id, objetivo)
     await fetchClients()
     return inserted?.id ?? false // id del cliente creado (verdadero): quien lo necesite puede seguir con él

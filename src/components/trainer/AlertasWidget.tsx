@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Bell } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { cargarAlertasDe } from '../../lib/notasPrivadasCliente'
 import { ClientData } from '../../types'
 import { localDateKey } from '../../lib/dates'
 import { isDemoClientId } from '../../lib/demoIds'
@@ -37,12 +37,7 @@ export function AlertasWidget({ clients, onSelectClient }: Props) {
         return
       }
       const ids = clients.map(c => c.id)
-      const { data } = await supabase.from('clientes').select('id, alerts').in('id', ids)
-      const map: Record<string, ClientAlert[]> = {}
-      ;(data || []).forEach((row: any) => {
-        if (row.alerts?.length) map[row.id] = row.alerts
-      })
-      setAlertsMap(map)
+      setAlertsMap(await cargarAlertasDe<ClientAlert>(ids))
       setLoading(false)
     }
     fetchAlerts()

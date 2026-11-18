@@ -21,6 +21,7 @@ import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 import { quitarNotasDelPlan } from '../../lib/notasPrivadas'
+import { cargarAlertas, guardarAlertas } from '../../lib/notasPrivadasCliente'
 import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
@@ -206,8 +207,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPa
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
     // Cargar alertas
-    const { data: clientData } = await supabase.from('clientes').select('alerts').eq('id', client.id).maybeSingle()
-    if (clientData?.alerts) setAlerts(clientData.alerts)
+    // Las alertas no van en la fila de clientes (el cliente la lee): tienen su tabla solo-entrenador
+    const misAlertas = await cargarAlertas<ClientAlert>(client.id)
+    if (misAlertas.length) setAlerts(misAlertas)
     // Cargar programas del entrenador
     const { data: labelsData } = await supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at')
     if (labelsData) setLabels(labelsData)
@@ -321,7 +323,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPa
   const saveAlerts = async (newAlerts: ClientAlert[]) => {
     setAlerts(newAlerts)
     if (demoPlan !== undefined) { DEMO_ALERTS_MAP[client.id] = newAlerts as any; return }
-    await supabase.from('clientes').update({ alerts: newAlerts }).eq('id', client.id)
+    await guardarAlertas(userProfile.uid, client.id, newAlerts)
   }
 
   const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
