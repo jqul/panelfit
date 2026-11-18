@@ -12,6 +12,7 @@ import { RecuperacionActividad } from './progreso-tab/RecuperacionActividad'
 import { EsfuerzoPorPapel } from './progreso-tab/EsfuerzoPorPapel'
 import { AdherenciaChart } from './progreso-tab/AdherenciaChart'
 import { RecordsTable } from './progreso-tab/RecordsTable'
+import { EstancamientoChecklist } from './progreso-tab/EstancamientoChecklist'
 import { ComparativaChart } from './progreso-tab/ComparativaChart'
 import { DistribucionChart } from './progreso-tab/DistribucionChart'
 import { RMChart } from './progreso-tab/RMChart'
@@ -108,6 +109,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId, secci
         {section === 'trabajo_especifico' && <TrabajoEspecificoChart logs={logs} plan={plan} />}
         {section === 'esfuerzo_tipo' && <EsfuerzoPorPapel logs={logs} plan={plan} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
+        {section === 'estancamiento' && <EstancamientoChecklist clientId={client.id} logs={logs} plan={plan} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
         {section === 'resumen_mensual' && <MonthlyRecap    logs={logs} plan={plan} />}
