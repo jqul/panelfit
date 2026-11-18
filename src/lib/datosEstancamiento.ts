@@ -16,7 +16,7 @@ export interface DatosEjercicio {
   carga: { seriesPorSemana: number | null; sesionesPorSemana: number | null }
 }
 
-interface RegistroDeEjercicio { fecha: string; sets: { rir?: number; tipo?: string }[]; video: boolean; objetivo: { min: number; max: number } | null }
+interface RegistroDeEjercicio { fecha: string; sets: { weight?: string; reps?: string; rir?: number; tipo?: string }[]; video: boolean; objetivo: { min: number; max: number } | null }
 
 const nombreDe = (n?: string) => (n || '').trim().toLowerCase()
 
@@ -74,4 +74,37 @@ export function adherenciaReciente(logs: TrainingLogs, plan: TrainingPlan | null
     if (CLAVE.test(k) && l?.done && l.dateDone && l.dateDone >= desde && l.dateDone <= hoy) dias.add(l.dateDone)
   }
   return Math.min(100, (dias.size / (previstos * SEMANAS)) * 100)
+}
+
+export interface CargaFija { peso: number; sesiones: number; desde: string; rirInicial: number; rirActual: number }
+
+const num = (v?: string) => parseFloat(String(v ?? '').replace(',', '.')) || 0
+const media = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+
+/** El mismo peso en varias sesiones, ¿cuánto margen le queda? Si a 100 kg el RIR pasa de 1 a 3, le cuesta menos aunque el 1RM
+ *  estimado no suba (el 1RM no ve esto). Solo se comparan sesiones con las mismas repeticiones (±1) a ese peso y con RIR
+ *  registrado; hacen falta 3. Devuelve null si no hay un peso que cumpla. */
+export function rirACargaFija(logs: TrainingLogs, plan: TrainingPlan | null | undefined, nombre: string): CargaFija | null {
+  const porPeso = new Map<number, { fecha: string; rir: number; reps: number }[]>()
+  for (const r of registrosDe(logs, plan, nombre).slice(0, 8)) {
+    const series = r.sets.filter(s => typeof s.rir === 'number' && Number.isFinite(s.rir) && num(s.weight) > 0 && num(s.reps) > 0)
+    const pesos = new Set(series.map(s => Math.round(num(s.weight) * 10) / 10))
+    for (const p of pesos) {
+      const delPeso = series.filter(s => Math.round(num(s.weight) * 10) / 10 === p)
+      const lista = porPeso.get(p) ?? []
+      lista.push({ fecha: r.fecha, rir: media(delPeso.map(s => s.rir as number)), reps: media(delPeso.map(s => num(s.reps))) })
+      porPeso.set(p, lista)
+    }
+  }
+  let mejor: CargaFija | null = null
+  for (const [peso, ses] of porPeso) {
+    const cron = [...ses].sort((a, b) => a.fecha.localeCompare(b.fecha))
+    const repsActual = cron[cron.length - 1].reps
+    const comparables = cron.filter(s => Math.abs(s.reps - repsActual) <= 1)
+    if (comparables.length < 3) continue
+    const c: CargaFija = { peso, sesiones: comparables.length, desde: comparables[0].fecha, rirInicial: comparables[0].rir, rirActual: comparables[comparables.length - 1].rir }
+    // El que más sesiones reúne; a igualdad, el más pesado
+    if (!mejor || c.sesiones > mejor.sesiones || (c.sesiones === mejor.sesiones && c.peso > mejor.peso)) mejor = c
+  }
+  return mejor
 }

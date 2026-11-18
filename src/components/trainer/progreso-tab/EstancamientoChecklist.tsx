@@ -3,7 +3,7 @@ import { CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react'
 import type { TrainingLogs, TrainingPlan } from '../../../types'
 import { historialPorEjercicio } from '../../../lib/historialEjercicio'
 import { estaEstancado } from '../../../lib/revisionBloque'
-import { datosDelEjercicio, adherenciaReciente } from '../../../lib/datosEstancamiento'
+import { datosDelEjercicio, adherenciaReciente, rirACargaFija } from '../../../lib/datosEstancamiento'
 import { checklistEstancamiento, resumenChecklist, type EstadoPaso } from '../../../lib/checklistEstancamiento'
 import { getEffectiveWeekIdx } from '../../../lib/planWeek'
 import { semanasDePeso, avisoRitmo, PESAJES_MINIMOS } from '../../../lib/ritmoPeso'
@@ -38,6 +38,7 @@ export function EstancamientoChecklist({ clientId, logs, plan, trainerId }: { cl
     return checklistEstancamiento({
       sesiones: actual.sesiones,
       ...datos,
+      cargaFija: rirACargaFija(logs, plan, actual.name),
       recuperacion,
       ritmoPeso: avisoRitmo(semanas),
       hayPeso: weights.length >= PESAJES_MINIMOS,

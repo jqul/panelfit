@@ -10,6 +10,7 @@ const base: EntradaChecklist = {
   sesiones: ses([100, 100, 100, 100, 100]),
   sesionesConVideo: 0,
   esfuerzo: { rirMedio: null, objetivo: null },
+  cargaFija: null,
   carga: { seriesPorSemana: null, sesionesPorSemana: null },
   recuperacion: { checkins: 0, checkinsBajos: 0, molestiasArticulares: 0 },
   ritmoPeso: null, hayPeso: false, adherenciaPct: null,
@@ -70,8 +71,8 @@ describe('checklistEstancamiento', () => {
     expect(paso(base, 'adherencia')).toMatchObject({ estado: 'sin-datos' })
   })
 
-  it('siempre salen los ocho pasos en el mismo orden', () => {
-    expect(checklistEstancamiento(base).map(p => p.id)).toEqual(['real', 'comparable', 'tecnica', 'esfuerzo', 'volumen', 'recuperacion', 'peso', 'adherencia'])
+  it('siempre salen los nueve pasos en el mismo orden', () => {
+    expect(checklistEstancamiento(base).map(p => p.id)).toEqual(['real', 'comparable', 'tecnica', 'esfuerzo', 'cargaFija', 'volumen', 'recuperacion', 'peso', 'adherencia'])
   })
 })
 
@@ -91,5 +92,38 @@ describe('resumenChecklist', () => {
 
   it('un estancamiento con una sola señal o ninguna: antes de cambiar nada, completar lo que falta; mantener es opción', () => {
     expect(resumenChecklist(checklistEstancamiento(base)).texto).toContain('mantener también es una opción')
+  })
+})
+
+describe('mismo peso, ¿cómo se siente? (RPE a carga fija)', () => {
+  const fija = (rirInicial: number, rirActual: number) => ({ ...base, cargaFija: { peso: 100, sesiones: 4, desde: '2026-10-20', rirInicial, rirActual } })
+  const p = (e: EntradaChecklist) => checklistEstancamiento(e).find(x => x.id === 'cargaFija')!
+
+  it('sin datos suficientes se dice qué hace falta', () => {
+    expect(p(base)).toMatchObject({ estado: 'sin-datos' })
+    expect(p(base).dato).toContain('3 sesiones')
+  })
+
+  it('si el RIR sube un punto o más con el mismo peso, le cuesta menos: sin señal y a favor', () => {
+    expect(p(fija(1, 3))).toMatchObject({ estado: 'normal', aFavor: true })
+    expect(p(fija(1, 2)).dato).toContain('le cuesta menos')
+  })
+
+  it('si el RIR baja un punto o más, le cuesta más: señal', () => {
+    expect(p(fija(3, 1))).toMatchObject({ estado: 'senal', aFavor: false })
+    expect(p(fija(3, 1)).dato).toContain('le cuesta más')
+  })
+
+  it('un cambio menor a un punto es «sin cambio claro»', () => {
+    expect(p(fija(2, 2.5))).toMatchObject({ estado: 'normal', aFavor: false })
+    expect(p(fija(2, 2.5)).dato).toContain('sin cambio claro')
+  })
+
+  it('el cierre matiza el estancamiento del 1RM cuando el mismo peso le cuesta menos: observar antes de cambiar nada', () => {
+    const r = resumenChecklist(checklistEstancamiento(fija(1, 3)))
+    expect(r.texto).toContain('puede estar progresando')
+    expect(r.texto).toContain('observa')
+    // Sin ese dato a favor, el cierre es el de siempre
+    expect(resumenChecklist(checklistEstancamiento(base)).texto).not.toContain('puede estar progresando')
   })
 })
