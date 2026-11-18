@@ -15,8 +15,6 @@ test('las notas privadas se guardan en su tabla, no en el plan, y el cliente ni 
   await abrirFichaDelCliente(page)
 
   // La ficha avisa de que hay notas sin abrir nada y las enseña al desplegar
-  // La caja del Perfil arranca con la observación de ejemplo de María
-  await expect(page.getByRole('textbox', { name: 'Observaciones privadas' })).toHaveValue(/Evitar mensajes los domingos/)
   const seccion = page.getByRole('button', { name: /^Notas privadas/ })
   await expect(seccion).toContainText('Tienes notas guardadas')
   await seccion.click()
@@ -62,6 +60,8 @@ test('demo: la ficha enseña las notas de ejemplo y recuerda lo que se edita', a
   expect.configure({ timeout: 30_000 })
   await page.goto('/?demo=1')
   await page.getByRole('button', { name: /María García/ }).first().click()
+  // La caja del Perfil arranca con la observación de ejemplo de María
+  await expect(page.getByRole('textbox', { name: 'Observaciones privadas' })).toHaveValue(/Evitar mensajes los domingos/)
   const seccion = page.getByRole('button', { name: /^Notas privadas/ })
   await expect(seccion).toContainText('Tienes notas guardadas')
   await seccion.click()
