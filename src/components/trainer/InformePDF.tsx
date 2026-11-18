@@ -4,6 +4,7 @@ import { DEMO_SURVEY_RESPONSES, DEMO_SURVEY_TEMPLATE } from '../../lib/demo-data
 import { fetchClientWeights, WeightEntry } from '../../lib/clientWeight'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
 import { getEffectiveWeekIdx } from '../../lib/planWeek'
+import { cargarNotas } from '../../lib/notasPrivadasCliente'
 import { X, Download, MessageCircle } from 'lucide-react'
 
 interface Props {
@@ -18,6 +19,10 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [responses, setResponses] = useState<any[]>([])
   const [templates, setTemplates] = useState<any[]>([])
+  // Las notas del entrenador ya no van en el plan (el cliente lo lee entero): tienen su propia tabla
+  const [notas, setNotas] = useState('')
+
+  useEffect(() => { cargarNotas(client.id).then(setNotas) }, [client.id])
 
   useEffect(() => {
     fetchClientWeights(client.id).then(setWeights)
@@ -259,11 +264,11 @@ export function InformePDF({ client, plan, logs = {}, trainerProfile = {}, onClo
             )}
 
             {/* Notas del entrenador */}
-            {plan?.coachNotes && (
+            {notas.trim() && (
               <div>
                 <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Notas del entrenador</h2>
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{plan.coachNotes}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap">{notas}</p>
                 </div>
               </div>
             )}

@@ -44,7 +44,7 @@ El descargo de responsabilidad (`waivers`) es otra cosa: no sustituye al consent
 | Rectificación | A través de su entrenador | Edita la ficha y los registros |
 
 Decisiones que conviene revisar:
-- La exportación **del cliente** no incluye las notas privadas, alertas ni etiquetas que el entrenador guarda sobre él; la del **entrenador** sí lo incluye todo. Si un cliente reclama sus notas, el entrenador las entrega desde su exportación.
+- La exportación **del cliente** no incluye las notas privadas (ni las de la ficha, tabla `notas_privadas_cliente`, ni el diario de decisiones, ni `coachNotes` dentro de las copias antiguas de `plan_history`), alertas ni etiquetas que el entrenador guarda sobre él; la del **entrenador** sí lo incluye todo. Si un cliente reclama sus notas, el entrenador las entrega desde su exportación.
 - El borrado es total y no se puede deshacer. Queda una constancia sin datos personales en `registro_borrados` (id del cliente, entrenador, fecha y número de filas por tabla).
 - La cuenta de acceso del cliente se borra solo si no es también la cuenta de un entrenador real ni de otro cliente.
 

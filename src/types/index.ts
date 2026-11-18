@@ -83,7 +83,7 @@ export interface WeekPlan { label: string; rpe: string; isCurrent: boolean; isDe
 
 export interface TrainingPlan {
   clientId: string; type: string; restMain: number; restAcc: number; restWarn: number
-  message?: string; coachNotes?: string
+  message?: string
   brandName?: string; brandLogo?: string
   pin?: string
   fechaInicio?: string
