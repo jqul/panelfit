@@ -93,6 +93,7 @@ Organizada en 4 grupos (antes eran 14 botones sueltos):
 ## 10. Encuestas
 
 - Plantillas de encuesta personalizadas (preguntas tipo escala, sí/no, texto).
+- **Modelo «Programación inicial»**: en Encuestas, «Usar modelo» abre el editor ya relleno con 22 preguntas para preparar un primer programa a medida (objetivo, experiencia, días y duración, material, ejercicios que rechaza, molestias, marcas, peso/altura/edad, fase de comida, sueño, estrés, pasos, cardio, músculos a priorizar y barreras); solo 5 son obligatorias, se ajusta y se guarda como una encuesta más del entrenador (no se envía sola a los clientes nuevos). El PAR-Q sigue en el alta del cliente; las preguntas que dependen de otra van como texto opcional a continuación, porque las encuestas no tienen condicionales (`lib/modelosEncuesta.ts`). El editor de encuestas ahora tiene nombres accesibles (Nombre, Pregunta N).
 - Programación de envío (semanal/quincenal/mensual/una vez), por cliente o para todos.
 - Respuestas visibles por cliente y agregadas.
 - Vinculables a etiquetas (asignar una encuesta automáticamente a clientes con cierta etiqueta).
