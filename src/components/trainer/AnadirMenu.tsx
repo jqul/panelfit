@@ -4,7 +4,7 @@ import { opcionesAnadir, type OpcionAnadir, type PestanaFicha } from '../../lib/
 
 // «Añadir» de la cabecera de la ficha: un solo botón, con las opciones agrupadas y lo relevante primero según la pestaña
 // (lib/anadirFicha). Cada opción lleva al sitio donde ya se hace.
-export function AnadirMenu({ tab, onElegir }: { tab: PestanaFicha; onElegir: (o: OpcionAnadir) => void }) {
+export function AnadirMenu({ tab, onElegir, sinPanel }: { tab: PestanaFicha; onElegir: (o: OpcionAnadir) => void; sinPanel?: boolean }) {
   const [abierto, setAbierto] = useState(false)
   const raiz = useRef<HTMLDivElement>(null)
 
@@ -25,7 +25,7 @@ export function AnadirMenu({ tab, onElegir }: { tab: PestanaFicha; onElegir: (o:
       </button>
       {abierto && (
         <div role="menu" aria-label="Añadir" className="absolute right-0 top-full mt-1.5 z-30 w-56 bg-card border border-border rounded-xl py-1.5" style={{ boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
-          {opcionesAnadir(tab).map(g => (
+          {opcionesAnadir(tab, { sinPanel }).map(g => (
             <div key={g.grupo} role="group" aria-label={g.grupo} className="py-1">
               <p className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted">{g.grupo}</p>
               {g.opciones.map(o => (
