@@ -12,7 +12,7 @@ async function abrirFicha(page: Page) {
 const haceDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 // Ante un ejercicio que no sube: la lista de comprobación enseña qué dicen los datos en cada paso, sin recetar.
-test('Estancamiento: sentadilla parada con 5 sesiones muestra los pasos, qué falta y no receta', async ({ page, fake }) => {
+test('Estancamiento: sentadilla parada con 5 sesiones muestra los nueve pasos, qué falta y no receta', async ({ page, fake }) => {
   test.setTimeout(120_000)
   expect.configure({ timeout: 30_000 })
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
@@ -34,11 +34,13 @@ test('Estancamiento: sentadilla parada con 5 sesiones muestra los pasos, qué fa
 
   await expect(page.getByLabel('Ejercicio')).toHaveValue('Sentadilla')
   const lista = page.getByRole('list', { name: 'Lista de comprobación' })
-  await expect(lista.getByRole('listitem')).toHaveCount(8)
+  await expect(lista.getByRole('listitem')).toHaveCount(9)
   await expect(lista.getByRole('listitem').nth(0)).toContainText('Mirar')
   await expect(lista.getByRole('listitem').nth(0)).toContainText('no superan lo mejor de antes')
   await expect(lista.getByRole('listitem').nth(3)).toContainText('RIR medio 4 frente a 1-2 previsto')
   await expect(lista.getByRole('listitem').nth(2)).toContainText('Falta dato') // sin vídeo no se comprueba la técnica
+  // A 100 kg hay 4 sesiones con RIR 4 y 5 repeticiones: sin cambio claro con el mismo peso
+  await expect(lista.getByRole('listitem').nth(4)).toContainText('A 100 kg (4 sesiones) el RIR pasó de 4 a 4: sin cambio claro')
   await expect(page.getByRole('note')).toContainText('Elige UNA intervención pequeña')
   await expect(page.getByText('no un diagnóstico')).toBeVisible()
 })
