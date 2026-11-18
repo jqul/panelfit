@@ -46,7 +46,7 @@ export function MessageTemplatesSection({ client, plan, onChange, trainerId }: {
   if (loading) return <div className="h-32 bg-card border border-border rounded-2xl animate-pulse" />
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+    <div id="mensajes" className="bg-card border border-border rounded-2xl p-5 space-y-4 scroll-mt-4">
       <div>
         <h4 className="text-sm font-semibold flex items-center gap-2"><MessageSquareText className="w-4 h-4" /> Mensajes preestablecidos</h4>
         <p className="text-xs text-muted mt-0.5">Plantilla por tipo de situación, con opción de personalizarla solo para {client.name}. El envío por WhatsApp es de un clic — el navegador no puede enviarlo sin que lo confirmes tú dentro de WhatsApp.</p>

@@ -7,7 +7,13 @@ import { algunaBaja } from './checkinConfig'
 export type AtencionKind = 'dolor' | 'checkin' | 'video' | 'sesion' | 'recordatorio'
 export type TabFicha = 'perfil' | 'plan' | 'entrenos' | 'progreso'
 
-export interface Destino { tab: TabFicha; /** Sección de Progreso, o ancla (id) dentro del Resumen. */ seccion?: string }
+export interface Destino {
+  tab: TabFicha
+  /** Sección de Progreso, o ancla (id) dentro del Resumen. */
+  seccion?: string
+  /** Plegable que se despliega al llegar: la ficha de valoración del Resumen o los ajustes del plan. */
+  abrir?: 'valoracion' | 'ajustes-plan'
+}
 export interface AtencionItem { kind: AtencionKind; texto: string; destino: Destino; urgente: boolean; accion: string }
 
 /** Molestia articular o fuerte: por debajo de esto es más ruido que señal (ver DolorChart: ≥7 alto, ≥4 moderado). */

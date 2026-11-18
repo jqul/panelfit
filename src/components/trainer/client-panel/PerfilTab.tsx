@@ -19,6 +19,7 @@ const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then
 const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
 import { localDateKey } from '../../../lib/dates'
 import { useProfesionalesEquipo } from '../../../hooks/useProfesionalesEquipo'
+import type { AbrirPlegable } from '../../../lib/anadirFicha'
 import { AtencionHoy } from './AtencionHoy'
 import type { AtencionItem, Destino } from '../../../lib/atencionCliente'
 
@@ -38,7 +39,8 @@ export const ALERT_TYPES = [
   { id: 'otro',      label: 'Otro',       emoji: '🔔', color: 'text-muted',     bg: 'bg-bg-alt',    border: 'border-border' },
 ] as const
 
-export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia, atencion = [], onIr }: {
+export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts, plan, onPlanChange, trainerId, adherencia, atencion = [], onIr, abrir }: {
+  abrir?: AbrirPlegable | null
   adherencia?: number  // % de ejercicios del plan completados
   /** Lo accionable ahora mismo (lib/atencionCliente): si no hay nada, la tarjeta «Atención hoy» no sale. */
   atencion?: AtencionItem[]
@@ -151,7 +153,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
       {/* Etiquetas */}
       {labels && labels.length > 0 ? (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div id="etiquetas" className="bg-card border border-border rounded-2xl overflow-hidden scroll-mt-4" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
           <div className="px-5 py-3 border-b border-border/50 bg-bg-alt/30">
             <p className="text-xs font-bold uppercase tracking-wider text-muted">Etiquetas</p>
           </div>
@@ -180,7 +182,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           </div>
         </div>
       ) : (
-        <div className="bg-card border border-dashed border-border rounded-2xl p-4 text-center">
+        <div id="etiquetas" className="bg-card border border-dashed border-border rounded-2xl p-4 text-center scroll-mt-4">
           <p className="text-xs text-muted">Aún no tienes etiquetas creadas. Créalas desde la pestaña <span className="font-semibold">Etiquetas</span> del menú lateral para poder asignarlas aquí.</p>
         </div>
       )}
@@ -409,7 +411,7 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
         <MessageTemplatesSection client={client} plan={plan} onChange={onPlanChange} trainerId={trainerId} />
       )}
 
-      <FichaSections client={client} plan={plan} onPlanChange={onPlanChange} trainerId={trainerId} />
+      <FichaSections client={client} plan={plan} onPlanChange={onPlanChange} trainerId={trainerId} abrir={abrir} />
     </div>
   )
 }
