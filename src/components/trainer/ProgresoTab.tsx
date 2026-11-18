@@ -109,7 +109,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId, secci
         {section === 'trabajo_especifico' && <TrabajoEspecificoChart logs={logs} plan={plan} />}
         {section === 'esfuerzo_tipo' && <EsfuerzoPorPapel logs={logs} plan={plan} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
-        {section === 'estancamiento' && <EstancamientoChecklist clientId={client.id} logs={logs} plan={plan} />}
+        {section === 'estancamiento' && <EstancamientoChecklist clientId={client.id} logs={logs} plan={plan} trainerId={trainerId} />}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
         {section === 'resumen_mensual' && <MonthlyRecap    logs={logs} plan={plan} />}

@@ -51,3 +51,13 @@ describe('diasDesde', () => {
     expect(diasDesde(null, '2026-11-17')).toBeNull()
   })
 })
+
+describe('decisiones por revisar', () => {
+  it('avisa cuando el plazo de una decisión del diario ya llegó, con atajo a Estancamiento; sin ninguna, no sale', () => {
+    expect(construirAtencion({ ...nada })).toEqual([])
+    expect(construirAtencion({ ...nada, decisionesPorRevisar: 0 })).toEqual([])
+    const r = construirAtencion({ ...nada, decisionesPorRevisar: 1 })
+    expect(r[0]).toMatchObject({ kind: 'decision', texto: '1 decisión toca revisarla', destino: { tab: 'progreso', seccion: 'estancamiento' }, urgente: false, accion: 'Revisar' })
+    expect(construirAtencion({ ...nada, decisionesPorRevisar: 3 })[0].texto).toBe('3 decisiones tocan revisarse')
+  })
+})
