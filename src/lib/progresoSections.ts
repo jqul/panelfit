@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 // Secciones de ProgresoTab (entrenador) — extraído a módulo compartido para que
 // tanto ProgresoTab como los Ajustes del entrenador (activar/desactivar) y el
 // portal del cliente (qué le enseño) trabajen con la misma lista de ids.
-export type Section = 'fuerza' | 'cardio' | 'peso' | 'volumen' | 'volumen_grupo' | 'trabajo_especifico' | 'esfuerzo_tipo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'recuperacion' | 'fv_profile' | 'dolor'
+export type Section = 'fuerza' | 'estancamiento' | 'cardio' | 'peso' | 'volumen' | 'volumen_grupo' | 'trabajo_especifico' | 'esfuerzo_tipo' | 'adherencia' | 'records' | 'comparativa' | 'distribucion' | 'rm' | 'racha' | 'fotos' | 'pesos_sugeridos' | 'fatiga' | 'videos' | 'estandares' | 'pruebas' | 'resumen_mensual' | 'ciclo' | 'recuperacion' | 'fv_profile' | 'dolor'
 
 export const SECTIONS: { id: Section; icon: string; label: string; desc: string }[] = [
   { id: 'pesos_sugeridos', icon: '🎯', label: 'Pesos sugeridos', desc: 'Próximo entreno según RIR registrado — si lo desactivas, tampoco se le muestra al cliente durante la serie' },
@@ -12,6 +12,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
   { id: 'videos',        icon: '🎥', label: 'Vídeos',         desc: 'Feedback de técnica pendiente' },
   { id: 'fuerza',       icon: '💪', label: 'Fuerza',        desc: 'Progreso de peso por ejercicio' },
   { id: 'cardio',       icon: '🏃', label: 'Cardio',        desc: 'Carrera y pista: distancia, tiempos por tirada y ritmo' },
+  { id: 'estancamiento', icon: '🔧', label: 'Estancamiento', desc: 'Lista de comprobación ante un ejercicio que no sube: qué dicen los datos en cada paso' },
   { id: 'records',      icon: '🏆', label: 'Récords',       desc: 'Marcas personales' },
   { id: 'rm',           icon: '⚡', label: '1RM est.',       desc: 'Estimación de fuerza máxima' },
   { id: 'estandares',   icon: '🏆', label: 'Nivel de fuerza', desc: 'Nota de 0 a 100 y equilibrio entre sentadilla, banca, peso muerto y press militar' },
@@ -34,7 +35,7 @@ export const SECTIONS: { id: Section; icon: string; label: string; desc: string 
 ]
 
 export const GROUPS: { id: string; label: string; icon: string; sections: Section[] }[] = [
-  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'cardio', 'pruebas', 'fv_profile'] },
+  { id: 'rendimiento', label: 'Rendimiento', icon: '💪', sections: ['fuerza', 'estancamiento', 'records', 'rm', 'estandares', 'pesos_sugeridos', 'cardio', 'pruebas', 'fv_profile'] },
   { id: 'carga',       label: 'Carga y riesgo', icon: '🚦', sections: ['fatiga', 'volumen', 'volumen_grupo', 'trabajo_especifico', 'esfuerzo_tipo', 'comparativa', 'resumen_mensual', 'adherencia', 'racha'] },
   { id: 'cuerpo',      label: 'Cuerpo',       icon: '⚖️', sections: ['peso', 'recuperacion', 'dolor', 'fotos', 'distribucion', 'ciclo'] },
   { id: 'videos',      label: 'Vídeos',       icon: '🎥', sections: ['videos'] },
