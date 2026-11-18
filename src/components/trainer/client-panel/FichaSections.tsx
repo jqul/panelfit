@@ -5,6 +5,8 @@ import { ValoracionTab } from './ValoracionTab'
 import { NotasTab } from './NotasTab'
 import { ConfigTab } from './ConfigTab'
 import type { AbrirPlegable } from '../../../lib/anadirFicha'
+import { useNotasPrivadas } from '../../../hooks/useNotasPrivadas'
+import { tieneNotas } from '../../../lib/notasPrivadas'
 
 // Información de gestión del cliente (valoración, notas privadas, acceso y
 // automatizaciones): importante pero secundaria frente a Plan/Entrenos/Progreso,
@@ -37,7 +39,9 @@ export function FichaSections({ client, plan, onPlanChange, trainerId, abrir }: 
   onPlanChange?: (p: TrainingPlan) => void
   trainerId?: string
 }) {
-  const hasNotes = !!plan?.coachNotes?.trim()
+  // Las notas privadas no van en el plan (el cliente lo lee entero): tienen su propia tabla solo-entrenador
+  const notas = useNotasPrivadas(client.id, trainerId)
+  const hasNotes = tieneNotas(notas.notas)
   return (
     <div className="space-y-3">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted px-1">Más sobre {client.name}</p>
@@ -46,11 +50,13 @@ export function FichaSections({ client, plan, onPlanChange, trainerId, abrir }: 
           <ValoracionTab client={client} trainerId={trainerId} />
         </Section>
       )}
+      {trainerId && (
+        <Section icon={<StickyNote className="w-4 h-4" />} title="Notas privadas" hint={hasNotes ? 'Tienes notas guardadas' : 'Solo las ves tú'}>
+          <NotasTab notas={notas.notas} cargando={notas.cargando} estado={notas.estado} onChange={notas.cambiar} />
+        </Section>
+      )}
       {plan && onPlanChange && (
         <>
-          <Section icon={<StickyNote className="w-4 h-4" />} title="Notas privadas" hint={hasNotes ? 'Tienes notas guardadas' : 'Solo las ves tú'}>
-            <NotasTab plan={plan} onChange={onPlanChange} />
-          </Section>
           <Section icon={<Settings className="w-4 h-4" />} title="Configuración" hint="Acceso del cliente y automatizaciones">
             <ConfigTab client={client} plan={plan} onChange={onPlanChange} trainerId={trainerId} />
           </Section>

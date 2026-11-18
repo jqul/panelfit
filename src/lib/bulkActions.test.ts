@@ -90,9 +90,9 @@ describe('buildWorkoutPlan', () => {
   })
 
   it('conserva lo ya configurado y deja de ser "de un programa"', () => {
-    const existing = { clientId: 'c1', type: 'viejo', restMain: 120, restAcc: 60, restWarn: 15, weeks: [], coachNotes: 'ojo hombro', diasSemana: 3, autoCheckin: true, programId: 'prog1', programName: 'Programa 1' } as TrainingPlan
+    const existing = { clientId: 'c1', type: 'viejo', restMain: 120, restAcc: 60, restWarn: 15, weeks: [], diasSemana: 3, autoCheckin: true, programId: 'prog1', programName: 'Programa 1' } as TrainingPlan
     const p = buildWorkoutPlan('c1', { type: 'nuevo', weeks: weeks() }, existing, '2026-10-24')
-    expect(p).toMatchObject({ type: 'nuevo', restMain: 120, coachNotes: 'ojo hombro', diasSemana: 3, autoCheckin: true })
+    expect(p).toMatchObject({ type: 'nuevo', restMain: 120, diasSemana: 3, autoCheckin: true })
     expect(p.programId).toBeUndefined()
     expect(p.programName).toBeUndefined()
     expect(existing.programId).toBe('prog1') // no muta el original

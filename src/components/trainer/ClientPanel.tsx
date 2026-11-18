@@ -20,6 +20,7 @@ import { PlanGate } from '../shared/PlanGate'
 import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
+import { quitarNotasDelPlan } from '../../lib/notasPrivadas'
 import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
@@ -217,7 +218,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   }
 
   const savePlan = async (planToSave?: TrainingPlan) => {
-    const p = planToSave || pendingPlan.current || plan; if (!p) return
+    const conNotas = planToSave || pendingPlan.current || plan; if (!conNotas) return
+    // Defensa: el plan que lee el cliente nunca lleva las notas privadas (tienen su tabla; lib/notasPrivadas.ts)
+    const p = quitarNotasDelPlan(conNotas)
     setSaveState('saving')
     if (demoPlan !== undefined) { setSaveState('saved'); setTimeout(() => setSaveState('idle'), 2000); return }
     const update: Record<string, unknown> = { clientId: client.id, updatedAt: Date.now() }
@@ -267,7 +270,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     toast('Cambios publicados ✓', 'ok')
   }
 
-  const restoreFromHistory = async (restoredPlan: TrainingPlan) => {
+  const restoreFromHistory = async (restoredConNotas: TrainingPlan) => {
+    // Las copias antiguas del historial aún llevan coachNotes: no se devuelven al plan que lee el cliente
+    const restoredPlan = quitarNotasDelPlan(restoredConNotas)
     setShowHistory(false)
     setBorradorBusy(true)
     const { error } = demoPlan !== undefined ? { error: null } : await supabase.from('planes')

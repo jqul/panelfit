@@ -4,7 +4,7 @@ Documento de referencia de todo lo que tiene la app, organizado por área. Pensa
 
 ## 1. Entrenador — Gestión de clientes
 
-- **Clientes**: alta/baja, datos personales (peso, altura, género, fecha de nacimiento, objetivo, teléfono), notas privadas, alertas (llamar / revisión / valoración / otro) con fecha de recordatorio.
+- **Clientes**: alta/baja, datos personales (peso, altura, género, fecha de nacimiento, objetivo, teléfono), notas privadas, alertas (llamar / revisión / valoración / otro) con fecha de recordatorio. Las **notas privadas de la ficha** («Solo las ves tú») viven en su propia tabla (`notas_privadas_cliente`, solo el entrenador o su equipo) y se guardan solas al escribir; ya no van dentro del plan, que el cliente lee entero, y un disparador impide que vuelvan a él. También salen en el informe PDF. La exportación RGPD que pide el propio cliente no las incluye.
 - **Etiquetas**: sistema central de etiquetas (color + emoji) aplicables a clientes, workouts y programas, con conteo de uso. Sustituyó al sistema anterior fragmentado entre pestañas.
 - **Grupos (cohortes)**: agrupar clientes (ej. "Hipertrofia — Grupo A") para verlos juntos, independiente de las etiquetas (que son por rasgo individual).
 - **Calendario**: citas con cada cliente (confirmada/cancelada/completada), notas por cita, recurrencia.

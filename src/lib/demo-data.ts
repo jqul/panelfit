@@ -321,7 +321,6 @@ export const DEMO_PLAN_MARIA: TrainingPlan = {
   fechaInicio: new Date(Date.now() - 28 * 86400000).toISOString().split('T')[0],
   autoCheckin: true, autoWelcome: true,
   diasSemana: 4,
-  coachNotes: 'María progresa muy bien. Cuidado con la rodilla derecha en sentadilla — usar rodillera. Aumentar peso en press banca la próxima semana.',
   macros: { kcal: 2100, protein: 155, carbs: 230, fats: 65, notaMacros: 'Distribuye la proteína en 4-5 tomas. Post-entreno prioriza proteína + carbos.' },
   weeks: [
     {
@@ -450,7 +449,6 @@ export const DEMO_PLAN_CARLOS: TrainingPlan = {
   autoCheckin: true,
   diasSemana: 3,
   diasElegidos: [0, 2, 4],
-  coachNotes: 'Carlos está en fase pico. No tocar técnica ahora — solo progresión de carga. Competición en 3 semanas.',
   // Marcas de referencia para programar por % (lib/marcaRM)
   marcas: {
     'sentadilla barra alta': { kg: 185, fecha: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0] },
@@ -529,7 +527,6 @@ export const DEMO_PLAN_LAURA: TrainingPlan = {
   autoCheckin: true, autoInactividad: true,
   diasSemana: 3,
   diasElegidos: [1, 3, 5],
-  coachNotes: 'Laura empieza muy motivada. Vigilar que no baje demasiado las calorías por su cuenta.',
   macros: { kcal: 1700, protein: 140, carbs: 160, fats: 55, notaMacros: 'Déficit moderado. No pases hambre — si tienes hambre, añade proteína o verduras.' },
   weeks: expandToWeeks({
       label: 'Semana 3 — Progresión',
@@ -581,7 +578,6 @@ export const DEMO_PLAN_DIEGO: TrainingPlan = {
   autoCheckin: true,
   diasSemana: 4,
   diasElegidos: [0, 1, 3, 4],
-  coachNotes: 'A 3 meses de su competición. Fase de acumulación de volumen — no buscamos RPE 9 todavía, prioriza técnica y consistencia. La bajada de intensidad y el pico llegarán en el último mes.',
   macros: { kcal: 3000, protein: 190, carbs: 350, fats: 85, notaMacros: 'Ligero superávit para sostener el volumen de esta fase. Ajustaremos según cómo evolucione el peso.' },
   weeks: expandToWeeks({
       label: 'Semana 4 — Acumulación',
@@ -642,7 +638,6 @@ export const DEMO_PLAN_MARTA: TrainingPlan = {
   autoCheckin: true,
   diasSemana: 3,
   diasElegidos: [0, 3, 5],
-  coachNotes: 'Semana 6 post-cirugía de menisco. Progresar rango de movimiento de forma gradual. Ante cualquier dolor agudo (no simple molestia), parar el ejercicio y avisar — nada de "aguantar".',
   macros: { kcal: 1900, protein: 130, carbs: 190, fats: 60, notaMacros: 'Mantenimiento — ahora el objetivo es recuperar movilidad y fuerza, no cambiar composición corporal.' },
   weeks: expandToWeeks({
       label: 'Semana 6 — Fortalecimiento inicial',
@@ -694,7 +689,6 @@ export const DEMO_PLAN_BEATRIZ: TrainingPlan = {
   autoCheckin: true, autoInactividad: true,
   diasSemana: 3,
   diasElegidos: [0, 2, 4],
-  coachNotes: 'Primera vez en el gimnasio. Foco 100% en aprender la técnica y crear el hábito — nada de buscar peso máximo todavía. Ánimo en cada sesión: cuesta arrancar, pero ya lleva 4 semanas seguidas sin fallar.',
   macros: { kcal: 1900, protein: 140, carbs: 170, fats: 60, notaMacros: 'Déficit sostenible — prioriza proteína y saciedad, nunca pases hambre.' },
   weeks: expandToWeeks({
       label: 'Semana 4 — Adaptación',
@@ -744,7 +738,6 @@ export const DEMO_PLAN_LUCAS: TrainingPlan = {
   autoCheckin: true,
   diasSemana: 4,
   diasElegidos: [0, 1, 3, 4],
-  coachNotes: 'Pretemporada — bloque de fuerza-potencia en el gimnasio antes de afinar la técnica de carrera con el entrenador de pista. Vigilar isquiotibiales, tiene historial de sobrecarga.',
   macros: { kcal: 3100, protein: 180, carbs: 400, fats: 80, notaMacros: 'Carga alta de carbohidratos para las sesiones de velocidad — no entrenar en ayunas los días de sprints.' },
   weeks: expandToWeeks({
       label: 'Semana 5 — Fuerza-Potencia',
