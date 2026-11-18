@@ -2,6 +2,7 @@ import { useState, lazy, Suspense } from 'react'
 import { track } from './lib/analytics'
 import { supabase } from './lib/supabase'
 import { ClientData } from './types'
+import type { IntentoPanel } from './lib/anadirFicha'
 import { Auth } from './components/shared/Auth'
 import { ResetPassword } from './components/shared/ResetPassword'
 import { useToast, ToastContainer } from './components/shared/Toast'
@@ -52,6 +53,8 @@ function LoadingScreen() {
 export default function App() {
   const { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
+  // «Añadir» de la ficha (cita, documento, encuesta): sale al panel con ese cliente ya elegido; el panel lo usa una vez y lo suelta
+  const [intento, setIntento] = useState<IntentoPanel | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
   const [teamContext, setTeamContext] = useState<{ uid: string; displayName: string } | null>(null)
   const { toasts, dismiss } = useToast()
@@ -251,6 +254,7 @@ export default function App() {
             userProfile={scopedProfile!}
             allClients={allClients}
             onClose={() => setSelectedClient(null)}
+            onIrAlPanel={tab => { setIntento({ tab, clientId: selectedClient.id, nonce: Date.now() }); setSelectedClient(null) }}
           />
         ) : (
           <TrainerDashboard
@@ -259,6 +263,8 @@ export default function App() {
             teamContext={teamContext}
             onSwitchTeam={setTeamContext}
             onLogout={logout}
+            intento={intento}
+            onIntentoUsado={() => setIntento(null)}
             onSelectClient={(client: ClientData) => {
               setSelectedClient(client)
               setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])

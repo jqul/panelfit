@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import { logError } from '../../lib/errors'
@@ -49,6 +49,8 @@ function useTiposCita(trainerId: string) {
 interface Props {
   trainerId: string
   clients: ClientData[]
+  /** Cliente para el que abrir «Nueva sesión» nada más entrar (desde «Añadir → Cita» en su ficha). */
+  nuevaCitaPara?: string
 }
 
 interface Cita {
@@ -97,7 +99,7 @@ const STATUS_META = {
   ausente: { label: 'No vino', cls: 'text-warn bg-warn/10' },
 }
 
-export function CalendarTab({ trainerId, clients }: Props) {
+export function CalendarTab({ trainerId, clients, nuevaCitaPara }: Props) {
   const [citas, setCitas] = useState<Cita[]>([])
   const [loading, setLoading] = useState(true)
   const [anchor, setAnchor] = useState(() => startOfDay(new Date()))
@@ -117,6 +119,15 @@ export function CalendarTab({ trainerId, clients }: Props) {
   const { messages: programados, schedule } = useScheduledMessages(trainerId)
 
   useEffect(() => { loadCitas() }, [trainerId])
+  // Desde la ficha de un cliente: el formulario de la nueva sesión se abre hoy y ya con ese cliente
+  // (los clientes pueden llegar después de montar la pestaña: se espera a tenerlos y se abre una sola vez)
+  const citaAbierta = useRef(false)
+  useEffect(() => {
+    if (!nuevaCitaPara || citaAbierta.current || !clients.some(c => c.id === nuevaCitaPara)) return
+    citaAbierta.current = true
+    const hoy = toISODate(new Date())
+    setForm({ ...emptyForm(hoy), clientId: nuevaCitaPara }); setShowForm({ dateISO: hoy })
+  }, [nuevaCitaPara, clients]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCitas = async () => {
     setLoading(true)
