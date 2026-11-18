@@ -95,8 +95,10 @@ test('convertir un contacto en cliente: el alta sale rellena, se guardan sus dat
   await alta.getByRole('button', { name: 'Crear cliente' }).click()
 
   // Cliente creado con el contexto del contacto en sus notas privadas
-  await expect.poll(() => fake.rows('clientes').find(c => c.name === 'Paula')?.notas_privadas ?? '').toContain('Quiero empezar a entrenar fuerza')
   const nuevo = fake.rows('clientes').find(c => c.name === 'Paula')!
+  await expect.poll(() => fake.rows('notas_privadas_cliente').find(n => n.client_id === nuevo.id)?.observaciones ?? '').toContain('Quiero empezar a entrenar fuerza')
+  // y nada de eso en la fila de clientes, que el cliente puede leer
+  expect(nuevo.notas_privadas ?? '').toBe('')
   expect(nuevo.surname).toBe('Navarro')
   expect(nuevo.trainerId).toBe(ids.trainer)
   // Y el contacto queda como convertido

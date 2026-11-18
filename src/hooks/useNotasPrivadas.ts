@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { cargarNotas, guardarNotas } from '../lib/notasPrivadasCliente'
+import { cargarNotas, guardarNotas, cargarObservaciones, guardarObservaciones } from '../lib/notasPrivadasCliente'
 
 export type EstadoNotas = 'idle' | 'pendiente' | 'guardando' | 'guardado' | 'error'
 
-// Las notas privadas de un cliente, con guardado automático (como el plan: se espera un momento tras dejar de escribir) y
+// Las notas privadas de un cliente (la sección de la ficha, o con campo 'observaciones' la caja del Perfil), con guardado automático (como el plan: se espera un momento tras dejar de escribir) y
 // guardado al cerrar la sección si quedaba algo sin enviar. (lib/notasPrivadas: la lógica; lib/notasPrivadasCliente: Supabase.)
-export function useNotasPrivadas(clientId: string, trainerId?: string) {
+const CAMPOS = { notas: [cargarNotas, guardarNotas], observaciones: [cargarObservaciones, guardarObservaciones] } as const
+
+export function useNotasPrivadas(clientId: string, trainerId?: string, campo: keyof typeof CAMPOS = 'notas') {
   const [notas, setNotas] = useState('')
   const [cargando, setCargando] = useState(true)
   const [estado, setEstado] = useState<EstadoNotas>('idle')
@@ -17,9 +19,9 @@ export function useNotasPrivadas(clientId: string, trainerId?: string) {
   useEffect(() => {
     let vivo = true
     setCargando(true); setNotas(''); setEstado('idle'); pendiente.current = null
-    cargarNotas(clientId).then(n => { if (vivo) { setNotas(n); setCargando(false) } })
+    CAMPOS[campo][0](clientId).then(n => { if (vivo) { setNotas(n); setCargando(false) } })
     return () => { vivo = false }
-  }, [clientId])
+  }, [clientId, campo])
 
   const volcar = useCallback(async () => {
     clearTimeout(temporizador.current)
@@ -28,10 +30,10 @@ export function useNotasPrivadas(clientId: string, trainerId?: string) {
     if (texto === null || !tid) return
     pendiente.current = null
     setEstado('guardando')
-    const ok = await guardarNotas(tid, cid, texto)
+    const ok = await CAMPOS[campo][1](tid, cid, texto)
     if (!ok && pendiente.current === null) pendiente.current = texto
     setEstado(ok ? 'guardado' : 'error')
-  }, [])
+  }, [campo])
 
   const cambiar = useCallback((texto: string) => {
     setNotas(texto)

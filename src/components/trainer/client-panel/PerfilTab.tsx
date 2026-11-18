@@ -14,6 +14,7 @@ import { MessageTemplatesSection } from './MessageTemplatesSection'
 import { GoalsSection } from './GoalsSection'
 import { OnboardingChecklist } from './OnboardingChecklist'
 import { FichaSections } from './FichaSections'
+import { useNotasPrivadas } from '../../../hooks/useNotasPrivadas'
 // Se descarga solo al mostrarse: espera a sus propios datos de todos modos.
 const AusenciasEventos = lazy(() => import('../../shared/AusenciasEventos').then(m => ({ default: m.AusenciasEventos })))
 const BonosCliente = lazy(() => import('../../shared/BonosCliente').then(m => ({ default: m.BonosCliente })))
@@ -54,6 +55,8 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
   trainerId?: string
 }) {
   const c = client
+  // Las observaciones privadas no van en la fila de clientes (el cliente la lee): tienen su tabla solo-entrenador
+  const obs = useNotasPrivadas(client.id, trainerId, 'observaciones')
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ name: c.name || '', surname: c.surname || '', phone: c.phone || '', objetivo: c.objetivo || '', altura: c.altura || '', weight: c.weight || '', genero: c.genero || '', fechanacimiento: c.fechanacimiento || '', precio_mensual: c.precio_mensual || '' })
   const [saving, setSaving] = useState(false)
@@ -386,12 +389,12 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
           <p className="text-xs font-bold uppercase tracking-wider text-muted">🔒 Notas privadas</p>
         </div>
         <div className="p-4">
-          <textarea defaultValue={c.notas_privadas || ''}
-            onBlur={async e => { await onUpdate({ notas_privadas: e.target.value }) }}
-            placeholder="Observaciones, preferencias, historial médico..."
+          <textarea value={obs.notas} onChange={e => obs.cambiar(e.target.value)} onBlur={() => { void obs.volcar() }}
+            disabled={obs.cargando} aria-label="Observaciones privadas"
+            placeholder={obs.cargando ? 'Cargando…' : 'Observaciones, preferencias, historial médico...'}
             rows={4}
             className="w-full text-sm bg-bg border border-border rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent/20 resize-none leading-relaxed" />
-          <p className="text-[11px] text-muted mt-1">Se guarda automáticamente al perder el foco</p>
+          <p className="text-[11px] text-muted mt-1" role="status" aria-live="polite">{obs.estado === 'error' ? 'No se pudo guardar: se reintentará al seguir escribiendo' : obs.estado === 'guardado' ? 'Guardado ✓' : 'Solo las ves tú. Se guarda automáticamente'}</p>
         </div>
       </div>
 

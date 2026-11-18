@@ -21,7 +21,8 @@ test('molestia, vídeo y recordatorio vencido salen arriba y cada botón lleva a
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
   fake.seed('registros_dolor', { id: 'd1', clientId: ids.client, date: dia(1), zona: 'Rodilla', intensidad: 8, tipo: 'articular', created_at: 1 })
   fake.seed('video_feedback', { id: 'v1', client_id: ids.client, status: 'pendiente', exercise: 'Sentadilla', created_at: new Date().toISOString() })
-  fake.rows('clientes').find(r => r.id === ids.client)!.alerts = [{ id: 'a1', type: 'llamar', note: 'Revisar el hombro', date: dia(3), done: false, createdAt: 1 }]
+  // Las alertas viven en la tabla solo-entrenador (no en la fila de clientes, que el cliente lee)
+  fake.seed('notas_privadas_cliente', { client_id: ids.client, trainer_id: ids.trainer, notas: '', observaciones: '', alertas: [{ id: 'a1', type: 'llamar', note: 'Revisar el hombro', date: dia(3), done: false, createdAt: 1 }] })
   await entrarComoEntrenador(page)
   await abrirFichaDelCliente(page)
 
