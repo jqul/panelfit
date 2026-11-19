@@ -407,11 +407,17 @@ export class FakeSupabase {
         this.rows('leads').push(lead)
         this.rows('solicitudes_programacion').push({
           lead_id: lead.id, trainer_id: e.trainer_id, client_id: null, clave_envio: args.p_clave, consentimiento_salud: salud, consentimiento_asistente: asistente,
-          consentimiento_version: args.p_version, consentimiento_en: new Date().toISOString(), respuestas: resp, parq, parq_alarma: alarma,
+          consentimiento_version: args.p_version, consentimiento_en: new Date().toISOString(), respuestas: resp, parq, parq_alarma: alarma, seguimiento_autorizado: false,
           preparar_borrador: asistente && !alarma, borrador_estado: 'sin_generar', propuesta: null, razones: null, criterios_version: null, created_at: new Date().toISOString(),
         })
         Object.assign(e, { usos: e.usos + 1, ultimo_uso_en: new Date().toISOString() })
         return json(route, 200, alarma ? 'revisar' : 'ok')
+      }
+      case 'autorizar_seguimiento_solicitud': {
+        const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')
+        if (!lead) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        Object.assign(this.rows('solicitudes_programacion').find(s => s.lead_id === lead.id) ?? {}, { seguimiento_autorizado: !!args.p_autorizado })
+        return empty(route)
       }
       case 'vincular_solicitud_cliente': {
         const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')

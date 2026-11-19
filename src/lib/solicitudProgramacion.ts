@@ -63,10 +63,15 @@ export function filasParq(parq: (boolean | null)[] | null | undefined): { pregun
 }
 
 // ── Textos públicos (no hablan de IA, de automatismos ni de plazos) ──
-export const CONSENT_PROGRAMACION_VERSION = 'prog-2026-11'
+// Subir la versión con cualquier cambio de fondo en los textos de consentimiento (2026-11-2: se añade el plazo de 60 días)
+export const CONSENT_PROGRAMACION_VERSION = 'prog-2026-11-2'
+/** Cuánto se conserva una solicitud que no llega a cliente (la tarea semanal de la base de datos la borra; el entrenador puede autorizar seguimiento). */
+export const DIAS_RETENCION_SOLICITUD = 60
+export const POLITICA_RETENCION = `Las solicitudes que no llegan a convertirse en cliente se eliminan a los ${DIAS_RETENCION_SOLICITUD} días.`
 export const CONSENT_SALUD_PROGRAMACION =
   'Consiento que mi entrenador trate los datos de salud que le doy aquí (cuestionario de salud, molestias, peso, estatura, edad, sueño y estrés) ' +
-  'para preparar mi programa. Solo los ve él, no se ceden a terceros salvo a los proveedores técnicos que alojan la aplicación, y si no llego a ser su cliente se borran. ' +
+  'para preparar mi programa. Solo los ve él, no se ceden a terceros salvo a los proveedores técnicos que alojan la aplicación, y si no llego a ser su cliente se eliminan a los ' +
+  `${DIAS_RETENCION_SOLICITUD} días. ` +
   'Sin este consentimiento no guardo esas respuestas y mi solicitud llega solo con lo demás.'
 export const CONSENT_ASISTENTE_PROGRAMACION =
   'Consiento que mi entrenador use una herramienta de apoyo para preparar la propuesta con mis respuestas. Él la revisa y decide: nada se me da sin su revisión.'
@@ -113,6 +118,8 @@ export const ETIQUETA_BORRADOR: Record<EstadoBorrador, string> = {
 }
 export interface SolicitudProgramacion {
   lead_id: string; client_id: string | null
+  /** El entrenador la conserva más allá de los 60 días a propósito (si no, la purga semanal la borra). */
+  seguimiento_autorizado: boolean
   consentimiento_salud: boolean; consentimiento_asistente: boolean; consentimiento_version: string; consentimiento_en: string
   respuestas: Record<string, unknown>; parq: (boolean | null)[] | null; parq_alarma: boolean; preparar_borrador: boolean
   borrador_estado: EstadoBorrador; propuesta: { weeks?: unknown[] } | null; razones: { decision: string; porque: string }[] | null; criterios_version: string | null

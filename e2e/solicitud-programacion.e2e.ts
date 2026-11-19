@@ -77,6 +77,7 @@ test('recorrido completo: crear enlace → rellenar sin cuenta → lead en Conta
   await expect(v.page.getByText('Alex Trainer')).toBeVisible()
   await expect(v.page.getByText('Unos 5 minutos.')).toBeVisible()
   await expect(v.page.getByText(/no es consejo médico/)).toBeVisible()
+  await expect(v.page.getByText('Las solicitudes que no llegan a convertirse en cliente se eliminan a los 60 días.')).toBeVisible() // la política, a la vista
   await expect(v.page.getByLabel(/contraseña/i)).toHaveCount(0) // no se pide contraseña
 
   await contacto(v.page, 'Paula Navarro', 'paula@example.com')
@@ -259,4 +260,24 @@ test('un menor de 18 no puede enviar la solicitud y no se guarda nada', async ({
   expect(fake.rows('leads')).toHaveLength(0)
   expect(fake.rows('solicitudes_programacion')).toHaveLength(0)
   await v.cerrar()
+})
+
+test('una solicitud «a revisar» se borra sola a los 60 días salvo que el entrenador autorice el seguimiento, y se ve en el detalle', async ({ page, fake }) => {
+  sembrar(fake)
+  fake.seed('leads', { id: 'l-rev', trainer_id: ids.trainer, name: 'Marta Díaz', email: 'marta@example.com', phone: null, message: 'Solicitud de programación inicial: necesita revisión personal antes de programar', status: 'revisar', created_at: Date.now() - 3600_000, referred_by_client_id: null, origen: 'programacion', enlace_id: 'enl-1' })
+  fake.seed('solicitudes_programacion', { lead_id: 'l-rev', trainer_id: ids.trainer, client_id: null, clave_envio: 'k2', consentimiento_salud: true, consentimiento_asistente: true, consentimiento_version: 'prog-2026-11-2', consentimiento_en: new Date().toISOString(), respuestas: { objetivo: 'Ganar fuerza' }, parq: [false, true, false, false, false, false, false], parq_alarma: true, seguimiento_autorizado: false, preparar_borrador: false, borrador_estado: 'sin_generar', propuesta: null, razones: null, criterios_version: null, created_at: new Date().toISOString() })
+  await entrarComoEntrenador(page)
+  await page.keyboard.press('Control+K')
+  await page.getByRole('combobox', { name: 'Buscar' }).fill('ir a contactos')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('region', { name: 'Enlaces de programación inicial' }).getByText(/se eliminan a los 60 días/)).toBeVisible()
+  await page.getByRole('button', { name: 'Ver solicitud' }).click()
+  const detalle = page.getByRole('region', { name: 'Detalle de la solicitud' })
+  await expect(detalle.getByText(/Las solicitudes que no llegan a convertirse en cliente se eliminan a los 60 días/)).toBeVisible()
+  const casilla = detalle.getByRole('checkbox', { name: /Seguimiento autorizado/ })
+  await expect(casilla).not.toBeChecked()
+  await casilla.check()
+  await expect.poll(() => fake.rows('solicitudes_programacion').find(s => s.lead_id === 'l-rev')!.seguimiento_autorizado).toBe(true)
+  await casilla.uncheck()
+  await expect.poll(() => fake.rows('solicitudes_programacion').find(s => s.lead_id === 'l-rev')!.seguimiento_autorizado).toBe(false)
 })
