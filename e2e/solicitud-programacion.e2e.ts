@@ -39,7 +39,7 @@ async function contacto(page: Page, nombre: string, email: string) {
 }
 
 /** Las preguntas obligatorias del modelo (las de salud, solo si hay consentimiento). */
-async function preguntas(page: Page, conSalud: boolean) {
+async function preguntas(page: Page, conSalud: boolean, edad = '30') {
   await page.getByRole('radio', { name: 'Ganar músculo', exact: true }).click()
   await page.getByRole('radio', { name: 'De 6 meses a 2 años' }).click()
   await page.getByRole('radiogroup', { name: /cuántos días/i }).getByRole('radio', { name: '3', exact: true }).click()
@@ -49,6 +49,8 @@ async function preguntas(page: Page, conSalud: boolean) {
     await page.getByLabel(/si has contestado que sí/i).fill('Hombro derecho desde hace dos meses')
   }
   await page.getByRole('button', { name: 'Continuar' }).click()
+  // Segunda parte: la edad se pide SIEMPRE (V1: solo mayores de 18), también sin consentimiento de salud
+  await page.getByLabel(/^Edad/).fill(edad)
 }
 
 test('recorrido completo: crear enlace → rellenar sin cuenta → lead en Contactos → convertir en cliente', async ({ page, browser, fake }) => {
@@ -244,6 +246,20 @@ test('los criterios para programación inicial se guardan solo en el perfil del 
   const c = fake.rows('entrenadores').find(e => e.uid === ids.trainer)!.profile.criteriosProgramacion
   expect(c).toMatchObject({ maxDias: '4', version: 1 })
   expect(c.limitesClinicos).toContain('parar y pedir revisión')
+})
+
+// V1: solo mayores de 18. La edad se pide siempre y un menor no puede enviar la solicitud.
+test('un menor de 18 no puede enviar la solicitud y no se guarda nada', async ({ browser, fake }) => {
+  sembrar(fake)
+  const v = await visitante(browser, fake)
+  await contacto(v.page, 'Nico Pérez', 'nico@example.com')
+  await v.page.getByRole('button', { name: 'Continuar' }).click() // sin consentimiento de salud
+  await preguntas(v.page, false, '17')
+  await v.page.getByRole('button', { name: 'Enviar solicitud' }).click()
+  await expect(v.page.getByText('Esta solicitud es solo para mayores de 18 años').first()).toBeVisible()
+  expect(fake.rows('leads')).toHaveLength(0)
+  expect(fake.rows('solicitudes_programacion')).toHaveLength(0)
+  await v.cerrar()
 })
 
 test('una solicitud «a revisar» se borra sola a los 60 días salvo que el entrenador autorice el seguimiento, y se ve en el detalle', async ({ page, fake }) => {
