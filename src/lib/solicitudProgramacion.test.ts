@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   estadoEnlace, textoUsos, textoCaducidad, hayAlarmaParq, filasParq, slugDeRuta, urlProgramacion, respuestasParaEnvio, filasRespuestas,
-  planBorradorDe, notasDeSolicitud, MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_SALUD_PROGRAMACION, AVISO_NO_MEDICO,
+  planBorradorDe, notasDeSolicitud, MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_SALUD_PROGRAMACION, AVISO_NO_MEDICO, POLITICA_RETENCION,
   PREGUNTAS_PROGRAMACION, IDS_SALUD, type EnlaceProgramacion,
 } from './solicitudProgramacion'
 import { esNuevo, ordenarLeads, type Lead } from './leads'
@@ -63,9 +63,13 @@ describe('PAR-Q', () => {
 
 describe('textos públicos', () => {
   it('no prometen IA, automatismos ni plazos', () => {
-    for (const t of [MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_SALUD_PROGRAMACION, AVISO_NO_MEDICO]) {
+    for (const t of [MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, AVISO_NO_MEDICO]) {
       expect(t).not.toMatch(/\bIA\b|inteligencia|autom[aá]tic|horas|d[ií]as/i)
     }
+    // El consentimiento sí habla de un plazo: el de conservación de lo que no llega a cliente (no el de preparar la propuesta)
+    expect(CONSENT_SALUD_PROGRAMACION).not.toMatch(/\bIA\b|inteligencia|autom[aá]tic/i)
+    expect(CONSENT_SALUD_PROGRAMACION).toContain('60 días')
+    expect(POLITICA_RETENCION).toBe('Las solicitudes que no llegan a convertirse en cliente se eliminan a los 60 días.')
     expect(MENSAJE_RECIBIDA).toBe('Tu entrenador revisará tu solicitud y preparará una propuesta personalizada.')
     expect(MENSAJE_REVISAR).toBe('Tu solicitud necesita revisión personal del entrenador antes de programar.')
   })

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { toast } from '../shared/Toast'
 import { AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import {
-  ETIQUETA_BORRADOR, filasParq, filasRespuestas, type SolicitudProgramacion,
+  ETIQUETA_BORRADOR, POLITICA_RETENCION, filasParq, filasRespuestas, type SolicitudProgramacion,
 } from '../../lib/solicitudProgramacion'
 
 // Detalle de una solicitud de programación inicial, solo para el entrenador: respuestas estructuradas, PAR-Q, consentimientos y el
@@ -16,6 +17,14 @@ export function SolicitudDetalle({ leadId }: { leadId: string }) {
     supabase.from('solicitudes_programacion').select('*').eq('lead_id', leadId).maybeSingle().then(({ data }) => { if (vivo) setS((data as SolicitudProgramacion | null) ?? null) })
     return () => { vivo = false }
   }, [leadId])
+
+  // Conservar una solicitud no convertida más allá de la purga es una decisión explícita del entrenador (y se puede quitar)
+  const autorizar = async (valor: boolean) => {
+    if (!s) return
+    setS({ ...s, seguimiento_autorizado: valor })
+    const { error } = await supabase.rpc('autorizar_seguimiento_solicitud', { p_lead_id: leadId, p_autorizado: valor })
+    if (error) { setS(s); toast('No se pudo cambiar el seguimiento', 'warn') }
+  }
 
   if (s === undefined) return <p className="text-xs text-muted">Cargando solicitud…</p>
   if (s === null) return <p className="text-xs text-muted">No se encontró la solicitud.</p>
@@ -73,7 +82,11 @@ export function SolicitudDetalle({ leadId }: { leadId: string }) {
         )}
         {s.propuesta && <p className="text-xs text-muted mt-1">{Array.isArray(s.propuesta.weeks) ? `${s.propuesta.weeks.length} semana(s) en la propuesta.` : 'Propuesta guardada.'}</p>}
       </div>
-      <p className="text-[11px] text-muted">Al convertir en cliente solo pasan su nombre y su contacto. Estas respuestas y el PAR-Q se quedan aquí, solo para ti. Si no llega a ser cliente, se borran a los 60 días, o antes con «Eliminar solicitud».</p>
+      <label className="flex items-start gap-2 text-xs">
+        <input type="checkbox" checked={s.seguimiento_autorizado} disabled={!!s.client_id} onChange={e => void autorizar(e.target.checked)} className="mt-0.5" />
+        <span><strong>Seguimiento autorizado</strong>: conservarla más de 60 días aunque no llegue a ser cliente (también si está a revisar). Sin marcar, se elimina sola.</span>
+      </label>
+      <p className="text-[11px] text-muted">Al convertir en cliente solo pasan su nombre y su contacto. Estas respuestas y el PAR-Q se quedan aquí, solo para ti. {POLITICA_RETENCION} Puedes eliminarla antes con «Eliminar solicitud».</p>
     </div>
   )
 }

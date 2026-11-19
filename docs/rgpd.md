@@ -55,7 +55,7 @@ Decisiones que conviene revisar:
 - **Señal de alarma del PAR-Q** (problema cardiaco, dolor torácico al hacer ejercicio o en reposo, mareo con pérdida de conocimiento): el contacto queda «a revisar», no se prepara borrador (lo impide la propia tabla) y a la persona solo se le dice que necesita revisión personal. No se diagnostica.
 - **Antispam sin perfilar:** de la IP solo se guarda un hash que cambia cada hora (para el tope de solicitudes por hora) y se borra al convertir; no se guarda la IP ni se puede seguir a nadie entre horas.
 - **Al convertir en cliente NO se copian** las respuestas de salud ni el PAR-Q a su ficha: pasan nombre y contacto. La solicitud se enlaza con el cliente y desde entonces entra en la exportación y el borrado completo (`client_data_tables`, cascada).
-- **Conservación:** un contacto que no llega a cliente se borra a mano (botón «Eliminar solicitud», con su aviso) o automáticamente a los **60 días** (tarea semanal `purgar-solicitudes-programacion`). Pendiente de revisión legal, como el resto de textos.
+- **Conservación:** un contacto que no llega a cliente se borra a mano (botón «Eliminar solicitud», con su aviso) o automáticamente a los **60 días** (tarea semanal `purgar-solicitudes-programacion`), **también las «a revisar»**: una alarma del PAR-Q no se retiene por inercia. Solo se conserva una solicitud no convertida si el entrenador marca **Seguimiento autorizado** a propósito (y puede quitarlo). El plazo se enseña a la persona en la propia página y en el consentimiento (`prog-2026-11-2`). Los avisos (campanita y push) nunca llevan datos de salud: solo el nombre y el tipo. Pendiente de revisión legal, como el resto de textos.
 
 ## Conservación (propuesta, sin automatizar)
 
