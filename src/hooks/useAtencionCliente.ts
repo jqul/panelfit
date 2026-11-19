@@ -6,14 +6,15 @@ import { DEMO_READINESS_MAP } from '../lib/demo-data'
 import { construirAtencion, diasDesde, type AtencionItem, type EntradaAtencion } from '../lib/atencionCliente'
 import { listarDecisiones } from '../lib/decisionesEntrenador'
 import { estaPorRevisar } from '../lib/diarioDecisiones'
-import type { TrainingLogs } from '../types'
+import { estadoCalibracion, revisionCalibracion } from '../lib/calibracion'
+import type { TrainingLogs, TrainingPlan } from '../types'
 
 // Lo accionable de un cliente, para la tarjeta «Atención hoy» de su ficha (lib/atencionCliente). Solo lee lo de ESE cliente:
 // molestias de los últimos 14 días, su último check-in de la semana y los vídeos sin comentar. Lo demás (sesiones y
 // recordatorios) ya lo tiene la ficha cargado.
 type Fila = { date: string; sleep: number | null; soreness: number | null; motivation: number | null }
 
-export function useAtencionCliente(clientId: string, logs: TrainingLogs, tienePlan: boolean, recordatorios: { done: boolean; date: string }[]): AtencionItem[] {
+export function useAtencionCliente(clientId: string, logs: TrainingLogs, tienePlan: boolean, recordatorios: { done: boolean; date: string }[], plan?: TrainingPlan | null): AtencionItem[] {
   const [dolor, setDolor] = useState<EntradaAtencion['dolor']>([])
   const [checkin, setCheckin] = useState<EntradaAtencion['checkin']>(null)
   const [videos, setVideos] = useState(0)
@@ -45,8 +46,10 @@ export function useAtencionCliente(clientId: string, logs: TrainingLogs, tienePl
     const pendientes = recordatorios.filter(a => !a.done)
     return construirAtencion({
       dolor, checkin, videosPendientes: videos, decisionesPorRevisar: decisiones,
+      // Primera semana: con entrenos hechos y sin confirmar, cuántos ejercicios hay que mirar
+      calibracionPorRevisar: (() => { const c = estadoCalibracion(logs, plan, hoy); return c.activa && c.sesionesHechas > 0 ? revisionCalibracion(logs, plan).length : 0 })(),
       diasSinEntrenar: tienePlan ? diasDesde(ultima, hoy) : null,
       recordatorios: { pendientes: pendientes.length, vencidos: pendientes.filter(a => a.date && a.date < hoy).length },
     })
-  }, [dolor, checkin, videos, decisiones, logs, tienePlan, recordatorios])
+  }, [dolor, checkin, videos, decisiones, logs, tienePlan, recordatorios, plan])
 }

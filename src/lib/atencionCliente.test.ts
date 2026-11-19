@@ -61,3 +61,12 @@ describe('decisiones por revisar', () => {
     expect(construirAtencion({ ...nada, decisionesPorRevisar: 3 })[0].texto).toBe('3 decisiones tocan revisarse')
   })
 })
+
+describe('primera semana (calibración)', () => {
+  it('avisa de revisar las cargas cuando hay ejercicios hechos sin confirmar, con atajo a la tarjeta; sin ellos, no sale', () => {
+    expect(construirAtencion({ ...nada, calibracionPorRevisar: 0 })).toEqual([])
+    const r = construirAtencion({ ...nada, calibracionPorRevisar: 3 })
+    expect(r[0]).toMatchObject({ kind: 'calibracion', texto: 'Primera semana: revisa las cargas de 3 ejercicios', destino: { tab: 'perfil', seccion: 'calibracion' }, accion: 'Revisar cargas', urgente: false })
+    expect(construirAtencion({ ...nada, calibracionPorRevisar: 1 })[0].texto).toBe('Primera semana: revisa las cargas de 1 ejercicio')
+  })
+})

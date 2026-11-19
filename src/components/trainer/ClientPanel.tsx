@@ -144,7 +144,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPa
   const [mobileShowSidebar, setMobileShowSidebar] = useState(false)
   const [alerts, setAlerts] = useState<ClientAlert[]>([])
   // «Atención hoy»: lo accionable de este cliente, y a dónde lleva cada aviso (pestaña + sección de Progreso o ancla del Resumen)
-  const atencion = useAtencionCliente(client.id, logs, !!plan, alerts)
+  const atencion = useAtencionCliente(client.id, logs, !!plan, alerts, plan)
   const [seccionProgreso, setSeccionProgreso] = useState<string | undefined>(undefined)
   // Plegable que se despliega al llegar (valoración del Resumen, ajustes del plan): la orden lleva un contador para poder repetirse
   const [abrir, setAbrir] = useState<AbrirPlegable | null>(null)

@@ -33,6 +33,7 @@ import { ExerciseSubstitution } from './active-workout/ExerciseSubstitution'
 import { useTestCatalog, useTestResultados } from '../../lib/testCatalog'
 import { useClientPain } from '../../lib/clientPain'
 import { localDateKey } from '../../lib/dates'
+import { estadoCalibracion, type Sensacion } from '../../lib/calibracion'
 import { DEMO_REACTIONS_MAP, isDemoClientId } from '../../lib/demo-data-extra'
 import { useTrainerExerciseNames } from '../../lib/clientExerciseLibrary'
 import { useTrainerMetricSettings } from '../../lib/progresoSections'
@@ -298,6 +299,14 @@ export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, 
         sets: { ...(currentLogs[key]?.sets || {}), [si]: { ...existingSet, rir } },
       }
     })
+  }, [dayKey, onLogsChange])
+
+  // Primera semana guiada (lib/calibracion): mientras calibra se explica el RIR y, al acabar cada ejercicio, se pregunta cómo le resultó
+  const calibrando = useMemo(() => estadoCalibracion(logs, plan, localDateKey()).activa, [logs, plan])
+  const setSensacion = useCallback((ri: number, sensacion: Sensacion) => {
+    const key = `ex_${dayKey}_r${ri}`
+    const currentLogs = logsRef.current
+    onLogsChange({ ...currentLogs, [key]: { ...currentLogs[key], sets: currentLogs[key]?.sets || {}, done: currentLogs[key]?.done || false, dateDone: currentLogs[key]?.dateDone || localDateKey(), sensacion } })
   }, [dayKey, onLogsChange])
 
   // Tipo de la serie (calentamiento, dropset, al fallo): se guarda al momento, como el RIR
@@ -882,6 +891,7 @@ export function ActiveWorkout({ day: dayPlan, dayKey, plan, logs, onLogsChange, 
           renderMore={renderMore} renderRun={renderRun} topExtras={topExtras} onOpenFicha={setFichaRi}
           cooldown={(day.cooldownExercises?.length || 0) > 0 ? <VueltaCalma ejercicios={day.cooldownExercises} /> : undefined}
           oscuro={focoOscuro} onToggleOscuro={cambiarFocoOscuro}
+          calibrando={calibrando} sensacionDe={(ri) => logs[`ex_${dayKey}_r${ri}`]?.sensacion} onSensacion={setSensacion}
         />
       ) : (
       // La lista lleva el mismo fondo (oscuro o claro) que la vista de foco

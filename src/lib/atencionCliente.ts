@@ -4,7 +4,7 @@
 
 import { algunaBaja } from './checkinConfig'
 
-export type AtencionKind = 'dolor' | 'checkin' | 'video' | 'sesion' | 'decision' | 'recordatorio'
+export type AtencionKind = 'dolor' | 'checkin' | 'video' | 'sesion' | 'decision' | 'calibracion' | 'recordatorio'
 export type TabFicha = 'perfil' | 'plan' | 'entrenos' | 'progreso'
 
 export interface Destino {
@@ -32,6 +32,8 @@ export interface EntradaAtencion {
   recordatorios: { pendientes: number; vencidos: number }
   /** Decisiones del diario (Progreso → Estancamiento) cuyo plazo de revisión ya llegó. */
   decisionesPorRevisar?: number
+  /** Ejercicios de la primera semana (calibración) cuyas cargas el entrenador aún no ha confirmado; 0 o sin él = no aplica. */
+  calibracionPorRevisar?: number
 }
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
@@ -58,6 +60,11 @@ export function construirAtencion(e: EntradaAtencion): AtencionItem[] {
 
   if (e.diasSinEntrenar !== null && e.diasSinEntrenar >= DIAS_SIN_ENTRENAR) {
     out.push({ kind: 'sesion', texto: `Lleva ${e.diasSinEntrenar} días sin entrenar`, destino: { tab: 'entrenos' }, urgente: false, accion: 'Ver entrenos' })
+  }
+
+  const nc = e.calibracionPorRevisar ?? 0
+  if (nc > 0) {
+    out.push({ kind: 'calibracion', texto: `Primera semana: revisa las cargas de ${nc} ${plural(nc, 'ejercicio', 'ejercicios')}`, destino: { tab: 'perfil', seccion: 'calibracion' }, urgente: false, accion: 'Revisar cargas' })
   }
 
   const nd = e.decisionesPorRevisar ?? 0

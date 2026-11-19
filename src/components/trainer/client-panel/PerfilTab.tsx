@@ -22,6 +22,7 @@ import { localDateKey } from '../../../lib/dates'
 import { useProfesionalesEquipo } from '../../../hooks/useProfesionalesEquipo'
 import type { AbrirPlegable } from '../../../lib/anadirFicha'
 import { AtencionHoy } from './AtencionHoy'
+import { CalibracionCard } from './CalibracionCard'
 import type { AtencionItem, Destino } from '../../../lib/atencionCliente'
 
 export interface ClientAlert {
@@ -129,6 +130,9 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
       {/* Lo urgente, lo primero: molestia, check-in bajo, vídeos, sesiones sin hacer y recordatorios, cada uno con su atajo */}
       <AtencionHoy items={atencion} onIr={d => onIr?.(d)} />
+
+      {/* Primera semana de un cliente nuevo: sus cargas de partida, para revisarlas y confirmarlas */}
+      <CalibracionCard plan={plan} logs={logs} nombre={client.name} onPlanChange={onPlanChange} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
