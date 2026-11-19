@@ -2,6 +2,7 @@ import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag, Printer, UserPlus } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
+import { MODELOS_ENCUESTA, type ModeloEncuesta } from '../../lib/modelosEncuesta'
 import { summarizeSurvey, describeSchedule, groupSchedules } from '../../lib/surveyResults'
 import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, hojaImprimible, imprimir, type Pregunta } from '../../lib/cuestionarios'
 import { supabase } from '../../lib/supabase'
@@ -61,12 +62,14 @@ const DEFAULT_QUESTIONS: Question[] = [
 ]
 
 // ── Template editor (sin cambios) ────────────────────────
-function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
+function TemplateEditor({ initial, modelo, trainerId, onSave, onCancel }: {
   initial?: SurveyTemplate; trainerId: string
+  /** Modelo prediseñado con el que se abre el editor ya relleno (solo al crear). */
+  modelo?: ModeloEncuesta
   onSave: (t: SurveyTemplate) => void; onCancel: () => void
 }) {
-  const [name, setName] = useState(initial?.name || 'Encuesta semanal')
-  const [questions, setQuestions] = useState<Question[]>(initial?.questions || DEFAULT_QUESTIONS)
+  const [name, setName] = useState(initial?.name || modelo?.name || 'Encuesta semanal')
+  const [questions, setQuestions] = useState<Question[]>(initial?.questions || modelo?.questions || DEFAULT_QUESTIONS)
   const [saving, setSaving] = useState(false)
   const [autoNuevos, setAutoNuevos] = useState(!!initial?.auto_nuevos_desde)
 
@@ -102,8 +105,8 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
       </div>
       <div className="p-5 space-y-4">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-muted mb-1.5">Nombre</label>
-          <input value={name} onChange={e => setName(e.target.value)} autoFocus
+          <label htmlFor="encuesta-nombre" className="block text-xs font-bold uppercase tracking-wider text-muted mb-1.5">Nombre</label>
+          <input id="encuesta-nombre" value={name} onChange={e => setName(e.target.value)} autoFocus
             className="w-full px-4 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
         </div>
         <div className="space-y-2">
@@ -112,7 +115,7 @@ function TemplateEditor({ initial, trainerId, onSave, onCancel }: {
             <div key={q.id} className="bg-bg border border-border rounded-xl p-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm flex-shrink-0">{TIPO[q.type]?.icono}</span>
-                <input value={q.label} onChange={e => updateQ(q.id, { label: e.target.value })}
+                <input value={q.label} onChange={e => updateQ(q.id, { label: e.target.value })} aria-label={`Pregunta ${i + 1}`}
                   className="flex-1 text-sm bg-transparent outline-none font-medium" />
                 <div className="flex gap-1 flex-shrink-0">
                   <button onClick={() => moveQ(q.id, -1)} disabled={i === 0} className="p-1 text-muted disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
@@ -311,6 +314,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels, enviarA }: Pr
   const [section, setSection]       = useState<'plantillas' | 'programacion' | 'respuestas'>('plantillas')
   const [showTemplateEditor, setShowTemplateEditor] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<SurveyTemplate | undefined>()
+  const [modelo, setModelo] = useState<ModeloEncuesta | undefined>()
   const [showScheduleEditor, setShowScheduleEditor] = useState(false)
   const [scheduleTemplateId, setScheduleTemplateId] = useState<string | undefined>()
   const [resultsTemplateId, setResultsTemplateId] = useState<string | null>(null)
@@ -431,10 +435,22 @@ export function EncuestasTab({ trainerId, clients, onManageLabels, enviarA }: Pr
       {section === 'plantillas' && (
         <div className="space-y-3">
           {showTemplateEditor && (
-            <TemplateEditor initial={editingTemplate} trainerId={trainerId}
-              onSave={t => { setTemplates(ts => editingTemplate ? ts.map(x => x.id === t.id ? t : x) : [t, ...ts]); setShowTemplateEditor(false); setEditingTemplate(undefined); toast('Guardada ✓', 'ok') }}
-              onCancel={() => { setShowTemplateEditor(false); setEditingTemplate(undefined) }} />
+            <TemplateEditor initial={editingTemplate} modelo={modelo} trainerId={trainerId}
+              onSave={t => { setTemplates(ts => editingTemplate ? ts.map(x => x.id === t.id ? t : x) : [t, ...ts]); setShowTemplateEditor(false); setEditingTemplate(undefined); setModelo(undefined); toast('Guardada ✓', 'ok') }}
+              onCancel={() => { setShowTemplateEditor(false); setEditingTemplate(undefined); setModelo(undefined) }} />
           )}
+          {/* Modelos listos para usar: se abren en el editor ya rellenos, para ajustarlos y guardarlos como tuyos */}
+          {!showTemplateEditor && MODELOS_ENCUESTA.filter(m => !templates.some(t => t.name === m.name)).map(m => (
+            <div key={m.id} className="flex items-center gap-3 border border-dashed border-accent/40 bg-accent/5 rounded-2xl px-4 py-3">
+              <ClipboardList className="w-5 h-5 text-accent flex-shrink-0" aria-hidden />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Modelo: {m.name}</p>
+                <p className="text-xs text-muted">{m.descripcion}</p>
+              </div>
+              <button type="button" onClick={() => { setModelo(m); setEditingTemplate(undefined); setShowTemplateEditor(true) }} aria-label={`Usar el modelo ${m.name}`}
+                className="flex-shrink-0 px-3 py-1.5 bg-ink text-white rounded-xl text-xs font-semibold">Usar modelo</button>
+            </div>
+          ))}
           {templates.length === 0 && !showTemplateEditor && (
             <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl text-muted">
               <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
