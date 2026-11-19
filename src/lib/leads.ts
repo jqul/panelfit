@@ -25,6 +25,29 @@ export interface Lead {
   /** 'programacion' si entró por un enlace de solicitud de programación inicial; si no, la página pública. */
   origen?: string
   enlace_id?: string | null
+  /** Resultado técnico del aviso push al entrenador (lo anota la función de borde). Nunca lleva datos de salud. */
+  aviso_push?: EstadoAvisoPush | null
+}
+
+/** sin_suscripcion: no tiene push activado en ningún dispositivo · enviado_al_proveedor: el servicio push aceptó el envío (no demuestra que llegara
+ *  al móvil) · fallido: error o todas las suscripciones fallaron · parcial: solo algunos dispositivos aceptaron el envío. */
+export type EstadoAvisoPush = 'sin_suscripcion' | 'enviado_al_proveedor' | 'fallido' | 'parcial'
+
+/** ¿Etiquetar «Aviso push pendiente»? Solo un contacto o solicitud nuevo o «a revisar» cuyo push no salió (sin móvil activado o fallido):
+ *  el contacto sigue en Contactos, pero el entrenador no debe depender de un push que quizá no sonó. */
+export function avisoPushPendiente(l: Pick<Lead, 'status' | 'aviso_push'>): boolean {
+  return (l.status === 'nuevo' || l.status === 'revisar') && (l.aviso_push === 'sin_suscripcion' || l.aviso_push === 'fallido')
+}
+
+/** Qué decir del push, sin afirmar que llegó al móvil (no se puede demostrar). null si no consta. */
+export function textoAvisoPush(estado: EstadoAvisoPush | null | undefined): string | null {
+  switch (estado) {
+    case 'sin_suscripcion': return 'Push no configurado: no tienes avisos activados en ningún dispositivo.'
+    case 'fallido': return 'No se pudo enviar el aviso push.'
+    case 'parcial': return 'Enviado al servicio de notificaciones solo en algunos dispositivos.'
+    case 'enviado_al_proveedor': return 'Enviado al servicio de notificaciones.'
+    default: return null
+  }
 }
 
 /** Enlace de WhatsApp para un teléfono escrito a mano. Sin prefijo de país, un móvil de 9 cifras se toma como español (+34). */
