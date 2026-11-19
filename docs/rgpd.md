@@ -48,6 +48,15 @@ Decisiones que conviene revisar:
 - El borrado es total y no se puede deshacer. Queda una constancia sin datos personales en `registro_borrados` (id del cliente, entrenador, fecha y número de filas por tabla).
 - La cuenta de acceso del cliente se borra solo si no es también la cuenta de un entrenador real ni de otro cliente.
 
+## Solicitud de programación inicial (personas que aún no son clientes)
+
+- **Quién:** alguien que abre un enlace revocable del entrenador y rellena una solicitud sin cuenta. Es un contacto (`leads`), no un cliente. Sus datos de salud viven en `solicitudes_programacion` (1:1 con el contacto, en cascada), solo legibles por el entrenador dueño.
+- **Consentimiento antes de guardar:** casillas sin marcar y texto versionado (`CONSENT_PROGRAMACION_VERSION`, en `src/lib/solicitudProgramacion.ts`; la versión aceptada se guarda en la solicitud). Dos casillas: tratar sus datos de salud (art. 9.2.a) y que el entrenador use una herramienta de apoyo para preparar la propuesta que él revisa. **Sin la de salud no se piden ni se guardan las respuestas de salud ni el PAR-Q** (el servidor las descarta aunque el navegador las enviara); la solicitud llega solo con contacto y respuestas no sensibles. Sin consentimiento de salud no hay consentimiento del apoyo.
+- **Señal de alarma del PAR-Q** (problema cardiaco, dolor torácico al hacer ejercicio o en reposo, mareo con pérdida de conocimiento): el contacto queda «a revisar», no se prepara borrador (lo impide la propia tabla) y a la persona solo se le dice que necesita revisión personal. No se diagnostica.
+- **Antispam sin perfilar:** de la IP solo se guarda un hash que cambia cada hora (para el tope de solicitudes por hora) y se borra al convertir; no se guarda la IP ni se puede seguir a nadie entre horas.
+- **Al convertir en cliente NO se copian** las respuestas de salud ni el PAR-Q a su ficha: pasan nombre y contacto. La solicitud se enlaza con el cliente y desde entonces entra en la exportación y el borrado completo (`client_data_tables`, cascada).
+- **Conservación:** un contacto que no llega a cliente se borra a mano (botón «Eliminar solicitud», con su aviso) o automáticamente a los **60 días** (tarea semanal `purgar-solicitudes-programacion`). Pendiente de revisión legal, como el resto de textos.
+
 ## Conservación (propuesta, sin automatizar)
 
 | Dato | Plazo propuesto |
