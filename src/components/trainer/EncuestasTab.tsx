@@ -46,6 +46,8 @@ interface Props {
   trainerId: string
   clients: ClientData[]
   onManageLabels: () => void
+  /** Cliente al que enviar una encuesta nada más entrar (desde «Añadir → Encuesta» en su ficha). */
+  enviarA?: string
 }
 
 const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual', once: 'Una vez' }
@@ -172,13 +174,14 @@ function TemplateEditor({ initial, modelo, trainerId, onSave, onCancel }: {
 }
 
 // ── Schedule editor ───────────────────────────────────────
-function ScheduleEditor({ trainerId, templates, clients, initial, presetTemplateId, onSave, onCancel }: {
+function ScheduleEditor({ trainerId, templates, clients, initial, presetTemplateId, presetClientId, onSave, onCancel }: {
   trainerId: string; templates: SurveyTemplate[]; clients: ClientData[]
-  initial?: SurveySchedule; presetTemplateId?: string; onSave: (s: SurveySchedule) => void; onCancel: () => void
+  initial?: SurveySchedule; presetTemplateId?: string; presetClientId?: string; onSave: (s: SurveySchedule) => void; onCancel: () => void
 }) {
   const [templateId, setTemplateId] = useState(initial?.template_id || presetTemplateId || templates[0]?.id || '')
-  const [clientId, setClientId] = useState<string | null>(initial?.client_id || null)
-  const [frequency, setFrequency] = useState<SurveySchedule['frequency']>(initial?.frequency || 'weekly')
+  const [clientId, setClientId] = useState<string | null>(initial?.client_id || presetClientId || null)
+  // Para un cliente concreto que llega desde su ficha, lo normal es un envío único
+  const [frequency, setFrequency] = useState<SurveySchedule['frequency']>(initial?.frequency || (presetClientId ? 'once' : 'weekly'))
   const [dayOfWeek, setDayOfWeek] = useState(initial?.day_of_week || 5)
   const [saving, setSaving] = useState(false)
 
@@ -302,7 +305,7 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
 }
 
 // ── Main ──────────────────────────────────────────────────
-export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
+export function EncuestasTab({ trainerId, clients, onManageLabels, enviarA }: Props) {
   const [templates, setTemplates]   = useState<SurveyTemplate[]>([])
   const [schedules, setSchedules]   = useState<SurveySchedule[]>([])
   const [responses, setResponses]   = useState<SurveyResponse[]>([])
@@ -317,6 +320,13 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
   const [resultsTemplateId, setResultsTemplateId] = useState<string | null>(null)
 
   useEffect(() => { loadAll() }, [trainerId])
+  // Desde la ficha de un cliente: con las encuestas ya cargadas, se abre «Programar envío» con ese cliente (envío único)
+  const [clientePreelegido, setClientePreelegido] = useState<string | undefined>(enviarA)
+  useEffect(() => {
+    if (!enviarA || loading) return
+    if (templates.length) { setSection('programacion'); setScheduleTemplateId(undefined); setShowScheduleEditor(true) }
+    else toast('Aún no tienes encuestas: crea una primero', 'info')
+  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadAll = async () => {
     setLoading(true)
@@ -521,9 +531,9 @@ export function EncuestasTab({ trainerId, clients, onManageLabels }: Props) {
             </div>
           )}
           {showScheduleEditor && (
-            <ScheduleEditor trainerId={trainerId} templates={templates} clients={clients} presetTemplateId={scheduleTemplateId}
-              onSave={sc => { setSchedules(ss => [sc, ...ss]); setShowScheduleEditor(false); setScheduleTemplateId(undefined); toast('Programado ✓', 'ok') }}
-              onCancel={() => { setShowScheduleEditor(false); setScheduleTemplateId(undefined) }} />
+            <ScheduleEditor trainerId={trainerId} templates={templates} clients={clients} presetTemplateId={scheduleTemplateId} presetClientId={clientePreelegido}
+              onSave={sc => { setSchedules(ss => [sc, ...ss]); setShowScheduleEditor(false); setScheduleTemplateId(undefined); setClientePreelegido(undefined); toast('Programado ✓', 'ok') }}
+              onCancel={() => { setShowScheduleEditor(false); setScheduleTemplateId(undefined); setClientePreelegido(undefined) }} />
           )}
           {templates.length === 0 && <div className="text-center py-8 text-muted text-sm border-2 border-dashed border-border rounded-2xl"><p>Primero crea una encuesta</p></div>}
           {schedules.length === 0 && templates.length > 0 && !showScheduleEditor && (

@@ -8,8 +8,9 @@ import { useLeads } from '../../hooks/useLeads'
 import { contactoDe, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
 import { useLabels } from '../../hooks/useLabels'
 import { ContextoCliente } from './ContextoCliente'
+import type { IntentoPanel } from '../../lib/anadirFicha'
 import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import {
   LayoutDashboard, Users, Dumbbell, ClipboardList, Settings as SettingsIcon,
   LogOut, UserPlus, Search, ChevronRight,
@@ -113,9 +114,12 @@ interface Props {
   onSelectClient: (client: ClientData) => void
   demoClients?: ClientData[]
   demoLogsMap?: Record<string, any>
+  /** Orden de la ficha de un cliente («Añadir» → cita, documento, encuesta): abre esa pestaña con el cliente ya elegido. */
+  intento?: IntentoPanel | null
+  onIntentoUsado?: () => void
 }
 
-export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap }: Props) {
+export function TrainerDashboard({ userProfile, realUserProfile, teamContext, onSwitchTeam, onLogout, onSelectClient, demoClients, demoLogsMap, intento, onIntentoUsado }: Props) {
   const realUid = realUserProfile?.uid || userProfile.uid
   // Trabajando en el equipo de otro: sus permisos (los pone el dueño en Ajustes → Equipo)
   const misPermisos = useMisPermisosEquipo(userProfile.uid, realUid)
@@ -124,7 +128,13 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
   const { labels } = useLabels(userProfile.uid)
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  // Si la ficha de un cliente manda aquí («Añadir» → cita, documento, encuesta), se abre esa pestaña con el cliente ya elegido
+  const [activeTab, setActiveTab] = useState<Tab>(intento ? intento.tab : 'dashboard')
+  const [clienteInicial, setClienteInicial] = useState<string | null>(intento?.clientId ?? null)
+  const pestanaDelIntento = useRef(intento?.tab)
+  useEffect(() => { if (intento) onIntentoUsado?.() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // El cliente elegido solo vale para esa visita: al salir de la pestaña no se vuelve a abrir solo
+  useEffect(() => { if (activeTab !== pestanaDelIntento.current) setClienteInicial(null) }, [activeTab])
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (demoClients) return false
     try { return localStorage.getItem(`pf_onboarding_done_${userProfile.uid}`) !== '1' } catch { return false }
@@ -900,7 +910,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             {activeTab === 'templates'  && <TemplatesTab key={`tp-${seed.nonce}`} initialSearch={seedFor('templates')} trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />}
             {activeTab === 'cohortes'   && <CohortesTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onSelectClient={onSelectClient} />}
             {activeTab === 'etiquetas'  && <EtiquetasTab trainerId={userProfile.uid} />}
-            {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} />}
+            {activeTab === 'calendario' && <CalendarTab trainerId={userProfile.uid} clients={clients} nuevaCitaPara={clienteInicial ?? undefined} />}
             {activeTab === 'programas'  && <ProgramasTab key={`pg-${seed.nonce}`} initialSearch={seedFor('programas')} trainerId={userProfile.uid} onManageLabels={() => setActiveTab('etiquetas')} clients={clients} />}
             {activeTab === 'settings'   && <SettingsTab userProfile={userProfile} realUid={realUid} onLogout={onLogout} contactos={{ nuevos: leadsNuevos, total: leadsState.leads.length, onVer: () => handleTabChange('contactos') }} />}
             {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
@@ -910,7 +920,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
               <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando encuestas…</p>}>
-                <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} />
+                <EncuestasTab trainerId={userProfile.uid} clients={clients} onManageLabels={() => setActiveTab('etiquetas')} enviarA={clienteInicial ?? undefined} />
               </Suspense>
             </PlanGate>
           )}

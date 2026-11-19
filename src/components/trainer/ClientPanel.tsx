@@ -21,6 +21,7 @@ import { useExerciseLibrary } from '../../hooks/useExerciseLibrary'
 import { PlanRow, RegistroRow } from '../../lib/supabase-types'
 import { logError } from '../../lib/errors'
 import { quitarNotasDelPlan } from '../../lib/notasPrivadas'
+import { cargarAlertas, guardarAlertas } from '../../lib/notasPrivadasCliente'
 import { sendPush } from '../../lib/usePushNotifications'
 import { PerfilTab, ClientAlert } from './client-panel/PerfilTab'
 import { VistaTab } from './client-panel/VistaTab'
@@ -37,7 +38,7 @@ import { FechasPlan } from './FechasPlan'
 import { useAtencionCliente } from '../../hooks/useAtencionCliente'
 import type { Destino } from '../../lib/atencionCliente'
 import { AnadirMenu } from './AnadirMenu'
-import type { AbrirPlegable, OpcionAnadir } from '../../lib/anadirFicha'
+import type { AbrirPlegable, OpcionAnadir, DestinoPanel } from '../../lib/anadirFicha'
 import type { Section } from '../../lib/progresoSections'
 
 type Tab = 'perfil' | 'plan' | 'dieta' | 'vista' | 'entrenos' | 'progreso'
@@ -47,6 +48,8 @@ interface Props {
   userProfile: UserProfile
   allClients: ClientData[]
   onClose: () => void
+  /** Sale de la ficha a una pestaña del panel (Agenda, Documentos, Encuestas) con este cliente ya elegido. Sin él (demo), esas opciones de «Añadir» no salen. */
+  onIrAlPanel?: (tab: DestinoPanel) => void
   demoPlan?: TrainingPlan
   demoLogs?: TrainingLogs
 }
@@ -104,7 +107,7 @@ function useTemplates(trainerId: string) {
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
-export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan, demoLogs }: Props) {
+export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPanel, demoPlan, demoLogs }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
@@ -156,6 +159,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     if (o.accion === 'asignar-workout') {
       if (templates.length) setShowTemplates(true)
       else toast('Aún no tienes workouts: créalos en la sección Workouts', 'info')
+    } else if (o.panel) {
+      if (o.panel === 'documentos') toast('Los documentos se enseñan a los clientes por etiqueta: elige la suya al subirlo', 'info')
+      onIrAlPanel?.(o.panel)
     } else if (o.destino) irA(o.destino)
   }
   const [programs, setPrograms] = useState<any[]>([])
@@ -201,8 +207,9 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
     const regRow = regData as RegistroRow | null
     if (regRow?.logs) setLogs(regRow.logs as TrainingLogs)
     // Cargar alertas
-    const { data: clientData } = await supabase.from('clientes').select('alerts').eq('id', client.id).maybeSingle()
-    if (clientData?.alerts) setAlerts(clientData.alerts)
+    // Las alertas no van en la fila de clientes (el cliente la lee): tienen su tabla solo-entrenador
+    const misAlertas = await cargarAlertas<ClientAlert>(client.id)
+    if (misAlertas.length) setAlerts(misAlertas)
     // Cargar programas del entrenador
     const { data: labelsData } = await supabase.from('labels').select('*').eq('trainer_id', userProfile.uid).order('created_at')
     if (labelsData) setLabels(labelsData)
@@ -316,7 +323,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
   const saveAlerts = async (newAlerts: ClientAlert[]) => {
     setAlerts(newAlerts)
     if (demoPlan !== undefined) { DEMO_ALERTS_MAP[client.id] = newAlerts as any; return }
-    await supabase.from('clientes').update({ alerts: newAlerts }).eq('id', client.id)
+    await guardarAlertas(userProfile.uid, client.id, newAlerts)
   }
 
   const applyTemplate = (template: TrainingTemplate, fechaInicio: string, autoWelcome: boolean, autoCheckin: boolean) => {
@@ -463,7 +470,7 @@ export function ClientPanel({ client, userProfile, allClients, onClose, demoPlan
             <span className={`hidden sm:block text-xs transition-all ${saveState === 'saving' ? 'text-accent animate-pulse' : saveState === 'saved' ? 'text-ok' : saveState === 'error' ? 'text-warn' : 'opacity-0'}`}>
               {saveState === 'saving' ? 'Guardando...' : saveState === 'saved' ? '✓ Guardado' : saveState === 'error' ? '✗ Error' : '·'}
             </span>
-            <AnadirMenu tab={activeTab} onElegir={elegirAnadir} />
+            <AnadirMenu tab={activeTab} onElegir={elegirAnadir} sinPanel={!onIrAlPanel} />
             {activeTab === 'progreso' && (
               <button onClick={exportarSeries} title="Todas sus series, para abrir en Excel"
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-muted hover:border-accent hover:text-accent transition-colors">⬇ Series (CSV)</button>

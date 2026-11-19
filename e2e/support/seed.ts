@@ -34,7 +34,7 @@ export function seedWorld(fake: FakeSupabase, opts: { clientHasAccount?: boolean
   if (opts.clientHasAccount) fake.addUser(CLIENT_LOGIN.email, CLIENT_LOGIN.password, ids.clientUser)
   fake.seed('clientes', {
     id: ids.client, trainerId: ids.trainer, name: 'María', surname: 'García', token: TOKEN, objetivo: 'hipertrofia',
-    auth_user_id: opts.clientHasAccount ? ids.clientUser : null, notas_privadas: 'nota privada del entrenador',
+    auth_user_id: opts.clientHasAccount ? ids.clientUser : null,
     metricas_cliente: [], createdAt: Date.now(),
   })
   fake.seed('planes', { clientId: ids.client, plan: { P: samplePlan() }, updatedAt: 1000, borrador_activo: false, plan_borrador: null })
