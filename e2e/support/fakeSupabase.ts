@@ -23,10 +23,12 @@ const CLIENT_TABLES: [string, string][] = [
   ['push_subscriptions', 'client_id'], ['readiness_checkins', 'clientId'], ['registros', 'clientId'], ['registros_dolor', 'clientId'],
   ['registros_habitos', 'clientId'], ['registros_peso', 'clientId'], ['session_load', 'client_id'], ['session_reactions', 'clientId'],
   ['survey_responses', 'client_id'], ['survey_schedules', 'client_id'], ['test_resultados', 'client_id'], ['valoraciones', 'client_id'],
-  ['video_feedback', 'client_id'], ['waivers', 'clientId'], ['weekly_reviews', 'clientId'],
+  ['solicitudes_programacion', 'client_id'], ['video_feedback', 'client_id'], ['waivers', 'clientId'], ['weekly_reviews', 'clientId'],
 ]
 const UNIQUE: Record<string, string[]> = { registros: ['clientId'], planes: ['clientId'], clientes: ['id', 'token'], entrenadores: ['uid'] }
-const NO_AUTO_ID = new Set(['registros', 'planes', 'entrenadores'])
+const NO_AUTO_ID = new Set(['registros', 'planes', 'entrenadores', 'solicitudes_programacion'])
+/** Igual que obtener/enviar_solicitud_programacion: ni revocado, ni caducado, ni agotado. */
+const enlaceVigente = (e: Row) => e.activo && !(e.caduca_en && new Date(e.caduca_en).getTime() <= Date.now()) && e.usos < (e.un_solo_uso ? 1 : e.max_usos ?? Infinity)
 
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString('base64url')
 const jwt = (sub: string, email: string) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, email, role: 'authenticated', aud: 'authenticated', exp: Math.floor(Date.now() / 1000) + 86400 })}.firma-e2e`
@@ -210,6 +212,8 @@ export class FakeSupabase {
     if (method === 'DELETE') {
       const gone = all.filter(r => this.matches(r, filters))
       this.tables[table] = all.filter(r => !gone.includes(r))
+      // Como la cascada de la base de datos: al borrar un lead se va su solicitud
+      if (table === 'leads') this.tables.solicitudes_programacion = this.rows('solicitudes_programacion').filter(s => !gone.some(g => g.id === s.lead_id))
       return wantsRows ? respond(structuredClone(gone)) : empty(route)
     }
 
@@ -353,6 +357,65 @@ export class FakeSupabase {
         const ultimaHora = this.rows('leads').filter(l => l.trainer_id === e.uid && l.created_at > Date.now() - 3600_000).length
         if (ultimaHora >= 10) return json(route, 400, { code: 'P0001', message: 'Demasiados mensajes en poco tiempo. Inténtalo de nuevo más tarde.' })
         this.rows('leads').push({ id: crypto.randomUUID(), trainer_id: e.uid, name: args.p_name, email: args.p_email ?? null, phone: args.p_phone ?? null, message: args.p_message ?? null, status: 'nuevo', created_at: Date.now(), referred_by_client_id: null })
+        return empty(route)
+      }
+      // Solicitud de programación inicial por enlace público. La lógica de verdad (revocado/caducado/agotado, límites, alarma del PAR-Q,
+      // sin consentimiento no se guardan las respuestas de salud) la prueba supabase/hardening/tests/bloque40; aquí lo justo para probar la app.
+      case 'crear_enlace_programacion': {
+        if (!this.rows('entrenadores').some(x => x.uid === me)) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        const dias = args.p_dias_caducidad as number | null
+        const fila = {
+          id: crypto.randomUUID(), trainer_id: me, nombre: args.p_nombre, slug: (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '').slice(0, 32),
+          caduca_en: dias ? new Date(Date.now() + dias * 86400_000).toISOString() : null, max_usos: args.p_max_usos ?? null, un_solo_uso: !!args.p_un_solo_uso,
+          mostrar_foto: !!args.p_mostrar_foto, activo: true, usos: 0, ultimo_uso_en: null, creado_en: new Date().toISOString(), revocado_en: null, revocado_por: null,
+        }
+        this.rows('programacion_enlaces').push(fila)
+        return json(route, 200, fila)
+      }
+      case 'revocar_enlace_programacion': {
+        const e = this.rows('programacion_enlaces').find(x => x.id === args.p_id && x.trainer_id === me)
+        if (!e) return json(route, 400, { code: 'P0001', message: 'Enlace no encontrado' })
+        if (e.activo) Object.assign(e, { activo: false, revocado_en: new Date().toISOString(), revocado_por: me })
+        return empty(route)
+      }
+      case 'obtener_enlace_programacion': {
+        const e = this.rows('programacion_enlaces').find(x => x.slug === args.p_slug)
+        if (!e || !enlaceVigente(e)) return json(route, 200, null)
+        const t = this.rows('entrenadores').find(x => x.uid === e.trainer_id)
+        return json(route, 200, { entrenador: t?.profile?.displayName || t?.displayName, marca: t?.profile?.brandName || null, logo: e.mostrar_foto ? t?.profile?.brandLogo ?? null : null })
+      }
+      case 'enviar_solicitud_programacion': {
+        const previa = this.rows('solicitudes_programacion').find(s => s.clave_envio === args.p_clave)
+        if (previa) return json(route, 200, previa.parq_alarma ? 'revisar' : 'ok')
+        const e = this.rows('programacion_enlaces').find(x => x.slug === args.p_slug)
+        if (!e || !enlaceVigente(e)) return json(route, 400, { code: 'P0001', message: 'Este enlace ya no está disponible' })
+        if (!args.p_email && !args.p_telefono) return json(route, 400, { code: 'P0001', message: 'Déjame un correo o un teléfono para poder contestarte' })
+        const salud = !!args.p_consiente_salud
+        const resp = { ...(args.p_respuestas ?? {}) }
+        if (!salud) for (const k of ['rechaza', 'molestias', 'molestias_detalle', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres']) delete resp[k]
+        const parq = salud ? (args.p_parq as boolean[]) : null
+        const alarma = !!parq && [0, 1, 2, 3].some(i => parq[i] === true)
+        const asistente = salud && !!args.p_consiente_asistente
+        const lead = {
+          id: crypto.randomUUID(), trainer_id: e.trainer_id, name: args.p_nombre, email: args.p_email ?? null, phone: args.p_telefono ?? null,
+          message: alarma ? 'Solicitud de programación inicial: necesita revisión personal antes de programar' : 'Solicitud de programación inicial',
+          status: alarma ? 'revisar' : 'nuevo', created_at: Date.now(), referred_by_client_id: null, origen: 'programacion', enlace_id: e.id,
+        }
+        this.rows('leads').push(lead)
+        this.rows('solicitudes_programacion').push({
+          lead_id: lead.id, trainer_id: e.trainer_id, client_id: null, clave_envio: args.p_clave, consentimiento_salud: salud, consentimiento_asistente: asistente,
+          consentimiento_version: args.p_version, consentimiento_en: new Date().toISOString(), respuestas: resp, parq, parq_alarma: alarma,
+          preparar_borrador: asistente && !alarma, borrador_estado: 'sin_generar', propuesta: null, razones: null, criterios_version: null, created_at: new Date().toISOString(),
+        })
+        Object.assign(e, { usos: e.usos + 1, ultimo_uso_en: new Date().toISOString() })
+        return json(route, 200, alarma ? 'revisar' : 'ok')
+      }
+      case 'vincular_solicitud_cliente': {
+        const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')
+        const cli = this.rows('clientes').find(c => c.id === args.p_client_id && c.trainerId === me)
+        if (!lead || !cli) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        Object.assign(this.rows('solicitudes_programacion').find(s => s.lead_id === lead.id) ?? {}, { client_id: cli.id })
+        lead.status = 'convertido'
         return empty(route)
       }
       case 'find_trainer_by_email': return json(route, 200, null)
