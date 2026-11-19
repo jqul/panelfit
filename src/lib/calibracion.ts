@@ -45,6 +45,17 @@ export function estadoCalibracion(logs: TrainingLogs, plan: TrainingPlan | null 
   return { activa: desde !== null && desde <= DIAS_MAX_CALIBRACION, sesionesHechas: dias.length, etiqueta: ETIQUETA_CALIBRACION }
 }
 
+/** Hasta qué fecha (inclusive) cuentan como «de calibración» los registros: la que confirmó el entrenador o, si no la ha confirmado, 14 días
+ *  después de la primera sesión. null si no hay plan o aún no ha entrenado. */
+export function finCalibracion(logs: TrainingLogs, plan: TrainingPlan | null | undefined): string | null {
+  if (!plan?.weeks?.length) return null
+  if (plan.calibracion?.confirmadaEl) return plan.calibracion.confirmadaEl
+  const primera = Object.entries(logs || {}).filter(([k, l]) => CLAVE.test(k) && l?.done && l.dateDone).map(([, l]) => l.dateDone as string).sort()[0]
+  if (!primera) return null
+  const d = new Date(primera + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + DIAS_MAX_CALIBRACION)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+}
+
 export interface FilaCalibracion {
   ejercicio: string
   sesiones: number
