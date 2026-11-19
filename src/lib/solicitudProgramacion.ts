@@ -85,7 +85,17 @@ export const INCLUYE_PROGRAMACION = [
 ]
 
 // ── Respuestas ──
-export const PREGUNTAS_PROGRAMACION: Pregunta[] = MODELO_PROGRAMACION_INICIAL.questions
+/** V1: solo mayores de 18 (un menor exigiría el consentimiento de su tutor). La edad se pide SIEMPRE, también sin consentimiento de salud: la base de datos la comprueba y, sin consentimiento, no la guarda. */
+export const EDAD_MINIMA = 18
+export const ETIQUETA_EDAD = 'Edad (esta solicitud es solo para mayores de 18 años)'
+export const AVISO_SOLO_ADULTOS = 'Esta solicitud es solo para mayores de 18 años'
+export const PREGUNTAS_PROGRAMACION: Pregunta[] = MODELO_PROGRAMACION_INICIAL.questions.map(q => q.id === 'edad' ? { ...q, required: true, label: ETIQUETA_EDAD } : q)
+
+/** ¿Es mayor de edad según lo escrito? (null si no ha contestado o no es un número). */
+export function esMayorDeEdad(valor: unknown): boolean | null {
+  const n = typeof valor === 'number' ? valor : parseFloat(String(valor ?? '').replace(',', '.'))
+  return Number.isFinite(n) ? n >= EDAD_MINIMA : null
+}
 
 /** Las preguntas de salud del modelo: solo se piden y se guardan con consentimiento de salud (igual que la columna «es de salud» de la migración). */
 export const IDS_SALUD = ['rechaza', 'molestias', 'molestias_detalle', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres']
