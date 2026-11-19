@@ -87,21 +87,26 @@ create table if not exists public.solicitudes_programacion (
   -- Verdadero si se puede preparar un borrador: consintió salud Y asistente, y el PAR-Q no dio alarma. Lo lee la tarea que lo prepara.
   preparar_borrador         boolean not null default false,
   ip_hash                   text,
-  -- Borrador privado: { plan: <plan propuesto>, decisiones: [{ decision, porque }], resumen, preparado_por }. Solo lo ve el entrenador.
-  borrador                  jsonb,
-  borrador_en               timestamptz,
+  -- Hueco del borrador privado (solo el sitio donde irá; v1 no lo genera nadie, ni se promete automático). Solo lo ve el entrenador.
+  --   borrador_estado: sin generar / listo para revisar / aprobado / descartado
+  --   propuesta: el plan propuesto (vacío por ahora)   razones: el «porqué» de cada decisión (vacío por ahora)
+  --   criterios_version: versión de los criterios del entrenador con que se preparó
+  borrador_estado           text not null default 'sin_generar' check (borrador_estado in ('sin_generar', 'listo_para_revisar', 'aprobado', 'descartado')),
+  propuesta                 jsonb,
+  razones                   jsonb,
+  criterios_version         text check (criterios_version is null or char_length(criterios_version) <= 40),
   created_at                timestamptz not null default now(),
   -- Sin consentimiento de salud no hay PAR-Q guardado
   check (consentimiento_salud or (parq is null and not parq_alarma)),
   -- El asistente solo ayuda si hay consentimiento de salud
   check (consentimiento_salud or not consentimiento_asistente),
   -- Con alarma NO se prepara borrador, y lo impide la propia tabla
-  check (not parq_alarma or (not preparar_borrador and borrador is null)),
-  check (borrador is null or preparar_borrador)
+  check (not parq_alarma or (not preparar_borrador and borrador_estado = 'sin_generar' and propuesta is null)),
+  check (borrador_estado = 'sin_generar' or preparar_borrador)
 );
 create index if not exists solicitudes_programacion_trainer_idx on public.solicitudes_programacion (trainer_id);
 create index if not exists solicitudes_programacion_client_idx on public.solicitudes_programacion (client_id) where client_id is not null;
-create index if not exists solicitudes_programacion_borrador_idx on public.solicitudes_programacion (created_at) where preparar_borrador and borrador is null;
+create index if not exists solicitudes_programacion_borrador_idx on public.solicitudes_programacion (created_at) where preparar_borrador and borrador_estado = 'sin_generar';
 
 alter table public.solicitudes_programacion enable row level security;
 create policy "entrenador_lee_solicitudes_programacion" on public.solicitudes_programacion for select to authenticated

@@ -146,7 +146,7 @@ begin
   perform pg_temp.reg('2e el entrenador no edita enlaces a mano (la auditoría no se falsea)', v = 'denegado', v);
   begin insert into public.programacion_enlaces (trainer_id, nombre, slug) values ('aaaaaaaa-0000-0000-0000-000000000001', 'x', repeat('b', 32)); v := 'insertó'; exception when insufficient_privilege then v := 'denegado'; end;
   perform pg_temp.reg('2f el entrenador no crea enlaces a mano (solo con la función)', v = 'denegado', v);
-  begin update public.solicitudes_programacion set borrador = '{}'; v := 'actualizó'; exception when insufficient_privilege then v := 'denegado'; end;
+  begin update public.solicitudes_programacion set propuesta = '{}'; v := 'actualizó'; exception when insufficient_privilege then v := 'denegado'; end;
   perform pg_temp.reg('2g el entrenador no escribe solicitudes a mano', v = 'denegado', v);
   reset role;
 end $$;
@@ -187,7 +187,7 @@ begin
     s.respuestas ->> 'objetivo' = 'Ganar músculo' and s.respuestas ->> 'molestias_detalle' like 'Hombro%' and (s.respuestas ->> 'peso')::numeric = 78.5
     and jsonb_array_length(s.parq) = 7 and s.consentimiento_salud and s.consentimiento_asistente and s.consentimiento_version = 'prog-v1', s.respuestas::text);
   perform pg_temp.reg('4e se descarta lo que no es del modelo', not (s.respuestas ? 'inventada'), s.respuestas::text);
-  perform pg_temp.reg('4f queda lista para preparar borrador, sin borrador todavía', s.preparar_borrador and s.borrador is null and not s.parq_alarma, '');
+  perform pg_temp.reg('4f queda lista para preparar borrador, sin borrador todavía', s.preparar_borrador and s.borrador_estado = 'sin_generar' and not s.parq_alarma, '');
   perform pg_temp.reg('4g cuenta un uso y marca el último uso', (select usos from public.programacion_enlaces where slug = s1) = 1 and (select ultimo_uso_en from public.programacion_enlaces where slug = s1) is not null, '');
   perform pg_temp.reg('4h el mensaje del lead no lleva datos de salud', l.message = 'Solicitud de programación inicial' and l.message not like '%Hombro%', l.message);
   select count(*) into n from public.notificaciones where id = 'lead_' || l.id::text and titulo = 'Solicitud de programación: Ana García' and mensaje = 'Solicitud de programación inicial' and trainer_id = 'aaaaaaaa-0000-0000-0000-000000000001';
@@ -229,21 +229,21 @@ begin
     select * into l from public.leads where email = 'alarma' || i || '@example.com';
     select * into s from public.solicitudes_programacion where lead_id = l.id;
     perform pg_temp.reg('6' || chr(97 + i) || ' PAR-Q con «sí» en la pregunta ' || (i + 1) || ': contesta revisar, lead revisar y NO se prepara borrador',
-      v = 'revisar' and l.status = 'revisar' and s.parq_alarma and not s.preparar_borrador and s.borrador is null, v || '/' || l.status);
+      v = 'revisar' and l.status = 'revisar' and s.parq_alarma and not s.preparar_borrador and s.borrador_estado = 'sin_generar', v || '/' || l.status);
   end loop;
   select * into l from public.leads where email = 'alarma0@example.com';
   select count(*) into n from public.notificaciones where id = 'lead_' || l.id::text and titulo = 'Revisión personal: Ana García' and mensaje like '%revisión personal%';
   perform pg_temp.reg('6e el entrenador recibe el aviso de «Revisión personal» (sin datos de salud)', n = 1, n::text);
   -- La tabla impide guardar un borrador a una solicitud con alarma (lo intentaría la tarea que prepara borradores)
-  begin update public.solicitudes_programacion set borrador = '{"plan": {}}'::jsonb, borrador_en = now() where lead_id = l.id; ok := false;
+  begin update public.solicitudes_programacion set borrador_estado = 'listo_para_revisar', propuesta = '{"plan": {}}'::jsonb where lead_id = l.id; ok := false;
   exception when check_violation then ok := true; end;
   perform pg_temp.reg('6f aunque alguien lo intente, la tabla rechaza un borrador con alarma', ok, '');
-  begin update public.solicitudes_programacion set borrador = '{"plan": {}}'::jsonb where consentimiento_salud and not consentimiento_asistente; ok := false;
+  begin update public.solicitudes_programacion set borrador_estado = 'listo_para_revisar', propuesta = '{"plan": {}}'::jsonb where consentimiento_salud and not consentimiento_asistente; ok := false;
   exception when check_violation then ok := true; end;
   perform pg_temp.reg('6g ni sin consentimiento al asistente', ok, '');
-  update public.solicitudes_programacion set borrador = '{"plan": {"weeks": []}, "decisiones": [{"decision": "3 días full-body", "porque": "Indicó 3 días"}]}'::jsonb, borrador_en = now()
+  update public.solicitudes_programacion set borrador_estado = 'listo_para_revisar', propuesta = '{"weeks": []}'::jsonb, razones = '[{"decision": "3 días full-body", "porque": "Indicó 3 días"}]'::jsonb, criterios_version = 'v1'
    where lead_id = (select id from public.leads where email = 'ana@example.com');
-  perform pg_temp.reg('6h una solicitud sin alarma y con consentimientos sí admite borrador', (select borrador is not null from public.solicitudes_programacion where lead_id = (select id from public.leads where email = 'ana@example.com')), '');
+  perform pg_temp.reg('6h una solicitud sin alarma y con consentimientos sí admite borrador', (select borrador_estado = 'listo_para_revisar' from public.solicitudes_programacion where lead_id = (select id from public.leads where email = 'ana@example.com')), '');
 end $$;
 
 -- ═══ 7. Validaciones ═══
