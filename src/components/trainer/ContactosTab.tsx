@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Inbox, Mail, MessageCircle, Gift, UserPlus, FileText, Trash2 } from 'lucide-react'
 import { toast } from '../shared/Toast'
-import { ESTADOS_LEAD, contactoDe, esSolicitud, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
+import { ESTADOS_LEAD, contactoDe, esNuevo, esSolicitud, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
 import { isDemoTrainerId } from '../../lib/demoIds'
 import type { LeadsState } from '../../hooks/useLeads'
 import { PaginaPublicaCard } from './PaginaPublicaCard'
@@ -17,8 +17,10 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
   const [abierta, setAbierta] = useState<string | null>(null) // solicitud cuyo detalle está desplegado
   const [borrando, setBorrando] = useState<string | null>(null) // solicitud pendiente de confirmar el borrado
   const [filtro, setFiltro] = useState<EstadoLead | 'todos'>('nuevo')
-  const cuenta = (e: EstadoLead) => leads.filter(l => l.status === e).length
-  const visibles = filtro === 'todos' ? leads : leads.filter(l => l.status === filtro)
+  // «Nuevos» incluye los «a revisar»: son los que esperan al entrenador (y más urgentes)
+  const coincide = (l: Lead, e: EstadoLead) => (e === 'nuevo' ? esNuevo(l) : l.status === e)
+  const cuenta = (e: EstadoLead) => leads.filter(l => coincide(l, e)).length
+  const visibles = filtro === 'todos' ? leads : leads.filter(l => coincide(l, filtro))
 
   const marcar = async (l: Lead, estado: EstadoLead) => {
     const ok = await cambiarEstado(l.id, estado)

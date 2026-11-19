@@ -121,9 +121,13 @@ test('recorrido completo: crear enlace → rellenar sin cuenta → lead en Conta
   await expect(alta.getByPlaceholder('Nombre')).toHaveValue('Paula')
   await expect(alta.getByPlaceholder('Apellido')).toHaveValue('Navarro')
   await alta.getByRole('button', { name: 'Crear cliente' }).click()
-  await expect.poll(() => fake.rows('clientes').find(c => c.name === 'Paula')?.notas_privadas ?? '').toContain('paula@example.com')
+  await expect.poll(() => fake.rows('clientes').some(c => c.name === 'Paula')).toBe(true)
   const cliente = fake.rows('clientes').find(c => c.name === 'Paula')!
-  expect(JSON.stringify(cliente)).not.toMatch(/Hombro|PAR-Q|molestias/i) // nada de salud en la ficha
+  // Sus notas privadas llevan solo de dónde viene y su contacto; nada de salud en la ficha ni en las notas
+  await expect.poll(() => fake.rows('notas_privadas_cliente').find(n => n.client_id === cliente.id)?.observaciones ?? '').toContain('paula@example.com')
+  const notas = fake.rows('notas_privadas_cliente').find(n => n.client_id === cliente.id)!.observaciones
+  expect(notas).toContain('Solicitud de programación inicial')
+  expect(JSON.stringify(cliente) + notas).not.toMatch(/Hombro|PAR-Q|molestias|revisión personal/i)
   await expect.poll(() => fake.rows('leads').find(l => l.id === lead.id)!.status).toBe('convertido')
   expect(fake.rows('solicitudes_programacion').find(s => s.lead_id === lead.id)!.client_id).toBe(cliente.id) // enlazada; las respuestas siguen en la solicitud
 })
@@ -189,7 +193,7 @@ test('PAR-Q con señal de alarma: la persona ve «revisión personal», el lead 
   await page.keyboard.press('Enter')
   await expect(page.getByText('Solicitud de programación inicial · necesita tu revisión personal')).toBeVisible()
   await page.getByRole('button', { name: 'Ver solicitud' }).click()
-  await expect(page.getByText(/señal de alarma/)).toBeVisible()
+  await expect(page.getByText(/tiene una señal de alarma/)).toBeVisible()
   await expect(page.getByText('No se prepara borrador por la señal de alarma.')).toBeVisible()
 })
 
