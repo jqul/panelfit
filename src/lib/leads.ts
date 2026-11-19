@@ -1,9 +1,12 @@
 // Contactos que llegan por la página pública del entrenador (tabla `leads`): lo que se enseña de cada uno y cómo
 // responderle. Sin React ni red: se puede probar.
 
-export type EstadoLead = 'nuevo' | 'contactado' | 'convertido' | 'descartado'
+// 'revisar' y 'borrador_listo' son de las solicitudes de programación inicial (lib/solicitudProgramacion)
+export type EstadoLead = 'nuevo' | 'revisar' | 'borrador_listo' | 'contactado' | 'convertido' | 'descartado'
 export const ESTADOS_LEAD: { id: EstadoLead; label: string }[] = [
   { id: 'nuevo', label: 'Nuevos' },
+  { id: 'revisar', label: 'A revisar' },
+  { id: 'borrador_listo', label: 'Borrador listo' },
   { id: 'contactado', label: 'Contactados' },
   { id: 'convertido', label: 'Clientes' },
   { id: 'descartado', label: 'Descartados' },
@@ -19,6 +22,9 @@ export interface Lead {
   created_at: number
   referred_by_client_id: string | null
   referrerName?: string
+  /** 'programacion' si entró por un enlace de solicitud de programación inicial; si no, la página pública. */
+  origen?: string
+  enlace_id?: string | null
 }
 
 /** Enlace de WhatsApp para un teléfono escrito a mano. Sin prefijo de país, un móvil de 9 cifras se toma como español (+34). */
@@ -35,11 +41,13 @@ export function whatsappDe(phone: string | null | undefined, texto?: string): st
 /** El correo o el teléfono, lo que haya; vacío si solo dejó el nombre. */
 export const contactoDe = (l: Pick<Lead, 'email' | 'phone'>) => [l.email, l.phone].filter(Boolean).join(' · ')
 
-export const esNuevo = (l: Pick<Lead, 'status'>) => l.status === 'nuevo'
+/** Espera al entrenador: nuevo, o a revisar (una solicitud con señal de alarma en el PAR-Q, que es más urgente aún). */
+export const esNuevo = (l: Pick<Lead, 'status'>) => l.status === 'nuevo' || l.status === 'revisar'
+export const esSolicitud = (l: Pick<Lead, 'origen'>) => l.origen === 'programacion'
 
 /** Los nuevos primero y, dentro de cada estado, el más reciente arriba. */
 export function ordenarLeads(leads: Lead[]): Lead[] {
-  const rango = (l: Lead) => (esNuevo(l) ? 0 : l.status === 'contactado' ? 1 : l.status === 'convertido' ? 2 : 3)
+  const rango = (l: Lead) => (l.status === 'revisar' ? 0 : l.status === 'nuevo' ? 1 : l.status === 'borrador_listo' ? 2 : l.status === 'contactado' ? 3 : l.status === 'convertido' ? 4 : 5)
   return [...leads].sort((a, b) => rango(a) - rango(b) || b.created_at - a.created_at)
 }
 

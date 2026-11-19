@@ -1,22 +1,37 @@
-import { useState } from 'react'
-import { Inbox, Mail, MessageCircle, Gift, UserPlus } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+import { Inbox, Mail, MessageCircle, Gift, UserPlus, FileText, Trash2 } from 'lucide-react'
 import { toast } from '../shared/Toast'
-import { ESTADOS_LEAD, contactoDe, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
+import { ESTADOS_LEAD, contactoDe, esNuevo, esSolicitud, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
+import { isDemoTrainerId } from '../../lib/demoIds'
 import type { LeadsState } from '../../hooks/useLeads'
 import { PaginaPublicaCard } from './PaginaPublicaCard'
+
+const EnlacesProgramacion = lazy(() => import('./EnlacesProgramacion').then(m => ({ default: m.EnlacesProgramacion })))
+const SolicitudDetalle = lazy(() => import('./SolicitudDetalle').then(m => ({ default: m.SolicitudDetalle })))
 
 // Las personas que han escrito desde tu página pública: quién es, cómo contestarle y en qué punto está.
 export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onIrAAjustes }: {
   leadsState: LeadsState; trainerId: string; miNombre?: string; onConvertir?: (lead: Lead) => void; onIrAAjustes: () => void
 }) {
-  const { leads, loading, cambiarEstado } = leadsState
+  const { leads, loading, cambiarEstado, borrar } = leadsState
+  const [abierta, setAbierta] = useState<string | null>(null) // solicitud cuyo detalle está desplegado
+  const [borrando, setBorrando] = useState<string | null>(null) // solicitud pendiente de confirmar el borrado
   const [filtro, setFiltro] = useState<EstadoLead | 'todos'>('nuevo')
-  const cuenta = (e: EstadoLead) => leads.filter(l => l.status === e).length
-  const visibles = filtro === 'todos' ? leads : leads.filter(l => l.status === filtro)
+  // «Nuevos» incluye los «a revisar»: son los que esperan al entrenador (y más urgentes)
+  const coincide = (l: Lead, e: EstadoLead) => (e === 'nuevo' ? esNuevo(l) : l.status === e)
+  const cuenta = (e: EstadoLead) => leads.filter(l => coincide(l, e)).length
+  const visibles = filtro === 'todos' ? leads : leads.filter(l => coincide(l, filtro))
 
   const marcar = async (l: Lead, estado: EstadoLead) => {
     const ok = await cambiarEstado(l.id, estado)
     if (!ok) toast('No se pudo cambiar el estado. Inténtalo de nuevo', 'warn')
+  }
+
+  const eliminar = async (l: Lead) => {
+    const ok = await borrar(l.id)
+    setBorrando(null)
+    if (!ok) toast('No se pudo eliminar. Inténtalo de nuevo', 'warn')
+    else toast('Solicitud eliminada', 'ok')
   }
 
   return (
@@ -29,6 +44,8 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
       </div>
 
       <PaginaPublicaCard trainerId={trainerId} miNombre={miNombre} onIrAAjustes={onIrAAjustes} />
+
+      {!isDemoTrainerId(trainerId) && <Suspense fallback={null}><EnlacesProgramacion trainerId={trainerId} /></Suspense>}
 
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Estado del contacto">
         {([...ESTADOS_LEAD, { id: 'todos' as const, label: 'Todos' }]).map(e => {
@@ -67,6 +84,9 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
                 </div>
                 {textoEspera(l) && <p className="text-xs font-semibold text-warn">{textoEspera(l)}</p>}
                 {l.message && <p className="text-sm text-ink/80 italic leading-relaxed">"{l.message}"</p>}
+                {esSolicitud(l) && (
+                  <p className="text-xs font-semibold text-accent">{l.status === 'revisar' ? 'Solicitud de programación inicial · necesita tu revisión personal' : 'Solicitud de programación inicial'}</p>
+                )}
                 {l.referrerName && (
                   <p className="flex items-center gap-1.5 text-xs text-accent font-semibold"><Gift className="w-3.5 h-3.5" /> Referido por {l.referrerName}</p>
                 )}
@@ -89,14 +109,31 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
                       <UserPlus className="w-3.5 h-3.5" /> Convertir en cliente
                     </button>
                   )}
+                  {esSolicitud(l) && (
+                    <button onClick={() => setAbierta(abierta === l.id ? null : l.id)} aria-expanded={abierta === l.id}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-semibold hover:bg-bg-alt">
+                      <FileText className="w-3.5 h-3.5" /> {abierta === l.id ? 'Ocultar solicitud' : 'Ver solicitud'}
+                    </button>
+                  )}
+                  {esSolicitud(l) && l.status !== 'convertido' && (borrando === l.id ? (
+                    <span className="flex items-center gap-1.5">
+                      <button onClick={() => void eliminar(l)} aria-label={`Confirmar eliminar solicitud de ${l.name}`} className="px-3 py-2 rounded-xl bg-warn text-white text-xs font-bold">Sí, eliminar con sus respuestas</button>
+                      <button onClick={() => setBorrando(null)} className="px-2 py-2 text-xs text-muted font-semibold">No</button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setBorrando(l.id)} aria-label={`Eliminar solicitud de ${l.name}`} className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border text-xs font-semibold text-warn hover:bg-bg-alt"><Trash2 className="w-3.5 h-3.5" /> Eliminar solicitud</button>
+                  ))}
                   <select value={l.status} onChange={e => marcar(l, e.target.value as EstadoLead)} aria-label={`Estado de ${l.name}`}
                     className="ml-auto text-xs font-semibold bg-bg border border-border rounded-lg px-2 py-2 outline-none">
                     <option value="nuevo">Nuevo</option>
+                    {esSolicitud(l) && <option value="revisar">A revisar</option>}
+                    {esSolicitud(l) && <option value="borrador_listo">Borrador listo</option>}
                     <option value="contactado">Contactado</option>
                     <option value="convertido">Cliente</option>
                     <option value="descartado">Descartado</option>
                   </select>
                 </div>
+                {esSolicitud(l) && abierta === l.id && <Suspense fallback={null}><SolicitudDetalle leadId={l.id} /></Suspense>}
               </li>
             )
           })}

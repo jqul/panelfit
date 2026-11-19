@@ -5,7 +5,8 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
-import { contactoDe, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
+import { contactoDe, esSolicitud, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
+import { notasDeSolicitud, planBorradorDe, type SolicitudProgramacion } from '../../lib/solicitudProgramacion'
 import { useLabels } from '../../hooks/useLabels'
 import { ContextoCliente } from './ContextoCliente'
 import type { IntentoPanel } from '../../lib/anadirFicha'
@@ -80,6 +81,7 @@ const EncuestasTab = lazy(() => import('./EncuestasTab').then(m => ({ default: m
 const PublicPageEditor = lazy(() => import('./PublicPageEditor').then(m => ({ default: m.PublicPageEditor })))
 const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m.ContactosTab })))
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
+const CriteriosProgramacionEditor = lazy(() => import('./CriteriosProgramacionEditor').then(m => ({ default: m.CriteriosProgramacionEditor })))
 const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
 const RecordsSemana = lazy(() => import('./RecordsSemana').then(m => ({ default: m.RecordsSemana })))
 const ArchivarCliente = lazy(() => import('./ArchivarCliente').then(m => ({ default: m.ArchivarCliente })))
@@ -229,6 +231,20 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   // Contacto que se está convirtiendo en cliente (el alta es el mismo formulario de «Nuevo cliente», con sus datos ya puestos)
   const [leadAConvertir, setLeadAConvertir] = useState<Lead | null>(null)
 
+  // Convertir una solicitud en cliente: si el entrenador aprobó una propuesta, queda como BORRADOR del plan (se publica con el flujo de siempre);
+  // después la solicitud se enlaza con la ficha y el contacto pasa a «Clientes».
+  const cerrarSolicitud = async (l: Lead, clientId: string) => {
+    const { data } = await supabase.from('solicitudes_programacion').select('borrador_estado, propuesta').eq('lead_id', l.id).maybeSingle()
+    const plan = planBorradorDe(data as Pick<SolicitudProgramacion, 'borrador_estado' | 'propuesta'> | null, clientId)
+    if (plan) {
+      const { error } = await supabase.from('planes').upsert({ clientId, plan_borrador: { P: plan }, borrador_activo: true, borrador_started_at: new Date().toISOString(), updatedAt: Date.now() }, { onConflict: 'clientId' })
+      if (error) toast('No se pudo dejar la propuesta como borrador del plan', 'warn')
+    }
+    const { error } = await supabase.rpc('vincular_solicitud_cliente', { p_lead_id: l.id, p_client_id: clientId })
+    if (error) toast('El cliente se creó, pero no se pudo cerrar la solicitud. Márcala como convertida a mano.', 'warn')
+    await leadsState.recargar()
+  }
+
   const handleAdd = async () => {
     if (!newClient.name.trim()) return
     if (demoClients) {
@@ -239,9 +255,15 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       return
     }
     setAdding(true)
-    const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: notasDeLead(leadAConvertir) } : {})
+    // De una solicitud de programación inicial solo pasan el nombre, el contacto y de dónde viene: las respuestas de salud y el PAR-Q
+    // se quedan en la solicitud (solo para el entrenador) y la notas internas del lead no se copian.
+    const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: esSolicitud(leadAConvertir) ? notasDeSolicitud(leadAConvertir) : notasDeLead(leadAConvertir) } : {})
     if (ok) {
-      if (leadAConvertir) { void leadsState.cambiarEstado(leadAConvertir.id, 'convertido'); setLeadAConvertir(null) }
+      if (leadAConvertir) {
+        if (esSolicitud(leadAConvertir)) await cerrarSolicitud(leadAConvertir, ok)
+        else void leadsState.cambiarEstado(leadAConvertir.id, 'convertido')
+        setLeadAConvertir(null)
+      }
       if (clients.length === 0) track('first_client_created')
       setShowAdd(false)
       setNewClientLabelIds([])
@@ -998,9 +1020,10 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
         <div className="space-y-4">
           {leadAConvertir && (
             <div className="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 text-xs space-y-1">
-              <p className="font-semibold text-accent">Viene de un contacto de tu página pública</p>
+              <p className="font-semibold text-accent">{esSolicitud(leadAConvertir) ? 'Viene de una solicitud de programación inicial' : 'Viene de un contacto de tu página pública'}</p>
               {leadAConvertir.email && <p className="text-muted">Correo: <span className="text-ink">{leadAConvertir.email}</span> (se guarda en sus notas privadas)</p>}
-              {leadAConvertir.message && <p className="text-ink/80 italic">"{leadAConvertir.message}"</p>}
+              {esSolicitud(leadAConvertir) && <p className="text-muted">Sus respuestas de salud y su cuestionario se quedan en la solicitud, solo para ti: no se copian a su ficha.</p>}
+              {!esSolicitud(leadAConvertir) && leadAConvertir.message && <p className="text-ink/80 italic">"{leadAConvertir.message}"</p>}
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
@@ -1214,6 +1237,10 @@ function SettingsTab({ userProfile, realUid, onLogout, contactos }: { userProfil
         </div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">WhatsApp</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+34 600 000 000" className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" /></div>
         <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Bio corta</label><textarea rows={2} value={bio} onChange={e => setBio(e.target.value)} placeholder="Entrenador personal especializado en..." className="w-full px-4 py-3 bg-bg border border-border rounded-xl text-sm outline-none resize-none" /></div>
+      </div>
+      <div className="bg-card rounded-2xl p-6 space-y-3 shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">Programación inicial</h3>
+        <Suspense fallback={null}><CriteriosProgramacionEditor trainerId={userProfile.uid} /></Suspense>
       </div>
       <div className="bg-card rounded-2xl p-6 space-y-3 shadow-sm">
         <div>
