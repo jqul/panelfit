@@ -390,6 +390,9 @@ export class FakeSupabase {
         const e = this.rows('programacion_enlaces').find(x => x.slug === args.p_slug)
         if (!e || !enlaceVigente(e)) return json(route, 400, { code: 'P0001', message: 'Este enlace ya no está disponible' })
         if (!args.p_email && !args.p_telefono) return json(route, 400, { code: 'P0001', message: 'Déjame un correo o un teléfono para poder contestarte' })
+        // V1: solo mayores de 18, con o sin consentimiento de salud (igual que limpiar_respuestas_programacion)
+        const edad = Number((args.p_respuestas as Record<string, unknown> | undefined)?.edad)
+        if (!(edad >= 18 && edad <= 100)) return json(route, 400, { code: 'P0001', message: 'Esta solicitud es solo para mayores de 18 años' })
         const salud = !!args.p_consiente_salud
         const resp = { ...(args.p_respuestas ?? {}) }
         if (!salud) for (const k of ['rechaza', 'molestias', 'molestias_detalle', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres']) delete resp[k]

@@ -78,7 +78,7 @@ no se ha automatizado ningún borrado a propósito.
 4. Registro de actividades de tratamiento de cada entrenador.
 5. Valorar si hace falta evaluación de impacto (art. 35) y si algún entrenador debe nombrar delegado de protección de datos.
 6. Procedimiento de brechas de seguridad (aviso a la AEPD en 72 horas).
-7. Menores: hoy no se pide la edad. Si hay clientes menores de 14 años hace falta el consentimiento de sus padres o tutores.
+7. Menores: la solicitud pública de programación inicial es solo para mayores de 18 años (la edad se exige siempre y la comprueba la base de datos). Si hay clientes menores de 14 años hace falta el consentimiento de sus padres o tutores.
 8. Los emails de aviso (bienvenida, check-in semanal) no deben llevar datos de salud en el cuerpo: revisarlos.
 9. Backups de Supabase: los datos borrados siguen en las copias hasta que caducan. Indicar el plazo en la política de privacidad.
 10. Cuentas fantasma: cada cliente que se registra crea también una fila "entrenador pendiente" (`handle_new_user`). El borrado la elimina, pero conviene no crearla (no estaba en el alcance de este cambio).

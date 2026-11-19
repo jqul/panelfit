@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs'
 import {
   estadoEnlace, textoUsos, textoCaducidad, hayAlarmaParq, filasParq, slugDeRuta, urlProgramacion, respuestasParaEnvio, filasRespuestas,
   planBorradorDe, notasDeSolicitud, MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_SALUD_PROGRAMACION, AVISO_NO_MEDICO,
-  PREGUNTAS_PROGRAMACION, IDS_SALUD, type EnlaceProgramacion,
+  PREGUNTAS_PROGRAMACION, IDS_SALUD, esMayorDeEdad, type EnlaceProgramacion,
 } from './solicitudProgramacion'
 import { esNuevo, ordenarLeads, type Lead } from './leads'
+import { MODELO_PROGRAMACION_INICIAL } from './modelosEncuesta'
 
 const ahora = new Date('2026-11-20T10:00:00Z').getTime()
 const enlace = (o: Partial<EnlaceProgramacion> = {}) => ({ activo: true, caduca_en: null, usos: 0, un_solo_uso: false, max_usos: null, ...o })
@@ -83,8 +84,8 @@ describe('respuestas', () => {
 })
 
 describe('el modelo y la base de datos hablan de las mismas preguntas', () => {
-  // La función SQL limpiar_respuestas_programacion lista las preguntas: si cambias el modelo, cambia la migración (y al revés).
-  const sql = readFileSync('supabase/migrations/20261118000020_solicitud_programacion_inicial.sql', 'utf8')
+  // La función SQL limpiar_respuestas_programacion (en su última definición) lista las preguntas: si cambias el modelo, cambia la migración (y al revés).
+  const sql = readFileSync('supabase/migrations/20261119000020_solo_mayores_18_solicitud.sql', 'utf8')
   const filas = [...sql.matchAll(/\('([a-z_]+)',\s+'(choice|text|multi|yesno|number|scale)',\s+(true|false),\s+(true|false),/g)].map(m => ({ id: m[1], tipo: m[2], salud: m[3] === 'true', obligatoria: m[4] === 'true' }))
   it('mismos ids, mismo tipo y mismas obligatorias', () => {
     expect(filas.map(f => f.id)).toEqual(PREGUNTAS_PROGRAMACION.map(q => q.id))
@@ -120,3 +121,23 @@ describe('estados del lead en la bandeja', () => {
     expect(orden.map(l => l.id)).toEqual(['rev', 'nuevo', 'borr', 'conv'])
   })
 })
+
+describe('solo mayores de 18 (V1)', () => {
+  it('la edad es obligatoria y el texto avisa de que es solo para adultos', () => {
+    const edad = PREGUNTAS_PROGRAMACION.find(q => q.id === 'edad')!
+    expect(edad.required).toBe(true)
+    expect(edad.label).toContain('solo para mayores de 18')
+  })
+  it('esMayorDeEdad: 18 o más sí, menos no, y sin número o vacío no se sabe', () => {
+    expect(esMayorDeEdad(18)).toBe(true)
+    expect(esMayorDeEdad('17')).toBe(false)
+    expect(esMayorDeEdad('30,5')).toBe(true)
+    expect(esMayorDeEdad('')).toBeNull()
+    expect(esMayorDeEdad(undefined)).toBeNull()
+    expect(esMayorDeEdad('abc')).toBeNull()
+  })
+  it('el modelo de encuesta compartido NO cambia: allí la edad sigue siendo opcional', () => {
+    expect(MODELO_PROGRAMACION_INICIAL.questions.find(q => q.id === 'edad')!.required).toBe(false)
+  })
+})
+

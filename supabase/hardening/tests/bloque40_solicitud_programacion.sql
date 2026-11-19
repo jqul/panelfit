@@ -216,7 +216,7 @@ begin
   select sx.* into s from public.solicitudes_programacion sx join public.leads lx on lx.id = sx.lead_id where lx.email = 'rosa@example.com';
   perform pg_temp.reg('5g con salud pero sin consentir al asistente: se guarda, pero NO se prepara borrador', v = 'ok' and s.consentimiento_salud and not s.consentimiento_asistente and not s.preparar_borrador, v);
   -- Las respuestas obligatorias de salud no se exigen sin consentimiento, pero las demás sí
-  v := pg_temp.enviar(s1, gen_random_uuid(), 'Quique', 'quique@example.com', null, '{"experiencia":"Nunca he entrenado","dias":"3","duracion":"60-75 min","material":["Mancuernas"]}'::jsonb, null, false, false);
+  v := pg_temp.enviar(s1, gen_random_uuid(), 'Quique', 'quique@example.com', null, '{"experiencia":"Nunca he entrenado","dias":"3","duracion":"60-75 min","material":["Mancuernas"],"edad":30}'::jsonb, null, false, false);
   perform pg_temp.reg('5h falta una respuesta obligatoria (objetivo): se rechaza', v = 'ERR: Faltan respuestas obligatorias', v);
 end $$;
 
@@ -480,6 +480,29 @@ select pg_temp.reg('14a anon solo puede ejecutar obtener y enviar',
   and not has_function_privilege('anon', 'public.revocar_enlace_programacion(uuid)', 'execute')
   and not has_function_privilege('anon', 'public.vincular_solicitud_cliente(uuid, uuid)', 'execute')
   and not has_function_privilege('anon', 'public.limpiar_respuestas_programacion(jsonb, boolean)', 'execute'), '');
+
+-- ═══ 15. Solo mayores de 18 (20261119000020) ═══
+do $$
+declare v text; r jsonb;
+begin
+  -- Se prueba la función de limpieza directamente: no consume los límites de envío por enlace, entrenador ni IP
+  begin perform public.limpiar_respuestas_programacion(pg_temp.resp() - 'edad', true); v := 'sin error';
+  exception when others then v := sqlerrm; end;
+  perform pg_temp.reg('15a sin edad no hay solicitud, ni con consentimiento', v = 'Esta solicitud es solo para mayores de 18 años', v);
+  begin perform public.limpiar_respuestas_programacion(pg_temp.resp() || jsonb_build_object('edad', 17), true); v := 'sin error';
+  exception when others then v := sqlerrm; end;
+  perform pg_temp.reg('15b con 17 años se rechaza', v = 'Esta solicitud es solo para mayores de 18 años', v);
+  begin perform public.limpiar_respuestas_programacion(pg_temp.resp() || jsonb_build_object('edad', 17), false); v := 'sin error';
+  exception when others then v := sqlerrm; end;
+  perform pg_temp.reg('15c y también sin consentimiento de salud (no se salta dejando la edad sin guardar)', v = 'Esta solicitud es solo para mayores de 18 años', v);
+  begin perform public.limpiar_respuestas_programacion(pg_temp.resp() || jsonb_build_object('edad', 101), true); v := 'sin error';
+  exception when others then v := sqlerrm; end;
+  perform pg_temp.reg('15d más de 100 también se rechaza', v = 'Esta solicitud es solo para mayores de 18 años', v);
+  r := public.limpiar_respuestas_programacion(pg_temp.resp() || jsonb_build_object('edad', 18), true);
+  perform pg_temp.reg('15e con 18 años pasa y la edad se guarda con consentimiento', (r ->> 'edad')::numeric = 18, r::text);
+  r := public.limpiar_respuestas_programacion(pg_temp.resp() || jsonb_build_object('edad', 30), false);
+  perform pg_temp.reg('15f sin consentimiento de salud pasa (edad válida) pero la edad y lo de salud NO se guardan', not (r ? 'edad') and not (r ? 'peso') and r ? 'objetivo', r::text);
+end $$;
 
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 rollback;

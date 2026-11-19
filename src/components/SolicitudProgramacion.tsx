@@ -5,7 +5,7 @@ import { validarContacto } from '../lib/leads'
 import { PARQ_QUESTIONS } from '../lib/intakeQuestions'
 import { faltan, type Pregunta } from '../lib/cuestionarios'
 import {
-  AVISO_NO_MEDICO, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_PROGRAMACION_VERSION, CONSENT_SALUD_PROGRAMACION, IDS_SALUD, INCLUYE_PROGRAMACION,
+  AVISO_NO_MEDICO, AVISO_SOLO_ADULTOS, esMayorDeEdad, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_PROGRAMACION_VERSION, CONSENT_SALUD_PROGRAMACION, IDS_SALUD, INCLUYE_PROGRAMACION,
   MENSAJE_RECIBIDA, MENSAJE_REVISAR, PREGUNTAS_PROGRAMACION, respuestasParaEnvio,
 } from '../lib/solicitudProgramacion'
 
@@ -53,7 +53,8 @@ export function SolicitudProgramacion({ slug }: { slug: string }) {
     return () => { vivo = false }
   }, [slug])
 
-  const visibles = (qs: Pregunta[]) => qs.filter(q => salud || !IDS_SALUD.includes(q.id))
+  // La edad se pide siempre (solo adultos); lo demás de salud, solo con consentimiento
+  const visibles = (qs: Pregunta[]) => qs.filter(q => salud || q.id === 'edad' || !IDS_SALUD.includes(q.id))
   const marca = datos?.marca || datos?.entrenador || ''
 
   if (cargando) return <div className="min-h-[100dvh] bg-bg flex items-center justify-center"><div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>
@@ -80,6 +81,7 @@ export function SolicitudProgramacion({ slug }: { slug: string }) {
   const siguientePreguntas = () => {
     const falta = faltan(visibles(PARTES[parte]), valores)
     if (falta.length) { setError(`Falta contestar: ${falta[0].label}`); return }
+    if (parte === 1 && esMayorDeEdad(valores.edad) === false) { setError(AVISO_SOLO_ADULTOS); return }
     setError('')
     if (parte === 0) { setParte(1); window.scrollTo(0, 0); return }
     if (salud) { setPaso('parq'); window.scrollTo(0, 0) } else void enviar()
@@ -94,7 +96,7 @@ export function SolicitudProgramacion({ slug }: { slug: string }) {
     setEnviando(true); setError('')
     // Sin consentimiento de salud, esas respuestas ni salen del navegador (el servidor las descartaría igualmente)
     const limpias = respuestasParaEnvio(valores)
-    for (const id of IDS_SALUD) if (!salud) delete limpias[id]
+    for (const id of IDS_SALUD) if (!salud && id !== 'edad') delete limpias[id]
     const { data, error: err } = await supabase.rpc('enviar_solicitud_programacion', {
       p_slug: slug, p_clave: clave.current, p_nombre: nombre.trim(), p_email: c.email, p_telefono: c.phone,
       p_respuestas: limpias, p_parq: salud ? parq : null, p_consiente_salud: salud, p_consiente_asistente: salud && asistente,
