@@ -99,6 +99,8 @@ export interface TrainingPlan {
   marcas?: Record<string, { kg: number; fecha: string }>  // marcas de referencia puestas a mano, por nombre de ejercicio en minúsculas (lib/marcaRM.ts)
   competicion?: import('../lib/competicion').Competicion  // competición de powerlifting que se prepara: fecha, intentos y puntos (lib/competicion.ts)
   pesoMancuernas?: import('../lib/pesoMancuerna').PesoMancuernas  // con mancuernas se apunta el total (por defecto) o el de una (lib/pesoMancuerna.ts)
+  /** Primera semana guiada (lib/calibracion): cuándo confirmó el entrenador las cargas de partida; hasta entonces el cliente está calibrando. */
+  calibracion?: { confirmadaEl?: string }
   progresion?: import('../lib/progresionAuto').ProgresionPlan  // progresión automática: regla por defecto y por ejercicio (lib/progresionAuto.ts)
 }
 
@@ -143,7 +145,7 @@ export interface LogSet {
 // duda: el cliente pidió ayuda con la técnica de este ejercicio (fecha ISO); el entrenador lo ve en su cola.
 // noContar: el entrenador lo ha sacado de las estadísticas (dato mal apuntado); no se borra (lib/cuentaEnProgreso).
 // corregido: cuándo corrigió el entrenador los pesos/reps que apuntó el cliente (fecha ISO); se enseña al lado.
-export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sustitucion?: Sustitucion; duda?: string; sessionFinished?: boolean; dolorEva?: number; porLado?: boolean; noContar?: boolean; corregido?: string }
+export interface ExerciseLog { sets: Record<number, LogSet>; done: boolean; note?: string; dateDone?: string; videoEjecucion?: string; substituteName?: string; sustitucion?: Sustitucion; duda?: string; sessionFinished?: boolean; dolorEva?: number; porLado?: boolean; noContar?: boolean; corregido?: string; sensacion?: 'facil' | 'correcto' | 'duro' }
 export type SustitucionMotivo = 'material' | 'dolor' | 'preferencia' | 'tecnico'
 // automatico = lo propuso la app (mismo grupo muscular); entrenador = estaba en su plan B; pendiente = lo eligió el cliente por su cuenta y falta que lo revise.
 export type SustitucionAprobacion = 'automatico' | 'entrenador' | 'pendiente'

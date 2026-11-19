@@ -13,6 +13,7 @@ import { RIR_OPTIONS, getSuggestedWeightChange, getTargetRangeLabel, esPesoKg, v
 import { SelectorTipoSerie } from './SelectorTipoSerie'
 import { TIPOS_SERIE, letraTipo, type TipoSerie } from '../../../lib/tipoSerie'
 import { escalaEsfuerzo, etiquetaEsfuerzo, preguntaEsfuerzo, valorEnEscala } from '../../../lib/escalaEsfuerzo'
+import { AYUDA_RIR, SENSACIONES, type Sensacion } from '../../../lib/calibracion'
 
 export interface FocusSet { weight: string; reps: string; done: boolean; rir?: number; velocity?: number; tipo?: TipoSerie }
 interface PrevSet { weight?: string; reps?: string; rir?: number }
@@ -57,6 +58,10 @@ interface Props {
   /** Fondo oscuro (el del gimnasio): se decide en ActiveWorkout para pintar también las franjas de seguridad. */
   oscuro: boolean
   onToggleOscuro: () => void
+  /** Primera semana guiada (lib/calibracion): se explica el RIR a la vista y, al acabar cada ejercicio, se pregunta cómo le resultó. */
+  calibrando?: boolean
+  sensacionDe?: (ri: number) => Sensacion | undefined
+  onSensacion?: (ri: number, v: Sensacion) => void
 }
 
 const SWIPE_HINT_KEY = 'pf_swipe_hint_done'
@@ -365,7 +370,27 @@ export function FocusWorkout(p: Props) {
                 })}
               </div>
               {cur.rir !== undefined && <p className="text-center text-xs text-muted mt-1.5">{RIR_OPTIONS.find(o => o.value === Math.floor(cur.rir!))?.desc}</p>}
+              {/* El RIR se explica en el momento de ponerlo: abierto mientras calibra, a un toque el resto del tiempo */}
+              <details open={p.calibrando} className="mt-2 text-xs text-muted">
+                <summary className="cursor-pointer text-center font-semibold">¿Qué es el RIR?</summary>
+                <ul className="mt-1.5 space-y-0.5" aria-label="Qué significa cada número del RIR">
+                  {AYUDA_RIR.map(a => <li key={a.valor}><strong className="text-ink">{a.valor}</strong> — {a.texto}</li>)}
+                </ul>
+              </details>
             </div>
+
+            {/* Al acabar el ejercicio, en la primera semana: ¿fue fácil, correcto o duro? (el entrenador revisa las cargas con esto) */}
+            {p.calibrando && p.onSensacion && Object.keys(p.sets[p.ri] || {}).length > 0 && Object.values(p.sets[p.ri] || {}).every(x => x.done) && (
+              <div className="mx-4 mt-4 rounded-2xl border border-accent/30 bg-accent/5 p-3" role="group" aria-label="¿Cómo te ha resultado este ejercicio?">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted text-center mb-2">¿Cómo te ha resultado este ejercicio?</p>
+                <div className="flex gap-1.5">
+                  {SENSACIONES.map(o => (
+                    <button key={o.id} type="button" aria-pressed={p.sensacionDe?.(p.ri) === o.id} onClick={() => p.onSensacion!(p.ri, o.id)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all active:scale-95 ${p.sensacionDe?.(p.ri) === o.id ? 'bg-ink text-white border-ink' : 'border-border text-muted'}`}>{o.label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Tipo de serie: calentamiento (no cuenta para el volumen), dropset o al fallo */}
             <div className="mx-4 mt-4">

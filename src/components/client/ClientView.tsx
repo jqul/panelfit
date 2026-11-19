@@ -27,6 +27,8 @@ const ReadinessCheckin = lazy(() => import('./ReadinessCheckin').then(m => ({ de
 const ProximasSesiones = lazy(() => import('./client-view/ProximasSesiones').then(m => ({ default: m.ProximasSesiones })))
 const BadgesWidget = lazy(() => import('./BadgesWidget').then(m => ({ default: m.BadgesWidget })))
 const HabitosWidget = lazy(() => import('./HabitosWidget').then(m => ({ default: m.HabitosWidget })))
+// Solo lo ve quien está en su primera semana: va aparte para no engordar el bundle inicial del cliente
+const BannerCalibracion = lazy(() => import('./BannerCalibracion').then(m => ({ default: m.BannerCalibracion })))
 const ResumenSemana = lazy(() => import('./ResumenSemana').then(m => ({ default: m.ResumenSemana })))
 const Cargando = () => <div className="p-6 text-sm text-muted">Cargando…</div>
 import { PlanRow, RegistroRow, ClienteRow } from '../../lib/supabase-types'
@@ -564,6 +566,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
             {activeTab === 'hoy' && (
               plan
                 ? <>
+                    <Suspense fallback={null}><BannerCalibracion plan={plan} logs={logs} /></Suspense>
                     {/* Lo más importante primero: el entreno de hoy */}
                     <ClientDashboard
                       plan={plan} logs={logs} onLogsChange={handleLogsChange}
