@@ -82,6 +82,9 @@ export const INCLUYE_PROGRAMACION = [
 // ── Respuestas ──
 export const PREGUNTAS_PROGRAMACION: Pregunta[] = MODELO_PROGRAMACION_INICIAL.questions
 
+/** Las preguntas de salud del modelo: solo se piden y se guardan con consentimiento de salud (igual que la columna «es de salud» de la migración). */
+export const IDS_SALUD = ['rechaza', 'molestias', 'molestias_detalle', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres']
+
 /** Lo que se envía: sin las preguntas vacías (la base de datos descarta lo desconocido y valida el resto). */
 export function respuestasParaEnvio(valores: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(PREGUNTAS_PROGRAMACION.filter(q => respondida(valores[q.id])).map(q => [q.id, valores[q.id]]))

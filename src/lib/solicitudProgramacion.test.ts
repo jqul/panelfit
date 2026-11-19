@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import {
   estadoEnlace, textoUsos, textoCaducidad, hayAlarmaParq, filasParq, slugDeRuta, urlProgramacion, respuestasParaEnvio, filasRespuestas,
   planBorradorDe, notasDeSolicitud, MENSAJE_RECIBIDA, MENSAJE_REVISAR, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_SALUD_PROGRAMACION, AVISO_NO_MEDICO,
-  PREGUNTAS_PROGRAMACION, type EnlaceProgramacion,
+  PREGUNTAS_PROGRAMACION, IDS_SALUD, type EnlaceProgramacion,
 } from './solicitudProgramacion'
 import { esNuevo, ordenarLeads, type Lead } from './leads'
 
@@ -85,10 +85,11 @@ describe('respuestas', () => {
 describe('el modelo y la base de datos hablan de las mismas preguntas', () => {
   // La función SQL limpiar_respuestas_programacion lista las preguntas: si cambias el modelo, cambia la migración (y al revés).
   const sql = readFileSync('supabase/migrations/20261118000020_solicitud_programacion_inicial.sql', 'utf8')
-  const filas = [...sql.matchAll(/\('([a-z_]+)',\s+'(choice|text|multi|yesno|number|scale)',\s+(true|false),\s+(true|false),/g)].map(m => ({ id: m[1], tipo: m[2], obligatoria: m[4] === 'true' }))
+  const filas = [...sql.matchAll(/\('([a-z_]+)',\s+'(choice|text|multi|yesno|number|scale)',\s+(true|false),\s+(true|false),/g)].map(m => ({ id: m[1], tipo: m[2], salud: m[3] === 'true', obligatoria: m[4] === 'true' }))
   it('mismos ids, mismo tipo y mismas obligatorias', () => {
     expect(filas.map(f => f.id)).toEqual(PREGUNTAS_PROGRAMACION.map(q => q.id))
     expect(filas.map(f => f.tipo)).toEqual(PREGUNTAS_PROGRAMACION.map(q => q.type))
+    expect(filas.filter(f => f.salud).map(f => f.id).sort()).toEqual([...IDS_SALUD].sort())
     expect(filas.filter(f => f.obligatoria).map(f => f.id)).toEqual(PREGUNTAS_PROGRAMACION.filter(q => q.required).map(q => q.id))
   })
 })

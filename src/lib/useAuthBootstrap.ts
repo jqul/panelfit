@@ -4,7 +4,7 @@ import { UserProfile } from '../types'
 import { clearTrainerDeviceData } from './deviceStorage'
 import { tokenAtStart, isStandaloneDisplay, recalledClientLink, isPlausibleToken } from './clientLink'
 
-export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'calculadora-rpe' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
+export type AppView = 'loading' | 'auth' | 'trainer' | 'client-token' | 'demo' | 'pending-demo' | 'public-page' | 'solicitud-programacion' | 'reset-password' | 'landing-app-entrenadores' | 'landing-software-entrenador' | 'landing-precios' | 'landing-alternativa-harbiz' | 'landing-alternativa-trainerize' | 'landing-alternativa-mypthub' | 'landing-alternativa-truecoach' | 'landing-alternativa-ptdistinction' | 'calculadora-rm' | 'calculadora-rpe' | 'blog-index' | 'blog-organizar-clientes' | 'blog-mejor-software' | 'blog-seguimiento-clientes' | 'blog-pagos' | 'blog-plantillas' | 'blog-conseguir-clientes' | 'blog-app-planes'
 
 export interface PendingUser {
   uid: string
@@ -23,6 +23,7 @@ export function useAuthBootstrap() {
   const [pendingUser, setPendingUser] = useState<PendingUser | null>(null)
   const [clientToken, setClientToken] = useState<string | null>(null)
   const [publicSlug, setPublicSlug] = useState<string | null>(null)
+  const [programacionSlug, setProgramacionSlug] = useState<string | null>(null)
   const loggingOutRef = useRef(false)
 
   const loadProfile = async (uid: string, email: string) => {
@@ -102,6 +103,10 @@ export function useAuthBootstrap() {
     if (pathname === '/blog/conseguir-clientes-entrenador-personal-online' || pathname === '/blog/conseguir-clientes-entrenador-personal-online/') { setView('blog-conseguir-clientes'); return }
     if (pathname === '/blog/app-enviar-planes-entrenamiento-clientes' || pathname === '/blog/app-enviar-planes-entrenamiento-clientes/') { setView('blog-app-planes'); return }
 
+    // Solicitud de programación inicial: el enlace revocable que comparte el entrenador (solo 32 hexadecimales)
+    const progSlug = pathname.match(/^\/programacion\/([0-9a-f]{32})\/?$/)?.[1]
+    if (progSlug) { setProgramacionSlug(progSlug); setView('solicitud-programacion'); return }
+
     const pageMatch = pathname.match(/^\/p\/([a-z0-9-]+)\/?$/)
     if (pageMatch) { setPublicSlug(pageMatch[1]); setView('public-page'); return }
 
@@ -134,5 +139,5 @@ export function useAuthBootstrap() {
     return () => subscription.unsubscribe()
   }, [])
 
-  return { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView }
+  return { view, userProfile, pendingUser, clientToken, publicSlug, programacionSlug, logout, setView }
 }

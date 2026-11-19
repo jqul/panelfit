@@ -14,6 +14,7 @@ const ClientPanel      = lazy(() => import('./components/trainer/ClientPanel').t
 const ClientView       = lazy(() => import('./components/client/ClientView').then(m => ({ default: m.ClientView })))
 const SuperAdminPanel  = lazy(() => import('./components/trainer/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel })))
 const PublicTrainerPage = lazy(() => import('./components/trainer/PublicTrainerPage').then(m => ({ default: m.PublicTrainerPage })))
+const SolicitudProgramacion = lazy(() => import('./components/SolicitudProgramacion').then(m => ({ default: m.SolicitudProgramacion })))
 const LandingAppEntrenadores    = lazy(() => import('./components/LandingAppEntrenadores').then(m => ({ default: m.LandingAppEntrenadores })))
 const LandingSoftwareEntrenador = lazy(() => import('./components/LandingSoftwareEntrenador').then(m => ({ default: m.LandingSoftwareEntrenador })))
 const LandingPrecios            = lazy(() => import('./components/LandingPrecios').then(m => ({ default: m.LandingPrecios })))
@@ -51,7 +52,7 @@ function LoadingScreen() {
 
 // ── App ───────────────────────────────────────────────────
 export default function App() {
-  const { view, userProfile, pendingUser, clientToken, publicSlug, logout, setView } = useAuthBootstrap()
+  const { view, userProfile, pendingUser, clientToken, publicSlug, programacionSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   // «Añadir» de la ficha (cita, documento, encuesta): sale al panel con ese cliente ya elegido; el panel lo usa una vez y lo suelta
   const [intento, setIntento] = useState<IntentoPanel | null>(null)
@@ -225,6 +226,11 @@ export default function App() {
       {/* Página pública del entrenador */}
       {view === 'public-page' && publicSlug && (
         <PublicTrainerPage slug={publicSlug} />
+      )}
+
+      {/* Solicitud de programación inicial (enlace revocable del entrenador) */}
+      {view === 'solicitud-programacion' && programacionSlug && (
+        <SolicitudProgramacion slug={programacionSlug} />
       )}
 
       {/* Establecer nueva contraseña (enlace de recuperación) */}
