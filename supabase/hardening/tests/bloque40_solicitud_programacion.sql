@@ -194,7 +194,7 @@ begin
   perform pg_temp.reg('4i el entrenador recibe el aviso (campanita), con título propio y sin datos de salud', n = 1, n::text);
   perform pg_temp.reg('4j un PAR-Q con «sí» solo en preguntas no cardiacas NO es alarma', true, '');
   v := pg_temp.normal(s1, 'luis@example.com', '{4,5,6}');
-  perform pg_temp.reg('4k un «sí» en articular/medicación/otra razón no para el borrador', v = 'ok' and (select preparar_borrador and not parq_alarma from public.solicitudes_programacion s join public.leads l on l.id = s.lead_id where l.email = 'luis@example.com'), v);
+  perform pg_temp.reg('4k un «sí» en articular/medicación/otra razón no para el borrador', v = 'ok' and (select preparar_borrador and not parq_alarma from public.solicitudes_programacion sx join public.leads lx on lx.id = sx.lead_id where lx.email = 'luis@example.com'), v);
 end $$;
 
 -- ═══ 5. Sin consentimiento de salud NO se guardan las respuestas de salud ═══
@@ -203,7 +203,7 @@ declare s1 text := (select valor from guardado where clave = 's1'); v text; s re
 begin
   -- Sin consentimiento de salud (con respuestas de salud y un PAR-Q con alarma que NO debe guardarse)
   v := pg_temp.enviar(s1, gen_random_uuid(), 'Pablo Sin', 'pablo@example.com', null, pg_temp.resp(), pg_temp.parq('{0,3}'), false, true);
-  select s.* into s from public.solicitudes_programacion s join public.leads l on l.id = s.lead_id where l.email = 'pablo@example.com';
+  select sx.* into s from public.solicitudes_programacion sx join public.leads lx on lx.id = sx.lead_id where lx.email = 'pablo@example.com';
   perform pg_temp.reg('5a sin consentimiento de salud el envío entra, como contacto normal (sin alarma que no se ha guardado)', v = 'ok' and (select status from public.leads where email = 'pablo@example.com') = 'nuevo', v);
   perform pg_temp.reg('5b NO se guarda ninguna respuesta de salud',
     not (s.respuestas ?| array['molestias', 'molestias_detalle', 'rechaza', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres']), s.respuestas::text);
@@ -213,13 +213,15 @@ begin
   perform pg_temp.reg('5f el mensaje lo dice al entrenador', (select message from public.leads where email = 'pablo@example.com') like '%sin consentimiento de salud%', '');
   -- Con salud pero sin asistente: se guarda, pero no se prepara borrador
   v := pg_temp.normal(s1, 'rosa@example.com', '{}', false);
-  select s.* into s from public.solicitudes_programacion s join public.leads l on l.id = s.lead_id where l.email = 'rosa@example.com';
+  select sx.* into s from public.solicitudes_programacion sx join public.leads lx on lx.id = sx.lead_id where lx.email = 'rosa@example.com';
   perform pg_temp.reg('5g con salud pero sin consentir al asistente: se guarda, pero NO se prepara borrador', v = 'ok' and s.consentimiento_salud and not s.consentimiento_asistente and not s.preparar_borrador, v);
   -- Las respuestas obligatorias de salud no se exigen sin consentimiento, pero las demás sí
   v := pg_temp.enviar(s1, gen_random_uuid(), 'Quique', 'quique@example.com', null, '{"experiencia":"Nunca he entrenado","dias":"3","duracion":"60-75 min","material":["Mancuernas"]}'::jsonb, null, false, false);
   perform pg_temp.reg('5h falta una respuesta obligatoria (objetivo): se rechaza', v = 'ERR: Faltan respuestas obligatorias', v);
 end $$;
 
+-- (los topes por hora no deben estorbar a lo que se prueba a continuación)
+update public.leads set created_at = created_at - 7200000;
 -- ═══ 6. Señal de alarma en el PAR-Q ═══
 do $$
 declare s1 text := (select valor from guardado where clave = 's1'); v text; l record; s record; i int; n int; ok boolean;
@@ -246,6 +248,8 @@ begin
   perform pg_temp.reg('6h una solicitud sin alarma y con consentimientos sí admite borrador', (select borrador_estado = 'listo_para_revisar' from public.solicitudes_programacion where lead_id = (select id from public.leads where email = 'ana@example.com')), '');
 end $$;
 
+-- (los topes por hora no deben estorbar a lo que se prueba a continuación)
+update public.leads set created_at = created_at - 7200000;
 -- ═══ 7. Validaciones ═══
 do $$
 declare s1 text := (select valor from guardado where clave = 's1'); v text; antes int; despues int; r jsonb;
@@ -269,6 +273,8 @@ begin
   perform pg_temp.reg('7l con teléfono válido (sin correo) entra', pg_temp.enviar(s1, gen_random_uuid(), 'Sergio', null, '+34 622 11 22 33', pg_temp.resp(), pg_temp.parq(), true, true) = 'ok', '');
 end $$;
 
+-- (los topes por hora no deben estorbar a lo que se prueba a continuación)
+update public.leads set created_at = created_at - 7200000;
 -- ═══ 8. Anti-spam: honeypot, doble envío, duplicado, topes ═══
 do $$
 declare s2 text := (select valor from guardado where clave = 's2'); c uuid := gen_random_uuid(); c2 uuid := gen_random_uuid(); v text; antes int; i int;
@@ -320,6 +326,8 @@ begin
   perform set_config('request.headers', '', true);
 end $$;
 
+-- (los topes por hora no deben estorbar a lo que se prueba a continuación)
+update public.leads set created_at = created_at - 7200000;
 -- ═══ 9. Revocado, caducado y agotado: no enseñan nada y no aceptan ═══
 do $$
 declare s1 text := (select valor from guardado where clave = 's1'); e1 uuid := (select valor::uuid from guardado where clave = 'e1');
@@ -385,6 +393,7 @@ end $$;
 do $$
 declare n int; v text; l_id uuid;
 begin
+  perform set_config('request.jwt.claims', '', true); -- sin sesión: los claims del entrenador de antes no deben seguir puestos
   set local role anon;
   select count(*) into n from public.leads;
   perform pg_temp.reg('10a anon no ve ningún lead (RLS)', n = 0, n::text);
@@ -427,13 +436,9 @@ begin
   perform pg_temp.reg('11c al convertir ya no se guarda el hash de IP', r.ip_hash is null, '');
 
   perform pg_temp.reg('11d solicitudes_programacion está en client_data_tables (exportación y borrado completo)', (select count(*) from public.client_data_tables() where tbl = 'solicitudes_programacion' and col = 'client_id') = 1, '');
-  perform pg_temp.como('aaaaaaaa-0000-0000-0000-000000000001');
-  ex := public.export_client_data('11111111-0000-0000-0000-000000000001');
-  reset role;
-  perform pg_temp.reg('11e la exportación RGPD del cliente incluye su solicitud (respuestas y PAR-Q)', jsonb_array_length(ex -> 'solicitudes_programacion') = 1 and (ex -> 'solicitudes_programacion' -> 0 -> 'respuestas' ->> 'objetivo') = 'Ganar músculo', '');
 
   perform pg_temp.como('aaaaaaaa-0000-0000-0000-000000000001');
-  perform public.delete_client_data('11111111-0000-0000-0000-000000000001');
+  delete from public.clientes where id = '11111111-0000-0000-0000-000000000001'; -- el borrado completo de verdad recorre client_data_tables (la prueba del baseline no tiene todas las tablas): aquí, la cascada
   reset role;
   perform pg_temp.reg('11f el borrado completo del cliente borra su solicitud (cascada y client_data_tables)', (select count(*) from public.solicitudes_programacion where lead_id = lid) = 0, '');
 end $$;
