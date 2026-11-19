@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, validarContacto, llevaEsperando, textoEspera, type Lead } from './leads'
+import { whatsappDe, contactoDe, ordenarLeads, haceCuanto, saludoParaLead, partirNombre, notasDeLead, validarContacto, llevaEsperando, textoEspera, avisoPushPendiente, textoAvisoPush, type Lead, type EstadoAvisoPush } from './leads'
 
 const lead = (id: string, status: string, created_at: number): Lead => ({ id, name: id, email: null, phone: null, message: null, status, created_at, referred_by_client_id: null })
 
@@ -105,5 +105,24 @@ describe('contactos que llevan esperando', () => {
     expect(textoEspera(h(5), ahora)).toBe('')
     expect(textoEspera(h(30), ahora)).toBe('Lleva más de un día sin contestar')
     expect(textoEspera(h(80), ahora)).toBe('Lleva 3 días sin contestar')
+  })
+})
+
+describe('aviso push: lo que se sabe y lo que no', () => {
+  const l = (status: string, aviso_push?: EstadoAvisoPush | null) => ({ status, aviso_push })
+  it('«Aviso push pendiente» solo en contactos nuevos o «a revisar» cuyo push no salió (sin móvil activado o fallido)', () => {
+    expect(avisoPushPendiente(l('nuevo', 'sin_suscripcion'))).toBe(true)
+    expect(avisoPushPendiente(l('revisar', 'fallido'))).toBe(true)
+    // El servicio push lo aceptó (total o parcial), no consta o el contacto ya se atendió: no se etiqueta
+    for (const e of ['enviado_al_proveedor', 'parcial', null, undefined] as const) expect(avisoPushPendiente(l('nuevo', e))).toBe(false)
+    for (const st of ['contactado', 'convertido', 'descartado', 'borrador_listo']) expect(avisoPushPendiente(l(st, 'fallido'))).toBe(false)
+  })
+  it('el texto nunca dice que el aviso «llegó al móvil»: solo lo que se sabe', () => {
+    expect(textoAvisoPush('sin_suscripcion')).toContain('Push no configurado')
+    expect(textoAvisoPush('fallido')).toContain('No se pudo enviar')
+    expect(textoAvisoPush('enviado_al_proveedor')).toBe('Enviado al servicio de notificaciones.')
+    expect(textoAvisoPush('parcial')).toContain('solo en algunos dispositivos')
+    expect(textoAvisoPush(null)).toBeNull()
+    for (const e of ['sin_suscripcion', 'fallido', 'enviado_al_proveedor', 'parcial'] as const) expect(textoAvisoPush(e)!.toLowerCase()).not.toMatch(/lleg[óo]|recibid/)
   })
 })

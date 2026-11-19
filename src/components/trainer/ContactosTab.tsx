@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Inbox, Mail, MessageCircle, Gift, UserPlus, FileText, Trash2 } from 'lucide-react'
 import { toast } from '../shared/Toast'
-import { ESTADOS_LEAD, contactoDe, esNuevo, esSolicitud, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
+import { ESTADOS_LEAD, avisoPushPendiente, textoAvisoPush, contactoDe, esNuevo, esSolicitud, haceCuanto, saludoParaLead, textoEspera, whatsappDe, type EstadoLead, type Lead } from '../../lib/leads'
 import { isDemoTrainerId } from '../../lib/demoIds'
 import type { LeadsState } from '../../hooks/useLeads'
 import { PaginaPublicaCard } from './PaginaPublicaCard'
@@ -83,6 +83,7 @@ export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onI
                   <span className="text-[11px] text-muted flex-shrink-0">{haceCuanto(l.created_at)}</span>
                 </div>
                 {textoEspera(l) && <p className="text-xs font-semibold text-warn">{textoEspera(l)}</p>}
+                {avisoPushPendiente(l) && <p className="text-[11px] font-semibold text-muted" title={textoAvisoPush(l.aviso_push) ?? undefined}>🔕 Aviso push pendiente · {textoAvisoPush(l.aviso_push)}</p>}
                 {l.message && <p className="text-sm text-ink/80 italic leading-relaxed">"{l.message}"</p>}
                 {esSolicitud(l) && (
                   <p className="text-xs font-semibold text-accent">{l.status === 'revisar' ? 'Solicitud de programación inicial · necesita tu revisión personal' : 'Solicitud de programación inicial'}</p>

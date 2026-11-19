@@ -28,6 +28,19 @@ function igual(a: string, b: string): boolean {
   return r === 0
 }
 
+// Qué pasó con el aviso, anotado en el lead (leads.aviso_push). Dice lo que se sabe: el servicio push ACEPTÓ el envío, no que llegara al
+// móvil (eso no se puede demostrar). Nunca lleva datos de salud. Si no se puede anotar, no importa: el contacto ya está guardado.
+type EstadoPush = "sin_suscripcion" | "enviado_al_proveedor" | "fallido" | "parcial"
+async function anotarAviso(leadId: unknown, trainerId: string, estado: EstadoPush): Promise<void> {
+  if (typeof leadId !== "string" || !UUID.test(leadId)) return
+  try { await supabase.from("leads").update({ aviso_push: estado, aviso_push_at: Date.now() }).eq("id", leadId).eq("trainer_id", trainerId) } catch { /* sin anotar */ }
+}
+function estadoDe(sent: number, total: number): EstadoPush {
+  if (total === 0) return "sin_suscripcion"
+  if (sent === 0) return "fallido"
+  return sent === total ? "enviado_al_proveedor" : "parcial"
+}
+
 // ¿Ha apagado el entrenador este tipo de aviso? (Ajustes → Notificaciones; profile.avisos, ver
 // src/lib/preferenciasAvisos.ts). Lo que no está guardado como false se manda.
 async function avisoApagado(trainerId: string, tipo: unknown): Promise<boolean> {
@@ -64,11 +77,13 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "VAPID keys not configured" }), { status: 500 })
   }
 
+  let pendiente: { lead: unknown; trainer: string } | null = null // para anotar «fallido» si algo lanza
   try {
-    const { trainer_id, name, recordatorio, tipo } = await req.json()
+    const { trainer_id, name, recordatorio, tipo, lead_id } = await req.json()
     if (typeof trainer_id !== "string" || !UUID.test(trainer_id)) {
       return new Response(JSON.stringify({ error: "trainer_id required" }), { status: 400 })
     }
+    if (recordatorio !== true) pendiente = { lead: lead_id, trainer: trainer_id }
     const quien = String(name ?? "").replace(/\s+/g, " ").trim().slice(0, 60) || "Alguien"
 
     if (await avisoApagado(trainer_id, "contacto")) {
@@ -99,10 +114,13 @@ Deno.serve(async (req: Request) => {
     )
 
     const sent = results.filter((r) => r.status === "fulfilled").length
+    // El recordatorio de una solicitud ya avisada no pisa lo anotado la primera vez
+    if (recordatorio !== true) await anotarAviso(lead_id, trainer_id, estadoDe(sent, subs?.length || 0))
     return new Response(JSON.stringify({ sent, total: subs?.length || 0 }), {
       headers: { "Content-Type": "application/json" },
     })
   } catch (err) {
+    if (pendiente) await anotarAviso(pendiente.lead, pendiente.trainer, "fallido")
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
   }
 })
