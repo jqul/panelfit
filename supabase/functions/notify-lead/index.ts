@@ -37,6 +37,19 @@ async function avisoApagado(trainerId: string, tipo: unknown): Promise<boolean> 
   return !!avisos && avisos[tipo] === false
 }
 
+// Título y cuerpo del push según el tipo de aviso.
+function textoDelAviso(tipo: unknown, recordatorio: boolean, quien: string): { title: string; body: string } {
+  if (tipo === "revision") {
+    return recordatorio
+      ? { title: "Solicitud pendiente de revisión personal", body: `${quien} lleva más de un día esperando tu revisión` }
+      : { title: "Solicitud pendiente de revisión personal", body: `${quien} necesita tu revisión personal antes de programar` }
+  }
+  if (tipo === "solicitud") return { title: "Nueva solicitud de programación", body: `${quien} ha enviado una solicitud de programación inicial` }
+  return recordatorio
+    ? { title: "Contacto sin contestar", body: `${quien} lleva más de un día esperando tu respuesta` }
+    : { title: "Nuevo contacto", body: `${quien} te ha escrito desde tu página pública` }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 })
 
@@ -52,7 +65,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { trainer_id, name, recordatorio } = await req.json()
+    const { trainer_id, name, recordatorio, tipo } = await req.json()
     if (typeof trainer_id !== "string" || !UUID.test(trainer_id)) {
       return new Response(JSON.stringify({ error: "trainer_id required" }), { status: 400 })
     }
@@ -65,11 +78,10 @@ Deno.serve(async (req: Request) => {
     const { data: subs, error } = await supabase.from("push_subscriptions").select("*").eq("trainer_id", trainer_id)
     if (error) throw error
 
-    const payload = JSON.stringify({
-      title: recordatorio ? "Contacto sin contestar" : "Nuevo contacto",
-      body: recordatorio ? `${quien} lleva más de un día esperando tu respuesta` : `${quien} te ha escrito desde tu página pública`,
-      url: "/",
-    })
+    // El tipo lo manda el trigger o la tarea programada: una solicitud de programación (y, más aún, una que necesita revisión personal por el
+    // PAR-Q) no es un contacto cualquiera. Nunca lleva datos de salud: solo el nombre.
+    const { title, body } = textoDelAviso(tipo, recordatorio === true, quien)
+    const payload = JSON.stringify({ title, body, url: "/" })
 
     const results = await Promise.allSettled(
       (subs || []).map((sub) =>

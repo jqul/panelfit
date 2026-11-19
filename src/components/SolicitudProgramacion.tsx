@@ -6,7 +6,7 @@ import { PARQ_QUESTIONS } from '../lib/intakeQuestions'
 import { faltan, type Pregunta } from '../lib/cuestionarios'
 import {
   AVISO_NO_MEDICO, CONSENT_ASISTENTE_PROGRAMACION, CONSENT_PROGRAMACION_VERSION, CONSENT_SALUD_PROGRAMACION, IDS_SALUD, INCLUYE_PROGRAMACION,
-  MENSAJE_RECIBIDA, MENSAJE_REVISAR, PREGUNTAS_PROGRAMACION, respuestasParaEnvio,
+  MENSAJE_RECIBIDA, MENSAJE_REVISAR, POLITICA_RETENCION, PREGUNTAS_PROGRAMACION, respuestasParaEnvio,
 } from '../lib/solicitudProgramacion'
 
 // Solicitud de programación inicial: la página que abre quien recibe el enlace revocable de un entrenador. Sin cuenta, sin contraseña.
@@ -133,6 +133,7 @@ export function SolicitudProgramacion({ slug }: { slug: string }) {
               {INCLUYE_PROGRAMACION.map(t => <li key={t} className="flex gap-2"><Check className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" /> {t}</li>)}
             </ul>
             <p className="text-xs text-muted leading-relaxed bg-card rounded-xl p-3">{AVISO_NO_MEDICO}</p>
+            <p className="text-xs text-muted leading-relaxed">{POLITICA_RETENCION}</p>
             <div>
               <label htmlFor="sp-nombre" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Tu nombre</label>
               <input id="sp-nombre" value={nombre} onChange={e => setNombre(e.target.value)} autoComplete="given-name" maxLength={100} className={campo} />

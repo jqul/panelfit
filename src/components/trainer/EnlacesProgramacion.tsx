@@ -3,7 +3,7 @@ import { Link2, Copy, Ban, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { toast } from '../shared/Toast'
 import {
-  ETIQUETA_ESTADO_ENLACE, estadoEnlace, textoCaducidad, textoUsos, urlProgramacion, type EnlaceProgramacion,
+  ETIQUETA_ESTADO_ENLACE, POLITICA_RETENCION, estadoEnlace, textoCaducidad, textoUsos, urlProgramacion, type EnlaceProgramacion,
 } from '../../lib/solicitudProgramacion'
 
 // Contactos → Enlaces de programación inicial: el entrenador crea un enlace que comparte con quien quiere que pida una programación
@@ -64,7 +64,7 @@ export function EnlacesProgramacion({ trainerId }: { trainerId: string }) {
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-bold flex items-center gap-1.5"><Link2 className="w-4 h-4 text-accent" /> Enlaces de programación inicial</h3>
-          <p className="text-xs text-muted mt-0.5">Quien lo abre pide su programación sin cuenta; llega aquí como contacto, no como cliente. Lo revisas tú.</p>
+          <p className="text-xs text-muted mt-0.5">Quien lo abre pide su programación sin cuenta; llega aquí como contacto, no como cliente. Lo revisas tú. {POLITICA_RETENCION}</p>
         </div>
         {!creando && <button onClick={() => setCreando(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-ink text-white text-xs font-bold flex-shrink-0"><Plus className="w-3.5 h-3.5" /> Crear enlace</button>}
       </div>
