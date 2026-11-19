@@ -49,7 +49,15 @@ export function useLeads(trainerId: string, clients: ClienteNombre[]) {
     return !error
   }, [leads, demo])
 
-  return { leads: lista, nuevos, loading, recargar: cargar, cambiarEstado }
+  // Borrado de un contacto que no ha llegado a cliente: se va con él su solicitud (respuestas de salud incluidas) y su aviso
+  const borrar = useCallback(async (id: string): Promise<boolean> => {
+    if (demo) { setLeads(prev => prev.filter(l => l.id !== id)); return true }
+    const { error } = await supabase.from('leads').delete().eq('id', id)
+    if (!error) setLeads(prev => prev.filter(l => l.id !== id))
+    return !error
+  }, [demo])
+
+  return { leads: lista, nuevos, loading, recargar: cargar, cambiarEstado, borrar }
 }
 
 export type LeadsState = ReturnType<typeof useLeads>
