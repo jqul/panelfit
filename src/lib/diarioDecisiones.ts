@@ -43,6 +43,11 @@ export function estaPorRevisar(d: Pick<Decision, 'revisada_el' | 'revisar_el'>, 
   return !d.revisada_el && !!d.revisar_el && d.revisar_el <= hoy
 }
 
+/** Una decisión sobre volumen, intensidad o descarga: subir, bajar o redistribuir, o que lo diga el texto. Es a las que se les mira «qué pasó después». */
+export function esDecisionDeCarga(d: Pick<Decision, 'tipo' | 'hipotesis' | 'intervencion'>): boolean {
+  return ['bajar', 'subir', 'redistribuir'].includes(d.tipo) || /descarga|volumen|intensidad|series?\b/i.test(`${d.hipotesis} ${d.intervencion}`)
+}
+
 /** Primero las que toca revisar (la más atrasada arriba), luego el resto de la más reciente a la más antigua. */
 export function ordenarDecisiones(ds: Decision[], hoy: string): Decision[] {
   const porRevisar = ds.filter(d => estaPorRevisar(d, hoy)).sort((a, b) => (a.revisar_el as string).localeCompare(b.revisar_el as string))

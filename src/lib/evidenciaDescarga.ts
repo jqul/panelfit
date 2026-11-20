@@ -12,7 +12,7 @@ import { lunesDe } from './recordsSemana'
 import { weekIdxFromStart } from './planWeek'
 import { exposicionesComparables } from './recomendacionProgresion'
 import { estadoCalibracion } from './calibracion'
-import type { Decision } from './diarioDecisiones'
+import { esDecisionDeCarga, type Decision } from './diarioDecisiones'
 
 export type Confianza = 'baja' | 'media' | 'alta'
 
@@ -112,27 +112,34 @@ const CLAVE = /^ex_w\d+_d\d+_r\d+$/
 const media = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
 
-function sumarDias(iso: string, n: number): string {
+export function sumarDias(iso: string, n: number): string {
   const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n)
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 const antesDe = (hoy: string, dias: number) => sumarDias(hoy, -dias)
 
+/** Días que comparten dos intervalos de fechas, ambos inclusive. */
+export function diasSolapados(desdeA: string, hastaA: string, desdeB: string, hastaB: string): number {
+  const a = desdeA > desdeB ? desdeA : desdeB, b = hastaA < hastaB ? hastaA : hastaB
+  return a > b ? 0 : Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86_400_000) + 1
+}
+
 /** Días de [desde, hasta] (inclusive) que caen en la semana que empieza el `lunes`. */
 function diasEnSemana(lunes: string, desde: string, hasta: string): number {
-  const fin = sumarDias(lunes, 6)
-  const a = desde > lunes ? desde : lunes, b = hasta < fin ? hasta : fin
-  return a > b ? 0 : Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86_400_000) + 1
+  return diasSolapados(lunes, sumarDias(lunes, 6), desde, hasta)
+}
+
+/** Sesiones previstas por semana en el plan, según la semana que le toca en `fecha`. */
+export function previstasPorSemana(plan: TrainingPlan | null | undefined, fecha: string): number {
+  const w = plan?.weeks?.length ? plan.weeks[weekIdxFromStart(plan.fechaInicio || fecha, plan.weeks.length, new Date(fecha + 'T12:00:00'))] : undefined
+  return (w?.days || []).filter(d => d.exercises?.length).length
 }
 
 export function evidenciaDescarga(e: EntradaDescarga, p: PoliticaDescarga = POLITICA_DESCARGA): EvidenciaDescarga {
   const lunesHoy = lunesDe(e.hoy)
   const fechasHechas = new Map<string, true>()
   for (const [k, l] of Object.entries(e.logs || {})) if (CLAVE.test(k) && l?.done && l.dateDone && !l.noContar) fechasHechas.set(l.dateDone, true)
-  const previstasPlan = (() => {
-    const w = e.plan?.weeks?.length ? e.plan.weeks[weekIdxFromStart(e.plan.fechaInicio || e.hoy, e.plan.weeks.length, new Date(e.hoy + 'T12:00:00'))] : undefined
-    return (w?.days || []).filter(d => d.exercises?.length).length
-  })()
+  const previstasPlan = previstasPorSemana(e.plan, e.hoy)
 
   // ── Semanas: la última es la en curso; las demás, completas (de más antigua a más reciente) ──
   const semanas: SemanaEvidencia[] = []
@@ -196,7 +203,7 @@ export function evidenciaDescarga(e: EntradaDescarga, p: PoliticaDescarga = POLI
 
   // ── Decisiones previas relacionadas con volumen, intensidad o descarga ──
   const decisionesPrevias = [...e.decisiones]
-    .filter(d => ['bajar', 'subir', 'redistribuir'].includes(d.tipo) || /descarga|volumen|intensidad|series?\b/i.test(`${d.hipotesis} ${d.intervencion}`))
+    .filter(esDecisionDeCarga)
     .sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 3)
     .map(d => ({ id: d.id, fecha: d.fecha, tipo: d.tipo, texto: d.intervencion || d.hipotesis || d.tipo, revisada: !!d.revisada_el }))
 

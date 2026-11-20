@@ -81,7 +81,7 @@ test('una decisión con el plazo cumplido avisa en «Atención hoy» y se cierra
   await expect(diario.getByText('1 por revisar')).toBeVisible()
   await expect(diario.getByText('Toca revisar')).toBeVisible()
   await diario.getByRole('button', { name: /Revisar la decisión/ }).click()
-  await diario.getByLabel('¿Qué pasó?').fill('Subió 2,5 kg sin tocar nada')
+  await diario.getByLabel('Tu conclusión: ¿qué pasó y qué haces con esto?').fill('Subió 2,5 kg sin tocar nada')
   await diario.getByRole('button', { name: 'Guardar revisión' }).click()
 
   await expect(diario.getByText('Resultado: Subió 2,5 kg sin tocar nada')).toBeVisible()
