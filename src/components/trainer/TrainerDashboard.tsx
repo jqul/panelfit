@@ -17,7 +17,7 @@ import {
   LogOut, UserPlus, Search, ChevronRight,
   MessageCircle, Copy, Bell, CheckCircle2, AlertCircle,
   Clock, X, BarChart2, Menu, Save, TrendingUp, TrendingDown, CalendarDays, ChevronDown,
-  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare, Archive, FileText
+  StickyNote, Activity, Zap, ArrowRight, Users2, Tag as TagIcon, Inbox, MoreHorizontal, CheckSquare, Archive, FileText, ClipboardCheck
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { NotificacionesBell } from './NotificacionesBell'
@@ -49,6 +49,7 @@ const PESTANAS = {
   MensajesTab: () => import('./MensajesTab'),
   InsightsTab: () => import('./InsightsTab'),
   AdherenciaTab: () => import('./AdherenciaTab'),
+  RevisionSemanalTab: () => import('./RevisionSemanalTab'),
   BusinessDashboard: () => import('./BusinessDashboard'),
   CohortesTab: () => import('./CohortesTab'),
   EtiquetasTab: () => import('./EtiquetasTab'),
@@ -59,6 +60,7 @@ const ProgramasTab = lazy(() => PESTANAS.ProgramasTab().then(m => ({ default: m.
 const MensajesTab = lazy(() => PESTANAS.MensajesTab().then(m => ({ default: m.MensajesTab })))
 const InsightsTab = lazy(() => PESTANAS.InsightsTab().then(m => ({ default: m.InsightsTab })))
 const AdherenciaTab = lazy(() => PESTANAS.AdherenciaTab().then(m => ({ default: m.AdherenciaTab })))
+const RevisionSemanalTab = lazy(() => PESTANAS.RevisionSemanalTab().then(m => ({ default: m.RevisionSemanalTab })))
 const BusinessDashboard = lazy(() => PESTANAS.BusinessDashboard().then(m => ({ default: m.BusinessDashboard })))
 const CohortesTab = lazy(() => PESTANAS.CohortesTab().then(m => ({ default: m.CohortesTab })))
 const EtiquetasTab = lazy(() => PESTANAS.EtiquetasTab().then(m => ({ default: m.EtiquetasTab })))
@@ -98,14 +100,14 @@ const ArchivedClientList = lazy(() => import('./ArchivedClientList').then(m => (
 // El asistente de primer cliente (cliente → workout → acceso) también se descarga solo al abrirlo.
 const PrimerClienteWizard = lazy(() => import('./PrimerClienteWizard').then(m => ({ default: m.PrimerClienteWizard })))
 
-type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'encuestas' | 'documentos' | 'negocio' | 'contactos' | 'mas'
+type Tab = 'dashboard' | 'clients' | 'bandeja' | 'cohortes' | 'etiquetas' | 'calendario' | 'exercises' | 'templates' | 'programas' | 'settings' | 'mensajes' | 'insights' | 'adherencia' | 'revision' | 'encuestas' | 'documentos' | 'negocio' | 'contactos' | 'mas'
 
 // Menú reducido a 5 destinos (antes 14 sueltos) — lo menos usado a diario
 // queda agrupado en "Más" y "Planificar", en vez de competir por espacio en
 // el primer nivel. El id de cada pestaña original no cambia: solo cambia
 // cómo se agrupan en la navegación.
 const PLANIFICAR_TABS: Tab[] = ['exercises', 'templates', 'programas']
-const MAS_TABS: Tab[] = ['bandeja', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'documentos', 'insights', 'adherencia', 'negocio', 'settings']
+const MAS_TABS: Tab[] = ['bandeja', 'revision', 'contactos', 'cohortes', 'etiquetas', 'calendario', 'encuestas', 'documentos', 'insights', 'adherencia', 'negocio', 'settings']
 
 interface Props {
   userProfile: UserProfile
@@ -336,6 +338,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     { id: 'ir-documentos', title: 'Ir a Documentos', keywords: 'archivos pdf guias manuales normas videos clases grabadas', run: verTab('documentos') },
     { id: 'ir-encuestas', title: 'Ir a Encuestas', keywords: 'formularios checkin', run: verTab('encuestas') },
     { id: 'ir-adherencia', title: 'Ir a Adherencia', keywords: 'cumplimiento', run: verTab('adherencia') },
+    { id: 'ir-revision', title: 'Ir a Revisión semanal', keywords: 'revisar semana clientes pasada', run: verTab('revision') },
     { id: 'ir-insights', title: 'Ir a Insights', keywords: 'estadisticas analisis', run: verTab('insights') },
     { id: 'ir-cohortes', title: 'Ir a Grupos', keywords: 'cohortes', run: verTab('cohortes') },
     ...(misPermisos.ver_negocio ? [{ id: 'ir-negocio', title: 'Ir a Mi negocio', keywords: 'ingresos facturacion', run: verTab('negocio') }] : []),
@@ -938,6 +941,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
             {activeTab === 'mensajes'   && <MensajesTab userProfile={userProfile} clients={clients} />}
             {activeTab === 'insights'   && <InsightsTab clients={clients} logsMap={logsMap} />}
             {activeTab === 'adherencia' && <AdherenciaTab clients={clients} logsMap={logsMap} />}
+            {activeTab === 'revision' && <RevisionSemanalTab trainerId={userProfile.uid} clients={clients} logsMap={logsMap} onAbrir={onSelectClient} />}
           </Suspense>
           {activeTab === 'encuestas'  && (
             <PlanGate feature="surveys" planName={userProfile.planName}>
@@ -971,6 +975,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                   { id: 'cohortes'   as Tab, icon: Users2,       label: 'Grupos',      desc: 'Cohortes de clientes' },
                   { id: 'etiquetas'  as Tab, icon: TagIcon,      label: 'Etiquetas',   desc: 'Organiza tus clientes' },
                   { id: 'insights'   as Tab, icon: BarChart2,    label: 'Insights',    desc: 'Actividad y especialidad' },
+                  { id: 'revision'   as Tab, icon: ClipboardCheck, label: 'Revisión semanal', desc: 'Todos tus clientes, en una pasada' },
                   { id: 'adherencia' as Tab, icon: TrendingUp,   label: 'Adherencia',  desc: 'Cumplimiento semanal' },
                   ...(misPermisos.ver_negocio ? [{ id: 'negocio' as Tab, icon: TrendingUp, label: 'Mi negocio', desc: 'Ingresos y métricas' }] : []),
                   { id: 'settings'   as Tab, icon: SettingsIcon, label: 'Ajustes',     desc: 'Cuenta, equipo y marca' },
