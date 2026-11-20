@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { ActividadesReloj } from '../shared/ActividadesReloj'
 import { relojActivo } from '../../lib/funcionesEnDesarrollo'
 import { ClientData, TrainingPlan, TrainingLogs } from '../../types'
@@ -31,6 +31,9 @@ import { CicloRendimientoChart } from './progreso-tab/CicloRendimientoChart'
 import { DolorChart } from './progreso-tab/DolorChart'
 import { ADVANCED_SECTIONS, useTrainerTier } from '../../lib/tier'
 import { Section, SECTIONS, GROUPS, useTrainerMetricSettings } from '../../lib/progresoSections'
+
+// Lectura de evidencia poco usada: se carga al abrirla (presupuesto de tamaño del entrenador)
+const EvidenciaDescarga = lazy(() => import('./progreso-tab/EvidenciaDescarga').then(m => ({ default: m.EvidenciaDescarga })))
 
 interface Props {
   /** Sección con la que abre (p. ej. desde un aviso de la ficha: «dolor», «videos»). */
@@ -110,6 +113,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId, secci
         {section === 'esfuerzo_tipo' && <EsfuerzoPorPapel logs={logs} plan={plan} />}
         {section === 'adherencia'   && <AdherenciaChart    logs={logs} plan={plan} />}
         {section === 'estancamiento' && <EstancamientoChecklist clientId={client.id} logs={logs} plan={plan} trainerId={trainerId} />}
+        {section === 'descarga' && <Suspense fallback={<p className="text-sm text-muted">Cargando…</p>}><EvidenciaDescarga clientId={client.id} logs={logs} plan={plan} /></Suspense>}
         {section === 'records'      && <RecordsTable       logs={logs} plan={plan} />}
         {section === 'comparativa'  && <ComparativaChart   logs={logs} />}
         {section === 'resumen_mensual' && <MonthlyRecap    logs={logs} plan={plan} />}
