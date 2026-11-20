@@ -79,7 +79,7 @@ export function EstancamientoChecklist({ clientId, logs, plan, trainerId }: { cl
       <p className="text-sm bg-bg-alt/60 rounded-xl px-4 py-3" role="note">{resumen.texto}</p>
       <p className="text-[11px] text-muted">Son datos para pensar, no un diagnóstico: una señal aislada no demuestra una causa. La hipótesis y la decisión son tuyas.</p>
 
-      <DiarioDecisiones clientId={clientId} trainerId={trainerId} ejercicio={nombre} />
+      <DiarioDecisiones clientId={clientId} trainerId={trainerId} ejercicio={nombre} logs={logs} plan={plan} />
     </div>
   )
 }
