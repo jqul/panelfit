@@ -137,9 +137,21 @@ describe('decisiones previas y lenguaje', () => {
     }
   })
 
+  it('las semanas anteriores al arranque del plan no cuentan como «no entrenó»', () => {
+    // Plan que empieza hoy (viernes): ninguna semana completa tenía sesiones previstas
+    const r = evidenciaDescarga(base({ plan: plan([], { fechaInicio: HOY }) }))
+    expect(r.contexto.adherenciaBaja).toBe(false)
+    expect(r.contexto.adherenciaPct).toBeNull()
+    expect(r.semanas.filter(s => !s.enCurso).every(s => s.previstas === 0)).toBe(true)
+    // Y una semana que empieza antes del arranque (plan iniciado a mitad de semana) tampoco
+    const mitad = evidenciaDescarga(base({ plan: plan([], { fechaInicio: dia(10) }) }))
+    expect(mitad.semanas.find(s => s.lunes === '2026-11-09')!.previstas).toBe(0)
+    expect(mitad.semanas.find(s => s.lunes === '2026-11-16')!.previstas).toBe(3)
+  })
+
   it('no crea ni sugiere un plan: el resultado no trae acciones ni cambios', () => {
     const r = evidenciaDescarga(base({ logs: seisSemanasCayendo() }))
-    expect(Object.keys(r).sort()).toEqual(['confianza', 'contextoAtipico', 'datosInsuficientes', 'decisionesPrevias', 'evidencia', 'falta', 'politicaVersion', 'resumen', 'semanas', 'senales'])
+    expect(Object.keys(r).sort()).toEqual(['confianza', 'contexto', 'contextoAtipico', 'datosInsuficientes', 'decisionesPrevias', 'evidencia', 'falta', 'politicaVersion', 'resumen', 'semanas', 'senales'])
   })
 })
 

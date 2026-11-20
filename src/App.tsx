@@ -3,6 +3,7 @@ import { track } from './lib/analytics'
 import { supabase } from './lib/supabase'
 import { ClientData } from './types'
 import type { IntentoPanel } from './lib/anadirFicha'
+import type { Destino } from './lib/atencionCliente'
 import { Auth } from './components/shared/Auth'
 import { ResetPassword } from './components/shared/ResetPassword'
 import { useToast, ToastContainer } from './components/shared/Toast'
@@ -54,6 +55,8 @@ function LoadingScreen() {
 export default function App() {
   const { view, userProfile, pendingUser, clientToken, publicSlug, programacionSlug, logout, setView } = useAuthBootstrap()
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
+  // Dónde abrir la ficha cuando se llega desde «Decisión de hoy» (pestaña y sección); se olvida al cerrarla
+  const [destinoFicha, setDestinoFicha] = useState<Destino | undefined>(undefined)
   // «Añadir» de la ficha (cita, documento, encuesta): sale al panel con ese cliente ya elegido; el panel lo usa una vez y lo suelta
   const [intento, setIntento] = useState<IntentoPanel | null>(null)
   const [allClients, setAllClients] = useState<ClientData[]>([])
@@ -259,7 +262,8 @@ export default function App() {
             client={selectedClient}
             userProfile={scopedProfile!}
             allClients={allClients}
-            onClose={() => setSelectedClient(null)}
+            destinoInicial={destinoFicha}
+            onClose={() => { setSelectedClient(null); setDestinoFicha(undefined) }}
             onIrAlPanel={tab => { setIntento({ tab, clientId: selectedClient.id, nonce: Date.now() }); setSelectedClient(null) }}
           />
         ) : (
@@ -271,7 +275,8 @@ export default function App() {
             onLogout={logout}
             intento={intento}
             onIntentoUsado={() => setIntento(null)}
-            onSelectClient={(client: ClientData) => {
+            onSelectClient={(client: ClientData, destino?: Destino) => {
+              setDestinoFicha(destino)
               setSelectedClient(client)
               setAllClients(prev => prev.find(c => c.id === client.id) ? prev : [...prev, client])
             }}

@@ -103,6 +103,8 @@ export interface EvidenciaDescarga {
   evidencia: ItemEvidencia[]
   /** Contexto que hace que algunas señales no se interpreten (ausencia, adherencia baja, calibración). */
   contextoAtipico: string[]
+  /** El mismo contexto en datos, para quien lo reutilice sin leer frases (la «Decisión de hoy»). */
+  contexto: { adherenciaPct: number | null; adherenciaBaja: boolean; semanasAdherencia: number; ausenteReciente: number; calibrando: boolean }
   /** Qué faltaría para tener más confianza. */
   falta: string[]
   decisionesPrevias: { id: string; fecha: string; tipo: string; texto: string; revisada: boolean }[]
@@ -149,7 +151,8 @@ export function evidenciaDescarga(e: EntradaDescarga, p: PoliticaDescarga = POLI
     const sesiones = [...fechasHechas.keys()].filter(f => f >= lunes && f <= fin && f <= e.hoy).length
     const idx = e.plan?.weeks?.length ? weekIdxFromStart(e.plan.fechaInicio || lunes, e.plan.weeks.length, new Date(lunes + 'T12:00:00')) : -1
     semanas.push({
-      lunes, sesiones, previstas: previstasPlan, enCurso: i === 0,
+      // Una semana que empieza antes de que arrancara el plan (o a medias) no tenía sesiones previstas: no cuenta como «no entrenó»
+      lunes, sesiones, previstas: e.plan?.fechaInicio && lunes < e.plan.fechaInicio ? 0 : previstasPlan, enCurso: i === 0,
       descarga: !!(e.plan?.fechaInicio && idx >= 0 && e.plan.weeks[idx]?.isDeload),
       diasAusencia: e.ausencias.reduce((a, x) => a + diasEnSemana(lunes, x.desde, x.hasta), 0),
     })
@@ -254,5 +257,7 @@ export function evidenciaDescarga(e: EntradaDescarga, p: PoliticaDescarga = POLI
     : senales.length ? `${senales.length} ${plural(senales.length, 'señal', 'señales')} a observar. Es evidencia, no un veredicto.`
     : 'Sin señales a observar con los datos disponibles.'
 
-  return { politicaVersion: p.version, confianza, resumen, semanas, datosInsuficientes, senales, evidencia, contextoAtipico, falta, decisionesPrevias }
+  return { politicaVersion: p.version, confianza, resumen, semanas, datosInsuficientes, senales, evidencia, contextoAtipico,
+    contexto: { adherenciaPct, adherenciaBaja, semanasAdherencia: paraAdherencia.length, ausenteReciente, calibrando: calibrando.activa && calibrando.sesionesHechas > 0 },
+    falta, decisionesPrevias }
 }
