@@ -3,6 +3,13 @@
 // ni de descarga, y mientras no haya historial suficiente (o venga de la primera semana de calibración) lo dice: «datos insuficientes» u
 // «orientación provisional». Todos los umbrales viven en UNA política con versión (POLITICA_PROGRESION): cuando haya sesiones reales se ajusta
 // ahí, sin rehacer la función. Sin React ni red.
+//
+// CRITERIOS PENDIENTES para ajustar cuando lleguen sesiones reales (anotados en la revisión de #209; la V0 NO los cumple todavía):
+//  1. «Comparable» no debería ser solo el mismo ejercicio: también el mismo rango objetivo de repeticiones, variante, material y contexto relevante
+//     (agarre, tempo, rango de movimiento). Si cambia la barra por mancuerna, el agarre, el tempo o el rango de repeticiones, la recomendación debe
+//     bajar la confianza o quedarse en «observar». Hoy solo se excluyen las sustituciones registradas, las series no normales y otra forma de apuntar el peso.
+//  2. La confianza alta no debería bastar con 3 (o 5) registros: exigir RIR válido en todas y una evolución que no se contradiga (p. ej. sin altibajos
+//     que desdigan la tendencia). Hoy la alta pide solo 5 exposiciones con RIR y ninguna de calibración.
 
 import type { Exercise, TrainingLogs, TrainingPlan } from '../types'
 import { objetivoRir } from './strength'
