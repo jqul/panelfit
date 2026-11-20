@@ -6,8 +6,9 @@ import { ChevronDown, Dumbbell } from 'lucide-react'
 import { TrainingPlan, TrainingLogs } from '../../../types'
 import { estimate1RM } from '../../../lib/strength'
 import { getExName, CustomTooltip, EmptyState } from './helpers'
+import { SiguienteExposicionCard } from './SiguienteExposicionCard'
 
-export function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: TrainingPlan | null }) {
+export function FuerzaChart({ logs, plan, library }: { logs: TrainingLogs; plan?: TrainingPlan | null; library?: { name: string; material?: string }[] }) {
   const [metric, setMetric] = useState<'peso' | '1rm'>('1rm')
 
   const ejercicios = useMemo(() => {
@@ -84,6 +85,7 @@ export function FuerzaChart({ logs, plan }: { logs: TrainingLogs; plan?: Trainin
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      <SiguienteExposicionCard logs={logs} plan={plan} ejercicio={ejercicios[selected][0]} material={library?.find(l => l.name.trim().toLowerCase() === ejercicios[selected][0].trim().toLowerCase())?.material} />
     </div>
   )
 }

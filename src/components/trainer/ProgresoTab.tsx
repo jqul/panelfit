@@ -38,7 +38,7 @@ interface Props {
   client: ClientData
   plan?: TrainingPlan | null
   logs?: TrainingLogs
-  library?: { name: string; category?: string }[]
+  library?: { name: string; category?: string; material?: string }[]
   trainerId?: string
 }
 
@@ -99,7 +99,7 @@ export function ProgresoTab({ client, plan, logs = {}, library, trainerId, secci
         {section === 'pesos_sugeridos' && <PesosSugeridosChart logs={logs} plan={plan} />}
         {section === 'fatiga'       && <RiesgoChart       clientId={client.id} logs={logs} />}
         {section === 'videos'       && <VideoFeedbackTab   client={client} />}
-        {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} />}
+        {section === 'fuerza'       && <FuerzaChart       logs={logs} plan={plan} library={library} />}
         {section === 'cardio'       && <div className="space-y-4">{relojActivo() && <ActividadesReloj clientId={client.id} paraEntrenador />}<CardioChart logs={logs} /></div>}
         {section === 'peso'         && <PesoChart         clientId={client.id} />}
         {section === 'recuperacion' && <RecuperacionActividad clientId={client.id} logs={logs} />}
