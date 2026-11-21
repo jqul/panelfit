@@ -63,8 +63,8 @@ export function filasParq(parq: (boolean | null)[] | null | undefined): { pregun
 }
 
 // ── Textos públicos (no hablan de IA, de automatismos ni de plazos) ──
-// Subir la versión con cualquier cambio de fondo en los textos de consentimiento (2026-11-2: se añade el plazo de 60 días)
-export const CONSENT_PROGRAMACION_VERSION = 'prog-2026-11-2'
+// Subir la versión con cualquier cambio de fondo en los textos de consentimiento (2026-11-2: se añade el plazo de 60 días; 2026-11-3: se dice qué respuestas llegan a la herramienta de apoyo)
+export const CONSENT_PROGRAMACION_VERSION = 'prog-2026-11-3'
 /** Cuánto se conserva una solicitud que no llega a cliente (la tarea semanal de la base de datos la borra; el entrenador puede autorizar seguimiento). */
 export const DIAS_RETENCION_SOLICITUD = 60
 export const POLITICA_RETENCION = `Las solicitudes que no llegan a convertirse en cliente se eliminan a los ${DIAS_RETENCION_SOLICITUD} días.`
@@ -73,8 +73,12 @@ export const CONSENT_SALUD_PROGRAMACION =
   'para preparar mi programa. Solo los ve él, no se ceden a terceros salvo a los proveedores técnicos que alojan la aplicación, y si no llego a ser su cliente se eliminan a los ' +
   `${DIAS_RETENCION_SOLICITUD} días. ` +
   'Sin este consentimiento no guardo esas respuestas y mi solicitud llega solo con lo demás.'
+// 2026-11-21 (prog-2026-11-3): dice QUÉ respuestas llegan a la herramienta (las que no son de salud) y pide no escribir salud en los textos libres,
+// que no se pueden filtrar por código. Coincide con la lista blanca de `coach_ia_paquete` (lib/coachIa: RESPUESTAS_PARA_IA).
 export const CONSENT_ASISTENTE_PROGRAMACION =
-  'Consiento que mi entrenador use una herramienta de apoyo para preparar la propuesta con mis respuestas. Él la revisa y decide: nada se me da sin su revisión.'
+  'Consiento que mi entrenador use una herramienta de apoyo para preparar la propuesta con mis respuestas sobre objetivo, experiencia, tiempo, material y rutina actual, ' +
+  'nunca con mis respuestas de salud. Por favor, no escribas problemas de salud en los campos de texto libre: eso se trata aparte, solo con él. ' +
+  'Él revisa la propuesta y decide: nada se me da sin su revisión.'
 export const AVISO_NO_MEDICO = 'Esto no es consejo médico ni sustituye una valoración profesional. Si tienes dudas sobre tu salud, consulta antes con tu médico.'
 export const MENSAJE_RECIBIDA = 'Tu entrenador revisará tu solicitud y preparará una propuesta personalizada.'
 export const MENSAJE_REVISAR = 'Tu solicitud necesita revisión personal del entrenador antes de programar.'

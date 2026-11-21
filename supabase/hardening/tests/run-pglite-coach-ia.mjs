@@ -3,7 +3,7 @@
 // Uso (desde la raíz del repo):
 //   npm i --no-save @electric-sql/pglite
 //   node supabase/hardening/tests/run-pglite-coach-ia.mjs
-// Aplica las migraciones de contactos y de la solicitud (sin sus líneas de cron.schedule: PGlite no tiene cron) y la nueva.
+// Aplica las migraciones de contactos y de la solicitud (sin sus líneas de cron.schedule: PGlite no tiene cron), el puente y su corrección de alcance.
 import { crearBase, read } from './pglite-base.mjs'
 
 const db = await crearBase()
@@ -12,7 +12,7 @@ const migraciones = [
   '20261028000004_submit_lead_validacion_y_limites.sql', '20261029000001_recordar_contactos_sin_contestar.sql',
   '20261023000007_rgpd_consentimientos.sql', '20261023000008_rgpd_exportar_datos_cliente.sql', '20261023000009_rgpd_borrado_completo_cliente.sql',
   '20261118000001_diario_decisiones.sql', '20261118000020_solicitud_programacion_inicial.sql', '20261119000010_solicitud_revision_aviso.sql',
-  '20261119000020_solo_mayores_18_solicitud.sql', '20261121000010_coach_ia_puente.sql',
+  '20261119000020_solo_mayores_18_solicitud.sql', '20261121000010_coach_ia_puente.sql', '20261121000020_coach_ia_alcance.sql',
 ]
 for (const m of migraciones) {
   let sql = read(`migrations/${m}`)

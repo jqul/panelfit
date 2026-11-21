@@ -28,12 +28,12 @@ function sembrarCaso(fake: FakeSupabase, over: { status?: string; sol?: Record<s
   })
   fake.seed('solicitudes_programacion', {
     lead_id: 'l-ia', trainer_id: ids.trainer, client_id: null, clave_envio: 'k-ia', consentimiento_salud: true, consentimiento_asistente: true,
-    consentimiento_version: 'prog-2026-11-2', consentimiento_en: new Date().toISOString(), seguimiento_autorizado: false,
-    respuestas: { objetivo: 'Ganar músculo', experiencia: 'De 6 meses a 2 años', dias: '3', duracion: '60-75 min', molestias: false, edad: 30, rutina_actual: 'Torso/pierna 4 días' },
+    consentimiento_version: 'prog-2026-11-3', consentimiento_en: new Date().toISOString(), seguimiento_autorizado: false,
+    respuestas: { objetivo: 'Ganar músculo', experiencia: 'De 6 meses a 2 años', dias: '3', duracion: '60-75 min', molestias: false, edad: 30, rutina_actual: 'Torso/pierna 4 días', rechaza: 'Nada de dominadas por el hombro' },
     parq: [false, false, false, false, false, false, false], parq_alarma: false, preparar_borrador: true,
     borrador_estado: 'listo_para_revisar', propuesta: PROPUESTA,
     razones: [{ decision: '3 días full-body', porque: 'Indicó 3 días y 60-75 min por sesión' }],
-    criterios_version: '3', ia_leida_en: new Date().toISOString(), ia_campos: ['nombre', 'objetivo', 'rutina_actual', 'criterios'],
+    criterios_version: '3', ia_leida_en: new Date().toISOString(), ia_campos: ['nombre', 'objetivo', 'rutina_actual', 'mayor_de_edad', 'criterios'],
     borrador_generado_en: new Date().toISOString(), borrador_decidido_en: null, created_at: new Date().toISOString(),
     ...over.sol,
   })
@@ -63,8 +63,11 @@ test('un borrador listo se lee con sus razones y su trazabilidad, se aprueba y a
   await expect(caso.getByText('Sentadilla goblet · 3x8 · 16 kg · RIR 3')).toBeVisible()
   await expect(caso.getByText('Remo con mancuerna · 3x10 · RIR 2')).toBeVisible()
   // Qué se le entregó a quien la preparó: sin el cuestionario de salud
-  await expect(caso.getByText(/Datos entregados al prepararlo: nombre de pila, objetivo, rutina actual, tus criterios/)).toBeVisible()
-  await expect(caso.getByText(/Sin el cuestionario de salud ni las molestias/)).toBeVisible()
+  await expect(caso.getByText(/Datos entregados al prepararlo: nombre de pila, objetivo, rutina actual, que es mayor de edad \(no su edad\), tus criterios/)).toBeVisible()
+  await expect(caso.getByText(/Ninguna respuesta de salud \(ni molestias, peso, altura, edad, sueño o estrés, ni lo que quiere evitar\)/)).toBeVisible()
+  // Lo que dijo evitar NO se le entregó a quien preparó el borrador: se le recuerda al entrenador para que lo contraste él
+  await expect(caso.getByText(/Revisa la propuesta contra esto, que quien la preparó no ha visto/)).toBeVisible()
+  await expect(caso.getByText(/Nada de dominadas por el hombro/)).toBeVisible()
 
   // Aprobar
   await caso.getByRole('button', { name: 'Aprobar borrador' }).click()
@@ -122,6 +125,6 @@ test('un caso apto sin borrador dice qué se le entrega a quien lo prepara', asy
   const caso = detalle.getByRole('group', { name: 'Coach IA: borrador de programa' })
   await expect(caso.getByText('Estado:')).toContainText('Sin generar')
   await expect(caso.getByText(/Caso apto para preparar: abre Claude y lanza la tarea de Coach IA/)).toBeVisible()
-  await expect(caso.getByText(/nunca el cuestionario de salud/)).toBeVisible()
+  await expect(caso.getByText(/ninguna respuesta de salud ni el cuestionario de salud/)).toBeVisible()
   await expect(caso.getByRole('button', { name: /Aprobar borrador|Descartar borrador/ })).toHaveCount(0)
 })

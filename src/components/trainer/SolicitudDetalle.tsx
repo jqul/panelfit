@@ -52,7 +52,8 @@ function CasoCoachIa({ s, leadId, onCambio }: { s: SolicitudProgramacion; leadId
       {(estado.tipo === 'listo_para_preparar' || estado.tipo === 'descartado') && (
         <p className="text-xs text-muted mt-1">
           {estado.tipo === 'descartado' ? 'Borrador descartado. ' : ''}Caso apto para preparar: abre Claude y lanza la tarea de Coach IA para este caso.
-          Solo lee su nombre de pila, las respuestas sin molestias y tus criterios (Ajustes → Criterios para programación inicial); nunca el cuestionario de salud.
+          Solo lee su nombre de pila, sus respuestas que no son de salud (objetivo, experiencia, tiempo, material, rutina actual…) y tus criterios (Ajustes → Criterios para programación inicial);
+          ninguna respuesta de salud ni el cuestionario de salud. Los textos libres los escribe la persona: si ahí cuenta algo de salud, no se prepara el borrador y lo ves tú.
         </p>
       )}
 
@@ -82,7 +83,12 @@ function CasoCoachIa({ s, leadId, onCambio }: { s: SolicitudProgramacion; leadId
             </div>
           </details>
           {s.ia_campos && s.ia_campos.length > 0 && (
-            <p className="text-[11px] text-muted">Datos entregados al prepararlo: {textoDatosEntregados(s.ia_campos)}. Sin el cuestionario de salud ni las molestias.</p>
+            <p className="text-[11px] text-muted">Datos entregados al prepararlo: {textoDatosEntregados(s.ia_campos)}. Ninguna respuesta de salud (ni molestias, peso, altura, edad, sueño o estrés, ni lo que quiere evitar).</p>
+          )}
+          {typeof s.respuestas?.rechaza === 'string' && s.respuestas.rechaza.trim() !== '' && (
+            <p className="text-xs rounded-xl bg-warn/10 border border-warn/30 px-3 py-2">
+              <strong>Revisa la propuesta contra esto, que quien la preparó no ha visto</strong> (lo que la persona dice que prefiere evitar): {s.respuestas.rechaza}
+            </p>
           )}
           {estado.tipo === 'borrador_listo' ? (
             <div className="flex flex-wrap gap-2">
