@@ -198,6 +198,10 @@ describe('coincide con la migración 20261121000030_coach_ia_resumen.sql', () =>
     const cuerpo = sql.slice(sql.indexOf('create or replace function'))
     expect(cuerpo).not.toMatch(/s\.respuestas|s\.parq\b|l\.email|l\.phone/)
   })
+  it('un contacto descartado o convertido sale del flujo, en el resumen y en la lista de quien prepara el borrador', () => {
+    expect(sql.match(/l\.status not in \('convertido', 'descartado'\)/g)).toHaveLength(2)
+    expect(sql).toContain('create or replace function public.coach_ia_casos_pendientes(p_trainer uuid)')
+  })
   it('respeta la retención de 60 días, salvo seguimiento autorizado', () => {
     expect(sql).toContain("interval '60 days'")
     expect(sql).toContain('s.seguimiento_autorizado')

@@ -102,6 +102,14 @@ test('la alarma del PAR-Q no repite fila: solo la de «revisión personal» de s
   await expect(filas.nth(0)).toContainText('Revisar tú la solicitud antes de programar nada')
 })
 
+test('marcar el contacto como «descartado» (esa persona la llevo yo a mano) lo saca de Coach IA', async ({ page, fake }) => {
+  sembrar(fake, { status: 'descartado' })
+  await entrarComoEntrenador(page)
+  const seccion = page.getByRole('region', { name: 'Decisión de hoy' })
+  await expect(seccion).toContainText('Nada pide tu atención hoy')
+  await expect(seccion.getByText(/Coach IA/)).toHaveCount(0)
+})
+
 test('una cuenta SIN Coach IA habilitado no ve nada de Coach IA: ni filas ni bloque en el detalle', async ({ page, fake }) => {
   sembrar(fake, { habilitado: false, sol: { parq: [false, false, false, false, true, false, false] } })
   await entrarComoEntrenador(page)

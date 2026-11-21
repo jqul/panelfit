@@ -423,7 +423,7 @@ export class FakeSupabase {
       case 'coach_ia_resumen': {
         // Igual que la función de la base de datos: solo si el entrenador está en la lista de habilitados; sin respuestas ni PAR-Q, con el motivo ya calculado
         if (!this.rows('coach_ia_habilitados').some(h => h.trainer_id === me)) return json(route, 200, { activo: false, casos: [] })
-        const casos = this.rows('solicitudes_programacion').filter(sol => sol.trainer_id === me && !sol.client_id).map(sol => {
+        const casos = this.rows('solicitudes_programacion').filter(sol => sol.trainer_id === me && !sol.client_id).filter(sol => !['convertido', 'descartado'].includes(this.rows('leads').find(l => l.id === sol.lead_id)?.status)).map(sol => {
           const lead = this.rows('leads').find(l => l.id === sol.lead_id)
           return { lead_id: sol.lead_id, nombre: lead?.name ?? '', estado_lead: lead?.status ?? 'nuevo', recibido_en: sol.created_at, estado: sol.borrador_estado, motivo: motivoRevision(sol as never), borrador_generado_en: sol.borrador_generado_en ?? null }
         })

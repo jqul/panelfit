@@ -362,6 +362,22 @@ begin
   set local role authenticated; r := public.coach_ia_resumen(); reset role;
   perform pg_temp.reg('9g con seguimiento autorizado sí sale', exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
 
+  -- «A esta persona la llevo yo a mano»: un contacto marcado como descartado (o convertido) sale del flujo de Coach IA, en la app y en la lista de Claude
+  l := '00000000-0000-0000-0000-000000000016';
+  perform pg_temp.reg('9k antes de descartarlo, el caso 16 sale en el resumen y en la lista de pendientes',
+    exists (select 1 from jsonb_array_elements(public.coach_ia_casos_pendientes(t1::uuid)) x where x ->> 'lead_id' = l::text), '');
+  update public.leads set status = 'descartado' where id = l;
+  perform set_config('request.jwt.claims', json_build_object('sub', t1, 'role', 'authenticated')::text, true);
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9l un contacto marcado «descartado» ya no sale en el resumen de la app', not exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
+  perform pg_temp.reg('9m ni en la lista de pendientes que lee quien prepara el borrador', not exists (select 1 from jsonb_array_elements(public.coach_ia_casos_pendientes(t1::uuid)) x where x ->> 'lead_id' = l::text), '');
+  update public.leads set status = 'convertido' where id = l;
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9n tampoco uno marcado «convertido» a mano', not exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
+  update public.leads set status = 'nuevo' where id = l;
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9o si se vuelve a poner «nuevo», vuelve a salir', exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
+
   -- No habilitado, sin sesión y anónimo: nada
   insert into public.entrenadores (uid, email, "displayName", approved, rol, role, profile) values (t4::uuid, 't4@test.local', 'Entrenador 4', true, 'trainer', 'trainer', '{}');
   perform pg_temp.caso('40', t4, pg_temp.resp(), pg_temp.parq());
