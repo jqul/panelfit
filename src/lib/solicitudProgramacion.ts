@@ -123,6 +123,8 @@ export interface SolicitudProgramacion {
   consentimiento_salud: boolean; consentimiento_asistente: boolean; consentimiento_version: string; consentimiento_en: string
   respuestas: Record<string, unknown>; parq: (boolean | null)[] | null; parq_alarma: boolean; preparar_borrador: boolean
   borrador_estado: EstadoBorrador; propuesta: { weeks?: unknown[] } | null; razones: { decision: string; porque: string }[] | null; criterios_version: string | null
+  /** Trazabilidad de Coach IA (migración 20261121000010): cuándo se leyó el caso y qué campos se entregaron, cuándo se preparó el borrador y cuándo lo decidió el entrenador. */
+  ia_leida_en?: string | null; ia_campos?: string[] | null; borrador_generado_en?: string | null; borrador_decidido_en?: string | null
   created_at: string
 }
 

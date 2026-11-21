@@ -419,6 +419,22 @@ export class FakeSupabase {
         Object.assign(this.rows('solicitudes_programacion').find(s => s.lead_id === lead.id) ?? {}, { seguimiento_autorizado: !!args.p_autorizado })
         return empty(route)
       }
+      case 'decidir_borrador_solicitud': {
+        // Igual que la función de la base de datos: solo el dueño; aprobar exige un borrador listo; descartar no conserva la propuesta
+        const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')
+        if (!lead) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        const sol = this.rows('solicitudes_programacion').find(s => s.lead_id === lead.id)
+        if (!sol || sol.client_id) return json(route, 400, { code: 'P0001', message: 'La solicitud ya no admite cambios' })
+        if (args.p_decision === 'aprobar') {
+          if (sol.borrador_estado !== 'listo_para_revisar') return json(route, 400, { code: 'P0001', message: 'No hay un borrador listo para aprobar' })
+          Object.assign(sol, { borrador_estado: 'aprobado', borrador_decidido_en: new Date().toISOString() })
+        } else if (args.p_decision === 'descartar') {
+          if (!['listo_para_revisar', 'aprobado'].includes(sol.borrador_estado)) return json(route, 400, { code: 'P0001', message: 'No hay borrador que descartar' })
+          Object.assign(sol, { borrador_estado: 'descartado', borrador_decidido_en: new Date().toISOString(), propuesta: null, razones: null })
+          if (lead.status === 'borrador_listo') lead.status = 'nuevo'
+        } else return json(route, 400, { code: 'P0001', message: 'Decisión no válida' })
+        return json(route, 200, 'ok')
+      }
       case 'vincular_solicitud_cliente': {
         const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')
         const cli = this.rows('clientes').find(c => c.id === args.p_client_id && c.trainerId === me)
