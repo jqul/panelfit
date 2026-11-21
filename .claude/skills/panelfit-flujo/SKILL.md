@@ -9,11 +9,12 @@ Este es el flujo que seguimos en cada tarea. No es una lista de deseos: cada pas
 
 ## Reglas que no se saltan
 - **Se mergea solo con el CI en verde.** Nunca con rojo ni pendiente.
+- **Las migraciones se aplican en producción DESPUÉS de fusionar el PR con el CI en verde, nunca antes.** Producción no debe adelantarse a `main`, aunque luego se pueda corregir con otra migración (regla de Javier, 2026-11-21).
 - **No se borran datos de producción.** Las comprobaciones en producción se hacen con un bloque `DO` que termina en `RAISE EXCEPTION` (se revierte todo) y después se comprueba que no queda nada.
 - **No se toca** la protección de ramas de GitHub, nada de pagos (Javier no quiere cobros) ni los datos de Javier como cliente salvo lo que pida la revisión del domingo.
 - **Contenido público con el nombre de alguien** (páginas, textos que ven clientes): preparado pero apagado, y se pregunta antes de publicarlo.
 - **Se informa con honradez:** qué se comprobó, cómo y qué NO se pudo comprobar (por ejemplo, un push a un móvil real). Nada de "hecho" si no está verificado.
-- Hay autonomía para mergear, aplicar migraciones verificadas, borrar ramas fusionadas y trabajar en paralelo. Cuidado con las tareas pesadas el domingo a las 12:00 (revisión semanal de Javier): comparten cupo de uso.
+- Hay autonomía para mergear, aplicar migraciones verificadas (una vez fusionado el PR), borrar ramas fusionadas y trabajar en paralelo. Cuidado con las tareas pesadas el domingo a las 12:00 (revisión semanal de Javier): comparten cupo de uso.
 
 ## 1. Empezar
 - `git fetch origin && git checkout -b claude/<tema> origin/main`. Otras sesiones trabajan en paralelo: `main` se mueve.
@@ -46,11 +47,11 @@ Desde la raíz, en PowerShell:
 2. **Prueba en PGlite** antes de tocar producción: `supabase/hardening/tests/bloqueN_*.sql` + `run-pglite-*.mjs` (copia uno existente). Necesita `npm i --no-save @electric-sql/pglite`. Trampas conocidas:
    - Una consulta **no ve** lo que inserta una función llamada en la misma sentencia: separa el envío de la comprobación.
    - `pg_net`/`cron` no existen en PGlite: sustituye `net.http_post` por un registro de llamadas y corta la línea de `cron.schedule`.
-3. Aplicar con `apply_migration` y **verificar en producción con reversión** (bloque `DO` + `RAISE EXCEPTION`), y después una consulta que confirme 0 residuos. `pg_net` solo envía al confirmar la transacción: la reversión no manda nada.
+3. **NO se aplica nada en producción antes de fusionar.** Hasta entonces, la verificación es la prueba PGlite y el CI. Ya fusionado el PR con el CI en verde (paso 6): aplicar con `apply_migration` y **verificar en producción con reversión** (bloque `DO` + `RAISE EXCEPTION`), y después una consulta que confirme 0 residuos. `pg_net` solo envía al confirmar la transacción: la reversión no manda nada. Si el código nuevo falla sin la migración, aplícala justo después de fusionar (o protege el código para que no dependa de ella). Antes de aplicar, `list_migrations` por si otra sesión ha tocado lo mismo.
 4. Funciones de trigger o de tarea programada: `revoke execute ... from public, anon, authenticated`.
 5. Secretos de funciones de borde: tabla `internal_webhook_secrets`, creados **a mano** en la base de datos (nunca en el repositorio); la función los lee con la clave de servicio y los compara sin atajos de tiempo. `verify_jwt=false` solo cuando la autenticación es ese secreto.
 6. Funciones de borde: el código vive en `supabase/functions/<nombre>/index.ts` y se despliega con `deploy_edge_function` con el mismo contenido. Prefiere imports `npm:` (el registro JSR da tiempos de espera). No hay forma de borrar una función desde aquí: se deja inofensiva y se avisa a Javier.
-7. Anota la migración en `supabase/README.md`.
+7. Anota la migración en `supabase/README.md` describiendo qué hace; **no escribas «aplicada en producción»** en el PR (aún no lo está). La fecha de aplicación y su verificación van en el resumen final.
 
 ## 6. Commit y PR
 - `gh` está en `C:\Program Files\GitHub CLI` (añádelo al PATH en Bash).
@@ -58,6 +59,8 @@ Desde la raíz, en PowerShell:
 - PR con: **Qué cambia**, **Verificación** (lo que se probó y cómo), lo que NO se pudo probar, y la línea final "🤖 Generated with Claude Code".
 - Tras abrirlo: `set_monitor` con `auto_fix` y esperar con `gh pr checks <n> --watch` (si pasa de 10 min, `gh pr checks <n>` a mano). Los comentarios de `vercel[bot]` son ruido: no se responden.
 - Mergear con `gh pr merge <n> --merge`, borrar la rama remota, `git fetch --prune` y empezar la siguiente desde `origin/main`.
+- Si el PR lleva una migración: **ahora** (ya fusionado, CI en verde) aplicarla y verificarla como en 5.3, y comprobar con `list_migrations` que producción y `main` coinciden.
+- Limpiar el worktree: quitar antes el enlace `node_modules` con `cmd /c rmdir <ruta>\node_modules` (sin `-Recurse`, que borraría el contenido del repositorio principal), luego `git worktree remove --force`, `git branch -D` y, si Windows da «Permission denied», `Remove-Item -Recurse -Force` + `git worktree prune`.
 
 ## 7. Cerrar
 - Actualiza `FUNCIONALIDADES.md` (y `docs/rendimiento.md` si cambió el tamaño).
