@@ -49,7 +49,7 @@ test('solicitud con revisión personal, molestia y decisión vencida: ordenadas,
   await expect(seccion).not.toContainText(/toca descarga|deberías|baja la carga/i)
 
   // La molestia lleva a Progreso, ya en la sección de dolor
-  await seccion.getByRole('button', { name: 'Abrir su registro de dolor: María García' }).click()
+  await filas.nth(1).getByRole('button', { name: 'Abrir su registro de dolor' }).click()
   await expect(page.getByText('Progreso de María')).toBeVisible()
   await expect(page.getByRole('button', { name: /Dolor/ }).first()).toHaveClass(/bg-ink/)
 
@@ -66,6 +66,6 @@ test('la solicitud lleva a Contactos', async ({ page, fake }) => {
   const seccion = page.getByRole('region', { name: 'Decisión de hoy' })
   await expect(seccion.getByRole('listitem')).toHaveCount(1)
   await expect(seccion.getByRole('listitem').first()).toContainText('Acaba de llegar')
-  await seccion.getByRole('button', { name: 'Abrir la solicitud: Nora Nueva' }).click()
+  await seccion.getByRole('listitem').first().getByRole('button', { name: 'Abrir la solicitud' }).click()
   await expect(page.getByRole('heading', { name: /Contactos/ }).first()).toBeVisible()
 })

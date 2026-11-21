@@ -49,10 +49,10 @@ export function DecisionHoy({ trainerId, clients, logsMap, leadsNuevos, onAbrirF
             <li key={t.id} className="px-5 py-3 flex items-start gap-3">
               <span className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${PUNTO[t.nivel]}`} role="img" aria-label={ETIQUETA[t.nivel]} />
               <div className="flex-1 min-w-0 space-y-0.5">
-                <p className="text-sm font-semibold">{t.quien}<span className="font-normal text-muted"> · {t.necesita}</span></p>
+                <p id={`dh-${t.id}`} className="text-sm font-semibold">{t.quien}<span className="font-normal text-muted"> · {t.necesita}</span></p>
                 <p className="text-xs text-muted"><span className="font-semibold">Por qué ahora:</span> {t.porque}</p>
               </div>
-              <button type="button" onClick={() => abrir(t)} aria-label={`${t.accion}: ${t.quien}`}
+              <button type="button" onClick={() => abrir(t)} aria-label={t.accion} aria-describedby={`dh-${t.id}`}
                 className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold hover:border-accent hover:text-accent transition-colors">
                 {t.accion} <ArrowRight className="w-3 h-3" aria-hidden />
               </button>
