@@ -4,10 +4,19 @@
 // motivos y los topes coinciden con el SQL: si cambias uno, cambia el otro.
 //
 // El flujo es semiautomático y sin coste por llamada: el entrenador abre Claude y lanza la tarea; Claude lee UN caso (nombre de pila,
-// respuestas sin molestias, criterios del entrenador; nunca el PAR-Q), guarda un borrador «listo para revisar» y el entrenador lo
-// aprueba o lo descarta. Nada se publica solo: al convertir en cliente, lo aprobado queda como BORRADOR de su plan.
+// las respuestas que no son de salud —RESPUESTAS_PARA_IA— y los criterios del entrenador; ninguna respuesta de salud ni el PAR-Q), guarda
+// un borrador «listo para revisar» y el entrenador lo aprueba o lo descarta. Nada se publica solo: al convertir en cliente, lo aprobado
+// queda como BORRADOR de su plan. Solo funciona para los entrenadores de `coach_ia_habilitados` (en el servidor). OJO: no es aislamiento
+// técnico de quien lanza la tarea (con acceso de administrador por MCP puede leer cualquier tabla): es un proceso asistido con límites en
+// lo que las funciones devuelven y aceptan (docs/coach-ia.md).
 
-import { PREGUNTAS_PROGRAMACION, type SolicitudProgramacion } from './solicitudProgramacion'
+import { IDS_SALUD, PREGUNTAS_PROGRAMACION, type SolicitudProgramacion } from './solicitudProgramacion'
+
+/** Las ÚNICAS respuestas que se entregan a quien prepara el borrador: las que el cuestionario NO marca como de salud. En la base de datos es una
+ *  lista blanca (`v_permitidas` de `coach_ia_paquete`, migración 20261121000020): una pregunta nueva no sale hasta que se añade allí a propósito.
+ *  Una prueba comprueba que las dos listas coinciden. Los textos libres de esta lista (objetivo_detalle, rutina_actual, extra…) los escribe
+ *  la persona y no se pueden filtrar por código: el consentimiento le pide no escribir salud ahí y el protocolo manda parar si lo hace. */
+export const RESPUESTAS_PARA_IA: readonly string[] = PREGUNTAS_PROGRAMACION.map(q => q.id).filter(id => !IDS_SALUD.includes(id))
 
 /** Criterios provisionales: se ajustan con la beta real (como `prog-v0`, `desc-v0`, `rev-v0` y `hoy-v0`). */
 export const POLITICA_COACH_IA = {
@@ -82,7 +91,7 @@ export function estadoCasoIa(s: DatosCaso & Pick<SolicitudProgramacion, 'borrado
 export function textoDatosEntregados(campos: string[] | null | undefined): string {
   if (!campos || campos.length === 0) return ''
   const conocidas = new Set(PREGUNTAS_PROGRAMACION.map(q => q.id))
-  return campos.map(c => (c === 'nombre' ? 'nombre de pila' : c === 'criterios' ? 'tus criterios' : conocidas.has(c) ? c.replace(/_/g, ' ') : c)).join(', ')
+  return campos.map(c => (c === 'nombre' ? 'nombre de pila' : c === 'criterios' ? 'tus criterios' : c === 'mayor_de_edad' ? 'que es mayor de edad (no su edad)' : conocidas.has(c) ? c.replace(/_/g, ' ') : c)).join(', ')
 }
 
 // ── La propuesta, para leerla antes de decidir ──

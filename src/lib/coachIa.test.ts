@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  MOTIVOS, MOTIVOS_CLINICOS, POLITICA_COACH_IA, TEXTO_MOTIVO, estadoCasoIa, motivoRevision, resumenPropuesta, textoDatosEntregados, totalEjercicios,
+  MOTIVOS, MOTIVOS_CLINICOS, POLITICA_COACH_IA, RESPUESTAS_PARA_IA, TEXTO_MOTIVO, estadoCasoIa, motivoRevision, resumenPropuesta, textoDatosEntregados, totalEjercicios,
 } from './coachIa'
+import { CONSENT_ASISTENTE_PROGRAMACION, IDS_SALUD, PREGUNTAS_PROGRAMACION } from './solicitudProgramacion'
 
 const limpio = {
   client_id: null as string | null, consentimiento_salud: true, consentimiento_asistente: true, parq_alarma: false,
@@ -102,4 +103,43 @@ describe('coincide con la migración 20261121000010_coach_ia_puente.sql', () => 
     expect(sql).toContain(POLITICA_COACH_IA.version)
   })
   it('la edad mínima es la de la solicitud pública', () => expect(sql).toContain('v_edad < 18'))
+})
+
+// Corrección de alcance tras la revisión de #214 (migración 20261121000020): lista de habilitados, paquete sin salud y sin coachNotes.
+describe('coincide con la migración 20261121000020_coach_ia_alcance.sql', () => {
+  const sql = readFileSync('supabase/migrations/20261121000020_coach_ia_alcance.sql', 'utf8')
+  const lista = (nombre: string) => {
+    const m = sql.match(new RegExp(`${nombre}[^:]*:= array\\[([^\\]]*)\\]`))
+    expect(m, nombre).not.toBeNull()
+    return [...m![1].matchAll(/'([^']+)'/g)].map(x => x[1])
+  }
+
+  it('el paquete es una lista blanca igual a las preguntas que NO son de salud', () => {
+    const permitidas = lista('v_permitidas')
+    expect([...permitidas].sort()).toEqual([...RESPUESTAS_PARA_IA].sort())
+    for (const id of IDS_SALUD) expect(permitidas, id).not.toContain(id)
+    // y cubre justo las preguntas del cuestionario que no son de salud
+    expect(RESPUESTAS_PARA_IA.length).toBe(PREGUNTAS_PROGRAMACION.length - IDS_SALUD.filter(id => PREGUNTAS_PROGRAMACION.some(q => q.id === id)).length)
+  })
+  it('en lugar de la edad se entrega solo «mayor_de_edad»', () => {
+    expect(sql).toContain("'mayor_de_edad', true")
+    expect(sql).not.toMatch(/'edad',\s*s\.respuestas/)
+  })
+  it('las tres funciones comprueban la lista de habilitados en el servidor', () => {
+    for (const f of ['coach_ia_casos_pendientes', 'coach_ia_paquete', 'coach_ia_guardar_borrador']) {
+      const cuerpo = sql.slice(sql.indexOf(`function public.${f}(`)).split('revoke execute')[0]
+      expect(cuerpo, f).toContain('coach_ia_habilitado(')
+    }
+  })
+  it('la lista nace vacía: ningún uid de persona en el repositorio', () => {
+    expect(sql).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/)
+  })
+  it('coachNotes ya no se acepta en la propuesta', () => {
+    expect(lista('claves_plan')).toEqual(['type', 'restMain', 'restAcc', 'restWarn', 'programName', 'weeks'])
+    expect(lista('claves_plan')).not.toContain('coachNotes')
+  })
+  it('el consentimiento dice qué respuestas llegan a la herramienta y pide no escribir salud en los textos libres', () => {
+    expect(CONSENT_ASISTENTE_PROGRAMACION).toContain('nunca con mis respuestas de salud')
+    expect(CONSENT_ASISTENTE_PROGRAMACION).toMatch(/no escribas problemas de salud en los campos de texto libre/)
+  })
 })

@@ -1,4 +1,4 @@
--- Prueba de migrations/20261121000010_coach_ia_puente.sql
+-- Prueba de migrations/20261121000010_coach_ia_puente.sql y de su corrección 20261121000020_coach_ia_alcance.sql
 -- (el puente de Coach IA: elegibilidad en un solo sitio, el paquete que lee quien prepara el borrador solo lleva lo permitido,
 -- el borrador se guarda solo si es válido y el caso es elegible, tope de 5 casos pendientes, solo el dueño aprueba o descarta,
 -- y nada de esto toca `planes`).
@@ -19,6 +19,8 @@ insert into public.entrenadores (uid, email, "displayName", approved, rol, role,
   ('aaaaaaaa-0000-0000-0000-000000000001', 't1@test.local', 'Entrenador 1', true, 'trainer', 'trainer',
    '{"criteriosProgramacion": {"version": 3, "metodologia": "Full-body 3 días", "limitesClinicos": "Cualquier sí del PAR-Q: revisar"}}'),
   ('aaaaaaaa-0000-0000-0000-000000000002', 't2@test.local', 'Entrenador 2', true, 'trainer', 'trainer', '{}');
+
+insert into public.coach_ia_habilitados (trainer_id) values ('aaaaaaaa-0000-0000-0000-000000000001'), ('aaaaaaaa-0000-0000-0000-000000000002');
 
 -- Respuestas de un caso limpio (sin molestias) y su PAR-Q todo «no»
 create function pg_temp.resp(p_molestias boolean default false, p_detalle text default null, p_edad numeric default 30) returns jsonb language sql as $f$
@@ -79,13 +81,13 @@ begin
     p ->> 'nombre' = 'Adrián' and p::text not like '%Gómez%' and p::text not like '%@example.com%' and p::text not like '%600000%', p ->> 'nombre');
   perform pg_temp.reg('1c no lleva molestias, detalle de molestias ni PAR-Q',
     not (p -> 'respuestas') ? 'molestias' and not (p -> 'respuestas') ? 'molestias_detalle' and not p ? 'parq' and p::text not like '%parq%', '');
-  perform pg_temp.reg('1d sí lleva lo que hace falta para programar (objetivo, rutina actual, días, peso, edad)',
-    (p -> 'respuestas') ?& array['objetivo', 'experiencia', 'dias', 'duracion', 'material', 'rutina_actual', 'peso', 'altura', 'edad'], '');
+  perform pg_temp.reg('1d sí lleva lo que hace falta para programar (objetivo, experiencia, días, duración, material, rutina actual)',
+    (p -> 'respuestas') ?& array['objetivo', 'experiencia', 'dias', 'duracion', 'material', 'rutina_actual'], '');
   perform pg_temp.reg('1e las claves del paquete son exactamente las esperadas',
-    (select array_agg(k order by k) from jsonb_object_keys(p) k) = array['criterios', 'criterios_version', 'elegible', 'lead_id', 'limites', 'nombre', 'politica', 'respuestas'], '');
+    (select array_agg(k order by k) from jsonb_object_keys(p) k) = array['criterios', 'criterios_version', 'elegible', 'lead_id', 'limites', 'mayor_de_edad', 'nombre', 'politica', 'respuestas'], '');
   perform pg_temp.reg('1f lleva los criterios del entrenador y su versión', p -> 'criterios' ->> 'metodologia' = 'Full-body 3 días' and p ->> 'criterios_version' = '3', '');
   select * into s from public.solicitudes_programacion where lead_id = l;
-  perform pg_temp.reg('1g la lectura deja constancia: cuándo y qué campos', s.ia_leida_en is not null and s.ia_campos @> array['nombre', 'objetivo', 'criterios'] and not s.ia_campos @> array['molestias'], array_to_string(s.ia_campos, ','));
+  perform pg_temp.reg('1g la lectura deja constancia: cuándo y qué campos', s.ia_leida_en is not null and s.ia_campos @> array['nombre', 'objetivo', 'criterios'] and s.ia_campos @> array['mayor_de_edad'] and not s.ia_campos @> array['molestias', 'edad', 'peso'], array_to_string(s.ia_campos, ','));
 end $$;
 
 -- ═══ 2. Casos que NO se preparan: solo el motivo, nunca las respuestas ═══
@@ -267,6 +269,64 @@ begin
   perform pg_temp.reg('7e es de un entrenador: el otro solo ve el suyo (el 20), nunca los del primero',
     jsonb_array_length(public.coach_ia_casos_pendientes(t2)) = 1 and public.coach_ia_casos_pendientes(t2) -> 0 ->> 'lead_id' = '00000000-0000-0000-0000-000000000020', '');
   perform pg_temp.reg('7f un entrenador sin casos recibe una lista vacía, no null', public.coach_ia_casos_pendientes('aaaaaaaa-0000-0000-0000-0000000000ff') = '[]'::jsonb, '');
+end $$;
+
+-- ═══ 8. Corrección del alcance (migración 20261121000020) ═══
+-- Todas las respuestas posibles del cuestionario, las de salud incluidas
+create function pg_temp.resp_total() returns jsonb language sql as $f$
+  select jsonb_build_object(
+    'objetivo', 'Ganar músculo', 'objetivo_detalle', 'Más espalda', 'experiencia', 'De 6 meses a 2 años', 'rutina_actual', 'Torso/pierna',
+    'dias', '3', 'duracion', '60-75 min', 'material', jsonb_build_array('Gimnasio completo'), 'marcas', 'Sentadilla 100', 'pasos', 8000,
+    'cardio', 'Camino', 'prioridad', jsonb_build_array('Espalda'), 'barreras', jsonb_build_array('Tiempo'), 'extra', 'Nada más',
+    'rechaza', 'Nada de dominadas por el hombro', 'molestias', false, 'peso', 78.5, 'altura', 178, 'edad', 30, 'fase', 'Mantenimiento', 'sueno', 7, 'estres', 6)
+$f$;
+grant execute on function pg_temp.resp_total() to public;
+
+do $$
+declare t1 text := 'aaaaaaaa-0000-0000-0000-000000000001'; t3 text := 'aaaaaaaa-0000-0000-0000-000000000003'; l uuid; p jsonb; r text; ok boolean; claves text[];
+begin
+  -- 8a-8c: la lista de habilitados no la lee ni la escribe la app, ni se puede llamar a su comprobación
+  perform pg_temp.reg('8a anon y authenticated no tienen ningún permiso sobre la lista de habilitados', not has_table_privilege('anon', 'public.coach_ia_habilitados', 'select')
+    and not has_table_privilege('authenticated', 'public.coach_ia_habilitados', 'select') and not has_table_privilege('authenticated', 'public.coach_ia_habilitados', 'insert')
+    and not has_table_privilege('authenticated', 'public.coach_ia_habilitados', 'update') and not has_table_privilege('authenticated', 'public.coach_ia_habilitados', 'delete'), '');
+  perform pg_temp.reg('8b nadie de la app puede llamar a coach_ia_habilitado', not has_function_privilege('anon', 'public.coach_ia_habilitado(uuid)', 'execute') and not has_function_privilege('authenticated', 'public.coach_ia_habilitado(uuid)', 'execute'), '');
+  perform pg_temp.reg('8c la lista tiene RLS activado (sin políticas)', (select relrowsecurity from pg_class where oid = 'public.coach_ia_habilitados'::regclass)
+    and not exists (select 1 from pg_policies where tablename = 'coach_ia_habilitados'), '');
+
+  -- 8d-8h: un entrenador NO habilitado: sus casos se tratan como inexistentes en las tres funciones
+  insert into public.entrenadores (uid, email, "displayName", approved, rol, role, profile) values (t3::uuid, 't3@test.local', 'Entrenador 3', true, 'trainer', 'trainer', '{}');
+  l := pg_temp.caso('30', t3, pg_temp.resp(), pg_temp.parq());
+  p := public.coach_ia_paquete(l);
+  perform pg_temp.reg('8d el paquete de un caso de un entrenador no habilitado dice «no_existe» y no entrega nada', p ->> 'motivo' = 'no_existe' and not p ? 'respuestas' and not (p ->> 'elegible')::boolean, p::text);
+  perform pg_temp.reg('8e ni siquiera deja constancia de lectura', (select ia_leida_en is null and ia_campos is null from public.solicitudes_programacion where lead_id = l), '');
+  perform pg_temp.reg('8f guardar un borrador en un caso de un entrenador no habilitado falla como si no existiera', pg_temp.guardar(l, pg_temp.plan(), pg_temp.razones()) = 'ERR: No existe esa solicitud', '');
+  perform pg_temp.reg('8g el listado de un entrenador no habilitado está vacío', public.coach_ia_casos_pendientes(t3::uuid) = '[]'::jsonb, '');
+  perform pg_temp.reg('8h y no queda nada guardado', (select borrador_estado = 'sin_generar' and propuesta is null from public.solicitudes_programacion where lead_id = l), '');
+
+  -- 8i-8j: al habilitarlo funciona y al quitarlo vuelve a cerrarse (falla cerrado)
+  insert into public.coach_ia_habilitados (trainer_id) values (t3::uuid);
+  perform pg_temp.reg('8i habilitado, el mismo caso sí es elegible', (public.coach_ia_paquete(l) ->> 'elegible')::boolean, '');
+  delete from public.coach_ia_habilitados where trainer_id = t3::uuid;
+  perform pg_temp.reg('8j quitado de la lista, vuelve a cerrarse', public.coach_ia_paquete(l) ->> 'motivo' = 'no_existe' and pg_temp.guardar(l, pg_temp.plan(), pg_temp.razones()) like 'ERR:%No existe%', '');
+
+  -- 8k-8o: el paquete es una lista blanca: ninguna respuesta de salud, aunque exista en la solicitud
+  insert into public.coach_ia_habilitados (trainer_id) values (t3::uuid);
+  l := pg_temp.caso('31', t3, pg_temp.resp_total(), pg_temp.parq());
+  p := public.coach_ia_paquete(l);
+  select array_agg(k order by k) into claves from jsonb_object_keys(p -> 'respuestas') k;
+  perform pg_temp.reg('8k las respuestas del paquete son EXACTAMENTE las que no son de salud',
+    claves = array['barreras', 'cardio', 'dias', 'duracion', 'experiencia', 'extra', 'marcas', 'material', 'objetivo', 'objetivo_detalle', 'pasos', 'prioridad', 'rutina_actual'], array_to_string(claves, ','));
+  perform pg_temp.reg('8l no sale ninguna respuesta de salud (rechaza, molestias, peso, altura, edad, fase, sueño, estrés)',
+    not (p -> 'respuestas') ?| array['rechaza', 'molestias', 'molestias_detalle', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres'], '');
+  perform pg_temp.reg('8m ni sus valores aparecen en ningún sitio del paquete', p::text not like '%dominadas%' and p::text not like '%78.5%' and p::text not like '%Mantenimiento%' and p::text not like '%hombro%', '');
+  perform pg_temp.reg('8n en lugar de la edad solo «mayor_de_edad: true»', p -> 'mayor_de_edad' = 'true'::jsonb and not p ? 'edad', '');
+  perform pg_temp.reg('8o la constancia de lectura tampoco lista campos de salud',
+    (select ia_campos @> array['nombre', 'objetivo', 'rutina_actual', 'mayor_de_edad', 'criterios'] and not ia_campos && array['rechaza', 'peso', 'altura', 'edad', 'fase', 'sueno', 'estres', 'molestias'] from public.solicitudes_programacion where lead_id = l), '');
+
+  -- 8p-8q: coachNotes ya no se acepta en la propuesta (y el resto sigue igual)
+  p := pg_temp.plan();
+  perform pg_temp.reg('8p coachNotes se rechaza', pg_temp.guardar(l, p || '{"coachNotes": "nota privada"}', pg_temp.razones()) like 'ERR:%campo no permitido: coachNotes%', '');
+  perform pg_temp.reg('8q el mismo plan sin coachNotes se guarda', pg_temp.guardar(l, p, pg_temp.razones()) = 'ok', '');
 end $$;
 
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
