@@ -10,13 +10,15 @@ const EnlacesProgramacion = lazy(() => import('./EnlacesProgramacion').then(m =>
 const SolicitudDetalle = lazy(() => import('./SolicitudDetalle').then(m => ({ default: m.SolicitudDetalle })))
 
 // Las personas que han escrito desde tu página pública: quién es, cómo contestarle y en qué punto está.
-export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onIrAAjustes }: {
+export function ContactosTab({ leadsState, trainerId, miNombre, onConvertir, onIrAAjustes, filtroInicial, abrirInicial }: {
   leadsState: LeadsState; trainerId: string; miNombre?: string; onConvertir?: (lead: Lead) => void; onIrAAjustes: () => void
+  /** Desde «Decisión de hoy»: la pestaña en que está la solicitud y la solicitud que debe quedar desplegada. */
+  filtroInicial?: EstadoLead; abrirInicial?: string
 }) {
   const { leads, loading, cambiarEstado, borrar } = leadsState
-  const [abierta, setAbierta] = useState<string | null>(null) // solicitud cuyo detalle está desplegado
+  const [abierta, setAbierta] = useState<string | null>(abrirInicial ?? null) // solicitud cuyo detalle está desplegado
   const [borrando, setBorrando] = useState<string | null>(null) // solicitud pendiente de confirmar el borrado
-  const [filtro, setFiltro] = useState<EstadoLead | 'todos'>('nuevo')
+  const [filtro, setFiltro] = useState<EstadoLead | 'todos'>(filtroInicial ?? 'nuevo')
   // «Nuevos» incluye los «a revisar»: son los que esperan al entrenador (y más urgentes)
   const coincide = (l: Lead, e: EstadoLead) => (e === 'nuevo' ? esNuevo(l) : l.status === e)
   const cuenta = (e: EstadoLead) => leads.filter(l => coincide(l, e)).length

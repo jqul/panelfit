@@ -8,9 +8,10 @@
 import type { Destino } from './atencionCliente'
 import type { EvidenciaDescarga } from './evidenciaDescarga'
 import { POLITICA_DESCARGA } from './evidenciaDescarga'
+import type { EstadoLead } from './leads'
 
 export type CategoriaDecision =
-  | 'solicitud-revision' | 'molestia-fuerte' | 'solicitud' | 'molestia' | 'checkin' | 'decision' | 'calibracion'
+  | 'solicitud-revision' | 'caso-ia-revision' | 'molestia-fuerte' | 'solicitud' | 'borrador-ia' | 'caso-ia' | 'molestia' | 'checkin' | 'decision' | 'calibracion'
   | 'descarga' | 'adherencia' | 'progresion' | 'felicitar'
 export type NivelDecision = 'atender' | 'revisar' | 'bien'
 
@@ -31,8 +32,8 @@ export interface PoliticaDecisionHoy {
 
 export const POLITICA_DECISION_HOY: PoliticaDecisionHoy = {
   version: 'hoy-v0-provisional-2026-11',
-  orden: { 'solicitud-revision': 10, 'molestia-fuerte': 20, solicitud: 30, molestia: 40, checkin: 50, decision: 60, calibracion: 70, descarga: 80, adherencia: 90, progresion: 100, felicitar: 110 },
-  nivel: { 'solicitud-revision': 'atender', 'molestia-fuerte': 'atender', solicitud: 'revisar', molestia: 'revisar', checkin: 'revisar', decision: 'revisar', calibracion: 'revisar', descarga: 'revisar', adherencia: 'revisar', progresion: 'bien', felicitar: 'bien' },
+  orden: { 'solicitud-revision': 10, 'caso-ia-revision': 15, 'molestia-fuerte': 20, solicitud: 30, 'borrador-ia': 35, 'caso-ia': 36, molestia: 40, checkin: 50, decision: 60, calibracion: 70, descarga: 80, adherencia: 90, progresion: 100, felicitar: 110 },
+  nivel: { 'solicitud-revision': 'atender', 'caso-ia-revision': 'atender', 'molestia-fuerte': 'atender', solicitud: 'revisar', 'borrador-ia': 'revisar', 'caso-ia': 'revisar', molestia: 'revisar', checkin: 'revisar', decision: 'revisar', calibracion: 'revisar', descarga: 'revisar', adherencia: 'revisar', progresion: 'bien', felicitar: 'bien' },
   molestiaFuerte: 7,
   molestiaMin: 4,
   adherenciaFelicitarPct: 90,
@@ -41,7 +42,8 @@ export const POLITICA_DECISION_HOY: PoliticaDecisionHoy = {
 }
 
 export type DestinoTarea =
-  | { tipo: 'contactos' }
+  /** Contactos; con `filtro` y `leadId`, en la pestaña donde está esa solicitud y con su detalle abierto. */
+  | { tipo: 'contactos'; filtro?: EstadoLead; leadId?: string }
   | { tipo: 'ficha'; clienteId: string; destino: Destino }
 
 export interface Tarea {
@@ -73,6 +75,18 @@ export interface EntradaSolicitud {
   esSolicitud: boolean
 }
 
+/** Un caso de Coach IA (solicitud de programación sin convertir) de una cuenta con Coach IA habilitado. Lo calcula la base de datos (`coach_ia_resumen`). */
+export interface EntradaCasoIa {
+  id: string
+  nombre: string
+  estadoLead: EstadoLead
+  /** borrador_listo: Claude lo dejó listo y espera tu decisión; aprobado: lo aprobaste y sigue sin convertir; listo_para_preparar: caso apto sin borrador;
+   *  requiere_revision: no se prepara (cualquier «sí» del PAR-Q, molestias, datos contradictorios o incompletos) y lo ve una persona. */
+  estado: 'borrador_listo' | 'aprobado' | 'listo_para_preparar' | 'requiere_revision'
+  /** Días enteros desde que llegó la solicitud o desde que se dejó el borrador. */
+  dias: number
+}
+
 export interface EntradaClienteHoy {
   id: string
   nombre: string
@@ -102,6 +116,25 @@ export function tareasDeSolicitud(s: EntradaSolicitud, p: PoliticaDecisionHoy = 
     porque: s.revisionPersonal ? 'Una respuesta del cuestionario de salud pide tu revisión personal. ' + espera : espera,
     accion: 'Abrir la solicitud', destino: { tipo: 'contactos' },
   }]
+}
+
+const ESPERA_IA = (dias: number) => (dias >= 1 ? `lleva ${dias === 1 ? '1 día' : `${dias} días`}` : 'acaba de llegar')
+
+/** Coach IA beta: tres filas posibles por caso. Ninguna dice qué contiene el borrador ni qué hacer con la persona: llevan a la solicitud, donde decide el entrenador. */
+export function tareasDeCasoIa(c: EntradaCasoIa, p: PoliticaDecisionHoy = POLITICA_DECISION_HOY): Tarea[] {
+  const base = { quien: c.nombre, clienteId: null, destino: { tipo: 'contactos' as const, filtro: c.estadoLead, leadId: c.id } }
+  const fila = (categoria: CategoriaDecision, necesita: string, porque: string, accion: string): Tarea[] =>
+    [{ id: `ia:${c.id}`, categoria, nivel: p.nivel[categoria], prioridad: p.orden[categoria], necesita, porque, accion, ...base }]
+  switch (c.estado) {
+    case 'borrador_listo':
+      return fila('borrador-ia', 'Revisar el borrador de programa que dejó Coach IA', `Quedó listo (${ESPERA_IA(c.dias)}). Solo tú lo apruebas o lo descartas; la persona no ha recibido nada`, 'Abrir el borrador')
+    case 'aprobado':
+      return fila('borrador-ia', 'Convertirla en cliente para dejar su borrador aprobado en su plan', `Lo aprobaste y sigue sin pasar a su ficha (${ESPERA_IA(c.dias)}); allí quedará como borrador, sin publicar`, 'Abrir la solicitud')
+    case 'listo_para_preparar':
+      return fila('caso-ia', 'Preparar su borrador con Coach IA', `El caso es apto para prepararse sin revisión profesional previa (${ESPERA_IA(c.dias)})`, 'Abrir la solicitud')
+    case 'requiere_revision':
+      return fila('caso-ia-revision', 'Revisar tú la solicitud: Coach IA no prepara este caso', `Necesita revisión profesional antes de programar nada; no se genera plan (${ESPERA_IA(c.dias)})`, 'Abrir la solicitud')
+  }
 }
 
 export function tareasDeCliente(c: EntradaClienteHoy, p: PoliticaDecisionHoy = POLITICA_DECISION_HOY): Tarea[] {
@@ -174,8 +207,8 @@ export interface DecisionHoy {
   resumen: Record<NivelDecision, number>
 }
 
-export function decisionHoy(clientes: EntradaClienteHoy[], solicitudes: EntradaSolicitud[], p: PoliticaDecisionHoy = POLITICA_DECISION_HOY): DecisionHoy {
-  const tareas = [...solicitudes.flatMap(s => tareasDeSolicitud(s, p)), ...clientes.flatMap(c => tareasDeCliente(c, p))]
+export function decisionHoy(clientes: EntradaClienteHoy[], solicitudes: EntradaSolicitud[], p: PoliticaDecisionHoy = POLITICA_DECISION_HOY, casosIa: EntradaCasoIa[] = []): DecisionHoy {
+  const tareas = [...solicitudes.flatMap(s => tareasDeSolicitud(s, p)), ...casosIa.flatMap(c => tareasDeCasoIa(c, p)), ...clientes.flatMap(c => tareasDeCliente(c, p))]
     .sort((a, b) => a.prioridad - b.prioridad || (b.gravedad ?? 0) - (a.gravedad ?? 0) || a.quien.localeCompare(b.quien, 'es'))
   const resumen: Record<NivelDecision, number> = { atender: 0, revisar: 0, bien: 0 }
   for (const t of tareas) resumen[t.nivel]++

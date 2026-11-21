@@ -11,6 +11,8 @@ import { recomendarSiguiente } from '../lib/recomendacionProgresion'
 import { evidenciaDescarga } from '../lib/evidenciaDescarga'
 import { decisionHoy, type DecisionHoy, type EntradaClienteHoy, type EntradaSolicitud } from '../lib/decisionHoy'
 import { esSolicitud, type Lead } from '../lib/leads'
+import { entradasCasosIa } from '../lib/coachIa'
+import { useCoachIa } from './useCoachIa'
 import type { Decision } from '../lib/diarioDecisiones'
 import type { ClientWithStats } from './useTrainerClients'
 import type { TrainingLogs, TrainingPlan } from '../types'
@@ -38,6 +40,8 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
   const [ausencias, setAusencias] = useState<AusenciaRow[]>([])
   const [decisiones, setDecisiones] = useState<DecisionRow[]>([])
   const clave = clients.map(c => c.id).join(',')
+  // Coach IA beta: solo si esta cuenta lo tiene habilitado (lo dice la base de datos); en la demostración no se llama a nada
+  const coachIa = useCoachIa(isDemoTrainerId(trainerId))
 
   useEffect(() => {
     let vivo = true
@@ -102,8 +106,8 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
     })
     const ahora = Date.now()
     const solicitudes: EntradaSolicitud[] = leadsNuevos.map(l => ({ id: l.id, nombre: l.name, revisionPersonal: l.status === 'revisar', diasEsperando: Math.floor((ahora - l.created_at) / 86_400_000), esSolicitud: esSolicitud(l) }))
-    return decisionHoy(entradas, solicitudes)
-  }, [planes, dolor, checkins, ausencias, decisiones, clients, logsMap, leadsNuevos])
+    return decisionHoy(entradas, solicitudes, undefined, entradasCasosIa(coachIa.casos, ahora))
+  }, [planes, dolor, checkins, ausencias, decisiones, clients, logsMap, leadsNuevos, coachIa.casos])
 
   return { decision, cargando: planes === null }
 }
