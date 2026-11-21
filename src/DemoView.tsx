@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { Destino } from './lib/atencionCliente'
 import { Rocket, Mail } from 'lucide-react'
 import { ClientData, UserProfile } from './types'
 import { DEMO_CLIENTS, DEMO_TRAINER_ID, DEMO_LOGS_MAP, DEMO_PLAN_MAP } from './lib/demo-data'
@@ -80,6 +81,7 @@ export function DemoView({ showBanner, pendingUser, selectedClient, setSelectedC
   onRegister?: () => void
   onLogin?: () => void
 }) {
+  const [destinoFicha, setDestinoFicha] = useState<Destino | undefined>(undefined)
   const demoPlan = (id: string) => DEMO_PLAN_MAP[id] || undefined
   const demoLogs = (id: string) => DEMO_LOGS_MAP[id] || {}
 
@@ -97,7 +99,8 @@ export function DemoView({ showBanner, pendingUser, selectedClient, setSelectedC
             client={selectedClient}
             userProfile={DEMO_PROFILE}
             allClients={DEMO_CLIENTS}
-            onClose={() => setSelectedClient(null)}
+            destinoInicial={destinoFicha}
+            onClose={() => { setSelectedClient(null); setDestinoFicha(undefined) }}
             demoPlan={demoPlan(selectedClient.id)}
             demoLogs={demoLogs(selectedClient.id)}
           />
@@ -107,7 +110,7 @@ export function DemoView({ showBanner, pendingUser, selectedClient, setSelectedC
             onLogout={() => { window.location.href = '/' }}
             demoClients={DEMO_CLIENTS}
             demoLogsMap={DEMO_LOGS_MAP}
-            onSelectClient={(c: ClientData) => setSelectedClient(c)}
+            onSelectClient={(c: ClientData, destino?: Destino) => { setDestinoFicha(destino); setSelectedClient(c) }}
           />
         )}
       </div>

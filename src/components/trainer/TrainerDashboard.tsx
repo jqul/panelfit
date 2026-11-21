@@ -10,6 +10,7 @@ import { notasDeSolicitud, planBorradorDe, type SolicitudProgramacion } from '..
 import { useLabels } from '../../hooks/useLabels'
 import { ContextoCliente } from './ContextoCliente'
 import type { IntentoPanel } from '../../lib/anadirFicha'
+import type { Destino } from '../../lib/atencionCliente'
 import { useProfesionalesEquipo } from '../../hooks/useProfesionalesEquipo'
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
 import {
@@ -85,6 +86,7 @@ const ContactosTab = lazy(() => import('./ContactosTab').then(m => ({ default: m
 const ExercisesTab = lazy(() => import('./ExercisesTab').then(m => ({ default: m.ExercisesTab })))
 const CriteriosProgramacionEditor = lazy(() => import('./CriteriosProgramacionEditor').then(m => ({ default: m.CriteriosProgramacionEditor })))
 const AvisosEditor = lazy(() => import('./AvisosEditor').then(m => ({ default: m.AvisosEditor })))
+const DecisionHoy = lazy(() => import('./DecisionHoy').then(m => ({ default: m.DecisionHoy })))
 const RecordsSemana = lazy(() => import('./RecordsSemana').then(m => ({ default: m.RecordsSemana })))
 const ArchivarCliente = lazy(() => import('./ArchivarCliente').then(m => ({ default: m.ArchivarCliente })))
 const AutoArchivarEditor = lazy(() => import('./AutoArchivarEditor').then(m => ({ default: m.AutoArchivarEditor })))
@@ -115,7 +117,8 @@ interface Props {
   teamContext?: { uid: string; displayName: string } | null
   onSwitchTeam?: (team: { uid: string; displayName: string } | null) => void
   onLogout: () => void
-  onSelectClient: (client: ClientData) => void
+  /** Abre la ficha; con `destino`, directamente en la pestaña y sección donde se resuelve (Decisión de hoy). */
+  onSelectClient: (client: ClientData, destino?: Destino) => void
   demoClients?: ClientData[]
   demoLogsMap?: Record<string, any>
   /** Orden de la ficha de un cliente («Añadir» → cita, documento, encuesta): abre esa pestaña con el cliente ya elegido. */
@@ -510,6 +513,11 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     </div>
                   )}
                 </div>
+
+                {/* Lo que conviene mirar hoy de todos los clientes, con la pantalla donde decidirlo (lib/decisionHoy) */}
+                {clients.length > 0 && !loading && (
+                  <Suspense fallback={null}><DecisionHoy trainerId={userProfile.uid} clients={clients} logsMap={logsMap} leadsNuevos={leadsState.nuevos} onAbrirFicha={onSelectClient} onVerContactos={() => handleTabChange('contactos')} /></Suspense>
+                )}
 
                 {/* Primeros pasos: cliente → workout → acceso, marcados solos según los datos reales */}
                 {onboarding.visible && !loading && (

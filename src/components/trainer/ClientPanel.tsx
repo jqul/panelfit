@@ -48,6 +48,8 @@ interface Props {
   userProfile: UserProfile
   allClients: ClientData[]
   onClose: () => void
+  /** Pestaña (y sección) en la que abrir la ficha, si se llega desde un aviso concreto. */
+  destinoInicial?: Destino
   /** Sale de la ficha a una pestaña del panel (Agenda, Documentos, Encuestas) con este cliente ya elegido. Sin él (demo), esas opciones de «Añadir» no salen. */
   onIrAlPanel?: (tab: DestinoPanel) => void
   demoPlan?: TrainingPlan
@@ -107,7 +109,7 @@ function useTemplates(trainerId: string) {
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
 
-export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPanel, demoPlan, demoLogs }: Props) {
+export function ClientPanel({ client, userProfile, allClients, onClose, destinoInicial, onIrAlPanel, demoPlan, demoLogs }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('perfil')
   const [plan, setPlan] = useState<TrainingPlan | null>(null)
   const [logs, setLogs] = useState<TrainingLogs>({})
@@ -154,6 +156,8 @@ export function ClientPanel({ client, userProfile, allClients, onClose, onIrAlPa
     setActiveTab(d.tab)
     if (d.tab === 'perfil' && d.seccion) setTimeout(() => document.getElementById(d.seccion!)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120)
   }
+  // Si se llega desde «Decisión de hoy», se abre directamente donde se resuelve
+  useEffect(() => { if (destinoInicial) irA(destinoInicial) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // «Añadir» de la cabecera: asignar un workout se abre aquí mismo; lo demás lleva al sitio donde ya se hace
   const elegirAnadir = (o: OpcionAnadir) => {
     if (o.accion === 'asignar-workout') {
