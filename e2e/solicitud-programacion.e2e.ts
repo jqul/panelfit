@@ -197,7 +197,7 @@ test('PAR-Q con señal de alarma: la persona ve «revisión personal», el lead 
   await expect(page.getByText('Solicitud de programación inicial · necesita tu revisión personal')).toBeVisible()
   await page.getByRole('button', { name: 'Ver solicitud' }).click()
   await expect(page.getByText(/tiene una señal de alarma/)).toBeVisible()
-  await expect(page.getByText('No se prepara borrador por la señal de alarma.')).toBeVisible()
+  await expect(page.getByText(/Plan no generado: requiere revisión profesional/)).toBeVisible()
 })
 
 test('sin consentimiento de salud: no se piden ni se guardan las respuestas de salud ni el PAR-Q', async ({ browser, fake }) => {
