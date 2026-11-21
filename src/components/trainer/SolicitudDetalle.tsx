@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from '../shared/Toast'
 import { AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useCoachIa } from '../../hooks/useCoachIa'
 import {
   ETIQUETA_BORRADOR, POLITICA_RETENCION, filasParq, filasRespuestas, type SolicitudProgramacion,
 } from '../../lib/solicitudProgramacion'
@@ -109,6 +110,8 @@ function CasoCoachIa({ s, leadId, onCambio }: { s: SolicitudProgramacion; leadId
 
 export function SolicitudDetalle({ leadId }: { leadId: string }) {
   const [s, setS] = useState<SolicitudProgramacion | null | undefined>(undefined)
+  // Coach IA beta solo se enseña a las cuentas que lo tienen habilitado (lo decide la base de datos)
+  const coachIa = useCoachIa()
 
   useEffect(() => {
     let vivo = true
@@ -164,7 +167,7 @@ export function SolicitudDetalle({ leadId }: { leadId: string }) {
           </ul>
         </div>
       )}
-      <CasoCoachIa s={s} leadId={leadId} onCambio={setS} />
+      {coachIa.activo && <CasoCoachIa s={s} leadId={leadId} onCambio={setS} />}
       <label className="flex items-start gap-2 text-xs">
         <input type="checkbox" checked={s.seguimiento_autorizado} disabled={!!s.client_id} onChange={e => void autorizar(e.target.checked)} className="mt-0.5" />
         <span><strong>Seguimiento autorizado</strong>: conservarla más de 60 días aunque no llegue a ser cliente (también si está a revisar). Sin marcar, se elimina sola.</span>

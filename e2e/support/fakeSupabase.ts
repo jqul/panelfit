@@ -1,4 +1,5 @@
 import type { BrowserContext, Route, Request } from '@playwright/test'
+import { motivoRevision } from '../../src/lib/coachIa'
 
 // Un "Supabase de mentira" en memoria para las pruebas end-to-end. Se engancha a la red del navegador
 // (nunca se habla con la base de datos real) y entiende lo justo de PostgREST, Auth y Storage para los
@@ -418,6 +419,15 @@ export class FakeSupabase {
         if (!lead) return json(route, 403, { code: '42501', message: 'No autorizado' })
         Object.assign(this.rows('solicitudes_programacion').find(s => s.lead_id === lead.id) ?? {}, { seguimiento_autorizado: !!args.p_autorizado })
         return empty(route)
+      }
+      case 'coach_ia_resumen': {
+        // Igual que la función de la base de datos: solo si el entrenador está en la lista de habilitados; sin respuestas ni PAR-Q, con el motivo ya calculado
+        if (!this.rows('coach_ia_habilitados').some(h => h.trainer_id === me)) return json(route, 200, { activo: false, casos: [] })
+        const casos = this.rows('solicitudes_programacion').filter(sol => sol.trainer_id === me && !sol.client_id).map(sol => {
+          const lead = this.rows('leads').find(l => l.id === sol.lead_id)
+          return { lead_id: sol.lead_id, nombre: lead?.name ?? '', estado_lead: lead?.status ?? 'nuevo', recibido_en: sol.created_at, estado: sol.borrador_estado, motivo: motivoRevision(sol as never), borrador_generado_en: sol.borrador_generado_en ?? null }
+        })
+        return json(route, 200, { activo: true, casos })
       }
       case 'decidir_borrador_solicitud': {
         // Igual que la función de la base de datos: solo el dueño; aprobar exige un borrador listo; descartar no conserva la propuesta

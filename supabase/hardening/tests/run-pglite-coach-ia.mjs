@@ -12,7 +12,7 @@ const migraciones = [
   '20261028000004_submit_lead_validacion_y_limites.sql', '20261029000001_recordar_contactos_sin_contestar.sql',
   '20261023000007_rgpd_consentimientos.sql', '20261023000008_rgpd_exportar_datos_cliente.sql', '20261023000009_rgpd_borrado_completo_cliente.sql',
   '20261118000001_diario_decisiones.sql', '20261118000020_solicitud_programacion_inicial.sql', '20261119000010_solicitud_revision_aviso.sql',
-  '20261119000020_solo_mayores_18_solicitud.sql', '20261121000010_coach_ia_puente.sql', '20261121000020_coach_ia_alcance.sql',
+  '20261119000020_solo_mayores_18_solicitud.sql', '20261121000010_coach_ia_puente.sql', '20261121000020_coach_ia_alcance.sql', '20261121000030_coach_ia_resumen.sql',
 ]
 for (const m of migraciones) {
   let sql = read(`migrations/${m}`)

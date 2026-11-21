@@ -72,9 +72,11 @@ Sin vídeos, enlaces ni macros. Los nombres de ejercicio deben existir en la bib
 En la propia solicitud: cuándo se leyó el caso y qué campos se entregaron (`ia_leida_en`, `ia_campos`), cuándo se preparó el borrador (`borrador_generado_en`), con qué criterios (`criterios_version`) y cuándo lo decidió el entrenador (`borrador_decidido_en`). Todo se borra con la solicitud (a los 60 días si no es cliente, salvo seguimiento autorizado) o con el cliente (RGPD).
 
 ## Lo que el entrenador hace en la app
+
+**El aviso.** En «Decisión de hoy» (solo cuentas habilitadas) salen cuatro filas: *Revisar el borrador de programa que dejó Coach IA*, *Convertirla en cliente para dejar su borrador aprobado en su plan*, *Preparar su borrador con Coach IA* (caso apto: aquí es cuando abres Claude y le dices «prepara el caso de <nombre>») y *Revisar tú la solicitud: Coach IA no prepara este caso* (requiere revisión profesional; para atender). El botón abre la solicitud en la pestaña de Contactos donde está y con su detalle desplegado. La lista lee `coach_ia_resumen()`, que no entrega respuestas, PAR-Q ni contacto.
 Contactos → pestaña **Borrador listo** → «Ver solicitud» → lee la propuesta, las razones y los datos que se entregaron, y contrasta con lo que la persona dijo evitar → **Aprobar borrador** o **Descartar borrador** (descartar no conserva la propuesta). Al «Convertir en cliente», un borrador aprobado queda como **borrador del plan** (no publicado); el entrenador lo activa con el flujo de siempre, cuando la persona lo confirma.
 
 ## Pendiente
 - **Aislamiento real** de quien prepara el borrador (credencial o herramienta limitada a tres operaciones y tarea sin acceso amplio).
 - Los criterios (`coach-ia-v0-provisional-2026-11`) se ajustan con la beta real.
-- Todavía NO existe: subir capturas, PDF o Excel de la rutina; preguntas de la IA dentro de la app; ajustes semanales de carga para amigos; avisos de «borrador listo» en «Decisión de hoy»; confirmación de la persona dentro de la app.
+- Todavía NO existe: subir capturas, PDF o Excel de la rutina; preguntas de la IA dentro de la app; ajustes semanales de carga para amigos; confirmación de la persona dentro de la app.

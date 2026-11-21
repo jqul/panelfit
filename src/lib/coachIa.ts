@@ -10,7 +10,9 @@
 // técnico de quien lanza la tarea (con acceso de administrador por MCP puede leer cualquier tabla): es un proceso asistido con límites en
 // lo que las funciones devuelven y aceptan (docs/coach-ia.md).
 
-import { IDS_SALUD, PREGUNTAS_PROGRAMACION, type SolicitudProgramacion } from './solicitudProgramacion'
+import { IDS_SALUD, PREGUNTAS_PROGRAMACION, type EstadoBorrador, type SolicitudProgramacion } from './solicitudProgramacion'
+import type { EntradaCasoIa } from './decisionHoy'
+import type { EstadoLead } from './leads'
 
 /** Las ÚNICAS respuestas que se entregan a quien prepara el borrador: las que el cuestionario NO marca como de salud. En la base de datos es una
  *  lista blanca (`v_permitidas` de `coach_ia_paquete`, migración 20261121000020): una pregunta nueva no sale hasta que se añade allí a propósito.
@@ -124,3 +126,54 @@ export function resumenPropuesta(propuesta: unknown): SemanaResumen[] {
 }
 
 export const totalEjercicios = (semanas: SemanaResumen[]) => semanas.reduce((n, s) => n + s.dias.reduce((m, d) => m + d.ejercicios.length, 0), 0)
+
+// ── El resumen que devuelve la base de datos al entrenador (`coach_ia_resumen`) ──
+// La app NO recalcula la elegibilidad con las respuestas de salud (no las baja al panel): usa el motivo que ya calculó la base de datos.
+export interface CasoCoachIa {
+  lead_id: string
+  nombre: string
+  estado_lead: EstadoLead
+  recibido_en: string
+  estado: EstadoBorrador
+  /** Por qué no es apto (solo lo ve el entrenador), o null si lo es. */
+  motivo: MotivoRevision | null
+  borrador_generado_en: string | null
+}
+export interface ResumenCoachIa { activo: boolean; casos: CasoCoachIa[] }
+
+export const RESUMEN_COACH_IA_VACIO: ResumenCoachIa = { activo: false, casos: [] }
+const ESTADOS_LEAD: readonly string[] = ['nuevo', 'revisar', 'borrador_listo', 'contactado', 'convertido', 'descartado']
+const ESTADOS_BORRADOR: readonly string[] = ['sin_generar', 'listo_para_revisar', 'aprobado', 'descartado']
+
+/** Lo que devuelve la función, a salvo de formas raras (nunca lanza): lo que no se entiende se omite y, sin `activo: true`, no hay nada. */
+export function leerResumenCoachIa(raw: unknown): ResumenCoachIa {
+  const o = obj(raw)
+  if (o.activo !== true) return RESUMEN_COACH_IA_VACIO
+  const casos: CasoCoachIa[] = []
+  for (const c of lista(o.casos)) {
+    const x = obj(c)
+    const motivo = x.motivo === null || x.motivo === undefined ? null : (MOTIVOS as readonly string[]).includes(String(x.motivo)) ? (x.motivo as MotivoRevision) : undefined
+    if (typeof x.lead_id !== 'string' || !ESTADOS_LEAD.includes(String(x.estado_lead)) || !ESTADOS_BORRADOR.includes(String(x.estado)) || motivo === undefined) continue
+    casos.push({
+      lead_id: x.lead_id, nombre: txt(x.nombre) || 'Sin nombre', estado_lead: x.estado_lead as EstadoLead, recibido_en: txt(x.recibido_en),
+      estado: x.estado as EstadoBorrador, motivo, borrador_generado_en: typeof x.borrador_generado_en === 'string' ? x.borrador_generado_en : null,
+    })
+  }
+  return { activo: true, casos }
+}
+
+const DIA_MS = 86_400_000
+const diasDesde = (iso: string | null, ahora: number) => { const t = iso ? Date.parse(iso) : NaN; return Number.isFinite(t) ? Math.max(0, Math.floor((ahora - t) / DIA_MS)) : 0 }
+
+/** Los casos que piden algo al entrenador, para «Decisión de hoy». Un caso con alarma del PAR-Q no repite fila: la solicitud «a revisar» ya tiene la suya. */
+export function entradasCasosIa(casos: CasoCoachIa[], ahora = Date.now()): EntradaCasoIa[] {
+  const out: EntradaCasoIa[] = []
+  for (const c of casos) {
+    const base = { id: c.lead_id, nombre: c.nombre, estadoLead: c.estado_lead }
+    if (c.estado === 'listo_para_revisar') out.push({ ...base, estado: 'borrador_listo', dias: diasDesde(c.borrador_generado_en ?? c.recibido_en, ahora) })
+    else if (c.estado === 'aprobado') out.push({ ...base, estado: 'aprobado', dias: diasDesde(c.recibido_en, ahora) })
+    else if (c.motivo === null) out.push({ ...base, estado: 'listo_para_preparar', dias: diasDesde(c.recibido_en, ahora) })
+    else if (c.motivo !== 'alarma_parq' && MOTIVOS_CLINICOS.includes(c.motivo)) out.push({ ...base, estado: 'requiere_revision', dias: diasDesde(c.recibido_en, ahora) })
+  }
+  return out
+}

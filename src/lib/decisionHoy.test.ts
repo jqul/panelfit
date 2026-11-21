@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decisionHoy, tareasDeCliente, tareasDeSolicitud, POLITICA_DECISION_HOY, type EntradaClienteHoy, type EntradaSolicitud } from './decisionHoy'
+import { decisionHoy, tareasDeCasoIa, tareasDeCliente, tareasDeSolicitud, POLITICA_DECISION_HOY, type EntradaCasoIa, type EntradaClienteHoy, type EntradaSolicitud } from './decisionHoy'
 import type { EvidenciaDescarga, SemanaEvidencia } from './evidenciaDescarga'
 
 const semana = (sesiones: number, previstas = 3, extra: Partial<SemanaEvidencia> = {}): SemanaEvidencia => ({ lunes: '2026-11-02', sesiones, previstas, enCurso: false, descarga: false, diasAusencia: 0, ...extra })
@@ -142,5 +142,66 @@ describe('decisionHoy: el orden y el corte', () => {
   })
   it('nada que mirar: lista vacía', () => {
     expect(decisionHoy([cliente()], []).tareas).toEqual([])
+  })
+})
+
+describe('Coach IA beta: filas de casos (solicitudes de programación)', () => {
+  const caso = (o: Partial<EntradaCasoIa> = {}): EntradaCasoIa => ({ id: 'l1', nombre: 'Adrián Gómez', estadoLead: 'nuevo', estado: 'listo_para_preparar', dias: 2, ...o })
+
+  it('un borrador listo pide revisarlo y lleva a su pestaña de Contactos, con la solicitud abierta', () => {
+    const [t] = tareasDeCasoIa(caso({ estado: 'borrador_listo', estadoLead: 'borrador_listo', dias: 1 }))
+    expect(t).toMatchObject({ categoria: 'borrador-ia', nivel: 'revisar', quien: 'Adrián Gómez', clienteId: null, accion: 'Abrir el borrador' })
+    expect(t.necesita).toBe('Revisar el borrador de programa que dejó Coach IA')
+    expect(t.porque).toContain('Quedó listo (lleva 1 día)')
+    expect(t.porque).toContain('la persona no ha recibido nada')
+    expect(t.destino).toEqual({ tipo: 'contactos', filtro: 'borrador_listo', leadId: 'l1' })
+  })
+
+  it('un borrador aprobado sin convertir recuerda convertirla, sin prometer que se publica', () => {
+    const [t] = tareasDeCasoIa(caso({ estado: 'aprobado', estadoLead: 'borrador_listo', dias: 0 }))
+    expect(t.categoria).toBe('borrador-ia')
+    expect(t.necesita).toContain('Convertirla en cliente')
+    expect(t.porque).toContain('sin publicar')
+    expect(t.porque).toContain('acaba de llegar')
+  })
+
+  it('un caso apto avisa de que se puede preparar; uno que requiere revisión profesional es para atender y no habla de la salud', () => {
+    const [apto] = tareasDeCasoIa(caso())
+    expect(apto).toMatchObject({ categoria: 'caso-ia', nivel: 'revisar', necesita: 'Preparar su borrador con Coach IA' })
+    expect(apto.destino).toEqual({ tipo: 'contactos', filtro: 'nuevo', leadId: 'l1' })
+    const [rev] = tareasDeCasoIa(caso({ estado: 'requiere_revision' }))
+    expect(rev).toMatchObject({ categoria: 'caso-ia-revision', nivel: 'atender' })
+    expect(rev.necesita).toBe('Revisar tú la solicitud: Coach IA no prepara este caso')
+    expect(rev.porque).toContain('revisión profesional')
+    expect(JSON.stringify(rev)).not.toMatch(/PAR-Q|molestia|dolor|lesi[oó]n|diagn/i)
+  })
+
+  it('no dice qué hacer con la persona ni qué contiene el borrador', () => {
+    for (const estado of ['borrador_listo', 'aprobado', 'listo_para_preparar', 'requiere_revision'] as const) {
+      const [t] = tareasDeCasoIa(caso({ estado }))
+      expect(`${t.necesita} ${t.porque}`).not.toMatch(/deber[ií]a|tienes que|debes|recomend|diagn/i)
+    }
+  })
+
+  it('el orden: revisión profesional antes que molestias fuertes, y el borrador por revisar entre las solicitudes y las molestias', () => {
+    const r = decisionHoy(
+      [cliente({ molestias: [{ zona: 'Rodilla', intensidad: 8 }], checkinBajo: 'sueño 2/5' })],
+      [{ id: 's1', nombre: 'Lucas', revisionPersonal: false, diasEsperando: 1, esSolicitud: true }],
+      POLITICA_DECISION_HOY,
+      [caso({ id: 'a', nombre: 'Ana', estado: 'requiere_revision' }), caso({ id: 'b', nombre: 'Beto', estado: 'borrador_listo' }), caso({ id: 'c', nombre: 'Cleo', estado: 'listo_para_preparar' })],
+    )
+    expect(r.tareas.map(t => t.categoria)).toEqual(['caso-ia-revision', 'molestia-fuerte', 'solicitud', 'borrador-ia', 'caso-ia', 'checkin'])
+  })
+
+  it('sin casos de Coach IA la lista es la de siempre', () => {
+    expect(decisionHoy([cliente({ checkinBajo: 'x' })], []).tareas.map(t => t.categoria)).toEqual(['checkin'])
+    expect(decisionHoy([], [], POLITICA_DECISION_HOY, []).tareas).toEqual([])
+  })
+
+  it('cada categoría tiene orden y nivel en la política', () => {
+    for (const c of ['caso-ia-revision', 'borrador-ia', 'caso-ia'] as const) {
+      expect(POLITICA_DECISION_HOY.orden[c]).toBeGreaterThan(0)
+      expect(['atender', 'revisar', 'bien']).toContain(POLITICA_DECISION_HOY.nivel[c])
+    }
   })
 })

@@ -5,7 +5,7 @@ import { useTrainerClients } from '../../hooks/useTrainerClients'
 import { useClientStats } from '../../hooks/useClientStats'
 import { useInboxItems } from '../../hooks/useInboxItems'
 import { useLeads } from '../../hooks/useLeads'
-import { contactoDe, esSolicitud, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type Lead } from '../../lib/leads'
+import { contactoDe, esSolicitud, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type EstadoLead, type Lead } from '../../lib/leads'
 import { notasDeSolicitud, planBorradorDe, type SolicitudProgramacion } from '../../lib/solicitudProgramacion'
 import { useLabels } from '../../hooks/useLabels'
 import { ContextoCliente } from './ContextoCliente'
@@ -235,6 +235,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const leadsNuevos = leadsState.nuevos.length
   // Contacto que se está convirtiendo en cliente (el alta es el mismo formulario de «Nuevo cliente», con sus datos ya puestos)
   const [leadAConvertir, setLeadAConvertir] = useState<Lead | null>(null)
+  // Adónde lleva «Decisión de hoy» dentro de Contactos: la pestaña y la solicitud que debe quedar abierta (se olvida al salir de Contactos)
+  const [contactosDestino, setContactosDestino] = useState<{ filtro?: EstadoLead; leadId?: string }>({})
+  useEffect(() => { if (activeTab !== 'contactos') setContactosDestino(d => (d.filtro || d.leadId ? {} : d)) }, [activeTab])
 
   // Convertir una solicitud en cliente: si el entrenador aprobó una propuesta, queda como BORRADOR del plan (se publica con el flujo de siempre);
   // después la solicitud se enlaza con la ficha y el contacto pasa a «Clientes».
@@ -516,7 +519,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
 
                 {/* Lo que conviene mirar hoy de todos los clientes, con la pantalla donde decidirlo (lib/decisionHoy) */}
                 {clients.length > 0 && !loading && (
-                  <Suspense fallback={null}><DecisionHoy trainerId={userProfile.uid} clients={clients} logsMap={logsMap} leadsNuevos={leadsState.nuevos} onAbrirFicha={onSelectClient} onVerContactos={() => handleTabChange('contactos')} /></Suspense>
+                  <Suspense fallback={null}><DecisionHoy trainerId={userProfile.uid} clients={clients} logsMap={logsMap} leadsNuevos={leadsState.nuevos} onAbrirFicha={onSelectClient} onVerContactos={d => { setContactosDestino(d ?? {}); handleTabChange('contactos') }} /></Suspense>
                 )}
 
                 {/* Primeros pasos: cliente → workout → acceso, marcados solos según los datos reales */}
@@ -929,7 +932,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
           {activeTab === 'bandeja'    && <BandejaTab trainerId={userProfile.uid} clients={clients} archivados={archivedClients} onRecuperar={id => restoreClients([id])} logsMap={logsMap} onSelectClient={onSelectClient} leadsState={leadsState} onVerContactos={() => setActiveTab('contactos')} />}
           {activeTab === 'contactos'  && (
             <Suspense fallback={<p className="py-10 text-sm text-muted">Cargando contactos…</p>}>
-              <ContactosTab leadsState={leadsState} trainerId={userProfile.uid} miNombre={userProfile.displayName} onConvertir={convertirContacto} onIrAAjustes={() => setActiveTab('settings')} />
+              <ContactosTab leadsState={leadsState} trainerId={userProfile.uid} miNombre={userProfile.displayName} onConvertir={convertirContacto} onIrAAjustes={() => setActiveTab('settings')} filtroInicial={contactosDestino.filtro} abrirInicial={contactosDestino.leadId} />
             </Suspense>
           )}
           {activeTab === 'exercises'  && (

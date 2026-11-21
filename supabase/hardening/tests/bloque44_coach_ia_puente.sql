@@ -329,6 +329,51 @@ begin
   perform pg_temp.reg('8q el mismo plan sin coachNotes se guarda', pg_temp.guardar(l, p, pg_temp.razones()) = 'ok', '');
 end $$;
 
+-- ═══ 9. Resumen para la app del entrenador (migración 20261121000030) ═══
+do $$
+declare t1 text := 'aaaaaaaa-0000-0000-0000-000000000001'; t4 text := 'aaaaaaaa-0000-0000-0000-000000000004'; r jsonb; c jsonb; claves text[]; l uuid;
+begin
+  -- Habilitado: ve sus casos sin convertir, con el estado calculado por la base de datos
+  perform set_config('request.jwt.claims', json_build_object('sub', t1, 'role', 'authenticated')::text, true);
+  set local role authenticated;
+  r := public.coach_ia_resumen();
+  reset role;
+  perform pg_temp.reg('9a un entrenador habilitado recibe «activo» y sus casos sin convertir (los de otros no salen, tampoco los ya clientes)',
+    (r ->> 'activo')::boolean and jsonb_array_length(r -> 'casos') = 7 and not exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' in ('00000000-0000-0000-0000-000000000017', '00000000-0000-0000-0000-000000000030', '00000000-0000-0000-0000-000000000031')), jsonb_array_length(r -> 'casos')::text);
+  c := r -> 'casos' -> 0;
+  select array_agg(k order by k) into claves from jsonb_object_keys(c) k;
+  perform pg_temp.reg('9b cada caso lleva solo id, nombre, estado del contacto, fecha, estado del borrador, motivo y fecha del borrador',
+    claves = array['borrador_generado_en', 'estado', 'estado_lead', 'lead_id', 'motivo', 'nombre', 'recibido_en'], array_to_string(claves, ','));
+  perform pg_temp.reg('9c ni respuestas, ni PAR-Q, ni contacto en el resumen', r::text not like '%@example.com%' and r::text not like '%600000%' and r::text not like '%dominadas%'
+    and not exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ? 'parq' or x ? 'respuestas' or x ? 'email' or x ? 'phone'), '');
+  perform pg_temp.reg('9d el caso con un «sí» del PAR-Q dice su motivo al entrenador (a diferencia de quien prepara el borrador)',
+    (select x ->> 'motivo' from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = '00000000-0000-0000-0000-000000000016') = 'parq_con_si', '');
+  perform pg_temp.reg('9e el caso apto sin borrador no lleva motivo y los cinco con borrador listo salen como tales',
+    (select x -> 'motivo' from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = '00000000-0000-0000-0000-000000000015') = 'null'::jsonb
+    and (select count(*) from jsonb_array_elements(r -> 'casos') x where x ->> 'estado' = 'listo_para_revisar') = 5, '');
+
+  -- 60 días: fuera, salvo seguimiento autorizado
+  l := '00000000-0000-0000-0000-000000000015';
+  update public.solicitudes_programacion set created_at = now() - interval '61 days' where lead_id = l;
+  perform set_config('request.jwt.claims', json_build_object('sub', t1, 'role', 'authenticated')::text, true);
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9f una solicitud de más de 60 días no sale', not exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
+  update public.solicitudes_programacion set seguimiento_autorizado = true where lead_id = l;
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9g con seguimiento autorizado sí sale', exists (select 1 from jsonb_array_elements(r -> 'casos') x where x ->> 'lead_id' = l::text), '');
+
+  -- No habilitado, sin sesión y anónimo: nada
+  insert into public.entrenadores (uid, email, "displayName", approved, rol, role, profile) values (t4::uuid, 't4@test.local', 'Entrenador 4', true, 'trainer', 'trainer', '{}');
+  perform pg_temp.caso('40', t4, pg_temp.resp(), pg_temp.parq());
+  perform set_config('request.jwt.claims', json_build_object('sub', t4, 'role', 'authenticated')::text, true);
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9h un entrenador NO habilitado recibe «activo: false» y ningún caso, aunque los tenga', r = '{"activo": false, "casos": []}'::jsonb, r::text);
+  perform set_config('request.jwt.claims', '', true);
+  set local role authenticated; r := public.coach_ia_resumen(); reset role;
+  perform pg_temp.reg('9i sin sesión (sin auth.uid) tampoco recibe nada', r = '{"activo": false, "casos": []}'::jsonb, r::text);
+  perform pg_temp.reg('9j anon no puede llamarla', not has_function_privilege('anon', 'public.coach_ia_resumen()', 'execute') and has_function_privilege('authenticated', 'public.coach_ia_resumen()', 'execute'), '');
+end $$;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;

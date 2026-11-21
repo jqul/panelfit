@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
-  MOTIVOS, MOTIVOS_CLINICOS, POLITICA_COACH_IA, RESPUESTAS_PARA_IA, TEXTO_MOTIVO, estadoCasoIa, motivoRevision, resumenPropuesta, textoDatosEntregados, totalEjercicios,
+  MOTIVOS, MOTIVOS_CLINICOS, POLITICA_COACH_IA, RESPUESTAS_PARA_IA, TEXTO_MOTIVO, entradasCasosIa, estadoCasoIa, leerResumenCoachIa, motivoRevision, resumenPropuesta, textoDatosEntregados, totalEjercicios,
 } from './coachIa'
 import { CONSENT_ASISTENTE_PROGRAMACION, IDS_SALUD, PREGUNTAS_PROGRAMACION } from './solicitudProgramacion'
 
@@ -141,5 +141,65 @@ describe('coincide con la migración 20261121000020_coach_ia_alcance.sql', () =>
   it('el consentimiento dice qué respuestas llegan a la herramienta y pide no escribir salud en los textos libres', () => {
     expect(CONSENT_ASISTENTE_PROGRAMACION).toContain('nunca con mis respuestas de salud')
     expect(CONSENT_ASISTENTE_PROGRAMACION).toMatch(/no escribas problemas de salud en los campos de texto libre/)
+  })
+})
+
+describe('resumen de la base de datos (coach_ia_resumen)', () => {
+  const ahora = Date.parse('2026-11-21T12:00:00Z')
+  const caso = (o: Record<string, unknown> = {}) => ({ lead_id: 'l1', nombre: 'Adrián Gómez', estado_lead: 'nuevo', recibido_en: '2026-11-19T10:00:00Z', estado: 'sin_generar', motivo: null, borrador_generado_en: null, ...o })
+
+  it('sin «activo: true» no hay nada, venga lo que venga', () => {
+    for (const raro of [null, undefined, 3, 'x', [], {}, { activo: false, casos: [caso()] }, { activo: 'true', casos: [caso()] }]) {
+      expect(leerResumenCoachIa(raro)).toEqual({ activo: false, casos: [] })
+    }
+  })
+  it('lee los casos y omite los que no entiende, sin lanzar', () => {
+    const r = leerResumenCoachIa({ activo: true, casos: [caso(), caso({ lead_id: 3 }), caso({ estado: 'inventado' }), caso({ motivo: 'otro' }), caso({ estado_lead: 'x' }), null, caso({ lead_id: 'l2', motivo: 'molestias' })] })
+    expect(r.activo).toBe(true)
+    expect(r.casos.map(c => c.lead_id)).toEqual(['l1', 'l2'])
+    expect(r.casos[1].motivo).toBe('molestias')
+    expect(leerResumenCoachIa({ activo: true, casos: 'no' })).toEqual({ activo: true, casos: [] })
+  })
+  it('qué casos piden algo al entrenador', () => {
+    const r = leerResumenCoachIa({ activo: true, casos: [
+      caso({ lead_id: 'apto' }),
+      caso({ lead_id: 'sin-si', motivo: 'parq_con_si' }),
+      caso({ lead_id: 'alarma', motivo: 'alarma_parq', estado_lead: 'revisar' }),
+      caso({ lead_id: 'sin-consentimiento', motivo: 'sin_consentimiento_asistente' }),
+      caso({ lead_id: 'listo', estado: 'listo_para_revisar', estado_lead: 'borrador_listo', borrador_generado_en: '2026-11-20T12:00:00Z' }),
+      caso({ lead_id: 'aprobado', estado: 'aprobado', estado_lead: 'borrador_listo' }),
+      caso({ lead_id: 'descartado', estado: 'descartado' }),
+    ] })
+    const e = entradasCasosIa(r.casos, ahora)
+    expect(e.map(x => [x.id, x.estado])).toEqual([
+      ['apto', 'listo_para_preparar'], ['sin-si', 'requiere_revision'], ['listo', 'borrador_listo'], ['aprobado', 'aprobado'], ['descartado', 'listo_para_preparar'],
+    ])
+    // La alarma ya tiene su fila de «revisión personal» y la falta de consentimiento no es algo que mirar: no se repiten
+    expect(e.some(x => x.id === 'alarma' || x.id === 'sin-consentimiento')).toBe(false)
+  })
+  it('los días se cuentan desde que llegó, o desde que se dejó el borrador', () => {
+    const e = entradasCasosIa(leerResumenCoachIa({ activo: true, casos: [
+      caso({ lead_id: 'a' }), caso({ lead_id: 'b', estado: 'listo_para_revisar', borrador_generado_en: '2026-11-21T01:00:00Z' }), caso({ lead_id: 'c', recibido_en: 'no es una fecha' }),
+    ] }).casos, ahora)
+    expect(e.map(x => x.dias)).toEqual([2, 0, 0])
+  })
+})
+
+// Función nueva para la app: solo para el dueño habilitado, sin respuestas ni PAR-Q, y no concedida a anon
+describe('coincide con la migración 20261121000030_coach_ia_resumen.sql', () => {
+  const sql = readFileSync('supabase/migrations/20261121000030_coach_ia_resumen.sql', 'utf8')
+  it('solo responde al entrenador habilitado que llama, y nunca a anon', () => {
+    expect(sql).toContain('auth.uid()')
+    expect(sql).toContain('coach_ia_habilitado(v_uid)')
+    expect(sql).toMatch(/revoke execute on function public\.coach_ia_resumen\(\) from public, anon;/)
+    expect(sql).toMatch(/grant execute on function public\.coach_ia_resumen\(\) to authenticated;/)
+  })
+  it('no entrega respuestas, PAR-Q ni contacto', () => {
+    const cuerpo = sql.slice(sql.indexOf('create or replace function'))
+    expect(cuerpo).not.toMatch(/s\.respuestas|s\.parq\b|l\.email|l\.phone/)
+  })
+  it('respeta la retención de 60 días, salvo seguimiento autorizado', () => {
+    expect(sql).toContain("interval '60 days'")
+    expect(sql).toContain('s.seguimiento_autorizado')
   })
 })

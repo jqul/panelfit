@@ -55,6 +55,7 @@ async function preguntas(page: Page, conSalud: boolean, edad = '30') {
 
 test('recorrido completo: crear enlace → rellenar sin cuenta → lead en Contactos → convertir en cliente', async ({ page, browser, fake }) => {
   sembrar(fake, false)
+  fake.seed('coach_ia_habilitados', { trainer_id: ids.trainer }) // el estado del borrador de la solicitud es de Coach IA: solo para cuentas habilitadas
   await entrarComoEntrenador(page)
   await page.keyboard.press('Control+K')
   await page.getByRole('combobox', { name: 'Buscar' }).fill('ir a contactos')
@@ -170,6 +171,7 @@ test('un enlace caducado o agotado se ve igual que uno inexistente', async ({ br
 
 test('PAR-Q con señal de alarma: la persona ve «revisión personal», el lead queda «revisar» y NO se prepara borrador', async ({ page, browser, fake }) => {
   sembrar(fake)
+  fake.seed('coach_ia_habilitados', { trainer_id: ids.trainer }) // el aviso «Plan no generado» es de Coach IA: solo para cuentas habilitadas
   const v = await visitante(browser, fake)
   await contacto(v.page, 'Luis Pardo', '644 77 88 99')
   await v.page.getByRole('checkbox', { name: /Consiento que mi entrenador trate/ }).check()

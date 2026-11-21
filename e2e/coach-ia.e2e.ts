@@ -20,8 +20,9 @@ const PROPUESTA = {
   ] }] }],
 }
 
-function sembrarCaso(fake: FakeSupabase, over: { status?: string; sol?: Record<string, unknown> } = {}) {
+function sembrarCaso(fake: FakeSupabase, over: { status?: string; sol?: Record<string, unknown>; habilitado?: boolean } = {}) {
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  if (over.habilitado !== false) fake.seed('coach_ia_habilitados', { trainer_id: ids.trainer }) // Coach IA solo para las cuentas habilitadas (lo decide la base de datos)
   fake.seed('leads', {
     id: 'l-ia', trainer_id: ids.trainer, name: 'Adrián Gómez', email: 'adrian@example.com', phone: null, message: 'Solicitud de programación inicial',
     status: over.status ?? 'borrador_listo', created_at: Date.now() - 3600_000, referred_by_client_id: null, origen: 'programacion', enlace_id: null,

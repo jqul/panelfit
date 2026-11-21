@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowRight, Compass } from 'lucide-react'
 import type { TrainingLogs } from '../../types'
 import type { ClientWithStats } from '../../hooks/useTrainerClients'
-import type { Lead } from '../../lib/leads'
+import type { EstadoLead, Lead } from '../../lib/leads'
 import type { Destino } from '../../lib/atencionCliente'
 import { useDecisionHoy } from '../../hooks/useDecisionHoy'
 import type { NivelDecision, Tarea } from '../../lib/decisionHoy'
@@ -18,7 +18,8 @@ export function DecisionHoy({ trainerId, clients, logsMap, leadsNuevos, onAbrirF
   logsMap: Record<string, TrainingLogs | undefined>
   leadsNuevos: Lead[]
   onAbrirFicha: (c: ClientWithStats, destino: Destino) => void
-  onVerContactos: () => void
+  /** Con `filtro` y `leadId`, abre Contactos en la pestaña de esa solicitud y con su detalle desplegado. */
+  onVerContactos: (destino?: { filtro?: EstadoLead; leadId?: string }) => void
 }) {
   const { decision, cargando } = useDecisionHoy(trainerId, clients, logsMap, leadsNuevos)
   const [todas, setTodas] = useState(false)
@@ -26,7 +27,7 @@ export function DecisionHoy({ trainerId, clients, logsMap, leadsNuevos, onAbrirF
   const filas = todas ? tareas : visibles
 
   const abrir = (t: Tarea) => {
-    if (t.destino.tipo === 'contactos') { onVerContactos(); return }
+    if (t.destino.tipo === 'contactos') { onVerContactos({ filtro: t.destino.filtro, leadId: t.destino.leadId }); return }
     const id = t.destino.clienteId
     const c = clients.find(x => x.id === id)
     if (c) onAbrirFicha(c, t.destino.destino)
