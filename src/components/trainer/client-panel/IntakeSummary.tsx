@@ -40,9 +40,9 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   // datos). Después se vuelve a leer del servidor: lo que cuenta es lo que ESTE guardó, no lo que se mandó.
   const marcarRevisado = async (admisionId: string) => {
     const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID(), clientId, respuestas: respuestasDeRevision(admisionId), tipo: 'parq_revisado', createdAt: Date.now() })
-    if (error) { toast('No se pudo marcar como revisado. Inténtalo de nuevo.', 'warn'); return }
+    if (error) { toast('No se pudo marcar como leído. Inténtalo de nuevo.', 'warn'); return }
     const rows = await cargar(false)
-    if (estadoParq(rows).revisado) toast('Cuestionario de salud revisado', 'ok')
+    if (estadoParq(rows).revisado) toast('Cuestionario de salud marcado como leído', 'ok')
     else toast('Se guardó, pero la ficha cambió mientras la leías: vuelve a leerla.', 'warn')
   }
 
@@ -72,15 +72,15 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
             </div>
           )}
           {estado && estado.nivel !== 'ninguno' && (
-            <div role="group" aria-label="Revisión del cuestionario de salud" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 mb-2">
+            <div role="group" aria-label="Lectura del cuestionario de salud por el entrenador" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 mb-2">
               <p className="text-xs flex-1 min-w-[12rem]">
                 <span className="font-semibold">{TEXTO_NIVEL_PARQ[estado.nivel]}.</span>
-                {estado.retenido && ' Su cuestionario de programación está en espera hasta que lo marques como revisado.'}
-                <span className="block text-muted mt-0.5">Revisado significa que has leído estas respuestas; no certifica que pueda hacer cualquier entrenamiento. Si las cambia, tendrás que revisarlas otra vez.</span>
+                {estado.retenido && ' Su cuestionario de programación está en espera hasta que lo marques como leído.'}
+                <span className="block text-muted mt-0.5">«Leído» significa solo que has leído estas respuestas: no certifica aptitud médica ni que pueda hacer cualquier entrenamiento. Si las cambia, tendrás que leerlas otra vez.</span>
               </p>
               {estado.revisado
-                ? <p className="text-xs font-semibold text-ok">Revisado el {new Date(estado.revisadoEn as number).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
-                : <button type="button" disabled={!estado.admisionId} onClick={() => void marcarRevisado(estado.admisionId as string)} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold disabled:opacity-50">Marcar como revisado</button>}
+                ? <p className="text-xs font-semibold text-ok">Leído por el entrenador el {new Date(estado.revisadoEn as number).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                : <button type="button" disabled={!estado.admisionId} onClick={() => void marcarRevisado(estado.admisionId as string)} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold disabled:opacity-50">Marcar como leído</button>}
             </div>
           )}
           {respuestas.map((r, i) => (
