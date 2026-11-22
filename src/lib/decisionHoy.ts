@@ -11,7 +11,7 @@ import { POLITICA_DESCARGA } from './evidenciaDescarga'
 import type { EstadoLead } from './leads'
 
 export type CategoriaDecision =
-  | 'solicitud-revision' | 'caso-ia-revision' | 'molestia-fuerte' | 'solicitud' | 'borrador-ia' | 'caso-ia' | 'molestia' | 'checkin' | 'decision' | 'calibracion'
+  | 'solicitud-revision' | 'parq-alarma' | 'caso-ia-revision' | 'molestia-fuerte' | 'solicitud' | 'borrador-ia' | 'caso-ia' | 'molestia' | 'parq-revisar' | 'checkin' | 'decision' | 'calibracion'
   | 'descarga' | 'adherencia' | 'progresion' | 'felicitar'
 export type NivelDecision = 'atender' | 'revisar' | 'bien'
 
@@ -32,8 +32,8 @@ export interface PoliticaDecisionHoy {
 
 export const POLITICA_DECISION_HOY: PoliticaDecisionHoy = {
   version: 'hoy-v0-provisional-2026-11',
-  orden: { 'solicitud-revision': 10, 'caso-ia-revision': 15, 'molestia-fuerte': 20, solicitud: 30, 'borrador-ia': 35, 'caso-ia': 36, molestia: 40, checkin: 50, decision: 60, calibracion: 70, descarga: 80, adherencia: 90, progresion: 100, felicitar: 110 },
-  nivel: { 'solicitud-revision': 'atender', 'caso-ia-revision': 'atender', 'molestia-fuerte': 'atender', solicitud: 'revisar', 'borrador-ia': 'revisar', 'caso-ia': 'revisar', molestia: 'revisar', checkin: 'revisar', decision: 'revisar', calibracion: 'revisar', descarga: 'revisar', adherencia: 'revisar', progresion: 'bien', felicitar: 'bien' },
+  orden: { 'solicitud-revision': 10, 'parq-alarma': 12, 'caso-ia-revision': 15, 'molestia-fuerte': 20, solicitud: 30, 'borrador-ia': 35, 'caso-ia': 36, molestia: 40, 'parq-revisar': 45, checkin: 50, decision: 60, calibracion: 70, descarga: 80, adherencia: 90, progresion: 100, felicitar: 110 },
+  nivel: { 'solicitud-revision': 'atender', 'parq-alarma': 'atender', 'caso-ia-revision': 'atender', 'molestia-fuerte': 'atender', solicitud: 'revisar', 'borrador-ia': 'revisar', 'caso-ia': 'revisar', molestia: 'revisar', 'parq-revisar': 'revisar', checkin: 'revisar', decision: 'revisar', calibracion: 'revisar', descarga: 'revisar', adherencia: 'revisar', progresion: 'bien', felicitar: 'bien' },
   molestiaFuerte: 7,
   molestiaMin: 4,
   adherenciaFelicitarPct: 90,
@@ -101,6 +101,8 @@ export interface EntradaClienteHoy {
   records: string[]
   /** La lectura de evidencia de «¿Puede tocar descarga?»; null si no tiene plan. */
   descarga: EvidenciaDescarga | null
+  /** Su cuestionario de salud tiene algo que el entrenador aún no ha revisado (lib/retencionParq); null si no. «alarma» deja su cuestionario de programación en espera. */
+  parq?: { nivel: 'alarma' | 'revisar' | 'aclarar' } | null
 }
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
@@ -141,6 +143,13 @@ export function tareasDeCliente(c: EntradaClienteHoy, p: PoliticaDecisionHoy = P
   const out: Tarea[] = []
   const nueva = (categoria: CategoriaDecision, t: Pick<Tarea, 'necesita' | 'porque' | 'accion' | 'gravedad'> & { destino: Destino }) =>
     out.push({ id: `${categoria}:${c.id}`, categoria, nivel: p.nivel[categoria], prioridad: p.orden[categoria], gravedad: t.gravedad, quien: c.nombre, clienteId: c.id, necesita: t.necesita, porque: t.porque, accion: t.accion, destino: { tipo: 'ficha', clienteId: c.id, destino: t.destino } })
+
+  // Cuestionario de salud sin revisar: la señal de alarma va la primera (y deja su cuestionario de programación en espera); las demás, a revisar. Sin diagnosticar.
+  if (c.parq?.nivel === 'alarma') {
+    nueva('parq-alarma', { necesita: 'Revisar su cuestionario de salud: puede necesitar una valoración antes de entrenar', porque: 'Contestó «sí» en una pregunta que pide valoración. Hasta que lo marques como revisado, su cuestionario de programación queda en espera', accion: 'Abrir su ficha de admisión', gravedad: 3, destino: { tab: 'perfil', seccion: 'ficha-admision' } })
+  } else if (c.parq) {
+    nueva('parq-revisar', { necesita: 'Revisar su cuestionario de salud', porque: c.parq.nivel === 'revisar' ? 'Tiene un problema articular o toma medicación: conviene adaptar el plan' : 'Marcó «otra razón»: pregúntale cuál', accion: 'Abrir su ficha de admisión', destino: { tab: 'perfil', seccion: 'ficha-admision' } })
+  }
 
   const peor = c.molestias.filter(m => m.intensidad >= p.molestiaMin).reduce<{ zona: string; intensidad: number } | null>((a, m) => (!a || m.intensidad > a.intensidad ? m : a), null)
   if (peor) {

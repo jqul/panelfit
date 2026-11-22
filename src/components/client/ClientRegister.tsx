@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION, respuestasDeAdmision } from '../../lib/intakeQuestions'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION, nivelParq, respuestasDeAdmision, type NivelParq } from '../../lib/intakeQuestions'
+import { guardarPendientes } from '../../lib/datosBasicosPendientes'
+import { guardarDatosBasicos } from '../../lib/guardarDatosBasicos'
+import { DATOS_BASICOS_VACIOS, OPCIONES_GENERO, validarDatosBasicos, type DatosBasicos, type Genero } from '../../lib/datosBasicos'
 import { recordConsent } from '../../lib/consent'
 import { ConsentFields } from './ConsentFields'
 
@@ -38,6 +41,12 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   const [signedName, setSignedName] = useState('')
   const [consentSalud, setConsentSalud] = useState(false)
   const [consentFotos, setConsentFotos] = useState(false)
+  // Quién es: género (opcional), nacimiento, altura y peso. Van a su ficha (y el peso es su primer pesaje) al continuar, ya con el consentimiento dado.
+  const [basicos, setBasicos] = useState<DatosBasicos>(DATOS_BASICOS_VACIOS)
+  const validacion = validarDatosBasicos(basicos)
+  // Qué pasó al terminar: el nivel de su cuestionario de salud (lib/intakeQuestions) y si sus datos básicos quedaron pendientes de guardar
+  const [nivelSalud, setNivelSalud] = useState<NivelParq>('ninguno')
+  const [datosPendientes, setDatosPendientes] = useState(false)
 
   const firstName = clientName.split(' ')[0]
 
@@ -129,10 +138,18 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   }
 
   const finishIntake = async () => {
-    if (!consentSalud) return
+    if (!consentSalud || !validacion.ok || !validacion.valores) return
     setLoading(true)
     // Primero el consentimiento: el cuestionario de salud no se guarda sin él.
     await recordConsent(clientId, true, consentFotos)
+    // Sus datos básicos a su ficha. Si falla (red, o la función aún no está), no se le bloquea la entrada pero se le dice CLARO que la cuenta está creada y los datos no:
+    // se guardan en su dispositivo y desde Hoy puede reintentarlo sin escribirlos otra vez (la función no duplica el pesaje).
+    const v = validacion.valores
+    if (!(await guardarDatosBasicos(v))) {
+      setDatosPendientes(true)
+      try { guardarPendientes(localStorage, clientId, v) } catch { /* sin almacenamiento: tendrá que volver a escribirlos */ }
+    }
+    setNivelSalud(nivelParq(parqAnswers))
     const respuestas = respuestasDeAdmision(parqAnswers, freeAnswers)
     await supabase.from('checkins').insert({
       id: crypto.randomUUID().replace(/-/g, ''),
@@ -145,7 +162,8 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     }
     setStep('success')
     setLoading(false)
-    setTimeout(onComplete, 1800)
+    // Con algo que leer (datos sin guardar o una señal en el cuestionario de salud) se deja más tiempo en pantalla
+    setTimeout(onComplete, datosPendientes || nivelSalud !== 'ninguno' || nivelParq(parqAnswers) !== 'ninguno' ? 4500 : 1800)
   }
 
   if (step === 'success') {
@@ -156,6 +174,9 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
         </div>
         <h2 className="text-2xl font-serif font-bold mb-2">¡Cuenta creada!</h2>
         <p className="text-muted text-sm">Accediendo a tu panel...</p>
+        {datosPendientes && <p role="alert" className="text-sm text-warn font-medium mt-3 max-w-xs">Tu cuenta está creada, pero tus datos básicos todavía NO se han guardado. Podrás reintentarlo desde tu panel, en Hoy, sin escribirlos otra vez.</p>}
+        {nivelSalud === 'alarma' && <p className="text-sm text-muted mt-3 max-w-xs">Tu entrenador va a revisar tus respuestas de salud antes de seguir con tu plan. Hasta entonces, tu cuestionario queda en espera.</p>}
+        {(nivelSalud === 'revisar' || nivelSalud === 'aclarar') && <p className="text-sm text-muted mt-3 max-w-xs">Tu entrenador revisará tus respuestas de salud para adaptar tu plan.</p>}
         <div className="flex gap-1 justify-center mt-4">
           {[0,1,2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: brandColor, animationDelay: `${i * 0.15}s` }} />
@@ -210,6 +231,40 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
         <div className="flex-1 px-6 space-y-5 max-w-sm mx-auto w-full pb-8">
           <ConsentFields salud={consentSalud} fotos={consentFotos} onSalud={setConsentSalud} onFotos={setConsentFotos} />
 
+          <div className="bg-card border border-border rounded-2xl p-3.5 space-y-3">
+            <div>
+              <h2 className="text-sm font-semibold">Tus datos</h2>
+              <p className="text-xs text-muted mt-0.5">Los usa tu entrenador para preparar tu plan: cargas, calorías y seguimiento.</p>
+            </div>
+            <div>
+              <label htmlFor="rb-nacimiento" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Fecha de nacimiento</label>
+              <input id="rb-nacimiento" type="date" value={basicos.nacimiento} onChange={e => setBasicos(b => ({ ...b, nacimiento: e.target.value }))}
+                className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+              {basicos.nacimiento && validacion.errores.nacimiento && <p className="text-xs text-warn mt-1">{validacion.errores.nacimiento}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="rb-altura" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Altura (cm)</label>
+                <input id="rb-altura" type="text" inputMode="decimal" value={basicos.altura} onChange={e => setBasicos(b => ({ ...b, altura: e.target.value }))} placeholder="170"
+                  className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                {basicos.altura && validacion.errores.altura && <p className="text-xs text-warn mt-1">{validacion.errores.altura}</p>}
+              </div>
+              <div>
+                <label htmlFor="rb-peso" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Peso (kg)</label>
+                <input id="rb-peso" type="text" inputMode="decimal" value={basicos.peso} onChange={e => setBasicos(b => ({ ...b, peso: e.target.value }))} placeholder="70"
+                  className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20" />
+                {basicos.peso && validacion.errores.peso && <p className="text-xs text-warn mt-1">{validacion.errores.peso}</p>}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="rb-genero" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Género (opcional)</label>
+              <select id="rb-genero" value={basicos.genero} onChange={e => setBasicos(b => ({ ...b, genero: e.target.value as Genero }))}
+                className="w-full px-3.5 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-accent/20">
+                {OPCIONES_GENERO.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+
           <div className="space-y-3">
             {PARQ_QUESTIONS.map((q, i) => (
               <div key={i} className="bg-card border border-border rounded-2xl p-3.5">
@@ -255,7 +310,7 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
             )}
           </div>
 
-          <button onClick={finishIntake} disabled={loading || !consentSalud || !waiverAccepted || !signedName.trim()}
+          <button onClick={finishIntake} disabled={loading || !consentSalud || !waiverAccepted || !signedName.trim() || !validacion.ok}
             className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold text-base disabled:opacity-50 transition-opacity active:scale-[0.98]"
             style={{ backgroundColor: brandColor, minHeight: '56px' }}>
             {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Continuar <ArrowRight className="w-4 h-4" /></>}

@@ -7,6 +7,7 @@ import { TrainerLabel } from '../labels'
 import { toast } from '../../shared/Toast'
 import { HabitosSection } from './HabitosSection'
 import { IntakeSummary } from './IntakeSummary'
+import { edadEn, fechaLocalDe } from '../../../lib/datosBasicos'
 import { ReadinessSummary } from './ReadinessSummary'
 // Los mismos logros que ve el cliente en Hoy (se descargan aparte)
 const BadgesWidget = lazy(() => import('../../client/BadgesWidget').then(m => ({ default: m.BadgesWidget })))
@@ -68,9 +69,9 @@ export function PerfilTab({ client, logs, alerts, labels, onUpdate, onSaveAlerts
 
   const edad = (() => {
     if (!c.fechanacimiento) return null
-    const birth = new Date(c.fechanacimiento)
-    const today = new Date()
-    return today.getFullYear() - birth.getFullYear() - (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0)
+    // La fecha es «AAAA-MM-DD» (un día, no un instante): se lee como fecha local, no como UTC, para que no salga un día antes en zonas al oeste
+    const birth = fechaLocalDe(c.fechanacimiento) ?? new Date(c.fechanacimiento)
+    return edadEn(birth, new Date())
   })()
 
   const totalSessions = new Set(Object.values(logs).filter(l => l.done && l.dateDone).map(l => l.dateDone)).size

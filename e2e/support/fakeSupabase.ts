@@ -1,4 +1,5 @@
 import type { BrowserContext, Route, Request } from '@playwright/test'
+import { huellaAdmision } from './huellaServidor'
 import { motivoRevision } from '../../src/lib/coachIa'
 
 // Un "Supabase de mentira" en memoria para las pruebas end-to-end. Se engancha a la red del navegador
@@ -58,6 +59,8 @@ export class FakeSupabase {
   users: AuthUser[] = []
   /** Peticiones que el simulador no sabe responder (el test comprueba que está vacío). */
   unhandled: string[] = []
+  /** Funciones RPC que responden como si no existieran (p. ej., una migración que aún no está aplicada): para probar que la app no se rompe y deja reintentar. */
+  rpcErrors = new Set<string>()
   /** Ficheros de Storage por bucket. */
   storage: Record<string, string[]> = {}
   removedFiles: { bucket: string; paths: string[] }[] = []
@@ -199,6 +202,11 @@ export class FakeSupabase {
         if (!onConflict && anyUnique) return json(route, 409, { code: '23505', message: `duplicate key value violates unique constraint on ${table}` })
         const row = { ...r }
         if (row.id === undefined && !NO_AUTO_ID.has(table)) row.id = crypto.randomUUID()
+        // El trigger de checkins (migración 20261122000020): la huella de una ficha y el contenido de una revisión los escribe el servidor, no quien manda la fila
+        if (table === 'checkins') {
+          const raro = this.triggerCheckins(row)
+          if (raro) return json(route, 400, { code: '23514', message: raro })
+        }
         all.push(row); out.push(row)
       }
       return wantsRows ? respond(structuredClone(out), 201) : empty(route, 201)
@@ -206,7 +214,7 @@ export class FakeSupabase {
 
     if (method === 'PATCH') {
       const rows = all.filter(r => this.matches(r, filters))
-      rows.forEach(r => Object.assign(r, body))
+      rows.forEach(r => { Object.assign(r, body); if (table === 'checkins') this.triggerCheckins(r) })
       return wantsRows ? respond(structuredClone(rows)) : empty(route)
     }
 
@@ -222,10 +230,26 @@ export class FakeSupabase {
     return json(route, 405, { message: 'método no simulado' })
   }
 
+  /** El trigger BEFORE INSERT/UPDATE de checkins: pone la huella SHA-256 de las fichas y reescribe las revisiones con la huella de la ficha que indican. Devuelve el error si la fila no vale. */
+  private triggerCheckins(row: Row): string | null {
+    if (row.tipo === 'intake') { row.huella = huellaAdmision(row.respuestas); return null }
+    if (row.tipo === 'parq_revisado') {
+      const id = (Array.isArray(row.respuestas) ? row.respuestas : []).find((e: Row) => e && e.pregunta === 'admision')?.respuesta
+      const ficha = this.rows('checkins').find(c => c.id === id && c.tipo === 'intake' && c.clientId === row.clientId)
+      if (!ficha) return 'La revisión debe indicar una ficha de admisión de este cliente'
+      row.huella = huellaAdmision(ficha.respuestas)
+      row.respuestas = [{ pregunta: 'admision', respuesta: String(ficha.id) }]
+      return null
+    }
+    row.huella = null
+    return null
+  }
+
   // ── RPC ──
   private async rpc(route: Route, req: Request, fn: string) {
     const args = req.postDataJSON?.() ?? {}
     const me = subOf(req)
+    if (this.rpcErrors.has(fn)) return json(route, 404, { code: 'PGRST202', message: `Could not find the function public.${fn}` })
     switch (fn) {
       case 'get_client_by_token': {
         // Igual que la función real: sin las columnas privadas del entrenador.
@@ -435,6 +459,18 @@ export class FakeSupabase {
           return { lead_id: sol.lead_id, nombre: lead?.name ?? '', estado_lead: lead?.status ?? 'nuevo', recibido_en: sol.created_at, estado: sol.borrador_estado, motivo: motivoRevision(sol as never), borrador_generado_en: sol.borrador_generado_en ?? null }
         })
         return json(route, 200, { activo: true, casos })
+      }
+      // Igual que la función de la base de datos: solo la ficha del cliente con sesión, solo rellena lo vacío y el peso es su primer pesaje
+      case 'cliente_guardar_datos_basicos': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me && !x.archived_at)
+        if (!c) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        const hoy = new Date(); const dia = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+        if (!c.genero) c.genero = args.p_genero ?? null
+        if (!c.fechanacimiento) c.fechanacimiento = args.p_nacimiento
+        if (!c.altura) c.altura = args.p_altura
+        if (!c.weight) c.weight = args.p_peso
+        if (!this.rows('registros_peso').some(r => r.clientId === c.id && r.date === dia)) this.rows('registros_peso').push({ id: crypto.randomUUID(), clientId: c.id, weight: args.p_peso, date: dia })
+        return json(route, 200, { genero: c.genero, fechanacimiento: c.fechanacimiento, altura: c.altura, peso: c.weight })
       }
       case 'decidir_borrador_solicitud': {
         // Igual que la función de la base de datos: solo el dueño; aprobar exige un borrador listo; descartar no conserva la propuesta
