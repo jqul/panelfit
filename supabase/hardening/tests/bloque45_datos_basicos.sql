@@ -112,6 +112,27 @@ begin
     (select count(*) from public.clientes where altura = 181) = 1 and (select name from public.clientes where altura = 181) = 'Dani', r);
 end $$;
 
+-- ═══ 5. Un pesaje que ya existe ese día NUNCA se modifica al registrarse ═══
+do $$
+declare r text; cid uuid := 'c5000000-0000-0000-0000-000000000005'; hoy text := to_char((now() at time zone 'Europe/Madrid')::date, 'YYYY-MM-DD'); w double precision;
+begin
+  insert into auth.users (id, email) values ('bbbbbbbb-0000-0000-0000-000000000005', 'c5@test.local');
+  insert into public.clientes (id, "trainerId", name, token, auth_user_id) values (cid, 'aaaaaaaa-0000-0000-0000-000000000001', 'Eva', 'tok-5', 'bbbbbbbb-0000-0000-0000-000000000005');
+  -- El entrenador ya la pesó hoy: 99.9
+  insert into public.registros_peso ("clientId", weight, date) values (cid, 99.9, hoy);
+  r := pg_temp.como('bbbbbbbb-0000-0000-0000-000000000005', 'm', '1992-02-02', 170, 65);
+  select weight into w from public.registros_peso where "clientId" = cid and date = hoy;
+  perform pg_temp.reg('5a registrarse el mismo día NO modifica el pesaje que ya existe', w = 99.9 and (select count(*) from public.registros_peso where "clientId" = cid) = 1, r || ' / ' || w);
+  -- Y repetirlo tampoco
+  r := pg_temp.como('bbbbbbbb-0000-0000-0000-000000000005', 'm', '1992-02-02', 170, 60);
+  select weight into w from public.registros_peso where "clientId" = cid and date = hoy;
+  perform pg_temp.reg('5b volver a llamarla con otro peso tampoco lo toca ni añade otro', w = 99.9 and (select count(*) from public.registros_peso where "clientId" = cid) = 1, r || ' / ' || w);
+  -- Un pesaje de OTRO día tampoco se toca
+  insert into public.registros_peso ("clientId", weight, date) values (cid, 70.5, to_char((now() at time zone 'Europe/Madrid')::date - 3, 'YYYY-MM-DD'));
+  r := pg_temp.como('bbbbbbbb-0000-0000-0000-000000000005', 'm', '1992-02-02', 170, 61);
+  perform pg_temp.reg('5c los pesajes de otros días quedan igual', (select weight from public.registros_peso where "clientId" = cid and date <> hoy) = 70.5, '');
+end $$;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;
