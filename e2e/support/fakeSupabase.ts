@@ -247,8 +247,15 @@ export class FakeSupabase {
         if (c) c.plan_last_opened_at = new Date().toISOString()
         return empty(route)
       }
-      // Los datos de prueba no traen encuestas: al cliente nunca le toca ninguna (la lógica real la prueba bloque18).
-      case 'encuestas_pendientes': return json(route, 200, [])
+      // Lo que le toca responder al cliente con sesión: los envíos activos para él (o para todos) que aún no ha contestado. Una simplificación de la lógica real (bloque18).
+      case 'encuestas_pendientes': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me)
+        if (!c) return json(route, 200, [])
+        const pendientes = this.rows('survey_schedules')
+          .filter(s => s.active !== false && (s.client_id === c.id || s.client_id === null) && !this.rows('survey_responses').some(r => r.client_id === c.id && r.template_id === s.template_id))
+          .flatMap(s => { const t = this.rows('survey_templates').find(x => x.id === s.template_id); return t ? [{ template_id: t.id, schedule_id: s.id, nombre: t.name, preguntas: t.questions, trainer_id: t.trainer_id }] : [] })
+        return json(route, 200, pendientes)
+      }
       // Strava (la seguridad real la prueba bloque41): ¿hay conexión para el cliente que llama?
       case 'strava_estado': {
         const c = this.rows('clientes').find(x => x.auth_user_id === me)

@@ -11,6 +11,8 @@ import { useLabels } from '../../hooks/useLabels'
 import type { TrainerLabel } from './labels'
 import { ETIQUETA_COACH_IA, datosClienteDeSolicitud, esEtiquetaCoachIa, listaRellenados } from '../../lib/clienteDeSolicitud'
 import { leerResumenCoachIa } from '../../lib/coachIa'
+import { CUESTIONARIO_POR_DEFECTO, OPCIONES_CUESTIONARIO } from '../../lib/opcionesCuestionario'
+import { programarCuestionario } from '../../lib/programarCuestionario'
 import { ContextoCliente } from './ContextoCliente'
 import type { IntentoPanel } from '../../lib/anadirFicha'
 import type { Destino } from '../../lib/atencionCliente'
@@ -169,6 +171,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   // Alta desde una solicitud: qué se rellenó con lo que contestó la persona, la edad que dijo (solo una pista) y si la cuenta lleva Coach IA (etiqueta)
   const [desdeSolicitud, setDesdeSolicitud] = useState<{ rellenados: string[]; edad: number | null; coachIa: boolean } | null>(null)
   const [marcarCoachIa, setMarcarCoachIa] = useState(true)
+  // Cuestionario de programación que recibe el cliente nada más registrarse (lib/modelosProgramacion). Por defecto el general; al convertir una solicitud, ninguno (ya contestó uno).
+  const [cuestionarioInicial, setCuestionarioInicial] = useState(CUESTIONARIO_POR_DEFECTO)
   const [customObjetivos, setCustomObjetivos] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(`pf_custom_objetivos_${userProfile.uid}`) || '[]') } catch { return [] }
   })
@@ -278,6 +282,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     }
     const ok = await addClient(newClient, labelIds, leadAConvertir ? { notas_privadas: esSolicitud(leadAConvertir) ? notasDeSolicitud(leadAConvertir) : notasDeLead(leadAConvertir) } : {})
     if (ok) {
+      // El cuestionario se queda pendiente para cuando se registre; si falla, el cliente ya está creado y se puede enviar a mano desde Encuestas
+      if (cuestionarioInicial && !(await programarCuestionario(userProfile.uid, ok, cuestionarioInicial))) toast('El cliente se creó, pero no se pudo enviar el cuestionario. Envíalo desde Encuestas.', 'warn')
       if (leadAConvertir) {
         if (esSolicitud(leadAConvertir)) await cerrarSolicitud(leadAConvertir, ok)
         else void leadsState.cambiarEstado(leadAConvertir.id, 'convertido')
@@ -287,6 +293,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       setShowAdd(false)
       setNewClientLabelIds([])
       setDesdeSolicitud(null)
+      setCuestionarioInicial(CUESTIONARIO_POR_DEFECTO)
       setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
       // Mismo asistente que el primer cliente: seguir con su workout y su acceso (se puede cerrar con "Ahora no").
       if (!demoClients) setWizard({ step: 'plan', clientId: ok })
@@ -310,6 +317,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setNewClientLabelIds([])
     setDesdeSolicitud(null)
     setMarcarCoachIa(true)
+    setCuestionarioInicial('')
     // De una solicitud se rellena lo que la persona ya contestó (objetivo, altura y peso) para no teclearlo otra vez; el entrenador lo revisa antes de crear la ficha.
     // Si la cuenta lleva Coach IA, se ofrece marcarla con su etiqueta (se puede desmarcar si a esa persona se la lleva a mano).
     if (esSolicitud(l) && !demoClients) {
@@ -1070,7 +1078,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       )}
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null); setDesdeSolicitud(null) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null); setDesdeSolicitud(null); setCuestionarioInicial(CUESTIONARIO_POR_DEFECTO) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
         <div className="space-y-4">
           {leadAConvertir && (
             <div className="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 text-xs space-y-1">
@@ -1120,6 +1128,14 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               </div>
             </div>
           )}
+          <div>
+            <label htmlFor="cuestionario-inicial" className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Cuestionario de programación</label>
+            <select id="cuestionario-inicial" value={cuestionarioInicial} onChange={e => setCuestionarioInicial(e.target.value)} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none">
+              <option value="">No enviar ninguno ahora</option>
+              {OPCIONES_CUESTIONARIO.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            </select>
+            <p className="text-[11px] text-muted mt-1">Lo recibe nada más registrarse, con todo lo necesario para plantear su plan. Lo puedes editar en Encuestas.</p>
+          </div>
           {/* Desde una solicitud queda desplegado: ahí está lo que se ha rellenado y lo que falta (género y nacimiento no se preguntan) */}
           <details key={leadAConvertir?.id ?? 'nuevo'} open={!!desdeSolicitud?.rellenados.length} className="group">
             <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-ink select-none py-1 transition-colors">

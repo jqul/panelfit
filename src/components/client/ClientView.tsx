@@ -77,6 +77,14 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   }, [])
   const [activeTab, setActiveTab] = useState<Tab>(showEncuesta ? 'encuesta' : 'hoy')
   usePrecargarPestanas()
+  // Primera entrada: si tiene un cuestionario pendiente (el de programación que le mandó su entrenador), se abre solo, una vez por dispositivo. Si lo deja a medias
+  // queda el aviso en Hoy y lo recupera tal como lo dejó (CuestionarioCliente guarda el avance). Lo decide la misma consulta que enseña el aviso.
+  const abrirCuestionarioLaPrimeraVez = useCallback((clientId: string, pendientes: number) => {
+    if (!pendientes) return
+    const clave = `pf_cuestionario_abierto_${clientId}`
+    try { if (localStorage.getItem(clave)) return; localStorage.setItem(clave, '1') } catch { return }
+    setActiveTab('encuesta')
+  }, [])
   const [tieneDieta, setTieneDieta] = useState(true) // hasta saber lo contrario, la pestaña está (como siempre)
   const [syncState, setSyncState] = useState<SyncState>('idle')
   const [entrenoView, setEntrenoView] = useState<'semana' | 'calendario'>('semana')
@@ -575,7 +583,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
-                    <Suspense fallback={null}><CuestionarioAviso clientId={client.id} onAbrir={() => setActiveTab('encuesta')} /></Suspense>
+                    <Suspense fallback={null}><CuestionarioAviso clientId={client.id} onAbrir={() => setActiveTab('encuesta')} onPendientes={n => abrirCuestionarioLaPrimeraVez(client.id, n)} /></Suspense>
                     <Suspense fallback={null}><TareasHoy clientId={client.id} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
