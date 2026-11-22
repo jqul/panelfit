@@ -2,7 +2,8 @@ import { test, expect } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoEntrenador, abrirFichaDelCliente } from './support/flows'
 import { respuestasDeAdmision } from '../src/lib/intakeQuestions'
-import { huellaAdmision, respuestasDeRevision } from '../src/lib/retencionParq'
+import { respuestasDeRevision } from '../src/lib/retencionParq'
+import { huellaAdmision } from './support/huellaServidor'
 
 // La ficha de admisión va plegada, pero su cabecera resume el PAR-Q: un «Sí» nunca queda tras un título neutro. Mientras tenga algo SIN REVISAR se enseña abierta
 // (lib/retencionParq); ya revisada, vuelve a ir plegada.
@@ -11,8 +12,8 @@ test('con un «Sí» ya revisado la cabecera avisa sin abrir; plegada por defect
   expect.configure({ timeout: 30_000 })
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
   const respuestas = respuestasDeAdmision({ 0: false, 1: false, 2: false, 3: false, 4: true, 5: false, 6: false }, { lesiones: 'Hombro', objetivos: 'Fuerza', disponibilidad: 'Tardes' })
-  fake.seed('checkins', { id: 'i1', clientId: ids.client, tipo: 'intake', createdAt: 1, respuestas })
-  fake.seed('checkins', { id: 'r1', clientId: ids.client, tipo: 'parq_revisado', createdAt: 2, respuestas: respuestasDeRevision(huellaAdmision(respuestas)) }) // el entrenador ya la revisó (con la huella de lo que leyó)
+  fake.seed('checkins', { id: 'i1', clientId: ids.client, tipo: 'intake', createdAt: 1, respuestas, huella: huellaAdmision(respuestas) }) // la huella la pone el servidor
+  fake.seed('checkins', { id: 'r1', clientId: ids.client, tipo: 'parq_revisado', createdAt: 2, respuestas: respuestasDeRevision('i1'), huella: huellaAdmision(respuestas) }) // el entrenador ya la revisó (la huella de lo que leyó)
   await entrarComoEntrenador(page)
   await abrirFichaDelCliente(page)
 

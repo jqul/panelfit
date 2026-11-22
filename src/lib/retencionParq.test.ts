@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { GRAVEDAD_PARQ, PARQ_INDICES_ACLARAR, PARQ_INDICES_ALARMA, PARQ_INDICES_REVISAR, PARQ_QUESTIONS, TEXTO_NIVEL_PARQ, nivelParq, nivelParqGuardado, respuestasDeAdmision } from './intakeQuestions'
 import { PARQ_ALARMA_INDICES } from './solicitudProgramacion'
-import { estadoParq, huellaAdmision, respuestasDeRevision, type FilaAdmision } from './retencionParq'
+import { estadoParq, respuestasDeRevision, type FilaAdmision } from './retencionParq'
 import { DIAS_PENDIENTES, borrarPendientes, claveBasicosPendientes, guardarPendientes, leerPendientes, type AlmacenLocal } from './datosBasicosPendientes'
 
 const si = (...idx: number[]) => Object.fromEntries(PARQ_QUESTIONS.map((_, i) => [i, idx.includes(i)])) as Record<number, boolean>
-const admision = (idx: number[], createdAt = 1000): FilaAdmision => ({ tipo: 'intake', createdAt, respuestas: respuestasDeAdmision(si(...idx), {}) })
-// La revisión del entrenador lleva la huella de la ficha que leyó
-const revisado = (de: FilaAdmision, createdAt: number): FilaAdmision => ({ tipo: 'parq_revisado', createdAt, respuestas: respuestasDeRevision(huellaAdmision(de.respuestas)) })
+// La huella la pone el SERVIDOR (SHA-256, checkins.huella): aquí solo se prueba cómo se comparan, así que basta una huella de mentira que dependa del contenido.
+// Que el servidor la calcule bien (normalización, reordenaciones, nulos, equivalentes) lo prueban los vectores de huella_vectores.json (PGlite y e2e/huella-servidor).
+const huellaDe = (respuestas: FilaAdmision['respuestas']) => 'h:' + JSON.stringify(respuestas)
+let n = 0
+const admision = (idx: number[], createdAt = 1000): FilaAdmision => { const respuestas = respuestasDeAdmision(si(...idx), {}); return { id: `i${++n}`, tipo: 'intake', createdAt, respuestas, huella: huellaDe(respuestas) } }
+// La revisión del entrenador: indica la ficha que leyó y el servidor le pone la huella que esa ficha tenía entonces
+const revisado = (de: FilaAdmision, createdAt: number): FilaAdmision => ({ id: `r${++n}`, tipo: 'parq_revisado', createdAt, respuestas: respuestasDeRevision(de.id as string), huella: de.huella })
 
 describe('niveles del cuestionario de salud: no todos los «sí» pesan igual', () => {
   it('alarma: cardíaco, dolor en el pecho (esfuerzo y reposo) y mareo; es lo mismo que ya paraba el borrador de la solicitud pública', () => {
@@ -45,7 +49,7 @@ describe('niveles del cuestionario de salud: no todos los «sí» pesan igual', 
 
 describe('estadoParq: qué hay que mirar y qué queda en espera', () => {
   it('sin ficha de admisión no hay nada que retener ni revisar', () => {
-    for (const filas of [null, undefined, [], [revisado(admision([1]), 5)]]) expect(estadoParq(filas)).toMatchObject({ nivel: 'ninguno', retenido: false, pendienteDeRevisar: false, admisionEn: null, huella: null })
+    for (const filas of [null, undefined, [], [revisado(admision([1]), 5)]]) expect(estadoParq(filas)).toMatchObject({ nivel: 'ninguno', retenido: false, pendienteDeRevisar: false, admisionEn: null, admisionId: null, huella: null })
   })
   it('alarma sin revisar: retiene el cuestionario de programación y pide revisión', () => {
     expect(estadoParq([admision([1])])).toMatchObject({ nivel: 'alarma', retenido: true, pendienteDeRevisar: true, revisado: false })
@@ -77,21 +81,32 @@ describe('estadoParq: qué hay que mirar y qué queda en espera', () => {
     const despues = estadoParq([primera, revision, segunda])
     expect(despues).toMatchObject({ nivel: 'alarma', revisado: false, revisadoEn: null, pendienteDeRevisar: true, retenido: true, admisionEn: 3000 })
     // 5. …y la revisión anterior no sirve para las nuevas respuestas (ni siquiera si su fecha fuese posterior a la ficha nueva)
-    expect(huellaAdmision(segunda.respuestas)).not.toBe(huellaAdmision(primera.respuestas))
+    expect(segunda.huella).not.toBe(primera.huella)
     expect(estadoParq([primera, segunda, { ...revision, createdAt: 9000 }])).toMatchObject({ revisado: false, retenido: true })
   })
-  it('cambiar UNA sola respuesta cambia la huella; reenviar lo mismo no (sigue valiendo lo revisado)', () => {
+  it('la misma ficha reenviada (misma huella) sigue valiendo lo revisado; otra huella, no', () => {
     const a = admision([1], 1000)
-    expect(huellaAdmision(admision([2], 1000).respuestas)).not.toBe(huellaAdmision(a.respuestas))
-    const igual = admision([1], 5000) // misma ficha reenviada más tarde
-    expect(huellaAdmision(igual.respuestas)).toBe(huellaAdmision(a.respuestas))
-    expect(estadoParq([a, revisado(a, 2000), igual])).toMatchObject({ revisado: true, retenido: false })
+    const igual: FilaAdmision = { ...admision([1], 5000), huella: a.huella } // el servidor da la misma huella al mismo contenido
+    expect(estadoParq([a, revisado(a, 2000), igual])).toMatchObject({ revisado: true, retenido: false, admisionId: igual.id })
+    const otra: FilaAdmision = { ...igual, huella: 'h:otra' }
+    expect(estadoParq([a, revisado(a, 2000), otra])).toMatchObject({ revisado: false, retenido: true })
   })
   it('una revisión sin huella, con otra o mal formada no cuenta nunca', () => {
     const a = admision([1], 1000)
-    for (const respuestas of [[], null, undefined, [{ pregunta: 'huella', respuesta: '' }], [{ pregunta: 'huella', respuesta: 'otra' }], [{ pregunta: 'otra', respuesta: huellaAdmision(a.respuestas) }]]) {
-      expect(estadoParq([a, { tipo: 'parq_revisado', createdAt: 2000, respuestas: respuestas as never }]), JSON.stringify(respuestas)).toMatchObject({ revisado: false, retenido: true })
+    const base = { tipo: 'parq_revisado', createdAt: 9000, respuestas: respuestasDeRevision(a.id as string) }
+    for (const huella of [undefined, null, '', 'h:otra']) {
+      expect(estadoParq([a, { ...base, huella }]), String(huella)).toMatchObject({ revisado: false, retenido: true })
     }
+    // Ni siquiera con lo que parezca una huella dentro de las respuestas: solo vale la columna que pone el servidor
+    expect(estadoParq([a, { ...base, huella: null, respuestas: [{ pregunta: 'huella', respuesta: a.huella as string }] }])).toMatchObject({ revisado: false })
+  })
+  it('una ficha SIN huella (migración sin aplicar, o fila antigua) nunca cuenta como revisada: cierra por el lado seguro', () => {
+    const sin: FilaAdmision = { ...admision([1], 1000), huella: undefined }
+    expect(estadoParq([sin, { tipo: 'parq_revisado', createdAt: 2000, respuestas: respuestasDeRevision(sin.id as string), huella: undefined }])).toMatchObject({ huella: null, revisado: false, retenido: true, pendienteDeRevisar: true })
+    expect(estadoParq([{ ...sin, huella: null }, { tipo: 'parq_revisado', createdAt: 2000, huella: null }])).toMatchObject({ revisado: false, retenido: true })
+  })
+  it('lo que se manda al revisar es solo el id de la ficha: la app no calcula ni envía ninguna huella', () => {
+    expect(respuestasDeRevision('abc')).toEqual([{ pregunta: 'admision', respuesta: 'abc' }])
   })
   it('las fechas pueden llegar como texto y las filas raras no rompen nada', () => {
     const a = { ...admision([1]), createdAt: '1000' }

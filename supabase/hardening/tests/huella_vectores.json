@@ -1,0 +1,94 @@
+{
+  "_": "Vectores de la huella SHA-256 de las fichas de admisión (checkins.huella). Los comprueban el runner PGlite (la función SQL huella_admision) y e2e/huella-servidor.e2e.ts (el simulador de las pruebas e2e), para que la normalización no se desvíe entre las dos implementaciones. `fijos`: huella exacta esperada. `equivalentes`: todos los casos de un grupo deben dar la MISMA huella. `distintos`: cada caso debe dar una huella distinta de la de `base` (y distinta entre sí).",
+  "fijos": [
+    { "nombre": "sin respuestas es el SHA-256 de la cadena vacía", "respuestas": [], "huella": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    { "nombre": "una sola respuesta", "respuestas": [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }], "huella": "2aa4ab5a9085793aa9a5579efcff9042b41c9442f60b2289e62d7a9f9b6e55eb" },
+    { "nombre": "dos respuestas", "respuestas": [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }], "huella": "9bfe3f22db61a57c82ee3ff1b2690a208fa7ed08875a3d1db2a0b1b3da02c10d" },
+    { "nombre": "texto libre con acentos, eñes y emojis", "respuestas": [{ "pregunta": "Lesiones o condiciones médicas relevantes", "respuesta": "Operado del menisco en 2022 · mañana revisión 🙂" }], "huella": "d82b064494d9979bc76925cb5bd8536eaa82722d7aab302bc4aa85cadccb16b5" }
+  ],
+  "equivalentes": [
+    {
+      "nombre": "reordenar las preguntas no cambia el contenido",
+      "casos": [
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": "No" }, { "pregunta": "C", "respuesta": "Tal vez" }],
+        [{ "pregunta": "C", "respuesta": "Tal vez" }, { "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": "No" }],
+        [{ "pregunta": "B", "respuesta": "No" }, { "pregunta": "C", "respuesta": "Tal vez" }, { "pregunta": "A", "respuesta": "Sí" }]
+      ]
+    },
+    {
+      "nombre": "espacios, tabuladores y saltos de línea de más",
+      "casos": [
+        [{ "pregunta": "Lesiones", "respuesta": "dolor de rodilla" }],
+        [{ "pregunta": "  Lesiones ", "respuesta": "dolor   de rodilla" }],
+        [{ "pregunta": "Lesiones", "respuesta": "dolor\tde\nrodilla\r\n" }],
+        [{ "pregunta": "Lesiones\n", "respuesta": "\t dolor de  rodilla  " }]
+      ]
+    },
+    {
+      "nombre": "una respuesta nula, vacía, solo espacios o ausente equivale a no haber respondido",
+      "casos": [
+        [{ "pregunta": "A", "respuesta": "Sí" }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": null }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": "" }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": "   \n " }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B" }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": null, "respuesta": null }, {}]
+      ]
+    },
+    {
+      "nombre": "elementos que no son objetos {pregunta, respuesta} no cuentan",
+      "casos": [
+        [{ "pregunta": "A", "respuesta": "Sí" }],
+        [{ "pregunta": "A", "respuesta": "Sí" }, null, "texto suelto", 3, ["x"]]
+      ]
+    },
+    {
+      "nombre": "lo que no es una lista de respuestas equivale a una lista vacía",
+      "casos": [[], null, {}, "texto", 7]
+    },
+    {
+      "nombre": "Unicode: la letra acentuada compuesta y descompuesta (NFC) es el mismo texto",
+      "casos": [
+        [{ "pregunta": "¿Mareos?", "respuesta": "Sí, a veces, en reposo" }],
+        [{ "pregunta": "¿Mareos?", "respuesta": "Sí, a veces, en reposo" }]
+      ]
+    }
+  ],
+  "distintos": [
+    {
+      "nombre": "cualquier cambio material de contenido",
+      "base": [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+      "otros": [
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "No" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "Sí" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "No" }, { "pregunta": "¿Mareos?", "respuesta": "Sí" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }, { "pregunta": "¿Dolor en el pecho?", "respuesta": "No" }],
+        [{ "pregunta": "¿Problema cardiaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Si" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+        [{ "pregunta": "¿Problema cardíaco?", "respuesta": "Sí" }, { "pregunta": "¿Mareos?", "respuesta": "No" }, { "pregunta": "¿Mareos?", "respuesta": "No" }],
+        []
+      ]
+    },
+    {
+      "nombre": "intercambiar las respuestas entre preguntas cambia el contenido (no es reordenar)",
+      "base": [{ "pregunta": "A", "respuesta": "Sí" }, { "pregunta": "B", "respuesta": "No" }],
+      "otros": [[{ "pregunta": "A", "respuesta": "No" }, { "pregunta": "B", "respuesta": "Sí" }]]
+    },
+    {
+      "nombre": "los espacios DENTRO del texto son contenido; solo se reducen las rachas y los extremos",
+      "base": [{ "pregunta": "Lesiones", "respuesta": "dolor de rodilla" }],
+      "otros": [
+        [{ "pregunta": "Lesiones", "respuesta": "dolorde rodilla" }],
+        [{ "pregunta": "Lesiones", "respuesta": "dolor de rodilla izquierda" }],
+        [{ "pregunta": "Lesiones", "respuesta": "Dolor de rodilla" }]
+      ]
+    },
+    {
+      "nombre": "mover texto de la pregunta a la respuesta cambia el contenido",
+      "base": [{ "pregunta": "A B", "respuesta": "C" }],
+      "otros": [[{ "pregunta": "A", "respuesta": "B C" }], [{ "pregunta": "A B C", "respuesta": "x" }]]
+    }
+  ]
+}

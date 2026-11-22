@@ -74,7 +74,8 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
     supabase.from('ausencias').select('client_id, desde, hasta').in('client_id', ids).gte('hasta', hace(60))
       .then(({ data }) => { if (vivo) setAusencias((data || []) as AusenciaRow[]) })
     // La ficha de admisión (cuestionario de salud) y las veces que se marcó como revisada: lo que falte por revisar entra en la lista (lib/retencionParq)
-    supabase.from('checkins').select('clientId, tipo, createdAt, respuestas').in('clientId', ids).in('tipo', ['intake', 'parq_revisado'])
+    // select('*'): si la columna `huella` aún no existe (migración sin aplicar), la lectura no falla y las fichas cuentan como sin revisar, en vez de perderse todo el estado
+    supabase.from('checkins').select('*').in('clientId', ids).in('tipo', ['intake', 'parq_revisado'])
       .then(({ data }) => { if (vivo) setAdmisiones((data || []) as AdmisionRow[]) })
     // Solo el entrenador (o su equipo) ve estas decisiones (RLS)
     supabase.from('decisiones_entrenador').select('*')

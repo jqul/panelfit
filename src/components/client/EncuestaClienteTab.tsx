@@ -18,7 +18,7 @@ export function EncuestaClienteTab({ client }: Props) {
   useEffect(() => {
     if (isDemoClientId(client.id)) { setRetenido(false); return }
     let vivo = true
-    supabase.from('checkins').select('tipo, createdAt, respuestas').eq('clientId', client.id).in('tipo', ['intake', 'parq_revisado'])
+    supabase.from('checkins').select('*').eq('clientId', client.id).in('tipo', ['intake', 'parq_revisado'])
       .then(({ data }) => { if (vivo) setRetenido(estadoParq((data ?? []) as FilaAdmision[]).retenido) })
     return () => { vivo = false }
   }, [client.id])

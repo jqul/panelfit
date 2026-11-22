@@ -23,7 +23,7 @@ export function AvisosDelRegistro({ clientId, onAbrirCuestionario, onPendientes 
   useEffect(() => {
     if (isDemoClientId(clientId)) { setParq(estadoParq([])); return }
     let vivo = true
-    supabase.from('checkins').select('tipo, createdAt, respuestas').eq('clientId', clientId).in('tipo', ['intake', 'parq_revisado'])
+    supabase.from('checkins').select('*').eq('clientId', clientId).in('tipo', ['intake', 'parq_revisado'])
       .then(({ data }) => { if (vivo) setParq(estadoParq((data ?? []) as FilaAdmision[])) })
     return () => { vivo = false }
   }, [clientId])

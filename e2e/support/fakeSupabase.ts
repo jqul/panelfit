@@ -1,4 +1,5 @@
 import type { BrowserContext, Route, Request } from '@playwright/test'
+import { huellaAdmision } from './huellaServidor'
 import { motivoRevision } from '../../src/lib/coachIa'
 
 // Un "Supabase de mentira" en memoria para las pruebas end-to-end. Se engancha a la red del navegador
@@ -201,6 +202,11 @@ export class FakeSupabase {
         if (!onConflict && anyUnique) return json(route, 409, { code: '23505', message: `duplicate key value violates unique constraint on ${table}` })
         const row = { ...r }
         if (row.id === undefined && !NO_AUTO_ID.has(table)) row.id = crypto.randomUUID()
+        // El trigger de checkins (migración 20261122000020): la huella de una ficha y el contenido de una revisión los escribe el servidor, no quien manda la fila
+        if (table === 'checkins') {
+          const raro = this.triggerCheckins(row)
+          if (raro) return json(route, 400, { code: '23514', message: raro })
+        }
         all.push(row); out.push(row)
       }
       return wantsRows ? respond(structuredClone(out), 201) : empty(route, 201)
@@ -208,7 +214,7 @@ export class FakeSupabase {
 
     if (method === 'PATCH') {
       const rows = all.filter(r => this.matches(r, filters))
-      rows.forEach(r => Object.assign(r, body))
+      rows.forEach(r => { Object.assign(r, body); if (table === 'checkins') this.triggerCheckins(r) })
       return wantsRows ? respond(structuredClone(rows)) : empty(route)
     }
 
@@ -222,6 +228,21 @@ export class FakeSupabase {
 
     this.unhandled.push(`${method} /rest/v1/${table}`)
     return json(route, 405, { message: 'método no simulado' })
+  }
+
+  /** El trigger BEFORE INSERT/UPDATE de checkins: pone la huella SHA-256 de las fichas y reescribe las revisiones con la huella de la ficha que indican. Devuelve el error si la fila no vale. */
+  private triggerCheckins(row: Row): string | null {
+    if (row.tipo === 'intake') { row.huella = huellaAdmision(row.respuestas); return null }
+    if (row.tipo === 'parq_revisado') {
+      const id = (Array.isArray(row.respuestas) ? row.respuestas : []).find((e: Row) => e && e.pregunta === 'admision')?.respuesta
+      const ficha = this.rows('checkins').find(c => c.id === id && c.tipo === 'intake' && c.clientId === row.clientId)
+      if (!ficha) return 'La revisión debe indicar una ficha de admisión de este cliente'
+      row.huella = huellaAdmision(ficha.respuestas)
+      row.respuestas = [{ pregunta: 'admision', respuesta: String(ficha.id) }]
+      return null
+    }
+    row.huella = null
+    return null
   }
 
   // ── RPC ──

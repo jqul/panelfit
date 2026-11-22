@@ -18,29 +18,32 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   const [filas, setFilas] = useState<FilaAdmision[]>([])
   const esDemo = clientId.startsWith('demo-client-')
 
+  // select('*'): si la columna `huella` aún no existe (migración sin aplicar) la lectura no falla y la ficha cuenta como sin revisar
+  const cargar = async (primera: boolean) => {
+    const { data } = await supabase.from('checkins').select('*').eq('clientId', clientId).in('tipo', ['intake', 'parq_revisado'])
+      .order('createdAt', { ascending: false }).limit(10)
+    const rows = (data || []) as FilaAdmision[]
+    setFilas(rows)
+    setRespuestas(rows.find(r => r.tipo === 'intake')?.respuestas || null)
+    // Con algo sin revisar, la ficha se enseña abierta
+    if (primera && estadoParq(rows).pendienteDeRevisar) setAbierta(true)
+    setLoading(false)
+    return rows
+  }
   useEffect(() => {
     if (esDemo) { setRespuestas(DEMO_INTAKE_MAP[clientId] || null); setLoading(false); return }
-    supabase.from('checkins').select('tipo, createdAt, respuestas').eq('clientId', clientId).in('tipo', ['intake', 'parq_revisado'])
-      .order('createdAt', { ascending: false }).limit(10)
-      .then(({ data }) => {
-        const rows = (data || []) as FilaAdmision[]
-        setFilas(rows)
-        setRespuestas(rows.find(r => r.tipo === 'intake')?.respuestas || null)
-        // Con algo sin revisar, la ficha se enseña abierta
-        if (estadoParq(rows).pendienteDeRevisar) setAbierta(true)
-        setLoading(false)
-      })
-  }, [clientId, esDemo])
+    void cargar(true)
+  }, [clientId, esDemo]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // La revisión se ata a lo que se está leyendo: si el cliente cambia sus respuestas después, esa revisión ya no vale. Solo el entrenador del cliente puede
-  // escribirla (lo impone un trigger de la base de datos); si no puede, el insert falla y se avisa.
-  const marcarRevisado = async (huella: string) => {
-    const ahora = Date.now()
-    const respuestas = respuestasDeRevision(huella)
-    const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID().replace(/-/g, ''), clientId, respuestas, tipo: 'parq_revisado', createdAt: ahora })
+  // La revisión se ata a la versión EXACTA que se tiene delante: solo se manda el id de la ficha; la huella (SHA-256 del contenido) y el resto de la fila los escribe el servidor.
+  // Si el cliente cambia sus respuestas después, la huella de la ficha cambia y esta revisión deja de valer. Solo el entrenador del cliente puede escribirla (trigger de la base de
+  // datos). Después se vuelve a leer del servidor: lo que cuenta es lo que ESTE guardó, no lo que se mandó.
+  const marcarRevisado = async (admisionId: string) => {
+    const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID(), clientId, respuestas: respuestasDeRevision(admisionId), tipo: 'parq_revisado', createdAt: Date.now() })
     if (error) { toast('No se pudo marcar como revisado. Inténtalo de nuevo.', 'warn'); return }
-    setFilas(f => [...f, { tipo: 'parq_revisado', createdAt: ahora, respuestas }])
-    toast('Cuestionario de salud revisado', 'ok')
+    const rows = await cargar(false)
+    if (estadoParq(rows).revisado) toast('Cuestionario de salud revisado', 'ok')
+    else toast('Se guardó, pero la ficha cambió mientras la leías: vuelve a leerla.', 'warn')
   }
 
   if (loading || !respuestas?.length) return null
@@ -77,7 +80,7 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
               </p>
               {estado.revisado
                 ? <p className="text-xs font-semibold text-ok">Revisado el {new Date(estado.revisadoEn as number).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
-                : <button type="button" onClick={() => void marcarRevisado(estado.huella as string)} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold">Marcar como revisado</button>}
+                : <button type="button" disabled={!estado.admisionId} onClick={() => void marcarRevisado(estado.admisionId as string)} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold disabled:opacity-50">Marcar como revisado</button>}
             </div>
           )}
           {respuestas.map((r, i) => (
