@@ -9,6 +9,9 @@ export const PARQ_QUESTIONS = [
   '¿Conoces alguna otra razón por la que no deberías hacer ejercicio físico?',
 ]
 
+/** ¿Alguna de las siete respuestas del PAR-Q es un «Sí»? Mismo criterio que `resumenParq` (un «Sí» nunca queda escondido). */
+export const parqRequiereAtencion = (parq: Record<number, boolean | null>): boolean => Object.values(parq).some(v => v === true)
+
 export interface IntakeFreeQuestion {
   key: string
   label: string

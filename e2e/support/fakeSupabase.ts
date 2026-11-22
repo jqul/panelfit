@@ -429,6 +429,18 @@ export class FakeSupabase {
         })
         return json(route, 200, { activo: true, casos })
       }
+      // Igual que la función de la base de datos: solo la ficha del cliente con sesión, solo rellena lo vacío y el peso es su primer pesaje
+      case 'cliente_guardar_datos_basicos': {
+        const c = this.rows('clientes').find(x => x.auth_user_id === me && !x.archived_at)
+        if (!c) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        const hoy = new Date(); const dia = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`
+        if (!c.genero) c.genero = args.p_genero ?? null
+        if (!c.fechanacimiento) c.fechanacimiento = args.p_nacimiento
+        if (!c.altura) c.altura = args.p_altura
+        if (!c.weight) c.weight = args.p_peso
+        if (!this.rows('registros_peso').some(r => r.clientId === c.id && r.date === dia)) this.rows('registros_peso').push({ id: crypto.randomUUID(), clientId: c.id, weight: args.p_peso, date: dia })
+        return json(route, 200, { genero: c.genero, fechanacimiento: c.fechanacimiento, altura: c.altura, peso: c.weight })
+      }
       case 'decidir_borrador_solicitud': {
         // Igual que la función de la base de datos: solo el dueño; aprobar exige un borrador listo; descartar no conserva la propuesta
         const lead = this.rows('leads').find(l => l.id === args.p_lead_id && l.trainer_id === me && l.origen === 'programacion')
