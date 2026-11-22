@@ -172,7 +172,7 @@ export function SolicitudDetalle({ leadId }: { leadId: string }) {
         <input type="checkbox" checked={s.seguimiento_autorizado} disabled={!!s.client_id} onChange={e => void autorizar(e.target.checked)} className="mt-0.5" />
         <span><strong>Seguimiento autorizado</strong>: conservarla más de 60 días aunque no llegue a ser cliente (también si está a revisar). Sin marcar, se elimina sola.</span>
       </label>
-      <p className="text-[11px] text-muted">Al convertir en cliente solo pasan su nombre y su contacto. Estas respuestas y el PAR-Q se quedan aquí, solo para ti. {POLITICA_RETENCION} Puedes eliminarla antes con «Eliminar solicitud».</p>
+      <p className="text-[11px] text-muted">Al convertir en cliente pasan su nombre y su contacto y el formulario te propone su objetivo, altura y peso (los revisas antes de crear la ficha). Las demás respuestas y el PAR-Q se quedan aquí, solo para ti. {POLITICA_RETENCION} Puedes eliminarla antes con «Eliminar solicitud».</p>
     </div>
   )
 }

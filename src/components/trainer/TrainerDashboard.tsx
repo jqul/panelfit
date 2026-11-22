@@ -8,6 +8,9 @@ import { useLeads } from '../../hooks/useLeads'
 import { contactoDe, esSolicitud, haceCuanto, llevaEsperando, notasDeLead, partirNombre, textoEspera, type EstadoLead, type Lead } from '../../lib/leads'
 import { notasDeSolicitud, planBorradorDe, type SolicitudProgramacion } from '../../lib/solicitudProgramacion'
 import { useLabels } from '../../hooks/useLabels'
+import type { TrainerLabel } from './labels'
+import { ETIQUETA_COACH_IA, datosClienteDeSolicitud, esEtiquetaCoachIa, listaRellenados } from '../../lib/clienteDeSolicitud'
+import { leerResumenCoachIa } from '../../lib/coachIa'
 import { ContextoCliente } from './ContextoCliente'
 import type { IntentoPanel } from '../../lib/anadirFicha'
 import type { Destino } from '../../lib/atencionCliente'
@@ -134,7 +137,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const clientLimit = userProfile.clientLimit ?? 999
   const { clients, archivedClients, logsMap, loading, fetchClients, addClient, deleteClient, archiveClients, restoreClients, limitReached } =
     useTrainerClients({ trainerId: userProfile.uid, demoClients, demoLogsMap, clientLimit })
-  const { labels } = useLabels(userProfile.uid)
+  const { labels, setLabels } = useLabels(userProfile.uid)
   // Si la ficha de un cliente manda aquí («Añadir» → cita, documento, encuesta), se abre esa pestaña con el cliente ya elegido
   const [activeTab, setActiveTab] = useState<Tab>(intento ? intento.tab : 'dashboard')
   const [clienteInicial, setClienteInicial] = useState<string | null>(intento?.clientId ?? null)
@@ -163,6 +166,9 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
   const [showAdd, setShowAdd] = useState(false)
   const [newClient, setNewClient] = useState({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
   const [newClientLabelIds, setNewClientLabelIds] = useState<string[]>([])
+  // Alta desde una solicitud: qué se rellenó con lo que contestó la persona, la edad que dijo (solo una pista) y si la cuenta lleva Coach IA (etiqueta)
+  const [desdeSolicitud, setDesdeSolicitud] = useState<{ rellenados: string[]; edad: number | null; coachIa: boolean } | null>(null)
+  const [marcarCoachIa, setMarcarCoachIa] = useState(true)
   const [customObjetivos, setCustomObjetivos] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(`pf_custom_objetivos_${userProfile.uid}`) || '[]') } catch { return [] }
   })
@@ -263,9 +269,14 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       return
     }
     setAdding(true)
-    // De una solicitud de programación inicial solo pasan el nombre, el contacto y de dónde viene: las respuestas de salud y el PAR-Q
-    // se quedan en la solicitud (solo para el entrenador) y la notas internas del lead no se copian.
-    const ok = await addClient(newClient, newClientLabelIds, leadAConvertir ? { notas_privadas: esSolicitud(leadAConvertir) ? notasDeSolicitud(leadAConvertir) : notasDeLead(leadAConvertir) } : {})
+    // De una solicitud de programación inicial pasan el nombre, el contacto, de dónde viene y lo que el formulario lleva ya rellenado y el entrenador ha revisado
+    // (objetivo, altura y peso; lib/clienteDeSolicitud). El resto de respuestas de salud y el PAR-Q se quedan en la solicitud (solo para el entrenador) y las notas internas del lead no se copian.
+    let labelIds = newClientLabelIds
+    if (leadAConvertir && esSolicitud(leadAConvertir) && desdeSolicitud?.coachIa && marcarCoachIa) {
+      const id = await etiquetaCoachIa()
+      if (id && !labelIds.includes(id)) labelIds = [...labelIds, id]
+    }
+    const ok = await addClient(newClient, labelIds, leadAConvertir ? { notas_privadas: esSolicitud(leadAConvertir) ? notasDeSolicitud(leadAConvertir) : notasDeLead(leadAConvertir) } : {})
     if (ok) {
       if (leadAConvertir) {
         if (esSolicitud(leadAConvertir)) await cerrarSolicitud(leadAConvertir, ok)
@@ -275,6 +286,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       if (clients.length === 0) track('first_client_created')
       setShowAdd(false)
       setNewClientLabelIds([])
+      setDesdeSolicitud(null)
       setNewClient({ name: '', surname: '', phone: '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
       // Mismo asistente que el primer cliente: seguir con su workout y su acceso (se puede cerrar con "Ahora no").
       if (!demoClients) setWizard({ step: 'plan', clientId: ok })
@@ -282,9 +294,35 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
     setAdding(false)
   }
 
-  const convertirContacto = (l: Lead) => {
-    setNewClient({ ...partirNombre(l.name), phone: l.phone ?? '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' })
+  // La etiqueta «Coach IA»: la que ya exista con ese nombre o, si no, se crea (solo al crear el cliente, no al abrir el formulario)
+  const etiquetaCoachIa = async (): Promise<string | null> => {
+    const existente = labels.find(l => esEtiquetaCoachIa(l.name))
+    if (existente) return existente.id
+    const nueva: TrainerLabel = { id: `lbl_${Date.now()}`, trainer_id: userProfile.uid, ...ETIQUETA_COACH_IA, survey_template_id: null, created_at: Date.now() }
+    const { error } = await supabase.from('labels').insert(nueva)
+    if (error) { toast('No se pudo crear la etiqueta «Coach IA». Puedes ponérsela después.', 'warn'); return null }
+    setLabels(ls => [...ls, nueva])
+    return nueva.id
+  }
+
+  const convertirContacto = async (l: Lead) => {
+    const base = { ...partirNombre(l.name), phone: l.phone ?? '', objetivo: 'general', altura: '', peso: '', genero: '', fechanacimiento: '' }
     setNewClientLabelIds([])
+    setDesdeSolicitud(null)
+    setMarcarCoachIa(true)
+    // De una solicitud se rellena lo que la persona ya contestó (objetivo, altura y peso) para no teclearlo otra vez; el entrenador lo revisa antes de crear la ficha.
+    // Si la cuenta lleva Coach IA, se ofrece marcarla con su etiqueta (se puede desmarcar si a esa persona se la lleva a mano).
+    if (esSolicitud(l) && !demoClients) {
+      const [{ data: sol }, { data: resumen }] = await Promise.all([
+        supabase.from('solicitudes_programacion').select('consentimiento_salud, respuestas').eq('lead_id', l.id).maybeSingle(),
+        supabase.rpc('coach_ia_resumen'),
+      ])
+      const d = datosClienteDeSolicitud(sol as { consentimiento_salud?: boolean; respuestas?: Record<string, unknown> } | null)
+      Object.assign(base, d.campos)
+      const coachIa = leerResumenCoachIa(resumen).activo
+      if (d.rellenados.length || d.edad || coachIa) setDesdeSolicitud({ rellenados: d.rellenados, edad: d.edad, coachIa })
+    }
+    setNewClient(base)
     setLeadAConvertir(l)
     setShowAdd(true)
   }
@@ -1032,13 +1070,21 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
       )}
 
       {/* Modal nuevo cliente */}
-      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setNewClientLabelIds([]); setLeadAConvertir(null); setDesdeSolicitud(null) }} title={leadAConvertir ? 'Nuevo cliente desde un contacto' : 'Nuevo cliente'} variant="drawer">
         <div className="space-y-4">
           {leadAConvertir && (
             <div className="rounded-xl bg-accent/5 border border-accent/20 px-4 py-3 text-xs space-y-1">
               <p className="font-semibold text-accent">{esSolicitud(leadAConvertir) ? 'Viene de una solicitud de programación inicial' : 'Viene de un contacto de tu página pública'}</p>
               {leadAConvertir.email && <p className="text-muted">Correo: <span className="text-ink">{leadAConvertir.email}</span> (se guarda en sus notas privadas)</p>}
-              {esSolicitud(leadAConvertir) && <p className="text-muted">Sus respuestas de salud y su cuestionario se quedan en la solicitud, solo para ti: no se copian a su ficha.</p>}
+              {esSolicitud(leadAConvertir) && (desdeSolicitud?.rellenados.length
+                ? <p className="text-muted">Rellenado con lo que contestó en su solicitud: {listaRellenados(desdeSolicitud.rellenados)}. Revísalo antes de crear la ficha. Sus demás respuestas de salud y el cuestionario se quedan en la solicitud, solo para ti.</p>
+                : <p className="text-muted">Sus respuestas de salud y su cuestionario se quedan en la solicitud, solo para ti: no se copian a su ficha.</p>)}
+              {esSolicitud(leadAConvertir) && desdeSolicitud?.coachIa && (
+                <label className="flex items-start gap-2 pt-1 text-ink">
+                  <input type="checkbox" checked={marcarCoachIa} onChange={e => setMarcarCoachIa(e.target.checked)} className="mt-0.5" />
+                  <span>Llevarla con Coach IA: se marca con la etiqueta «{ETIQUETA_COACH_IA.emoji} {ETIQUETA_COACH_IA.name}». Desmárcalo si a esta persona la llevas a mano.</span>
+                </label>
+              )}
               {!esSolicitud(leadAConvertir) && leadAConvertir.message && <p className="text-ink/80 italic">"{leadAConvertir.message}"</p>}
             </div>
           )}
@@ -1074,7 +1120,8 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
               </div>
             </div>
           )}
-          <details className="group">
+          {/* Desde una solicitud queda desplegado: ahí está lo que se ha rellenado y lo que falta (género y nacimiento no se preguntan) */}
+          <details key={leadAConvertir?.id ?? 'nuevo'} open={!!desdeSolicitud?.rellenados.length} className="group">
             <summary className="flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-ink select-none py-1 transition-colors">
               <ChevronDown className="w-3.5 h-3.5 group-open:rotate-180 transition-transform" />
               Más datos (objetivo, medidas, género...)
@@ -1116,7 +1163,7 @@ export function TrainerDashboard({ userProfile, realUserProfile, teamContext, on
                     <option value="">Sin especificar</option><option value="h">Masculino</option><option value="m">Femenino</option>
                   </select>
                 </div>
-                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label><input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" /></div>
+                <div><label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">Nacimiento</label><input type="date" value={newClient.fechanacimiento} onChange={e => setNewClient(p => ({ ...p, fechanacimiento: e.target.value }))} className="w-full px-3 py-2.5 bg-bg border border-border rounded-xl text-sm outline-none" />{desdeSolicitud?.edad ? <p className="text-[11px] text-muted mt-1">Dijo tener {desdeSolicitud.edad} años</p> : null}</div>
               </div>
             </div>
           </details>
