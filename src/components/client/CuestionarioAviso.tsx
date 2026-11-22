@@ -5,12 +5,16 @@ import { isDemoClientId } from '../../lib/demoIds'
 
 // En Hoy, debajo del entreno: "Tienes un cuestionario de tu entrenador". Sin pendientes no pinta nada.
 // Se carga aparte (lazy): la carga inicial de la app del cliente no crece.
-export function CuestionarioAviso({ clientId, onAbrir }: { clientId: string; onAbrir: () => void }) {
+export function CuestionarioAviso({ clientId, onAbrir, onPendientes }: { clientId: string; onAbrir: () => void; onPendientes?: (cuantos: number) => void }) {
   const [nombres, setNombres] = useState<string[]>([])
 
   useEffect(() => {
     if (isDemoClientId(clientId)) return
-    supabase.rpc('encuestas_pendientes').then(({ data }) => setNombres(((data || []) as { nombre: string }[]).map(d => d.nombre)))
+    supabase.rpc('encuestas_pendientes').then(({ data }) => {
+      const nombres = ((data || []) as { nombre: string }[]).map(d => d.nombre)
+      setNombres(nombres)
+      onPendientes?.(nombres.length)
+    })
   }, [clientId])
 
   if (!nombres.length) return null

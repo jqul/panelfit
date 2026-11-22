@@ -40,4 +40,5 @@ export const MODELO_PROGRAMACION_INICIAL: ModeloEncuesta = {
   ],
 }
 
+// Solo el del enlace público (lo usan la página pública y Coach IA). Los cuestionarios de programación del cliente viven en lib/modelosProgramacion, que solo carga el editor de Encuestas.
 export const MODELOS_ENCUESTA: ModeloEncuesta[] = [MODELO_PROGRAMACION_INICIAL]

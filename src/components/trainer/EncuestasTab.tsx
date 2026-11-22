@@ -2,7 +2,8 @@ import { nombreParaMensaje } from '../../lib/hoyResumen'
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag, Printer, UserPlus } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
-import { MODELOS_ENCUESTA, type ModeloEncuesta } from '../../lib/modelosEncuesta'
+import type { ModeloEncuesta } from '../../lib/modelosEncuesta'
+import { TODOS_LOS_MODELOS } from '../../lib/modelosProgramacion'
 import { summarizeSurvey, describeSchedule, groupSchedules } from '../../lib/surveyResults'
 import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, hojaImprimible, imprimir, type Pregunta } from '../../lib/cuestionarios'
 import { supabase } from '../../lib/supabase'
@@ -440,7 +441,7 @@ export function EncuestasTab({ trainerId, clients, onManageLabels, enviarA }: Pr
               onCancel={() => { setShowTemplateEditor(false); setEditingTemplate(undefined); setModelo(undefined) }} />
           )}
           {/* Modelos listos para usar: se abren en el editor ya rellenos, para ajustarlos y guardarlos como tuyos */}
-          {!showTemplateEditor && MODELOS_ENCUESTA.filter(m => !templates.some(t => t.name === m.name)).map(m => (
+          {!showTemplateEditor && TODOS_LOS_MODELOS.filter(m => !templates.some(t => t.name === m.name)).map(m => (
             <div key={m.id} className="flex items-center gap-3 border border-dashed border-accent/40 bg-accent/5 rounded-2xl px-4 py-3">
               <ClipboardList className="w-5 h-5 text-accent flex-shrink-0" aria-hidden />
               <div className="flex-1 min-w-0">

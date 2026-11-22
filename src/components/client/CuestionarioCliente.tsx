@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { faltan, respondida, type Pregunta } from '../../lib/cuestionarios'
 import { toast } from '../shared/Toast'
@@ -78,7 +78,12 @@ function Respuesta({ q, valor, onChange }: { q: Pregunta; valor: any; onChange: 
 
 /** Un cuestionario del entrenador, con todos sus tipos de pregunta. Al enviarlo se guarda en survey_responses. */
 export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cuestionario: CuestionarioPendiente; clientId: string; onEnviado: () => void }) {
-  const [respuestas, setRespuestas] = useState<Record<string, any>>({})
+  // El avance se guarda en este dispositivo mientras lo rellena (un cuestionario largo no se pierde si cierra la app) y se borra al enviarlo
+  const claveAvance = `pf_cuestionario_avance_${clientId}_${cuestionario.template_id}`
+  const [respuestas, setRespuestas] = useState<Record<string, any>>(() => {
+    try { const t = localStorage.getItem(claveAvance); const r = t ? JSON.parse(t) : {}; return r && typeof r === 'object' && !Array.isArray(r) ? r : {} } catch { return {} }
+  })
+  useEffect(() => { try { if (Object.keys(respuestas).length) localStorage.setItem(claveAvance, JSON.stringify(respuestas)) } catch { /* sin almacenamiento: sin avance guardado */ } }, [respuestas, claveAvance])
   const [enviando, setEnviando] = useState(false)
   const [marcarFaltan, setMarcarFaltan] = useState(false)
   const pendientes = faltan(cuestionario.preguntas, respuestas)
@@ -98,6 +103,7 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
     })
     setEnviando(false)
     if (error) { toast('No se pudo enviar. Inténtalo de nuevo', 'warn'); return }
+    try { localStorage.removeItem(claveAvance) } catch { /* nada que borrar */ }
     onEnviado()
   }
 
