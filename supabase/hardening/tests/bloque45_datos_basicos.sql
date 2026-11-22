@@ -133,6 +133,13 @@ begin
   perform pg_temp.reg('5c los pesajes de otros días quedan igual', (select weight from public.registros_peso where "clientId" = cid and date <> hoy) = 70.5, '');
 end $$;
 
+-- ═══ 9. La función es SECURITY DEFINER con search_path vacío (todo va cualificado) ═══
+do $$
+begin
+  perform pg_temp.reg('9a cliente_guardar_datos_basicos: security definer y search_path vacío',
+    (select prosecdef and proconfig = array['search_path=""'] from pg_proc where oid = 'public.cliente_guardar_datos_basicos(text, date, numeric, numeric)'::regprocedure), '');
+end $$;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;

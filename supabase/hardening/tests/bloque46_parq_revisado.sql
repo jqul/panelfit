@@ -249,6 +249,15 @@ begin
     r = 'OK' and (select count(*) from public.clientes where id = cid) = 0 and (select count(*) from public.checkins where "clientId" = cid) = 0, r);
 end $$;
 
+-- ═══ 9. Las funciones de la migración llevan search_path vacío (todo va cualificado); las dos que escriben o consultan con permisos del dueño son SECURITY DEFINER ═══
+do $$
+begin
+  perform pg_temp.reg('9a las tres funciones con search_path vacío',
+    (select count(*) = 3 and bool_and(proconfig = array['search_path=""']) from pg_proc where pronamespace = 'public'::regnamespace and proname in ('huella_admision', 'checkins_puede_revisar', 'checkins_admision_y_revision')), '');
+  perform pg_temp.reg('9b el trigger y la función de apoyo son SECURITY DEFINER; la huella no',
+    (select bool_and(prosecdef = (proname <> 'huella_admision')) from pg_proc where pronamespace = 'public'::regnamespace and proname in ('huella_admision', 'checkins_puede_revisar', 'checkins_admision_y_revision')), '');
+end $$;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;

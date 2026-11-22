@@ -28,6 +28,7 @@
 --
 -- Orden respecto a 20261122000010_cliente_datos_basicos.sql: son independientes (esta solo usa `clientes`, `checkins`, `team_members` y las funciones is_super_admin /
 -- is_team_member_of del esquema base; la otra, `clientes` y `registros_peso`); pueden aplicarse en cualquier orden.
+-- Las funciones llevan `search_path` vacío: todo lo que usan va cualificado (public.*, auth.*) y lo demás son funciones y operadores de pg_catalog.
 -- Pruebas: hardening/tests/bloque46_parq_revisado.sql + run-pglite-parq-revisado.mjs (incluye los vectores de la huella).
 
 alter table public.checkins add column if not exists huella text;
@@ -38,7 +39,7 @@ create or replace function public.huella_admision(p_respuestas jsonb)
 returns text
 language sql
 immutable
-set search_path to 'public'
+set search_path to ''
 as $$
   select encode(sha256(convert_to(coalesce(string_agg(t.linea, E'\n' order by t.linea collate "C"), ''), 'UTF8')), 'hex')
   from (
@@ -59,7 +60,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path to 'public'
+set search_path to ''
 as $$
   select public.is_super_admin()
       or exists (
@@ -73,7 +74,7 @@ create or replace function public.checkins_admision_y_revision()
 returns trigger
 language plpgsql
 security definer
-set search_path to 'public'
+set search_path to ''
 as $$
 declare
   v_old_cliente uuid;

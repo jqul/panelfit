@@ -9,11 +9,12 @@
 --   · Valores con sentido: género h|m o vacío, nacimiento de entre 10 y 100 años, altura 100-250 cm, peso 20-400 kg (mismos límites que la solicitud pública).
 --   · Idempotente: llamarla otra vez no duplica el pesaje del día (clave única cliente+fecha).
 --   · Un cliente archivado, sin sesión o `anon` no pueden usarla.
+--   · `search_path` vacío: es SECURITY DEFINER y todo lo que usa va cualificado (public.*, auth.*); lo demás son funciones de pg_catalog.
 -- Prueba: hardening/tests/bloque45_datos_basicos.sql (run-pglite-datos-basicos.mjs).
 
 create or replace function public.cliente_guardar_datos_basicos(p_genero text, p_nacimiento date, p_altura numeric, p_peso numeric)
  returns jsonb language plpgsql security definer
- set search_path to 'public'
+ set search_path to ''
 as $$
 declare
   v_uid uuid := auth.uid();
