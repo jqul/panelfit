@@ -18,7 +18,7 @@ const ProgresoClienteTab = lazy(() => import('./ProgresoClienteTab').then(m => (
 // Lo que quien ya ha entrado casi no abre (registro, encuesta, Más) se descarga al llegar a ello: el panel arranca antes.
 const ClientRegister = lazy(() => import('./ClientRegister').then(m => ({ default: m.ClientRegister })))
 const EncuestaClienteTab = lazy(() => import('./EncuestaClienteTab').then(m => ({ default: m.EncuestaClienteTab })))
-const CuestionarioAviso = lazy(() => import('./CuestionarioAviso').then(m => ({ default: m.CuestionarioAviso })))
+const AvisosDelRegistro = lazy(() => import('./AvisosDelRegistro').then(m => ({ default: m.AvisosDelRegistro })))
 const TareasHoy = lazy(() => import('./TareasHoy').then(m => ({ default: m.TareasHoy })))
 const MasTab = lazy(() => import('./client-view/MasTab').then(m => ({ default: m.MasTab })))
 // Lo de debajo del entreno de hoy (check-in, citas, logros, hábitos) no hace falta para la primera pantalla: se descarga
@@ -583,7 +583,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
-                    <Suspense fallback={null}><CuestionarioAviso clientId={client.id} onAbrir={() => setActiveTab('encuesta')} onPendientes={n => abrirCuestionarioLaPrimeraVez(client.id, n)} /></Suspense>
+                    <Suspense fallback={null}><AvisosDelRegistro clientId={client.id} onAbrirCuestionario={() => setActiveTab('encuesta')} onPendientes={n => abrirCuestionarioLaPrimeraVez(client.id, n)} /></Suspense>
                     <Suspense fallback={null}><TareasHoy clientId={client.id} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}

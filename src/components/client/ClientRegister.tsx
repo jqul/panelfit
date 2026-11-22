@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION, parqRequiereAtencion, respuestasDeAdmision } from '../../lib/intakeQuestions'
+import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS, WAIVER_TEXT, WAIVER_TEXT_VERSION, nivelParq, respuestasDeAdmision, type NivelParq } from '../../lib/intakeQuestions'
+import { guardarPendientes } from '../../lib/datosBasicosPendientes'
+import { guardarDatosBasicos } from '../../lib/guardarDatosBasicos'
 import { DATOS_BASICOS_VACIOS, OPCIONES_GENERO, validarDatosBasicos, type DatosBasicos, type Genero } from '../../lib/datosBasicos'
-import { toast } from '../shared/Toast'
 import { recordConsent } from '../../lib/consent'
 import { ConsentFields } from './ConsentFields'
 
@@ -43,8 +44,9 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
   // Quién es: género (opcional), nacimiento, altura y peso. Van a su ficha (y el peso es su primer pesaje) al continuar, ya con el consentimiento dado.
   const [basicos, setBasicos] = useState<DatosBasicos>(DATOS_BASICOS_VACIOS)
   const validacion = validarDatosBasicos(basicos)
-  // El cuestionario de salud tiene algún «Sí»: el cuestionario de programación no se le abre solo; lo ve primero su entrenador
-  const [requiereAtencion, setRequiereAtencion] = useState(false)
+  // Qué pasó al terminar: el nivel de su cuestionario de salud (lib/intakeQuestions) y si sus datos básicos quedaron pendientes de guardar
+  const [nivelSalud, setNivelSalud] = useState<NivelParq>('ninguno')
+  const [datosPendientes, setDatosPendientes] = useState(false)
 
   const firstName = clientName.split(' ')[0]
 
@@ -140,14 +142,14 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     setLoading(true)
     // Primero el consentimiento: el cuestionario de salud no se guarda sin él.
     await recordConsent(clientId, true, consentFotos)
-    // Sus datos básicos a su ficha. Si falla (red, o la función aún no está), no se le bloquea la entrada: se avisa y su entrenador los pedirá.
+    // Sus datos básicos a su ficha. Si falla (red, o la función aún no está), no se le bloquea la entrada pero se le dice CLARO que la cuenta está creada y los datos no:
+    // se guardan en su dispositivo y desde Hoy puede reintentarlo sin escribirlos otra vez (la función no duplica el pesaje).
     const v = validacion.valores
-    const { error: errorBasicos } = await supabase.rpc('cliente_guardar_datos_basicos', { p_genero: v.genero, p_nacimiento: v.nacimiento, p_altura: v.altura, p_peso: v.peso })
-    if (errorBasicos) toast('No se pudieron guardar tus datos. Díselo a tu entrenador.', 'warn')
-    if (parqRequiereAtencion(parqAnswers)) {
-      setRequiereAtencion(true)
-      try { localStorage.setItem(`pf_cuestionario_abierto_${clientId}`, '1') } catch { /* sin almacenamiento: se abrirá igualmente */ }
+    if (!(await guardarDatosBasicos(v))) {
+      setDatosPendientes(true)
+      try { guardarPendientes(localStorage, clientId, v) } catch { /* sin almacenamiento: tendrá que volver a escribirlos */ }
     }
+    setNivelSalud(nivelParq(parqAnswers))
     const respuestas = respuestasDeAdmision(parqAnswers, freeAnswers)
     await supabase.from('checkins').insert({
       id: crypto.randomUUID().replace(/-/g, ''),
@@ -160,7 +162,8 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
     }
     setStep('success')
     setLoading(false)
-    setTimeout(onComplete, 1800)
+    // Con algo que leer (datos sin guardar o una señal en el cuestionario de salud) se deja más tiempo en pantalla
+    setTimeout(onComplete, datosPendientes || nivelSalud !== 'ninguno' || nivelParq(parqAnswers) !== 'ninguno' ? 4500 : 1800)
   }
 
   if (step === 'success') {
@@ -171,7 +174,9 @@ export function ClientRegister({ token, clientId, clientName, trainerName, brand
         </div>
         <h2 className="text-2xl font-serif font-bold mb-2">¡Cuenta creada!</h2>
         <p className="text-muted text-sm">Accediendo a tu panel...</p>
-        {requiereAtencion && <p className="text-sm text-muted mt-3 max-w-xs">Tu entrenador va a revisar tus respuestas de salud antes de preparar tu plan.</p>}
+        {datosPendientes && <p role="alert" className="text-sm text-warn font-medium mt-3 max-w-xs">Tu cuenta está creada, pero tus datos básicos todavía NO se han guardado. Podrás reintentarlo desde tu panel, en Hoy, sin escribirlos otra vez.</p>}
+        {nivelSalud === 'alarma' && <p className="text-sm text-muted mt-3 max-w-xs">Tu entrenador va a revisar tus respuestas de salud antes de seguir con tu plan. Hasta entonces, tu cuestionario queda en espera.</p>}
+        {(nivelSalud === 'revisar' || nivelSalud === 'aclarar') && <p className="text-sm text-muted mt-3 max-w-xs">Tu entrenador revisará tus respuestas de salud para adaptar tu plan.</p>}
         <div className="flex gap-1 justify-center mt-4">
           {[0,1,2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ backgroundColor: brandColor, animationDelay: `${i * 0.15}s` }} />

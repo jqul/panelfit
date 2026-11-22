@@ -12,6 +12,7 @@ import { evidenciaDescarga } from '../lib/evidenciaDescarga'
 import { decisionHoy, type DecisionHoy, type EntradaClienteHoy, type EntradaSolicitud } from '../lib/decisionHoy'
 import { esSolicitud, type Lead } from '../lib/leads'
 import { entradasCasosIa } from '../lib/coachIa'
+import { estadoParq, type FilaAdmision } from '../lib/retencionParq'
 import { useCoachIa } from './useCoachIa'
 import type { Decision } from '../lib/diarioDecisiones'
 import type { ClientWithStats } from './useTrainerClients'
@@ -25,6 +26,7 @@ interface DolorRow { clientId: string; date: string; zona: string; intensidad: n
 interface CheckinRow { clientId: string; date: string; sleep: number | null; soreness: number | null; motivation: number | null }
 interface AusenciaRow { client_id: string; desde: string; hasta: string }
 type DecisionRow = Decision & { client_id: string }
+type AdmisionRow = FilaAdmision & { clientId: string }
 
 const hace = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return localDateKey(d) }
 const porCliente = <T extends { clientId?: string; client_id?: string }>(xs: T[], id: string) => xs.filter(x => (x.clientId ?? x.client_id) === id)
@@ -39,6 +41,7 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
   const [checkins, setCheckins] = useState<CheckinRow[]>([])
   const [ausencias, setAusencias] = useState<AusenciaRow[]>([])
   const [decisiones, setDecisiones] = useState<DecisionRow[]>([])
+  const [admisiones, setAdmisiones] = useState<AdmisionRow[]>([])
   const clave = clients.map(c => c.id).join(',')
   // Coach IA beta: solo si esta cuenta lo tiene habilitado (lo dice la base de datos); en la demostración no se llama a nada
   const coachIa = useCoachIa(isDemoTrainerId(trainerId))
@@ -70,6 +73,9 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
       .then(({ data }) => { if (vivo) setCheckins((data || []) as CheckinRow[]) })
     supabase.from('ausencias').select('client_id, desde, hasta').in('client_id', ids).gte('hasta', hace(60))
       .then(({ data }) => { if (vivo) setAusencias((data || []) as AusenciaRow[]) })
+    // La ficha de admisión (cuestionario de salud) y las veces que se marcó como revisada: lo que falte por revisar entra en la lista (lib/retencionParq)
+    supabase.from('checkins').select('clientId, tipo, createdAt, respuestas').in('clientId', ids).in('tipo', ['intake', 'parq_revisado'])
+      .then(({ data }) => { if (vivo) setAdmisiones((data || []) as AdmisionRow[]) })
     // Solo el entrenador (o su equipo) ve estas decisiones (RLS)
     supabase.from('decisiones_entrenador').select('*')
       .then(({ data }) => { if (vivo) setDecisiones((data || []) as DecisionRow[]) })
@@ -88,6 +94,7 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
       const checkinsC = porCliente(checkins, c.id)
       const ultimo = checkinsC.filter(x => x.date >= hace(7)).sort((a, b) => b.date.localeCompare(a.date))[0]
       const decisionesC = porCliente(decisiones, c.id)
+      const salud = estadoParq(porCliente(admisiones, c.id))
       return {
         id: c.id,
         nombre: `${c.name} ${c.surname || ''}`.trim(),
@@ -101,13 +108,14 @@ export function useDecisionHoy(trainerId: string, clients: ClientWithStats[], lo
         progresionesListas: !plan || calib.activa ? [] : [...new Set((semana?.days || []).flatMap(d => (d.exercises || []).filter(e => e.kind !== 'libre' && e.kind !== 'run').map(e => e.name)))]
           .filter(nombre => { const r = recomendarSiguiente(logs, plan, nombre); return r.tipo === 'subir' && !r.provisional }),
         records: records.filter(r => r.clientId === c.id).map(r => r.ejercicio),
+        parq: salud.pendienteDeRevisar && salud.nivel !== 'ninguno' ? { nivel: salud.nivel } : null,
         descarga: plan?.weeks?.length ? evidenciaDescarga({ hoy, plan, logs, checkins: checkinsC, dolor: porCliente(dolor, c.id), ausencias: porCliente(ausencias, c.id), decisiones: decisionesC }) : null,
       }
     })
     const ahora = Date.now()
     const solicitudes: EntradaSolicitud[] = leadsNuevos.map(l => ({ id: l.id, nombre: l.name, revisionPersonal: l.status === 'revisar', diasEsperando: Math.floor((ahora - l.created_at) / 86_400_000), esSolicitud: esSolicitud(l) }))
     return decisionHoy(entradas, solicitudes, undefined, entradasCasosIa(coachIa.casos, ahora))
-  }, [planes, dolor, checkins, ausencias, decisiones, clients, logsMap, leadsNuevos, coachIa.casos])
+  }, [planes, dolor, checkins, ausencias, decisiones, admisiones, clients, logsMap, leadsNuevos, coachIa.casos])
 
   return { decision, cargando: planes === null }
 }

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { ClienteRow } from '../../lib/supabase-types'
 import { isDemoClientId } from '../../lib/demoIds'
 import { CuestionarioCliente, type CuestionarioPendiente } from './CuestionarioCliente'
+import { estadoParq, type FilaAdmision } from '../../lib/retencionParq'
 
 interface Props { client: ClienteRow }
 
@@ -12,13 +13,29 @@ interface Props { client: ClienteRow }
 export function EncuestaClienteTab({ client }: Props) {
   const [pendientes, setPendientes] = useState<CuestionarioPendiente[] | null>(null)
   const [respondidas, setRespondidas] = useState(0)
+  // Su cuestionario de salud tiene una señal de alarma que su entrenador aún no ha revisado: el de programación queda en espera (lib/retencionParq)
+  const [retenido, setRetenido] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (isDemoClientId(client.id)) { setRetenido(false); return }
+    let vivo = true
+    supabase.from('checkins').select('tipo, createdAt, respuestas').eq('clientId', client.id).in('tipo', ['intake', 'parq_revisado'])
+      .then(({ data }) => { if (vivo) setRetenido(estadoParq((data ?? []) as FilaAdmision[]).retenido) })
+    return () => { vivo = false }
+  }, [client.id])
 
   useEffect(() => {
     if (isDemoClientId(client.id)) { setPendientes([]); return }
     supabase.rpc('encuestas_pendientes').then(({ data }) => setPendientes((data || []) as CuestionarioPendiente[]))
   }, [client.id])
 
-  if (pendientes === null) return <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted">Cargando…</div>
+  if (pendientes === null || retenido === null) return <div className="max-w-xl mx-auto px-4 py-16 text-center text-sm text-muted">Cargando…</div>
+
+  if (retenido && pendientes.length) return (
+    <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-3">
+      <h3 className="font-serif font-bold text-xl">Tu entrenador está revisando tus respuestas de salud</h3>
+      <p className="text-sm text-muted">En cuanto las vea podrás continuar con tu cuestionario. No tienes que hacer nada más.</p>
+    </div>
+  )
 
   if (pendientes.length) {
     const actual = pendientes[0]

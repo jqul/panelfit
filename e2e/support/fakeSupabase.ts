@@ -58,6 +58,8 @@ export class FakeSupabase {
   users: AuthUser[] = []
   /** Peticiones que el simulador no sabe responder (el test comprueba que está vacío). */
   unhandled: string[] = []
+  /** Funciones RPC que responden como si no existieran (p. ej., una migración que aún no está aplicada): para probar que la app no se rompe y deja reintentar. */
+  rpcErrors = new Set<string>()
   /** Ficheros de Storage por bucket. */
   storage: Record<string, string[]> = {}
   removedFiles: { bucket: string; paths: string[] }[] = []
@@ -226,6 +228,7 @@ export class FakeSupabase {
   private async rpc(route: Route, req: Request, fn: string) {
     const args = req.postDataJSON?.() ?? {}
     const me = subOf(req)
+    if (this.rpcErrors.has(fn)) return json(route, 404, { code: 'PGRST202', message: `Could not find the function public.${fn}` })
     switch (fn) {
       case 'get_client_by_token': {
         // Igual que la función real: sin las columnas privadas del entrenador.

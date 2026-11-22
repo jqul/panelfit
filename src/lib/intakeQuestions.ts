@@ -12,6 +12,38 @@ export const PARQ_QUESTIONS = [
 /** ¿Alguna de las siete respuestas del PAR-Q es un «Sí»? Mismo criterio que `resumenParq` (un «Sí» nunca queda escondido). */
 export const parqRequiereAtencion = (parq: Record<number, boolean | null>): boolean => Object.values(parq).some(v => v === true)
 
+// No todos los «Sí» pesan igual. Tres niveles, por el índice de la pregunta (el orden de PARQ_QUESTIONS):
+//   alarma  (1-4): problema cardíaco, dolor en el pecho al hacer actividad o en reposo, mareo o pérdida de conocimiento → posible contraindicación: que lo valore
+//                  un profesional sanitario antes de entrenar. Retiene el cuestionario de programación hasta que el entrenador lo marque como revisado.
+//   revisar (5-6): problema óseo o articular, medicación para la tensión o el corazón → el entrenador lo revisa y adapta el plan; no retiene nada.
+//   aclarar (7):   «otra razón»: hay que preguntar cuál; no retiene nada.
+// Los cuatro primeros son los mismos que ya paraban el borrador en la solicitud pública (lib/solicitudProgramacion: PARQ_ALARMA_INDICES); una prueba lo comprueba.
+export type NivelParq = 'ninguno' | 'aclarar' | 'revisar' | 'alarma'
+export const PARQ_INDICES_ALARMA = [0, 1, 2, 3]
+export const PARQ_INDICES_REVISAR = [4, 5]
+export const PARQ_INDICES_ACLARAR = [6]
+export const GRAVEDAD_PARQ: Record<NivelParq, number> = { ninguno: 0, aclarar: 1, revisar: 2, alarma: 3 }
+
+function nivelDe(si: (i: number) => boolean): NivelParq {
+  if (PARQ_INDICES_ALARMA.some(si)) return 'alarma'
+  if (PARQ_INDICES_REVISAR.some(si)) return 'revisar'
+  if (PARQ_INDICES_ACLARAR.some(si)) return 'aclarar'
+  return 'ninguno'
+}
+/** El nivel de lo que acaba de contestar (por índice de pregunta). */
+export const nivelParq = (parq: Record<number, boolean | null>): NivelParq => nivelDe(i => parq[i] === true)
+/** El nivel de lo ya guardado en la ficha de admisión (por el texto de la pregunta). */
+export const nivelParqGuardado = (respuestas: { pregunta: string; respuesta: string }[] | null | undefined): NivelParq =>
+  nivelDe(i => (respuestas ?? []).some(r => r.pregunta === PARQ_QUESTIONS[i] && r.respuesta === 'Sí'))
+
+/** Lo que se le dice al entrenador de cada nivel (sin diagnosticar). */
+export const TEXTO_NIVEL_PARQ: Record<NivelParq, string> = {
+  ninguno: 'Sin respuestas de riesgo',
+  aclarar: 'Hay una «otra razón» por aclarar: pregúntale cuál',
+  revisar: 'Problema articular o medicación: revísalo y adapta el plan',
+  alarma: 'Posible contraindicación: que lo valore un profesional sanitario antes de entrenar',
+}
+
 export interface IntakeFreeQuestion {
   key: string
   label: string

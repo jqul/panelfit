@@ -157,13 +157,54 @@ test('al terminar el registro, lo primero es el cuestionario de programación qu
   await expect(page.getByRole('button', { name: 'Empezar entrenamiento' })).toHaveCount(0)
 })
 
-test('con un «Sí» en el cuestionario de salud el de programación NO se le abre solo: lo ve primero su entrenador', async ({ page, fake }) => {
+test('con una señal de ALARMA en el cuestionario de salud el de programación queda EN ESPERA: no se abre solo ni sale en Hoy hasta que lo revise su entrenador', async ({ page, fake }) => {
   seedWorld(fake)
   sembrarCuestionarioPendiente(fake)
-  await registrar(page, 'atencion@e2e.test', { parqSi: 4 }) // problema óseo o articular
-  await expect(page.getByText(/Tu entrenador va a revisar tus respuestas de salud antes de preparar tu plan/)).toBeVisible()
+  await registrar(page, 'alarma@e2e.test', { parqSi: 1 }) // dolor en el pecho al hacer actividad
+  await expect(page.getByText(/Tu entrenador va a revisar tus respuestas de salud antes de seguir con tu plan/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Empezar entrenamiento' })).toBeVisible()
+  await expect(page.getByText('Tu entrenador está revisando tus respuestas de salud')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toHaveCount(0)
-  // El cuestionario sigue disponible desde el aviso de Hoy (no se esconde), solo no se abre solo
-  await expect(page.getByRole('button', { name: /Tienes un cuestionario pendiente/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Tienes un cuestionario pendiente/ })).toHaveCount(0)
+})
+
+test('con un problema articular o medicación (revisar) se le avisa de que su entrenador lo revisará, pero su cuestionario de programación SÍ se abre', async ({ page, fake }) => {
+  seedWorld(fake)
+  sembrarCuestionarioPendiente(fake)
+  await registrar(page, 'revisar@e2e.test', { parqSi: 4 }) // problema óseo o articular
+  await expect(page.getByText(/Tu entrenador revisará tus respuestas de salud para adaptar tu plan/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toBeVisible()
+})
+
+// Datos básicos que no se pudieron guardar (sin red, o la migración aún no está aplicada): se dice claro y se puede reintentar sin duplicar nada
+test('si no se pueden guardar los datos básicos: «cuenta creada, datos pendientes», tarjeta en Hoy y reintento que los guarda sin duplicar el pesaje', async ({ page, fake }) => {
+  seedWorld(fake)
+  fake.rpcErrors.add('cliente_guardar_datos_basicos')
+  await registrar(page, 'pendiente@e2e.test', { genero: 'm' })
+  await expect(page.getByRole('alert')).toContainText('Tu cuenta está creada, pero tus datos básicos todavía NO se han guardado')
+  await expect(page.getByRole('button', { name: 'Empezar entrenamiento' })).toBeVisible()
+  // La ficha sigue sin sus datos, y no hay pesaje
+  const sinDatos = fake.rows('clientes').find(c => c.id === ids.client)!
+  expect(sinDatos.altura).toBeUndefined()
+  expect(sinDatos.fechanacimiento).toBeUndefined()
+  expect(sinDatos.weight).toBeUndefined()
+  expect(fake.rows('registros_peso')).toEqual([])
+
+  // En Hoy queda la tarjeta; mientras la función siga sin estar, reintentar avisa y los conserva
+  const tarjeta = page.getByRole('status').filter({ hasText: 'Tus datos básicos están pendientes de guardar' })
+  await expect(tarjeta).toBeVisible()
+  await tarjeta.getByRole('button', { name: 'Reintentar' }).click()
+  await expect(page.getByText('Todavía no se han podido guardar')).toBeVisible()
+  await expect(tarjeta).toBeVisible()
+
+  // Ya disponible: se guarda lo que escribió, la tarjeta desaparece y el pesaje es uno solo
+  fake.rpcErrors.delete('cliente_guardar_datos_basicos')
+  await tarjeta.getByRole('button', { name: 'Reintentar' }).click()
+  await expect(tarjeta).toHaveCount(0)
+  expect(fake.rows('clientes').find(c => c.id === ids.client)).toMatchObject({ genero: 'm', fechanacimiento: '1995-03-10', altura: 168, weight: 64 })
+  expect(fake.rows('registros_peso')).toHaveLength(1)
+  // Y no vuelve a salir al recargar
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Empezar entrenamiento' })).toBeVisible()
+  await expect(page.getByText('Tus datos básicos están pendientes de guardar')).toHaveCount(0)
 })

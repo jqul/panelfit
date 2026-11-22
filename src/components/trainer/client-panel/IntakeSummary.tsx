@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { ClipboardList, AlertTriangle, ChevronDown } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { DEMO_INTAKE_MAP } from '../../../lib/demo-data-extra'
-import { resumenParq } from '../../../lib/intakeQuestions'
+import { TEXTO_NIVEL_PARQ, resumenParq } from '../../../lib/intakeQuestions'
+import { estadoParq, type EstadoParq, type FilaAdmision } from '../../../lib/retencionParq'
+import { toast } from '../../shared/Toast'
 
 interface CheckinRespuesta { pregunta: string; respuesta: string }
 
@@ -12,17 +14,36 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   const [respuestas, setRespuestas] = useState<CheckinRespuesta[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [abierta, setAbierta] = useState(false)
+  // Si el entrenador ya revisó la ficha (lib/retencionParq): una fila de checkins con tipo 'parq_revisado' posterior a la ficha
+  const [filas, setFilas] = useState<FilaAdmision[]>([])
+  const esDemo = clientId.startsWith('demo-client-')
 
   useEffect(() => {
-    if (clientId.startsWith('demo-client-')) { setRespuestas(DEMO_INTAKE_MAP[clientId] || null); setLoading(false); return }
-    supabase.from('checkins').select('respuestas').eq('clientId', clientId).eq('tipo', 'intake')
-      .order('createdAt', { ascending: false }).limit(1).maybeSingle()
-      .then(({ data }) => { setRespuestas(data?.respuestas || null); setLoading(false) })
-  }, [clientId])
+    if (esDemo) { setRespuestas(DEMO_INTAKE_MAP[clientId] || null); setLoading(false); return }
+    supabase.from('checkins').select('tipo, createdAt, respuestas').eq('clientId', clientId).in('tipo', ['intake', 'parq_revisado'])
+      .order('createdAt', { ascending: false }).limit(10)
+      .then(({ data }) => {
+        const rows = (data || []) as FilaAdmision[]
+        setFilas(rows)
+        setRespuestas(rows.find(r => r.tipo === 'intake')?.respuestas || null)
+        // Con algo sin revisar, la ficha se enseña abierta
+        if (estadoParq(rows).pendienteDeRevisar) setAbierta(true)
+        setLoading(false)
+      })
+  }, [clientId, esDemo])
+
+  const marcarRevisado = async () => {
+    const ahora = Date.now()
+    const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID().replace(/-/g, ''), clientId, respuestas: [], tipo: 'parq_revisado', createdAt: ahora })
+    if (error) { toast('No se pudo marcar como revisado. Inténtalo de nuevo.', 'warn'); return }
+    setFilas(f => [...f, { tipo: 'parq_revisado', createdAt: ahora }])
+    toast('Cuestionario de salud revisado', 'ok')
+  }
 
   if (loading || !respuestas?.length) return null
 
   const parq = resumenParq(respuestas)
+  const estado: EstadoParq | null = esDemo ? null : estadoParq(filas)
 
   return (
     <div id="ficha-admision" className={`bg-card border rounded-2xl overflow-hidden scroll-mt-4 ${parq.atencion ? 'border-warn/40' : 'border-border'}`} style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
@@ -42,6 +63,17 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
             <div className="flex items-start gap-2 bg-warn/10 border border-warn/20 rounded-xl px-3 py-2.5 mb-2">
               <AlertTriangle className="w-4 h-4 text-warn flex-shrink-0 mt-0.5" />
               <p className="text-xs text-warn font-medium">Revisa estas respuestas antes de programar esfuerzo alto; si hay síntomas cardíacos o de mareo, que lo valore antes un profesional sanitario.</p>
+            </div>
+          )}
+          {estado && estado.nivel !== 'ninguno' && (
+            <div role="group" aria-label="Revisión del cuestionario de salud" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 mb-2">
+              <p className="text-xs flex-1 min-w-[12rem]">
+                <span className="font-semibold">{TEXTO_NIVEL_PARQ[estado.nivel]}.</span>
+                {estado.retenido && ' Su cuestionario de programación está en espera hasta que lo marques como revisado.'}
+              </p>
+              {estado.revisado
+                ? <p className="text-xs font-semibold text-ok">Revisado el {new Date(estado.revisadoEn as number).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
+                : <button type="button" onClick={() => void marcarRevisado()} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold">Marcar como revisado</button>}
             </div>
           )}
           {respuestas.map((r, i) => (

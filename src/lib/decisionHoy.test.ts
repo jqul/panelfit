@@ -205,3 +205,52 @@ describe('Coach IA beta: filas de casos (solicitudes de programación)', () => {
     }
   })
 })
+
+describe('cuestionario de salud sin revisar', () => {
+  it('con una señal de alarma: una fila para atender, que explica que su cuestionario queda en espera y abre la ficha de admisión', () => {
+    const [t] = tareasDeCliente(cliente({ parq: { nivel: 'alarma' } }))
+    expect(t).toMatchObject({ categoria: 'parq-alarma', nivel: 'atender', quien: 'María García', clienteId: 'c1', accion: 'Abrir su ficha de admisión' })
+    expect(t.necesita).toContain('puede necesitar una valoración antes de entrenar')
+    expect(t.porque).toContain('su cuestionario de programación queda en espera')
+    expect(t.destino).toEqual({ tipo: 'ficha', clienteId: 'c1', destino: { tab: 'perfil', seccion: 'ficha-admision' } })
+  })
+
+  it('un problema articular, medicación u «otra razón»: a revisar, sin hablar de espera', () => {
+    const revisar = tareasDeCliente(cliente({ parq: { nivel: 'revisar' } }))[0]
+    expect(revisar).toMatchObject({ categoria: 'parq-revisar', nivel: 'revisar' })
+    expect(revisar.porque).toContain('adaptar el plan')
+    const aclarar = tareasDeCliente(cliente({ parq: { nivel: 'aclarar' } }))[0]
+    expect(aclarar).toMatchObject({ categoria: 'parq-revisar', nivel: 'revisar' })
+    expect(aclarar.porque).toContain('otra razón')
+    for (const t of [revisar, aclarar]) expect(`${t.necesita} ${t.porque}`).not.toContain('en espera')
+  })
+
+  it('sin nada que revisar (o ya revisado) no hay fila', () => {
+    expect(tareasDeCliente(cliente({ parq: null }))).toEqual([])
+    expect(tareasDeCliente(cliente())).toEqual([])
+  })
+
+  it('no diagnostica: habla de valoración y de revisar, no de enfermedades', () => {
+    for (const nivel of ['alarma', 'revisar', 'aclarar'] as const) {
+      const [t] = tareasDeCliente(cliente({ parq: { nivel } }))
+      expect(`${t.necesita} ${t.porque}`).not.toMatch(/infarto|cardiopat|enfermedad|diagn[oó]stic|dolencia/i)
+    }
+  })
+
+  it('el orden: la alarma va por delante de una molestia fuerte, y lo demás después de las molestias', () => {
+    const r = decisionHoy([
+      cliente({ id: 'a', nombre: 'Ana', molestias: [{ zona: 'Rodilla', intensidad: 8 }] }),
+      cliente({ id: 'b', nombre: 'Beto', parq: { nivel: 'alarma' } }),
+      cliente({ id: 'c', nombre: 'Cleo', parq: { nivel: 'revisar' } }),
+      cliente({ id: 'd', nombre: 'Dani', molestias: [{ zona: 'Codo', intensidad: 5 }] }),
+    ], [])
+    expect(r.tareas.map(t => `${t.quien}:${t.categoria}`)).toEqual(['Beto:parq-alarma', 'Ana:molestia-fuerte', 'Dani:molestia', 'Cleo:parq-revisar'])
+  })
+
+  it('cada categoría tiene orden y nivel en la política', () => {
+    expect(POLITICA_DECISION_HOY.nivel['parq-alarma']).toBe('atender')
+    expect(POLITICA_DECISION_HOY.nivel['parq-revisar']).toBe('revisar')
+    expect(POLITICA_DECISION_HOY.orden['parq-alarma']).toBeLessThan(POLITICA_DECISION_HOY.orden['molestia-fuerte'])
+    expect(POLITICA_DECISION_HOY.orden['parq-revisar']).toBeGreaterThan(POLITICA_DECISION_HOY.orden.molestia)
+  })
+})

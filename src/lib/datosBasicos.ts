@@ -28,8 +28,8 @@ const numero = (t: string): number | null => {
   return Number.isFinite(n) ? n : null
 }
 
-/** «YYYY-MM-DD» → fecha local (sin zona: un día es un día), o null si no existe (31 de febrero…). */
-function fechaDe(t: string): Date | null {
+/** «YYYY-MM-DD» → fecha local (sin zona: un día es un día), o null si no existe (31 de febrero…). Nunca `new Date('YYYY-MM-DD')`: eso es medianoche UTC y en zonas al oeste sale el día anterior. */
+export function fechaLocalDe(t: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.trim())
   if (!m) return null
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
@@ -47,7 +47,7 @@ export function validarDatosBasicos(d: DatosBasicos, hoy: Date = new Date()): Re
   const errores: ResultadoBasicos['errores'] = {}
   const L = LIMITES_BASICOS
 
-  const nac = d.nacimiento.trim() === '' ? null : fechaDe(d.nacimiento)
+  const nac = d.nacimiento.trim() === '' ? null : fechaLocalDe(d.nacimiento)
   if (d.nacimiento.trim() === '') errores.nacimiento = 'Indica tu fecha de nacimiento'
   else if (!nac) errores.nacimiento = 'La fecha de nacimiento no es válida'
   else {
