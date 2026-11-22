@@ -133,6 +133,45 @@ begin
   perform pg_temp.reg('5c los pesajes de otros días quedan igual', (select weight from public.registros_peso where "clientId" = cid and date <> hoy) = 70.5, '');
 end $$;
 
+-- ═══ 10. Identidad: la cuenta debe tener exactamente UNA ficha activa (cero y varias se rechazan con 42501 sin escribir nada; una archivada no cuenta) ═══
+do $$
+declare r text; hoy text := to_char((now() at time zone 'Europe/Madrid')::date, 'YYYY-MM-DD');
+  u0 text := 'bbbbbbbb-0000-0000-0000-000000000010'; u2 text := 'bbbbbbbb-0000-0000-0000-000000000012'; u1a text := 'bbbbbbbb-0000-0000-0000-000000000011';
+  antes_clientes text; antes_pesos bigint;
+begin
+  insert into auth.users (id, email) values (u0::uuid, 'cero@test.local'), (u2::uuid, 'dos@test.local'), (u1a::uuid, 'unaarch@test.local');
+  -- u2: dos fichas activas (de dos entrenadores o del mismo); u1a: una activa y una archivada; u0: ninguna
+  insert into public.clientes (id, "trainerId", name, token, auth_user_id, altura, genero, weight, archived_at) values
+    ('c5000000-0000-0000-0000-000000000051', 'aaaaaaaa-0000-0000-0000-000000000001', 'Eva uno', 'tok-51', u2::uuid, null, null, null, null),
+    ('c5000000-0000-0000-0000-000000000052', 'aaaaaaaa-0000-0000-0000-000000000001', 'Eva dos', 'tok-52', u2::uuid, null, null, null, null),
+    ('c6000000-0000-0000-0000-000000000061', 'aaaaaaaa-0000-0000-0000-000000000001', 'Fran activa', 'tok-61', u1a::uuid, null, null, null, null),
+    ('c6000000-0000-0000-0000-000000000062', 'aaaaaaaa-0000-0000-0000-000000000001', 'Fran vieja', 'tok-62', u1a::uuid, null, null, null, 1700000000000);
+
+  -- 10a. Ninguna ficha: 42501 y nada escrito
+  select count(*) into antes_pesos from public.registros_peso;
+  r := pg_temp.como(u0, 'm', '1995-03-10', 168.5, 64.2);
+  perform pg_temp.reg('10a una cuenta sin ninguna ficha: 42501 y ningún pesaje', r like 'ERR: No autorizado%[42501]' and (select count(*) from public.registros_peso) = antes_pesos, r);
+
+  -- 10b. Varias fichas activas: 42501 y NINGUNA escritura (ni en una ficha, ni en la otra, ni pesajes)
+  select string_agg(id::text || coalesce(genero, '-') || coalesce(fechanacimiento, '-') || coalesce(altura::text, '-') || coalesce(weight::text, '-'), '|' order by id) into antes_clientes
+    from public.clientes where auth_user_id = u2::uuid;
+  select count(*) into antes_pesos from public.registros_peso;
+  r := pg_temp.como(u2, 'm', '1995-03-10', 168.5, 64.2);
+  perform pg_temp.reg('10b varias fichas activas: 42501', r like 'ERR: No autorizado%[42501]' and r like '%más de una ficha activa%', r);
+  perform pg_temp.reg('10c varias fichas activas: ninguna ficha modificada',
+    (select string_agg(id::text || coalesce(genero, '-') || coalesce(fechanacimiento, '-') || coalesce(altura::text, '-') || coalesce(weight::text, '-'), '|' order by id) from public.clientes where auth_user_id = u2::uuid) = antes_clientes, '');
+  perform pg_temp.reg('10d varias fichas activas: ningún pesaje creado (ni en ninguna de las dos ni en ninguna otra)',
+    (select count(*) from public.registros_peso) = antes_pesos and (select count(*) from public.registros_peso where "clientId" in ('c5000000-0000-0000-0000-000000000051', 'c5000000-0000-0000-0000-000000000052')) = 0, '');
+
+  -- 10e. Una activa y una archivada: cuenta como una sola, y se escribe en la activa
+  r := pg_temp.como(u1a, 'h', '1988-08-08', 180, 80);
+  perform pg_temp.reg('10e una ficha activa más una archivada: se guarda en la activa',
+    r not like 'ERR%' and (select altura from public.clientes where id = 'c6000000-0000-0000-0000-000000000061') = 180
+    and (select altura from public.clientes where id = 'c6000000-0000-0000-0000-000000000062') is null
+    and (select count(*) from public.registros_peso where "clientId" = 'c6000000-0000-0000-0000-000000000061' and date = hoy) = 1
+    and (select count(*) from public.registros_peso where "clientId" = 'c6000000-0000-0000-0000-000000000062') = 0, r);
+end $$;
+
 -- ═══ 9. La función es SECURITY DEFINER con search_path vacío (todo va cualificado) ═══
 do $$
 begin

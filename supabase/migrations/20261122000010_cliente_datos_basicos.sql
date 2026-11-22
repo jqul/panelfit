@@ -8,7 +8,7 @@
 --   · Solo rellena lo que está vacío: lo que el entrenador ya hubiera puesto a mano NO se pisa.
 --   · Valores con sentido: género h|m o vacío, nacimiento de entre 10 y 100 años, altura 100-250 cm, peso 20-400 kg (mismos límites que la solicitud pública).
 --   · Idempotente: llamarla otra vez no duplica el pesaje del día (clave única cliente+fecha).
---   · Un cliente archivado, sin sesión o `anon` no pueden usarla.
+--   · Un cliente archivado, sin sesión o `anon` no pueden usarla. La cuenta debe tener exactamente UNA ficha activa: con varias (nada lo impide hoy) rechaza con 42501 y no escribe nada.
 --   · `search_path` vacío: es SECURITY DEFINER y todo lo que usa va cualificado (public.*, auth.*); lo demás son funciones de pg_catalog.
 -- Prueba: hardening/tests/bloque45_datos_basicos.sql (run-pglite-datos-basicos.mjs).
 
@@ -19,10 +19,16 @@ as $$
 declare
   v_uid uuid := auth.uid();
   c public.clientes;
+  v_n integer;
   v_hoy date := (now() at time zone 'Europe/Madrid')::date;
 begin
   if v_uid is null then raise exception 'No autorizado' using errcode = '42501'; end if;
-  select * into c from public.clientes where auth_user_id = v_uid and archived_at is null limit 1;
+  -- La cuenta debe tener EXACTAMENTE una ficha activa: con ninguna no hay a quién escribir y con varias no se sabe en cuál (no hay restricción de unicidad en
+  -- auth_user_id, y un `limit 1` sin orden elegiría una cualquiera: datos de salud y un pesaje en la ficha equivocada). En ambos casos, sin escribir nada.
+  select count(*) into v_n from public.clientes where auth_user_id = v_uid and archived_at is null;
+  if v_n = 0 then raise exception 'No autorizado' using errcode = '42501'; end if;
+  if v_n > 1 then raise exception 'No autorizado: la cuenta tiene más de una ficha activa' using errcode = '42501'; end if;
+  select * into c from public.clientes where auth_user_id = v_uid and archived_at is null;
   if not found then raise exception 'No autorizado' using errcode = '42501'; end if;
 
   if p_genero is not null and p_genero not in ('h', 'm') then raise exception 'El género no es válido'; end if;
