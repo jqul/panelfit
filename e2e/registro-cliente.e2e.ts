@@ -190,17 +190,31 @@ test('si no se pueden guardar los datos básicos: «cuenta creada, datos pendien
   expect(sinDatos.weight).toBeUndefined()
   expect(fake.rows('registros_peso')).toEqual([])
 
-  // En Hoy queda la tarjeta; mientras la función siga sin estar, reintentar avisa y los conserva
+  // En Hoy queda la tarjeta, y los datos en el dispositivo (solo ahí: no han salido a ningún servidor)
+  const clavePendientes = `pf_datos_basicos_pendientes_${ids.client}`
+  const guardado = () => page.evaluate(k => localStorage.getItem(k), clavePendientes)
   const tarjeta = page.getByRole('status').filter({ hasText: 'Tus datos básicos están pendientes de guardar' })
   await expect(tarjeta).toBeVisible()
+  expect(JSON.parse((await guardado()) as string)).toMatchObject({ genero: 'm', nacimiento: '1995-03-10', altura: 168, peso: 64 })
+
+  // Mientras la función siga sin estar, reintentar avisa y NO borra nada (un error de red no debe perder lo escrito)
   await tarjeta.getByRole('button', { name: 'Reintentar' }).click()
   await expect(page.getByText('Todavía no se han podido guardar')).toBeVisible()
   await expect(tarjeta).toBeVisible()
+  expect(await guardado()).not.toBeNull()
 
-  // Ya disponible: se guarda lo que escribió, la tarjeta desaparece y el pesaje es uno solo
+  // Cierra y vuelve a abrir la app (recarga): los datos siguen pendientes y siguen ahí para reintentar
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Empezar entrenamiento' })).toBeVisible()
+  await expect(tarjeta).toBeVisible()
+  expect(await guardado()).not.toBeNull()
+  expect(fake.rows('registros_peso')).toEqual([])
+
+  // Ya disponible: se guarda lo que escribió (sin volver a pedírselo), la tarjeta desaparece, no queda NADA en el dispositivo y el pesaje es uno solo
   fake.rpcErrors.delete('cliente_guardar_datos_basicos')
   await tarjeta.getByRole('button', { name: 'Reintentar' }).click()
   await expect(tarjeta).toHaveCount(0)
+  expect(await guardado()).toBeNull()
   expect(fake.rows('clientes').find(c => c.id === ids.client)).toMatchObject({ genero: 'm', fechanacimiento: '1995-03-10', altura: 168, weight: 64 })
   expect(fake.rows('registros_peso')).toHaveLength(1)
   // Y no vuelve a salir al recargar

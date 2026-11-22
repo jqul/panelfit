@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { GRAVEDAD_PARQ, PARQ_INDICES_ACLARAR, PARQ_INDICES_ALARMA, PARQ_INDICES_REVISAR, PARQ_QUESTIONS, TEXTO_NIVEL_PARQ, nivelParq, nivelParqGuardado, respuestasDeAdmision } from './intakeQuestions'
 import { PARQ_ALARMA_INDICES } from './solicitudProgramacion'
-import { estadoParq, type FilaAdmision } from './retencionParq'
-import { borrarPendientes, claveBasicosPendientes, guardarPendientes, leerPendientes, type AlmacenLocal } from './datosBasicosPendientes'
+import { estadoParq, huellaAdmision, respuestasDeRevision, type FilaAdmision } from './retencionParq'
+import { DIAS_PENDIENTES, borrarPendientes, claveBasicosPendientes, guardarPendientes, leerPendientes, type AlmacenLocal } from './datosBasicosPendientes'
 
 const si = (...idx: number[]) => Object.fromEntries(PARQ_QUESTIONS.map((_, i) => [i, idx.includes(i)])) as Record<number, boolean>
 const admision = (idx: number[], createdAt = 1000): FilaAdmision => ({ tipo: 'intake', createdAt, respuestas: respuestasDeAdmision(si(...idx), {}) })
-const revisado = (createdAt: number): FilaAdmision => ({ tipo: 'parq_revisado', createdAt, respuestas: [] })
+// La revisión del entrenador lleva la huella de la ficha que leyó
+const revisado = (de: FilaAdmision, createdAt: number): FilaAdmision => ({ tipo: 'parq_revisado', createdAt, respuestas: respuestasDeRevision(huellaAdmision(de.respuestas)) })
 
 describe('niveles del cuestionario de salud: no todos los «sí» pesan igual', () => {
   it('alarma: cardíaco, dolor en el pecho (esfuerzo y reposo) y mareo; es lo mismo que ya paraba el borrador de la solicitud pública', () => {
@@ -44,7 +45,7 @@ describe('niveles del cuestionario de salud: no todos los «sí» pesan igual', 
 
 describe('estadoParq: qué hay que mirar y qué queda en espera', () => {
   it('sin ficha de admisión no hay nada que retener ni revisar', () => {
-    for (const filas of [null, undefined, [], [revisado(5)]]) expect(estadoParq(filas)).toMatchObject({ nivel: 'ninguno', retenido: false, pendienteDeRevisar: false, admisionEn: null })
+    for (const filas of [null, undefined, [], [revisado(admision([1]), 5)]]) expect(estadoParq(filas)).toMatchObject({ nivel: 'ninguno', retenido: false, pendienteDeRevisar: false, admisionEn: null, huella: null })
   })
   it('alarma sin revisar: retiene el cuestionario de programación y pide revisión', () => {
     expect(estadoParq([admision([1])])).toMatchObject({ nivel: 'alarma', retenido: true, pendienteDeRevisar: true, revisado: false })
@@ -57,15 +58,44 @@ describe('estadoParq: qué hay que mirar y qué queda en espera', () => {
     expect(estadoParq([admision([])])).toMatchObject({ nivel: 'ninguno', retenido: false, pendienteDeRevisar: false })
   })
   it('al revisarla, deja de retener y de pedir revisión', () => {
-    expect(estadoParq([admision([1], 1000), revisado(2000)])).toMatchObject({ nivel: 'alarma', revisado: true, revisadoEn: 2000, retenido: false, pendienteDeRevisar: false })
-    expect(estadoParq([revisado(2000), admision([1], 1000)])).toMatchObject({ retenido: false }) // el orden de las filas da igual
+    const a = admision([1], 1000)
+    expect(estadoParq([a, revisado(a, 2000)])).toMatchObject({ nivel: 'alarma', revisado: true, revisadoEn: 2000, retenido: false, pendienteDeRevisar: false })
+    expect(estadoParq([revisado(a, 2000), a])).toMatchObject({ retenido: false }) // el orden de las filas da igual
   })
-  it('una revisión anterior a la ficha no vale: si vuelve a rellenarla, hay que volver a revisarla', () => {
-    expect(estadoParq([admision([1], 3000), revisado(2000)])).toMatchObject({ revisado: false, retenido: true })
-    expect(estadoParq([admision([], 1000), admision([1], 3000), revisado(2000)])).toMatchObject({ nivel: 'alarma', retenido: true, admisionEn: 3000 })
+
+  // La secuencia pedida en la revisión del PR: la revisión queda atada al CONTENIDO que se revisó
+  it('SECUENCIA: alarma → revisada → el cliente cambia sus respuestas → vuelve a pendiente → la revisión anterior no vale para las nuevas', () => {
+    // 1. El cliente responde que sí a una pregunta de alarma
+    const primera = admision([1], 1000)
+    expect(estadoParq([primera])).toMatchObject({ nivel: 'alarma', revisado: false, pendienteDeRevisar: true, retenido: true })
+    // 2. El entrenador la marca como revisada
+    const revision = revisado(primera, 2000)
+    expect(estadoParq([primera, revision])).toMatchObject({ revisado: true, pendienteDeRevisar: false, retenido: false })
+    // 3. El cliente vuelve a modificar sus respuestas (otra ficha, posterior, con un «sí» más)
+    const segunda = admision([1, 4], 3000)
+    // 4. La admisión vuelve a aparecer como pendiente…
+    const despues = estadoParq([primera, revision, segunda])
+    expect(despues).toMatchObject({ nivel: 'alarma', revisado: false, revisadoEn: null, pendienteDeRevisar: true, retenido: true, admisionEn: 3000 })
+    // 5. …y la revisión anterior no sirve para las nuevas respuestas (ni siquiera si su fecha fuese posterior a la ficha nueva)
+    expect(huellaAdmision(segunda.respuestas)).not.toBe(huellaAdmision(primera.respuestas))
+    expect(estadoParq([primera, segunda, { ...revision, createdAt: 9000 }])).toMatchObject({ revisado: false, retenido: true })
+  })
+  it('cambiar UNA sola respuesta cambia la huella; reenviar lo mismo no (sigue valiendo lo revisado)', () => {
+    const a = admision([1], 1000)
+    expect(huellaAdmision(admision([2], 1000).respuestas)).not.toBe(huellaAdmision(a.respuestas))
+    const igual = admision([1], 5000) // misma ficha reenviada más tarde
+    expect(huellaAdmision(igual.respuestas)).toBe(huellaAdmision(a.respuestas))
+    expect(estadoParq([a, revisado(a, 2000), igual])).toMatchObject({ revisado: true, retenido: false })
+  })
+  it('una revisión sin huella, con otra o mal formada no cuenta nunca', () => {
+    const a = admision([1], 1000)
+    for (const respuestas of [[], null, undefined, [{ pregunta: 'huella', respuesta: '' }], [{ pregunta: 'huella', respuesta: 'otra' }], [{ pregunta: 'otra', respuesta: huellaAdmision(a.respuestas) }]]) {
+      expect(estadoParq([a, { tipo: 'parq_revisado', createdAt: 2000, respuestas: respuestas as never }]), JSON.stringify(respuestas)).toMatchObject({ revisado: false, retenido: true })
+    }
   })
   it('las fechas pueden llegar como texto y las filas raras no rompen nada', () => {
-    expect(estadoParq([{ ...admision([1]), createdAt: '1000' }, { tipo: 'parq_revisado', createdAt: '2000' }])).toMatchObject({ retenido: false })
+    const a = { ...admision([1]), createdAt: '1000' }
+    expect(estadoParq([a, { ...revisado(a, 0), createdAt: '2000' }])).toMatchObject({ retenido: false, revisadoEn: 2000 })
     expect(() => estadoParq([null as never, { tipo: 'intake', createdAt: null, respuestas: null }, { tipo: 'x', createdAt: 'no' }])).not.toThrow()
   })
 })
@@ -92,6 +122,32 @@ describe('datos básicos pendientes de guardar', () => {
       a.datos[claveBasicosPendientes('c1')] = raro
       expect(leerPendientes(a, 'c1'), raro).toBeNull()
     }
+  })
+  it('caducan a los 7 días (DIAS_PENDIENTES): se borran solos y no se reintentan; antes de eso siguen ahí', () => {
+    const a = almacen()
+    const t0 = 1_700_000_000_000
+    const dia = 24 * 60 * 60 * 1000
+    expect(DIAS_PENDIENTES).toBe(7)
+    guardarPendientes(a, 'c1', v, t0)
+    expect(leerPendientes(a, 'c1', t0 + 1000)).toEqual(v)
+    expect(leerPendientes(a, 'c1', t0 + (DIAS_PENDIENTES - 1) * dia)).toEqual(v)
+    expect(leerPendientes(a, 'c1', t0 + DIAS_PENDIENTES * dia + 1)).toBeNull()
+    expect(a.datos[claveBasicosPendientes('c1')]).toBeUndefined() // y no queda nada en el dispositivo
+  })
+  it('lo guardado sin fecha, o con una fecha imposible, no se conserva', () => {
+    const a = almacen()
+    a.datos[claveBasicosPendientes('c1')] = JSON.stringify(v) // formato sin fecha
+    expect(leerPendientes(a, 'c1')).toBeNull()
+    expect(a.datos[claveBasicosPendientes('c1')]).toBeUndefined()
+    a.datos[claveBasicosPendientes('c1')] = JSON.stringify({ ...v, guardadoEn: Date.now() + 400 * 24 * 60 * 60 * 1000 })
+    expect(leerPendientes(a, 'c1')).toBeNull()
+  })
+  it('leer no consume: un reintento fallido no borra nada, solo borrarPendientes (tras guardarse) lo quita', () => {
+    const a = almacen()
+    guardarPendientes(a, 'c1', v)
+    for (let i = 0; i < 3; i++) expect(leerPendientes(a, 'c1')).toEqual(v)
+    borrarPendientes(a, 'c1')
+    expect(a.datos[claveBasicosPendientes('c1')]).toBeUndefined()
   })
   it('sin almacenamiento disponible no lanza', () => {
     const roto: AlmacenLocal = { getItem: () => { throw new Error('x') }, setItem: () => { throw new Error('x') }, removeItem: () => { throw new Error('x') } }

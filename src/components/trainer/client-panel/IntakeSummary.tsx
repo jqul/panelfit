@@ -3,7 +3,7 @@ import { ClipboardList, AlertTriangle, ChevronDown } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { DEMO_INTAKE_MAP } from '../../../lib/demo-data-extra'
 import { TEXTO_NIVEL_PARQ, resumenParq } from '../../../lib/intakeQuestions'
-import { estadoParq, type EstadoParq, type FilaAdmision } from '../../../lib/retencionParq'
+import { estadoParq, respuestasDeRevision, type EstadoParq, type FilaAdmision } from '../../../lib/retencionParq'
 import { toast } from '../../shared/Toast'
 
 interface CheckinRespuesta { pregunta: string; respuesta: string }
@@ -14,7 +14,7 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
   const [respuestas, setRespuestas] = useState<CheckinRespuesta[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [abierta, setAbierta] = useState(false)
-  // Si el entrenador ya revisó la ficha (lib/retencionParq): una fila de checkins con tipo 'parq_revisado' posterior a la ficha
+  // Si el entrenador ya revisó ESTA ficha (lib/retencionParq): una fila de checkins con tipo 'parq_revisado' que lleva la huella de su contenido
   const [filas, setFilas] = useState<FilaAdmision[]>([])
   const esDemo = clientId.startsWith('demo-client-')
 
@@ -32,11 +32,14 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
       })
   }, [clientId, esDemo])
 
-  const marcarRevisado = async () => {
+  // La revisión se ata a lo que se está leyendo: si el cliente cambia sus respuestas después, esa revisión ya no vale. Solo el entrenador del cliente puede
+  // escribirla (lo impone un trigger de la base de datos); si no puede, el insert falla y se avisa.
+  const marcarRevisado = async (huella: string) => {
     const ahora = Date.now()
-    const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID().replace(/-/g, ''), clientId, respuestas: [], tipo: 'parq_revisado', createdAt: ahora })
+    const respuestas = respuestasDeRevision(huella)
+    const { error } = await supabase.from('checkins').insert({ id: crypto.randomUUID().replace(/-/g, ''), clientId, respuestas, tipo: 'parq_revisado', createdAt: ahora })
     if (error) { toast('No se pudo marcar como revisado. Inténtalo de nuevo.', 'warn'); return }
-    setFilas(f => [...f, { tipo: 'parq_revisado', createdAt: ahora }])
+    setFilas(f => [...f, { tipo: 'parq_revisado', createdAt: ahora, respuestas }])
     toast('Cuestionario de salud revisado', 'ok')
   }
 
@@ -70,10 +73,11 @@ export function IntakeSummary({ clientId }: { clientId: string }) {
               <p className="text-xs flex-1 min-w-[12rem]">
                 <span className="font-semibold">{TEXTO_NIVEL_PARQ[estado.nivel]}.</span>
                 {estado.retenido && ' Su cuestionario de programación está en espera hasta que lo marques como revisado.'}
+                <span className="block text-muted mt-0.5">Revisado significa que has leído estas respuestas; no certifica que pueda hacer cualquier entrenamiento. Si las cambia, tendrás que revisarlas otra vez.</span>
               </p>
               {estado.revisado
                 ? <p className="text-xs font-semibold text-ok">Revisado el {new Date(estado.revisadoEn as number).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</p>
-                : <button type="button" onClick={() => void marcarRevisado()} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold">Marcar como revisado</button>}
+                : <button type="button" onClick={() => void marcarRevisado(estado.huella as string)} className="px-3 py-1.5 rounded-xl bg-ink text-white text-xs font-bold">Marcar como revisado</button>}
             </div>
           )}
           {respuestas.map((r, i) => (

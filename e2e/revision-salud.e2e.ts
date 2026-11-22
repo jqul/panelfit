@@ -4,6 +4,7 @@ import { seedWorld, ids, TOKEN, CLIENT_LOGIN } from './support/seed'
 import { entrarComoEntrenador } from './support/flows'
 import type { FakeSupabase } from './support/fakeSupabase'
 import { PARQ_QUESTIONS, respuestasDeAdmision } from '../src/lib/intakeQuestions'
+import { huellaAdmision, respuestasDeRevision } from '../src/lib/retencionParq'
 
 // No todos los «sí» del cuestionario de salud pesan igual (lib/intakeQuestions: alarma, revisar, aclarar). Una señal de ALARMA retiene el cuestionario de programación
 // del cliente (ni se abre solo, ni sale en Hoy, ni en su pestaña) hasta que el entrenador marca la ficha como revisada, y le sale una fila en «Decisión de hoy».
@@ -15,10 +16,15 @@ const expect = expectBase.configure({ timeout: 30_000 })
 const dia = (atras: number) => { const d = new Date(); d.setDate(d.getDate() - atras); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 const PLAN_SIN_NADA_MAS = (fake: FakeSupabase) => { fake.rows('planes').find(r => r.clientId === ids.client)!.plan.P.fechaInicio = dia(0) } // sin semanas completas, nada más entra en la lista
 
+/** Las respuestas de una ficha de admisión con un «sí» en cada pregunta de `indices` del cuestionario de salud. */
+const respuestasCon = (...indices: number[]) => respuestasDeAdmision(Object.fromEntries(PARQ_QUESTIONS.map((_, i) => [i, indices.includes(i)])), {})
 /** Una ficha de admisión ya rellenada con un «sí» en la pregunta `indice` del cuestionario de salud, con la fecha dada. */
-function sembrarAdmision(fake: FakeSupabase, indice: number, createdAt = 1000) {
-  const parq = Object.fromEntries(PARQ_QUESTIONS.map((_, i) => [i, i === indice]))
-  fake.seed('checkins', { id: `intake-${createdAt}`, clientId: ids.client, tipo: 'intake', createdAt, respuestas: respuestasDeAdmision(parq, {}) })
+function sembrarAdmision(fake: FakeSupabase, indice: number, createdAt = 1000, ...masIndices: number[]) {
+  fake.seed('checkins', { id: `intake-${createdAt}`, clientId: ids.client, tipo: 'intake', createdAt, respuestas: respuestasCon(indice, ...masIndices) })
+}
+/** La revisión que deja el entrenador de una ficha: lleva la huella de lo que leyó. */
+function sembrarRevision(fake: FakeSupabase, id: string, createdAt: number, ...indices: number[]) {
+  fake.seed('checkins', { id, clientId: ids.client, tipo: 'parq_revisado', createdAt, respuestas: respuestasDeRevision(huellaAdmision(respuestasCon(...indices))) })
 }
 function sembrarCuestionarioPendiente(fake: FakeSupabase) {
   fake.seed('survey_templates', { id: 'tmpl-x', trainer_id: ids.trainer, name: 'Programación inicial: general', questions: [{ id: 'objetivo', type: 'short', label: 'Tu objetivo', required: true }], created_at: 1, auto_nuevos_desde: null })
@@ -53,7 +59,8 @@ test('ENTRENADOR: una señal de alarma sale la primera en «Decisión de hoy», 
 
   await expect(revision.getByText(/Revisado el/)).toBeVisible()
   await expect(revision.getByRole('button', { name: 'Marcar como revisado' })).toHaveCount(0)
-  expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toMatchObject([{ clientId: ids.client, respuestas: [] }])
+  // La revisión queda atada al contenido que se leyó (su huella), no solo a una fecha
+  expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toMatchObject([{ clientId: ids.client, respuestas: respuestasDeRevision(huellaAdmision(respuestasCon(1))) }])
 
   // Ya revisada: no vuelve a salir en la lista
   await page.reload()
@@ -90,8 +97,8 @@ test('CLIENTE: con alarma sin revisar su cuestionario queda en espera (ni se abr
   await expect(page.getByRole('heading', { name: 'Tu entrenador está revisando tus respuestas de salud' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toHaveCount(0)
 
-  // El entrenador la marca como revisada (una fila posterior a la ficha): ahora sí
-  fake.seed('checkins', { id: 'rev-1', clientId: ids.client, tipo: 'parq_revisado', createdAt: 5000, respuestas: [] })
+  // El entrenador la marca como revisada (con la huella de ESA ficha): ahora sí
+  sembrarRevision(fake, 'rev-1', 5000, 2)
   await page.goto(`/?c=${TOKEN}`)
   await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toBeVisible()
 })
@@ -104,12 +111,65 @@ test('CLIENTE: con un problema articular (revisar) NO se retiene: su cuestionari
   await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toBeVisible()
 })
 
-test('CLIENTE: si vuelve a rellenar la ficha después de una revisión, hay que volver a revisarla y queda en espera otra vez', async ({ page, fake }) => {
+test('CLIENTE: si vuelve a rellenar la ficha con otras respuestas después de una revisión, hay que volver a revisarla y queda en espera otra vez', async ({ page, fake }) => {
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
   sembrarCuestionarioPendiente(fake)
-  sembrarAdmision(fake, 0, 3000)  // ficha nueva con un problema cardíaco…
-  fake.seed('checkins', { id: 'rev-vieja', clientId: ids.client, tipo: 'parq_revisado', createdAt: 2000, respuestas: [] }) // …y una revisión ANTERIOR
+  sembrarAdmision(fake, 1, 1000)   // la ficha de antes, con una señal de alarma…
+  sembrarRevision(fake, 'rev-vieja', 2000, 1) // …que el entrenador revisó
+  sembrarAdmision(fake, 0, 3000)   // ficha nueva con otra señal de alarma: la revisión de antes es de OTRAS respuestas
   await entrarComoClienteSinEsperarEntreno(page)
   await expect(page.getByText('Tu entrenador está revisando tus respuestas de salud')).toBeVisible()
   await expect(page.getByRole('button', { name: /Tienes un cuestionario pendiente/ })).toHaveCount(0)
+})
+
+test('CLIENTE: una «revisión» sin la huella de su ficha (por ejemplo, una que se hubiera escrito a mano) no suelta la espera', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  sembrarCuestionarioPendiente(fake)
+  sembrarAdmision(fake, 1, 1000)
+  fake.seed('checkins', { id: 'rev-falsa', clientId: ids.client, tipo: 'parq_revisado', createdAt: 9000, respuestas: [] })
+  fake.seed('checkins', { id: 'rev-otra', clientId: ids.client, tipo: 'parq_revisado', createdAt: 9500, respuestas: respuestasDeRevision('0000000000000000') })
+  await entrarComoClienteSinEsperarEntreno(page)
+  await expect(page.getByText('Tu entrenador está revisando tus respuestas de salud')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toHaveCount(0)
+})
+
+// La secuencia completa, de punta a punta: alarma → el entrenador revisa → el cliente cambia sus respuestas → vuelve a estar pendiente → la revisión vieja no vale
+test('SECUENCIA: alarma, revisión del entrenador, el cliente cambia sus respuestas: vuelve a pendiente (en Decisión de hoy, en la ficha y en la espera del cliente)', async ({ page, fake }) => {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  PLAN_SIN_NADA_MAS(fake)
+  sembrarCuestionarioPendiente(fake)
+  // 1. El cliente respondió que sí a una pregunta de alarma
+  sembrarAdmision(fake, 1, 1000)
+  await entrarComoEntrenador(page)
+  const seccion = page.getByRole('region', { name: 'Decisión de hoy' })
+  await expect(seccion.getByRole('listitem')).toHaveCount(1)
+
+  // 2. El entrenador la marca como revisada
+  await seccion.getByRole('button', { name: 'Abrir su ficha de admisión' }).click()
+  const revision = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
+  await revision.getByRole('button', { name: 'Marcar como revisado' }).click()
+  await expect(revision.getByText(/Revisado el/)).toBeVisible()
+  await expect(revision).toContainText('no certifica que pueda hacer cualquier entrenamiento')
+  expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toHaveLength(1)
+
+  // 3. El cliente vuelve a modificar sus respuestas (una ficha nueva, posterior, con otro «sí» más)
+  fake.seed('checkins', { id: 'intake-nueva', clientId: ids.client, tipo: 'intake', createdAt: Date.now() + 60_000, respuestas: respuestasCon(1, 4) })
+
+  // 4. La admisión vuelve a aparecer como pendiente: en Decisión de hoy y en la ficha (con su botón)
+  await page.reload()
+  const filas = page.getByRole('region', { name: 'Decisión de hoy' }).getByRole('listitem')
+  await expect(filas).toHaveCount(1)
+  await expect(filas.nth(0)).toContainText('Revisar su cuestionario de salud')
+  await page.getByRole('region', { name: 'Decisión de hoy' }).getByRole('button', { name: 'Abrir su ficha de admisión' }).click()
+  const revision2 = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
+  await expect(revision2.getByRole('button', { name: 'Marcar como revisado' })).toBeVisible()
+  await expect(revision2.getByText(/Revisado el/)).toHaveCount(0)
+
+  // 5. La revisión anterior no vale para las respuestas nuevas: el cliente vuelve a quedar en espera
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear() })
+  await entrarComoClienteSinEsperarEntreno(page)
+  await expect(page.getByText('Tu entrenador está revisando tus respuestas de salud')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Programación inicial: general' })).toHaveCount(0)
+  // …y la revisión vieja sigue ahí, sin haberse reutilizado
+  expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toHaveLength(1)
 })
