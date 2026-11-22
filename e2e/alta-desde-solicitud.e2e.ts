@@ -48,7 +48,9 @@ test('el formulario viene con su objetivo, altura y peso, avisa de lo rellenado 
   await expect(alta.locator('input[type="number"]').nth(0)).toHaveValue('178')
   await expect(alta.locator('input[type="number"]').nth(1)).toHaveValue('78.5')
   // Lo que no se preguntó se queda vacío; de la edad solo hay una pista
-  await expect(alta.locator('select')).toHaveValue('')
+  await expect(alta.locator('select').filter({ has: page.locator('option[value="h"]') })).toHaveValue('') // el género
+  // Al convertir una solicitud no se manda ningún cuestionario por defecto (ya contestó uno)
+  await expect(alta.getByLabel('Cuestionario de programación')).toHaveValue('')
   await expect(alta.locator('input[type="date"]')).toHaveValue('')
   await expect(alta.getByText('Dijo tener 29 años')).toBeVisible()
   // Lo demás de la solicitud no aparece en el formulario
@@ -58,6 +60,7 @@ test('el formulario viene con su objetivo, altura y peso, avisa de lo rellenado 
   await expect.poll(() => !!clienteCreado(fake)).toBe(true)
   const c = clienteCreado(fake)!
   expect(c).toMatchObject({ objetivo: 'hipertrofia', altura: 178, weight: 78.5, genero: null })
+  expect(fake.rows('survey_schedules')).toHaveLength(0)
   // Nada más de su cuestionario de salud pasa a la ficha
   expect(JSON.stringify(c)).not.toMatch(/dominadas|PAR-Q|molestias|sueno|estres/i)
 })
