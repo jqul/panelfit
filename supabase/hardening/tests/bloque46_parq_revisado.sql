@@ -228,6 +228,27 @@ begin
   perform pg_temp.reg('7e anon no puede escribir una revisión', ok and (select count(*) from public.checkins where tipo = 'parq_revisado') = 0, '');
 end $$;
 
+-- ═══ 8. Borrar al cliente entero (cascada de la clave ajena) no choca con el trigger, pero solo lo puede hacer quien ya podía borrar al cliente ═══
+do $$
+declare r text; cid uuid := 'c1000000-0000-0000-0000-0000000000c3';
+begin
+  insert into auth.users (id, email) values ('bbbbbbbb-0000-0000-0000-000000000003', 'c3@test.local');
+  insert into public.clientes (id, "trainerId", name, token, auth_user_id) values (cid, 'aaaaaaaa-0000-0000-0000-000000000001', 'Carla', 'tok-3', 'bbbbbbbb-0000-0000-0000-000000000003');
+  insert into public.checkins (id, "clientId", tipo, respuestas, "createdAt") values ('a3000000-0000-0000-0000-000000000003', cid, 'intake', '[{"pregunta":"¿Mareos?","respuesta":"Sí"}]', 1);
+  insert into public.checkins (id, "clientId", tipo, respuestas, "createdAt") values (gen_random_uuid(), cid, 'parq_revisado', '[{"pregunta":"admision","respuesta":"a3000000-0000-0000-0000-000000000003"}]', 2);
+
+  r := pg_temp.como('aaaaaaaa-0000-0000-0000-000000000002', format($q$delete from public.clientes where id = %L$q$, cid));
+  perform pg_temp.reg('8a otro entrenador no puede borrar al cliente (la RLS lo deja en 0 filas) y la revisión sigue ahí',
+    (select count(*) from public.clientes where id = cid) = 1 and (select count(*) from public.checkins where "clientId" = cid and tipo = 'parq_revisado') = 1, r);
+
+  r := pg_temp.como('bbbbbbbb-0000-0000-0000-000000000003', format($q$delete from public.checkins where "clientId" = %L and tipo = 'parq_revisado'$q$, cid));
+  perform pg_temp.reg('8b el propio cliente sigue sin poder borrar su revisión mientras su ficha existe', r like 'ERR%' and (select count(*) from public.checkins where "clientId" = cid and tipo = 'parq_revisado') = 1, r);
+
+  r := pg_temp.como('aaaaaaaa-0000-0000-0000-000000000001', format($q$delete from public.clientes where id = %L$q$, cid));
+  perform pg_temp.reg('8c el entrenador borra al cliente con su ficha y su revisión: la cascada no choca con el trigger',
+    r = 'OK' and (select count(*) from public.clientes where id = cid) = 0 and (select count(*) from public.checkins where "clientId" = cid) = 0, r);
+end $$;
+
 select caso, case when ok then 'OK' else 'FALLO' end as resultado, detalle from resultados order by caso;
 
 rollback;

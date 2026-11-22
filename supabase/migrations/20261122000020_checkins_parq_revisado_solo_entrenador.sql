@@ -21,7 +21,7 @@
 --   · SHA-256 del UTF-8 resultante, en hexadecimal minúscula (64 caracteres). Sin respuestas: el SHA-256 de la cadena vacía.
 --
 -- Qué NO hace: no impide que el cliente cambie SUS respuestas (la ficha es suya; la revisión deja de valer si cambian) ni protege nada más allá de estas marcas. La espera del
--- cuestionario de programación sigue siendo solo de interfaz (ver src/lib/retencionParq.ts). Cubre INSERT, UPDATE y DELETE, y un UPDATE que convierta una fila de/a 'parq_revisado'.
+-- cuestionario de programación sigue siendo solo de interfaz (ver src/lib/retencionParq.ts). Cubre INSERT, UPDATE y DELETE, y un UPDATE que convierta una fila de/a 'parq_revisado'. Borrar al cliente entero (cascada) sigue funcionando: ver el comentario del trigger.
 --
 -- Sin esta migración la app no se fía de nada: una ficha sin huella se considera sin revisar (cierra por el lado seguro), y la columna ni siquiera existe para que un cliente
 -- se escriba una huella. La columna y el trigger se crean en la misma transacción: no hay un momento en que exista la columna sin el trigger.
@@ -84,6 +84,9 @@ begin
   -- 1. Quién: con sesión, las revisiones solo las toca el entrenador del cliente (o su equipo / un superadmin). Sin sesión (service role, SQL de administración) se permite;
   --    quien llega desde la web siempre trae sesión (anon no puede escribir en checkins por RLS).
   if auth.uid() is not null then
+    -- Borrar al cliente entero: la cascada de la clave ajena borra sus checkins cuando la fila de `clientes` ya no existe y «¿es su entrenador?» no se puede responder. Sin
+    -- cliente no queda ficha que proteger (y quien puede borrar la fila de `clientes` lo decide la RLS de esa tabla, no este trigger).
+    if tg_op = 'DELETE' and not exists (select 1 from public.clientes where id = old."clientId") then return old; end if;
     if tg_op in ('UPDATE', 'DELETE') and old.tipo is not distinct from 'parq_revisado' then v_old_cliente := old."clientId"; end if;
     if tg_op in ('INSERT', 'UPDATE') and new.tipo is not distinct from 'parq_revisado' then v_new_cliente := new."clientId"; end if;
     if (v_old_cliente is not null and not public.checkins_puede_revisar(v_old_cliente))
