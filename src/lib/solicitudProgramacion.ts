@@ -139,7 +139,7 @@ export function planBorradorDe(s: Pick<SolicitudProgramacion, 'borrador_estado' 
 }
 
 /** Lo único que pasa del lead al cliente al convertirlo: lo que el alta ya pide (nombre y contacto) y, en sus notas privadas, de dónde viene.
- *  Las respuestas de salud, el PAR-Q y el borrador se quedan en la solicitud, solo para el entrenador. */
+ *  El formulario de alta se rellena aparte con su objetivo, altura y peso (lib/clienteDeSolicitud) y el entrenador los revisa. Las demás respuestas de salud, el PAR-Q y el borrador se quedan en la solicitud, solo para el entrenador. */
 export function notasDeSolicitud(l: { email: string | null; phone: string | null; created_at: number }): string {
   const dia = new Date(l.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
   return [`Solicitud de programación inicial (${dia}).`, l.email && `Correo: ${l.email}`, l.phone && `Teléfono: ${l.phone}`].filter(Boolean).join('\n')

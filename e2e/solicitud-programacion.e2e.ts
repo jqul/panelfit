@@ -116,7 +116,7 @@ test('recorrido completo: crear enlace → rellenar sin cuenta → lead en Conta
   const detalle = page.getByRole('region', { name: 'Detalle de la solicitud' })
   await expect(detalle.getByText('Hombro derecho desde hace dos meses')).toBeVisible()
   await expect(detalle.getByText('Estado:')).toContainText('Sin generar')
-  await expect(detalle.getByText(/Al convertir en cliente solo pasan su nombre y su contacto/)).toBeVisible()
+  await expect(detalle.getByText(/Al convertir en cliente pasan su nombre y su contacto y el formulario te propone su objetivo, altura y peso/)).toBeVisible()
 
   // 4. Convertir en cliente: la ficha sale con su nombre, y NO se copian las respuestas de salud
   await page.getByRole('button', { name: 'Convertir en cliente' }).first().click()
