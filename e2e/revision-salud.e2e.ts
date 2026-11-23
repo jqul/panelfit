@@ -41,7 +41,7 @@ async function entrarComoClienteSinEsperarEntreno(page: Page, url = `/?c=${TOKEN
   await page.getByRole('button', { name: 'Iniciar sesión' }).click()
 }
 
-test('ENTRENADOR: una señal de alarma sale la primera en «Decisión de hoy», la ficha explica la espera y «Marcar como revisado» la quita', async ({ page, fake }) => {
+test('ENTRENADOR: una señal de alarma sale la primera en «Decisión de hoy», la ficha explica la espera y «Marcar como leído» la quita', async ({ page, fake }) => {
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
   PLAN_SIN_NADA_MAS(fake)
   sembrarAdmision(fake, 1) // dolor en el pecho al hacer actividad
@@ -56,13 +56,13 @@ test('ENTRENADOR: una señal de alarma sale la primera en «Decisión de hoy», 
   await expect(filas.nth(0).getByRole('img', { name: 'Atender' })).toBeVisible()
 
   await seccion.getByRole('button', { name: 'Abrir su ficha de admisión' }).click()
-  const revision = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
+  const revision = page.getByRole('group', { name: 'Lectura del cuestionario de salud por el entrenador' })
   await expect(revision).toContainText('Posible contraindicación: que lo valore un profesional sanitario antes de entrenar')
-  await expect(revision).toContainText('Su cuestionario de programación está en espera hasta que lo marques como revisado')
-  await revision.getByRole('button', { name: 'Marcar como revisado' }).click()
+  await expect(revision).toContainText('Su cuestionario de programación está en espera hasta que lo marques como leído')
+  await revision.getByRole('button', { name: 'Marcar como leído' }).click()
 
-  await expect(revision.getByText(/Revisado el/)).toBeVisible()
-  await expect(revision.getByRole('button', { name: 'Marcar como revisado' })).toHaveCount(0)
+  await expect(revision.getByText(/Leído por el entrenador el/)).toBeVisible()
+  await expect(revision.getByRole('button', { name: 'Marcar como leído' })).toHaveCount(0)
   // La app solo manda el id de la ficha que tiene delante; la huella (SHA-256 del contenido) la pone el servidor, y la revisión queda atada a esa versión exacta, no a una fecha
   expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toMatchObject([{ clientId: ids.client, respuestas: respuestasDeRevision('intake-1000'), huella: huellaAdmision(respuestasCon(1)) }])
   expect(fake.writes.filter(w => w.table === 'checkins' && w.method === 'POST').map(w => w.body)).toEqual([expect.objectContaining({ tipo: 'parq_revisado', respuestas: respuestasDeRevision('intake-1000') })])
@@ -153,10 +153,10 @@ test('SECUENCIA: alarma, revisión del entrenador, el cliente cambia sus respues
 
   // 2. El entrenador la marca como revisada
   await seccion.getByRole('button', { name: 'Abrir su ficha de admisión' }).click()
-  const revision = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
-  await revision.getByRole('button', { name: 'Marcar como revisado' }).click()
-  await expect(revision.getByText(/Revisado el/)).toBeVisible()
-  await expect(revision).toContainText('no certifica que pueda hacer cualquier entrenamiento')
+  const revision = page.getByRole('group', { name: 'Lectura del cuestionario de salud por el entrenador' })
+  await revision.getByRole('button', { name: 'Marcar como leído' }).click()
+  await expect(revision.getByText(/Leído por el entrenador el/)).toBeVisible()
+  await expect(revision).toContainText('no certifica aptitud médica ni que pueda hacer cualquier entrenamiento')
   expect(fake.rows('checkins').filter(c => c.tipo === 'parq_revisado')).toHaveLength(1)
 
   // 3. El cliente vuelve a modificar sus respuestas (una ficha nueva, posterior, con otro «sí» más)
@@ -169,9 +169,9 @@ test('SECUENCIA: alarma, revisión del entrenador, el cliente cambia sus respues
   await expect(filas).toHaveCount(1)
   await expect(filas.nth(0)).toContainText('Revisar su cuestionario de salud')
   await page.getByRole('region', { name: 'Decisión de hoy' }).getByRole('button', { name: 'Abrir su ficha de admisión' }).click()
-  const revision2 = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
-  await expect(revision2.getByRole('button', { name: 'Marcar como revisado' })).toBeVisible()
-  await expect(revision2.getByText(/Revisado el/)).toHaveCount(0)
+  const revision2 = page.getByRole('group', { name: 'Lectura del cuestionario de salud por el entrenador' })
+  await expect(revision2.getByRole('button', { name: 'Marcar como leído' })).toBeVisible()
+  await expect(revision2.getByText(/Leído por el entrenador el/)).toHaveCount(0)
 
   // 5. La revisión anterior no vale para las respuestas nuevas: el cliente vuelve a quedar en espera
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear() })

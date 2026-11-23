@@ -38,7 +38,7 @@ test('con todo «No» la cabecera lo dice en neutro, sin alerta', async ({ page,
   await expect(page.getByRole('button', { name: /Ficha de admisión/ })).toContainText('PAR-Q · sin respuestas de riesgo')
 })
 
-test('con un «Sí» SIN revisar la ficha se enseña abierta, con la explicación y el botón para marcarla como revisada', async ({ page, fake }) => {
+test('con un «Sí» SIN revisar la ficha se enseña abierta, con la explicación y el botón para marcarla como leída', async ({ page, fake }) => {
   test.setTimeout(120_000)
   expect.configure({ timeout: 30_000 })
   seedWorld(fake, { clientHasAccount: true, clientConsented: true })
@@ -47,7 +47,7 @@ test('con un «Sí» SIN revisar la ficha se enseña abierta, con la explicació
   await abrirFichaDelCliente(page)
   await expect(page.getByRole('button', { name: /Ficha de admisión/ })).toHaveAttribute('aria-expanded', 'true')
   await expect(page.getByText('¿Tienes algún problema óseo o articular')).toBeVisible()
-  const revision = page.getByRole('group', { name: 'Revisión del cuestionario de salud' })
+  const revision = page.getByRole('group', { name: 'Lectura del cuestionario de salud por el entrenador' })
   await expect(revision).toContainText('Problema articular o medicación: revísalo y adapta el plan')
-  await expect(revision.getByRole('button', { name: 'Marcar como revisado' })).toBeVisible()
+  await expect(revision.getByRole('button', { name: 'Marcar como leído' })).toBeVisible()
 })

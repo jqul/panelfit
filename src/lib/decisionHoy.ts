@@ -146,7 +146,7 @@ export function tareasDeCliente(c: EntradaClienteHoy, p: PoliticaDecisionHoy = P
 
   // Cuestionario de salud sin revisar: la señal de alarma va la primera (y deja su cuestionario de programación en espera); las demás, a revisar. Sin diagnosticar.
   if (c.parq?.nivel === 'alarma') {
-    nueva('parq-alarma', { necesita: 'Revisar su cuestionario de salud: puede necesitar una valoración antes de entrenar', porque: 'Contestó «sí» en una pregunta que pide valoración. Hasta que lo marques como revisado, su cuestionario de programación queda en espera', accion: 'Abrir su ficha de admisión', gravedad: 3, destino: { tab: 'perfil', seccion: 'ficha-admision' } })
+    nueva('parq-alarma', { necesita: 'Revisar su cuestionario de salud: puede necesitar una valoración antes de entrenar', porque: 'Contestó «sí» en una pregunta que pide valoración. Hasta que lo marques como leído, su cuestionario de programación queda en espera', accion: 'Abrir su ficha de admisión', gravedad: 3, destino: { tab: 'perfil', seccion: 'ficha-admision' } })
   } else if (c.parq) {
     nueva('parq-revisar', { necesita: 'Revisar su cuestionario de salud', porque: c.parq.nivel === 'revisar' ? 'Tiene un problema articular o toma medicación: conviene adaptar el plan' : 'Marcó «otra razón»: pregúntale cuál', accion: 'Abrir su ficha de admisión', destino: { tab: 'perfil', seccion: 'ficha-admision' } })
   }

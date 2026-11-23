@@ -14,7 +14,7 @@ export const parqRequiereAtencion = (parq: Record<number, boolean | null>): bool
 
 // No todos los «Sí» pesan igual. Tres niveles, por el índice de la pregunta (el orden de PARQ_QUESTIONS):
 //   alarma  (1-4): problema cardíaco, dolor en el pecho al hacer actividad o en reposo, mareo o pérdida de conocimiento → posible contraindicación: que lo valore
-//                  un profesional sanitario antes de entrenar. Retiene el cuestionario de programación hasta que el entrenador lo marque como revisado.
+//                  un profesional sanitario antes de entrenar. Retiene el cuestionario de programación hasta que el entrenador lo marque como leído.
 //   revisar (5-6): problema óseo o articular, medicación para la tensión o el corazón → el entrenador lo revisa y adapta el plan; no retiene nada.
 //   aclarar (7):   «otra razón»: hay que preguntar cuál; no retiene nada.
 // Los cuatro primeros son los mismos que ya paraban el borrador en la solicitud pública (lib/solicitudProgramacion: PARQ_ALARMA_INDICES); una prueba lo comprueba.
