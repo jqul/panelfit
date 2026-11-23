@@ -55,10 +55,9 @@ export const INTAKE_FREE_QUESTIONS: IntakeFreeQuestion[] = [
   { key: 'lesiones', label: 'Lesiones o condiciones médicas relevantes' },
   { key: 'objetivos', label: 'Objetivo principal con el entrenamiento' },
   { key: 'disponibilidad', label: '¿Qué días y horas prefieres entrenar?' },
-  // Opcionales: ayudan al entrenador a ajustar la carga desde la primera semana (volumen, recuperación, punto de partida).
+  // Opcional: ayuda al entrenador a ajustar la carga desde la primera semana. Las marcas y las horas de sueño NO se preguntan aquí: ya las recoge, mejor planteadas (el sueño como
+  // número en horas, las marcas por enfoque), el cuestionario de programación que recibe el cliente justo después. Las fichas ya guardadas con esas respuestas no se tocan.
   { key: 'experiencia', label: '¿Cuánto tiempo llevas entrenando y cómo?', soloSiRespondida: true },
-  { key: 'marcas', label: 'Marcas o pesos actuales en los ejercicios que domines (si las sabes)', soloSiRespondida: true },
-  { key: 'sueno', label: '¿Cuántas horas duermes de media?', soloSiRespondida: true },
 ]
 
 /** Las respuestas tal como se guardan en la ficha de admisión: PAR-Q, preguntas libres y, de las opcionales, solo las contestadas. */
