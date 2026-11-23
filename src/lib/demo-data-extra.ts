@@ -280,7 +280,7 @@ export const DEMO_WEEKLY_REVIEWS_MAP: Record<string, DemoWeeklyReview[]> = {
 
 // ── FICHA DE ADMISIÓN / PAR-Q ───────────────────────────
 import { PARQ_QUESTIONS, INTAKE_FREE_QUESTIONS } from './intakeQuestions'
-// Las opcionales (experiencia, marcas, sueño) solo se guardan si el cliente las contestó, igual que en el registro real.
+// La opcional (experiencia) solo se guarda si el cliente la contestó, igual que en el registro real.
 const intake = (si: number[], lesiones: string, objetivos: string, disponibilidad: string, opcionales: Record<string, string> = {}) => [
   ...PARQ_QUESTIONS.map((pregunta, i) => ({ pregunta, respuesta: si.includes(i) ? 'Sí' : 'No' })),
   { pregunta: 'Lesiones o condiciones médicas relevantes', respuesta: lesiones },
@@ -290,8 +290,8 @@ const intake = (si: number[], lesiones: string, objetivos: string, disponibilida
 ]
 export const DEMO_INTAKE_MAP: Record<string, { pregunta: string; respuesta: string }[]> = {
   'demo-client-001': intake([], 'Ninguna', 'Ganar masa muscular y tonificar', 'Lunes a jueves, 18:00-19:30'),
-  'demo-client-002': intake([4], 'Hombro derecho con molestia antigua (supraespinoso)', 'Competir en powerlifting', 'Lunes, miércoles, viernes y sábado por la tarde', { experiencia: '3 años de powerlifting en un club, con entrenador', marcas: 'Sentadilla 150 kg, banca 105 kg, peso muerto 190 kg', sueno: '7' }),
-  'demo-client-003': intake([], 'Ninguna', 'Perder grasa y mejorar la forma física', 'Martes, jueves y sábado por la mañana', { experiencia: 'Sobre todo cardio; nunca ha hecho pesas', sueno: '5-6' }),
+  'demo-client-002': intake([4], 'Hombro derecho con molestia antigua (supraespinoso)', 'Competir en powerlifting', 'Lunes, miércoles, viernes y sábado por la tarde', { experiencia: '3 años de powerlifting en un club, con entrenador' }),
+  'demo-client-003': intake([], 'Ninguna', 'Perder grasa y mejorar la forma física', 'Martes, jueves y sábado por la mañana', { experiencia: 'Sobre todo cardio; nunca ha hecho pesas' }),
   'demo-client-004': intake([], 'Ninguna', 'Preparar su próxima competición de powerlifting', 'Cuatro días, por la tarde'),
   'demo-client-005': intake([4, 6], 'Rotura parcial de menisco interno (rodilla derecha), cirugía artroscópica', 'Recuperar la rodilla y volver a correr', 'Lunes y jueves por la mañana, con fisio los miércoles'),
   'demo-client-006': intake([4, 5], 'Sobrepeso, tensión algo elevada en tratamiento', 'Perder peso de forma saludable', 'Tres días a la semana, a primera hora'),

@@ -27,8 +27,10 @@ test('un cliente nuevo se registra, da su consentimiento y entra a su panel', as
   await salud.check()
   await page.getByLabel(/He leído y acepto el descargo/).check()
   await page.getByLabel('Firma: nombre completo').fill('María García')
-  await page.getByLabel(/Marcas o pesos actuales/).fill('Sentadilla 80 kg x 5')
-  await page.getByLabel(/Cuántas horas duermes/).fill('6')
+  // Las marcas y las horas de sueño ya no se preguntan aquí (las recoge el cuestionario de programación); la experiencia, opcional, sí
+  await expect(page.getByLabel(/Marcas o pesos actuales/)).toHaveCount(0)
+  await expect(page.getByLabel(/Cuántas horas duermes/)).toHaveCount(0)
+  await page.getByLabel(/Cuánto tiempo llevas entrenando/).fill('2 años con pesas')
   // Sin sus datos básicos (nacimiento, altura y peso) no se puede continuar; el género es opcional
   await expect(continuar).toBeDisabled()
   await page.getByLabel('Fecha de nacimiento').fill('1995-03-10')
@@ -46,11 +48,10 @@ test('un cliente nuevo se registra, da su consentimiento y entra a su panel', as
   expect(client.auth_user_id).toBeTruthy()
   expect(fake.rows('consentimientos')).toMatchObject([{ clientId: ids.client, salud: true, fotos: false, version: '2026-10' }])
   expect(fake.rows('checkins')).toMatchObject([{ clientId: ids.client, tipo: 'intake' }])
-  // Las opcionales contestadas se guardan; la que dejó en blanco (experiencia) no aparece como «Sin responder»
+  // La opcional contestada (experiencia) se guarda la última; marcas y sueño no están en la ficha
   const respuestas = (fake.rows('checkins')[0].respuestas as { pregunta: string; respuesta: string }[])
-  expect(respuestas[respuestas.length - 2]).toMatchObject({ pregunta: expect.stringMatching(/Marcas o pesos actuales/), respuesta: 'Sentadilla 80 kg x 5' })
-  expect(respuestas[respuestas.length - 1]).toMatchObject({ pregunta: expect.stringMatching(/Cuántas horas duermes/), respuesta: '6' })
-  expect(respuestas.some(r => /Cuánto tiempo llevas entrenando/.test(r.pregunta))).toBe(false)
+  expect(respuestas[respuestas.length - 1]).toMatchObject({ pregunta: expect.stringMatching(/Cuánto tiempo llevas entrenando/), respuesta: '2 años con pesas' })
+  expect(respuestas.some(r => /Marcas o pesos actuales|Cuántas horas duermes/.test(r.pregunta))).toBe(false)
   expect(fake.rows('waivers')).toMatchObject([{ clientId: ids.client, signed_name: 'María García' }])
   // Sus datos básicos fueron a su ficha, y el peso es su primer pesaje
   expect(client).toMatchObject({ fechanacimiento: '1995-03-10', altura: 168.5, weight: 64.2, genero: null })

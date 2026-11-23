@@ -11,21 +11,21 @@ describe('respuestasDeAdmision', () => {
     ])
   })
 
-  it('las opcionales nuevas no aparecen si no se contestan (ni con solo espacios)', () => {
-    const r = respuestasDeAdmision({}, { experiencia: '   ', marcas: '' })
-    const preguntas = r.map(x => x.pregunta)
-    expect(preguntas).not.toContain(etiqueta('experiencia'))
-    expect(preguntas).not.toContain(etiqueta('marcas'))
-    expect(preguntas).not.toContain(etiqueta('sueno'))
+  it('la opcional no aparece si no se contesta (ni con solo espacios)', () => {
+    const r = respuestasDeAdmision({}, { experiencia: '   ' })
+    expect(r.map(x => x.pregunta)).not.toContain(etiqueta('experiencia'))
   })
 
-  it('las contestadas se guardan sin espacios sobrantes, detrás de las de siempre', () => {
-    const r = respuestasDeAdmision({ 0: false, 4: true }, { marcas: ' Sentadilla 100 kg ', sueno: '6' })
+  it('la contestada se guarda sin espacios sobrantes, detrás de las de siempre', () => {
+    const r = respuestasDeAdmision({ 0: false, 4: true }, { experiencia: ' 2 años con pesas ' })
     expect(r.slice(0, PARQ_QUESTIONS.length).map(x => x.respuesta)).toEqual(['No', 'Sin responder', 'Sin responder', 'Sin responder', 'Sí', 'Sin responder', 'Sin responder'])
-    expect(r.slice(-2)).toEqual([
-      { pregunta: etiqueta('marcas'), respuesta: 'Sentadilla 100 kg' },
-      { pregunta: etiqueta('sueno'), respuesta: '6' },
-    ])
+    expect(r.slice(-1)).toEqual([{ pregunta: etiqueta('experiencia'), respuesta: '2 años con pesas' }])
+  })
+
+  it('el registro ya no pregunta por las marcas ni por las horas de sueño (las recoge el cuestionario de programación), aunque llegaran en las respuestas', () => {
+    expect(INTAKE_FREE_QUESTIONS.map(q => q.key)).toEqual(['lesiones', 'objetivos', 'disponibilidad', 'experiencia'])
+    const preguntas = respuestasDeAdmision({}, { experiencia: 'x', marcas: 'Sentadilla 100 kg', sueno: '6' }).map(x => x.pregunta)
+    expect(preguntas.some(p => /Marcas o pesos actuales|Cuántas horas duermes/.test(p))).toBe(false)
   })
 
   it('un «No» a una pregunta de salud no se confunde con no contestada (null)', () => {
