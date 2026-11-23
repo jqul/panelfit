@@ -522,6 +522,11 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
   const motivMsg = resolveTemplate('descanso')
   const restDayMsg = resolveTemplate('racha')
 
+  // Lo que quedó pendiente del registro (cuestionario de programación, espera por alarma, datos básicos): se enseña en Hoy con plan y sin él (ver abajo).
+  const avisosDelRegistro = client && (
+    <Suspense fallback={null}><AvisosDelRegistro clientId={client.id} onAbrirCuestionario={() => setActiveTab('encuesta')} onPendientes={n => abrirCuestionarioLaPrimeraVez(client.id, n)} /></Suspense>
+  )
+
   // Hoy · Entreno · Progreso · (Dieta, solo si tiene) · Más: con cuatro pestañas la barra respira y nada se esconde.
   const TABS = [
     { id: 'hoy' as Tab,      icon: Home,           label: 'Hoy' },
@@ -583,7 +588,7 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                       restDayMsg={restDayMsg} brandBg={brandBg} brandColor={brandColor}
                       seriesTypes={seriesTypes}
                     />
-                    <Suspense fallback={null}><AvisosDelRegistro clientId={client.id} onAbrirCuestionario={() => setActiveTab('encuesta')} onPendientes={n => abrirCuestionarioLaPrimeraVez(client.id, n)} /></Suspense>
+                    {avisosDelRegistro}
                     <Suspense fallback={null}><TareasHoy clientId={client.id} /></Suspense>
                     {/* Secundario: check-ins, próximas citas, logros y hábitos */}
                     {/* Los id son los destinos de las filas de "Para hoy" */}
@@ -600,7 +605,9 @@ export function ClientView({ token, showEncuesta }: ClientViewProps) {
                     </Suspense>
                     <SelectorDias plan={plan} clientId={client.id} onUpdate={handleDiasUpdate} />
                   </>
-                : <NoPlanView />
+                // Un cliente recién creado todavía no tiene plan, y es justo quien tiene pendiente lo del registro: su cuestionario de programación (que se abre solo la primera vez), la
+                // espera por una señal de alarma y los datos básicos sin guardar. Esos avisos no dependen de que haya plan: van aquí también, encima del «Sin plan asignado».
+                : <>{avisosDelRegistro}<NoPlanView /></>
             )}
             {activeTab === 'entreno' && (
               plan
