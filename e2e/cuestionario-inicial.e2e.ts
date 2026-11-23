@@ -42,7 +42,12 @@ test('se puede elegir el enfoque (rehabilitación) y, con «No enviar», no se c
   await crearCliente(page, 'Rosa', 'programacion-rehabilitacion')
   await expect.poll(() => fake.rows('survey_schedules').length).toBe(1)
   expect(fake.rows('survey_templates').map(t => t.name)).toEqual(['Programación inicial: rehabilitación'])
+  // Al crear el cliente se abre el asistente «Primer cliente» (carga diferida), y aparece DESPUÉS de que el servidor reciba el envío. Hay que esperar a que exista para cerrarlo: un
+  // Escape suelto puede llegar antes, no cerrar nada, y el asistente aparecer justo después y tapar el siguiente «Nuevo cliente» (el clic se queda esperando hasta el límite del test).
+  const asistente = page.getByRole('dialog', { name: 'Primer cliente' })
+  await expect(asistente).toBeVisible()
   await page.keyboard.press('Escape')
+  await expect(asistente).toHaveCount(0)
 
   await crearCliente(page, 'Luis', '')
   await expect.poll(() => fake.rows('clientes').some(c => c.name === 'Luis')).toBe(true)
