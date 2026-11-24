@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { faltan, respondida, type Pregunta } from '../../lib/cuestionarios'
+import { faltan, visibles, respuestasActivas, type Pregunta } from '../../lib/cuestionarios'
 import { toast } from '../shared/Toast'
 
 /** Lo que devuelve `encuestas_pendientes()`: una encuesta que le toca responder al cliente. */
@@ -86,6 +86,8 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
   useEffect(() => { try { if (Object.keys(respuestas).length) localStorage.setItem(claveAvance, JSON.stringify(respuestas)) } catch { /* sin almacenamiento: sin avance guardado */ } }, [respuestas, claveAvance])
   const [enviando, setEnviando] = useState(false)
   const [marcarFaltan, setMarcarFaltan] = useState(false)
+  // Las preguntas de seguimiento («si has dicho que sí, ¿dónde?») solo salen si se contestó lo que las abre; con «No» desaparecen y lo escrito en ellas deja de contar
+  const aMostrar = visibles(cuestionario.preguntas, respuestas)
   const pendientes = faltan(cuestionario.preguntas, respuestas)
 
   const enviar = async () => {
@@ -95,7 +97,7 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
       return
     }
     setEnviando(true)
-    const answers = Object.fromEntries(Object.entries(respuestas).filter(([, v]) => respondida(v)))
+    const answers = respuestasActivas(cuestionario.preguntas, respuestas)
     const { error } = await supabase.from('survey_responses').insert({
       id: `resp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       schedule_id: cuestionario.schedule_id, template_id: cuestionario.template_id,
@@ -109,7 +111,7 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
 
   return (
     <div className="space-y-3">
-      {cuestionario.preguntas.map((q, i) => {
+      {aMostrar.map((q, i) => {
         const falta = marcarFaltan && pendientes.includes(q)
         return (
           <div key={q.id} id={`preg-${q.id}`} className={`bg-card border rounded-2xl p-4 space-y-3 ${falta ? 'border-warn' : 'border-border'}`}>

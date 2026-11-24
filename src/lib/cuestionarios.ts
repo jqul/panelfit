@@ -11,6 +11,11 @@ export interface Pregunta {
   required?: boolean
   /** Número: unidad que se enseña al lado ("kg", "h"). */
   unit?: string
+  /**
+   * Pregunta de seguimiento: solo se enseña (y solo cuenta) cuando OTRA pregunta Sí/No de este mismo cuestionario tiene esa respuesta
+   * («¿Tienes alguna molestia?» → si Sí, «¿dónde y desde cuándo?»). Sin este campo, la pregunta se enseña siempre, como siempre.
+   */
+  mostrarSi?: { id: string; es: boolean }
 }
 
 export const TIPOS: { id: TipoPregunta; icono: string; nombre: string; nueva: string }[] = [
@@ -41,9 +46,54 @@ export function respondida(v: unknown): boolean {
   return true
 }
 
-/** Las obligatorias que faltan, en el orden del cuestionario. */
+/** La respuesta de una pregunta Sí/No como booleano, o null si no está contestada (o no es un Sí/No). Acepta lo que ya se guarda: true/false, 'true'/'false' y 'Sí'/'No'. */
+const siNo = (v: unknown): boolean | null => v === true || v === 'true' || v === 'Sí' ? true : v === false || v === 'false' || v === 'No' ? false : null
+
+/**
+ * Las preguntas que hay que enseñar con estas respuestas, en su orden. Una pregunta con `mostrarSi` aparece solo si la pregunta de la que depende está visible Y contestada con
+ * esa respuesta: con «No» (o sin contestar) no aparece, y si esa a su vez depende de otra, se encadena. Si la pregunta de la que depende no existe en el cuestionario (el entrenador
+ * la borró) o no es de Sí/No, la condición no se aplica y la pregunta se enseña: nunca se esconde algo por una referencia rota. Lo mismo si las condiciones se citan entre sí en
+ * círculo (cada una exigiría que la otra estuviera contestada y ninguna podría aparecer jamás).
+ */
+export function visibles(preguntas: Pregunta[], respuestas: Record<string, unknown>): Pregunta[] {
+  const porId = new Map(preguntas.map(q => [q.id, q]))
+  // ¿Siguiendo las condiciones de esta pregunta se vuelve a pasar por una que ya se ha visto? (también si depende de sí misma)
+  const enCirculo = (q: Pregunta): boolean => {
+    const vistas = new Set<string>()
+    for (let p: Pregunta | undefined = q; p?.mostrarSi; p = porId.get(p.mostrarSi.id)) {
+      if (vistas.has(p.id)) return true
+      vistas.add(p.id)
+    }
+    return false
+  }
+  const memo = new Map<string, boolean>()
+  const visible = (q: Pregunta): boolean => {
+    const c = q.mostrarSi
+    if (!c) return true
+    const base = porId.get(c.id)
+    if (!base || base.type !== 'yesno' || enCirculo(q)) return true
+    const antes = memo.get(q.id)
+    if (antes !== undefined) return antes
+    const r = visible(base) && siNo(respuestas[base.id]) === c.es
+    memo.set(q.id, r)
+    return r
+  }
+  return preguntas.filter(visible)
+}
+
+/** Las obligatorias que faltan, en el orden del cuestionario. Una pregunta escondida por su condición no se exige. */
 export function faltan(preguntas: Pregunta[], respuestas: Record<string, unknown>): Pregunta[] {
-  return preguntas.filter(q => q.required && !respondida(respuestas[q.id]))
+  return visibles(preguntas, respuestas).filter(q => q.required && !respondida(respuestas[q.id]))
+}
+
+/**
+ * Lo que se envía de verdad: las respuestas contestadas de las preguntas que se enseñan. Lo que se escribió en una pregunta de seguimiento que luego se escondió (de «Sí» a «No»)
+ * NO cuenta ni se guarda. Lo que no corresponde a ninguna pregunta del cuestionario se conserva como hasta ahora.
+ */
+export function respuestasActivas(preguntas: Pregunta[], respuestas: Record<string, unknown>): Record<string, unknown> {
+  const escondidas = new Set(preguntas.map(q => q.id))
+  for (const q of visibles(preguntas, respuestas)) escondidas.delete(q.id)
+  return Object.fromEntries(Object.entries(respuestas).filter(([id, v]) => !escondidas.has(id) && respondida(v)))
 }
 
 /** La respuesta como texto, para la lista de respuestas, WhatsApp o la hoja impresa. */

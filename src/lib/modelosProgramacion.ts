@@ -5,7 +5,7 @@
 // Estructura: un NÚCLEO común (objetivo, experiencia, tiempo y material, preferencias, molestias, hábitos y nutrición básica) + un BLOQUE por enfoque
 // (fuerza, composición corporal, rehabilitación). El entrenador elige cuál mandar al crear el cliente y los edita al 100 % en Encuestas: son una
 // plantilla suya, no un formulario fijo. Los ids son estables y los mismos del núcleo en todos los modelos: es lo que lee quien prepara el borrador.
-// Lo que depende de otra respuesta («si sí, ¿dónde?») va como texto opcional a continuación: las encuestas no tienen condicionales.
+// Lo que depende de otra respuesta Sí/No («si sí, ¿dónde?») va justo a continuación con `mostrarSi`: solo aparece (y solo cuenta) si se contesta lo que la abre (lib/cuestionarios).
 // No es un diagnóstico ni una valoración clínica: en rehabilitación se recoge lo necesario para saber si hay que parar y que lo vea un profesional.
 
 import type { Pregunta } from './cuestionarios'
@@ -39,7 +39,7 @@ export const NUCLEO_PROGRAMACION: Pregunta[] = [
   q('prioridad', 'multi', '¿Hay músculos que quieras priorizar?', { options: ['Pecho', 'Espalda', 'Hombros', 'Brazos', 'Cuádriceps', 'Femoral y glúteo', 'Abdomen y core', 'Gemelos', 'Ninguno en especial'] }),
   // Molestias y salud (lo que cambia el programa; el cuestionario de salud ya lo hizo en el registro)
   q('molestias', 'yesno', '¿Tienes ahora alguna molestia o dolor al entrenar o en el día a día, o has tenido una lesión importante?', { required: true }),
-  q('molestias_detalle', 'text', 'Si has contestado que sí: ¿dónde, desde cuándo, qué la empeora y qué movimientos evitas?'),
+  q('molestias_detalle', 'text', 'Si has contestado que sí: ¿dónde, desde cuándo, qué la empeora y qué movimientos evitas?', { mostrarSi: { id: 'molestias', es: true } }),
   q('condiciones', 'text', '¿Alguna condición médica, medicación o cirugía reciente que debamos tener en cuenta? Si no, déjalo en blanco.'),
   // Hábitos
   q('sueno', 'number', '¿Cuántas horas duermes de media?', { unit: 'h' }),
