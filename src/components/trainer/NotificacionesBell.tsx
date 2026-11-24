@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { Bell, Check, CheckCheck, X, Dumbbell, AlertTriangle, Calendar, MessageCircle, UserPlus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { isDemoTrainerId } from '../../lib/demoIds'
@@ -35,6 +35,21 @@ export function NotificacionesBell({ trainerId, onSelectClient, onVerContactos }
   const [notifs, setNotifs] = useState<Notificacion[]>([])
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const botonRef = useRef<HTMLButtonElement>(null)
+  // La campana vive en el encabezado de la barra lateral (208 px, pegada a la izquierda de la pantalla, en escritorio y en el menú del móvil): un desplegable de 320 px alineado
+  // a la derecha del icono se salía por la izquierda y los avisos salían cortados. Va fijo en la pantalla, pegado a su borde izquierdo y justo debajo de la campana, y nunca más
+  // ancho que la pantalla.
+  const [pos, setPos] = useState<{ top: number; width: number } | null>(null)
+  useLayoutEffect(() => {
+    if (!open) return
+    const colocar = () => {
+      const caja = botonRef.current?.getBoundingClientRect()
+      if (caja) setPos({ top: caja.bottom + 8, width: Math.min(320, window.innerWidth - 16) })
+    }
+    colocar()
+    window.addEventListener('resize', colocar)
+    return () => window.removeEventListener('resize', colocar)
+  }, [open])
   // Nombre de canal único por instancia: el sidebar de escritorio sigue montado
   // en el DOM (solo oculto con CSS) cuando se abre el menú móvil, así que dos
   // instancias de este componente pueden coexistir y no pueden compartir canal.
@@ -104,7 +119,7 @@ export function NotificacionesBell({ trainerId, onSelectClient, onVerContactos }
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(o => !o)} aria-label={unread > 0 ? `Notificaciones (${unread} sin leer)` : 'Notificaciones'}
+      <button ref={botonRef} onClick={() => setOpen(o => !o)} aria-label={unread > 0 ? `Notificaciones (${unread} sin leer)` : 'Notificaciones'}
         className="relative p-2 rounded-xl hover:bg-bg-alt text-muted hover:text-ink transition-colors">
         <Bell className="w-5 h-5" />
         {unread > 0 && (
@@ -115,7 +130,7 @@ export function NotificacionesBell({ trainerId, onSelectClient, onVerContactos }
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden" style={{ maxHeight: '70vh' }}>
+        <div role="region" aria-label="Notificaciones" className="fixed left-2 bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden" style={{ top: pos?.top, width: pos?.width, maxHeight: '70vh' }}>
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
             <p className="text-sm font-bold">Notificaciones {unread > 0 && <span className="text-warn">({unread})</span>}</p>
