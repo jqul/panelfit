@@ -2,7 +2,8 @@
 // «Programación inicial»: lo que hace falta saber de alguien para preparar su primer programa sin adivinar. El PAR-Q y los datos
 // de salud se piden aparte en el alta del cliente (lib/intakeQuestions): ante una señal de alarma ahí no se programa, se deriva
 // a un profesional sanitario. Aquí NO se pide nada sensible que no cambie el programa. Las preguntas que dependen de otra
-// («si sí, ¿dónde y desde cuándo?») van como texto opcional a continuación: las encuestas no tienen condicionales.
+// («si sí, ¿dónde y desde cuándo?») van como texto opcional a continuación (este modelo, el del formulario público, no usa todavía las preguntas de seguimiento
+// condicionales `mostrarSi` de lib/cuestionarios; los cuestionarios de programación del cliente, lib/modelosProgramacion, sí).
 
 import type { Pregunta } from './cuestionarios'
 
