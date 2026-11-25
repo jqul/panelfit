@@ -18,6 +18,7 @@
 
 - **Salud:** cuestionario de salud al registrarse (`checkins`, tipo `intake`), dolor y molestias (`registros_dolor`), lesiones, peso y composición corporal (`registros_peso`, `valoraciones`), estado de recuperación (`readiness_checkins`), registros de entrenamiento (`registros`), notas del entrenador (`clientes.notas_privadas`).
 - **Imagen:** fotos de progreso (`foto_sessions`, bucket privado `media`) y vídeos de técnica (`client-videos`, `exercise-videos`).
+- **Archivos que sube el cliente en un cuestionario** (su rutina actual, programas anteriores: PDF, imagen, Excel, CSV o texto): tabla `archivos_cliente` y bucket privado `cuestionario-archivos`. Pueden contener datos de salud o personales, así que entran en la exportación y en el borrado. Diseño en `docs/archivos-cuestionarios.md`.
 - **Identificación y contacto:** nombre, email de la cuenta, teléfono.
 
 La lista completa de tablas con datos de un cliente está en `client_data_tables()`
@@ -38,7 +39,7 @@ El descargo de responsabilidad (`waivers`) es otra cosa: no sustituye al consent
 
 | Derecho | Cliente | Entrenador |
 | --- | --- | --- |
-| Acceso y portabilidad (art. 15 y 20) | Más > Tus datos > Descargar mis datos (JSON con todas sus tablas y enlaces privados a sus fotos y vídeos, válidos 7 días) | Cliente > Configuración > Datos personales > Exportar |
+| Acceso y portabilidad (art. 15 y 20) | Más > Tus datos > Descargar mis datos (JSON con todas sus tablas y enlaces privados a sus fotos, vídeos y archivos de cuestionarios, válidos 7 días) | Cliente > Configuración > Datos personales > Exportar |
 | Supresión (art. 17) | Más > Tus datos > Pedir que se borren mis datos | Cliente > Configuración > Datos personales > Borrar todos sus datos, o el botón de eliminar de la lista de clientes: borra ficheros de Storage, todas las tablas y la cuenta de acceso |
 | Retirar el consentimiento | Fotos: interruptor. Salud: pedir el borrado | Ve el estado del consentimiento en la misma sección |
 | Rectificación | A través de su entrenador | Edita la ficha y los registros |
@@ -47,6 +48,7 @@ Decisiones que conviene revisar:
 - La exportación **del cliente** no incluye las notas privadas (ni las de la ficha, tabla `notas_privadas_cliente`, ni el diario de decisiones, ni `coachNotes` dentro de las copias antiguas de `plan_history`), alertas ni etiquetas que el entrenador guarda sobre él; la del **entrenador** sí lo incluye todo. Si un cliente reclama sus notas, el entrenador las entrega desde su exportación.
 - El borrado es total y no se puede deshacer. Queda una constancia sin datos personales en `registro_borrados` (id del cliente, entrenador, fecha y número de filas por tabla).
 - La cuenta de acceso del cliente se borra solo si no es también la cuenta de un entrenador real ni de otro cliente.
+- **Archivos de cuestionarios:** no se pueden borrar desde el navegador (el depósito no tiene política de borrado, a propósito: así nadie puede quitar lo que ya envió una respuesta). Los borra la función de borde `archivos-cliente` con la Storage API, **antes** que los datos; si falla, no se borra nada más (como con las fotos). Si queda algún objeto sin fila, la limpieza diaria lo recoge a las 24 h. La exportación de un compañero de equipo o del super admin lista los archivos (metadatos) pero no genera enlaces: hoy solo el entrenador dueño y el propio cliente leen los archivos, igual que las respuestas.
 
 ## Solicitud de programación inicial (personas que aún no son clientes)
 
@@ -70,6 +72,9 @@ Decisiones que conviene revisar:
 | Prueba del consentimiento | Mientras se traten los datos; al borrar al cliente se borra con él |
 | Constancia de borrados | Sin datos personales; se conserva |
 | Copias locales en el dispositivo del cliente | 30 días y se borran al cerrar sesión (ya implementado) |
+| Archivos de cuestionarios de un cliente activo | Se conservan |
+| Archivos de cuestionarios de un cliente archivado | **Automatizado** (migración 20261125000010): aviso al entrenador a los ~11 meses y borrado a los 12, siempre con el aviso de al menos 30 días antes; si se desarchiva, se anula |
+| Archivos subidos que nunca se envían | **Automatizado:** a las 24 h si no llegaron a comprobarse, a los 30 días si sí |
 
 Falta una lista de "clientes inactivos más de 24 meses" para que el entrenador decida;
 no se ha automatizado ningún borrado a propósito.
