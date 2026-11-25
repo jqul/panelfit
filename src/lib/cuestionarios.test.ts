@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { TIPOS, nuevaPregunta, respondida, faltan, visibles, respuestasActivas, textoRespuesta, hojaImprimible, type Pregunta } from './cuestionarios'
+import { TIPOS, nuevaPregunta, respondida, faltan, visibles, incoherentes, respuestasActivas, respuestasSinPregunta, textoSuelto, PREGUNTAS_RETIRADAS, textoRespuesta, hojaImprimible, type Pregunta } from './cuestionarios'
 import { summarizeSurvey } from './surveyResults'
 
 describe('tipos de pregunta', () => {
@@ -143,6 +143,68 @@ describe('preguntas de seguimiento (mostrarSi)', () => {
   })
 })
 
+describe('regla entre dos preguntas (noMenorQue)', () => {
+  // La franja de días: el máximo no puede ser menor que el mínimo (las dos de elección entre '1' y '7', que se guardan como texto)
+  const dias = ['1', '2', '3', '4', '5', '6', '7']
+  const franja: Pregunta[] = [
+    { id: 'min', type: 'choice', label: 'Mínimo de días', required: true, options: dias },
+    { id: 'max', type: 'choice', label: 'Máximo de días', required: true, options: dias, noMenorQue: { id: 'min', mensaje: 'El máximo no puede ser menor que el mínimo' } },
+  ]
+  const ids = (xs: { pregunta: Pregunta }[]) => xs.map(x => x.pregunta.id)
+
+  it('máximo menor que el mínimo: incoherente, con su mensaje', () => {
+    const r = incoherentes(franja, { min: '4', max: '3' })
+    expect(ids(r)).toEqual(['max'])
+    expect(r[0].mensaje).toBe('El máximo no puede ser menor que el mínimo')
+  })
+
+  it('máximo igual o mayor que el mínimo: coherente (también en los extremos 1 y 7)', () => {
+    for (const [min, max] of [['3', '3'], ['3', '4'], ['1', '7'], ['1', '1'], ['7', '7'], ['2', '7']]) expect(incoherentes(franja, { min, max }), `${min}-${max}`).toEqual([])
+  })
+
+  it('compara como NÚMEROS, no como texto («10» no es menor que «9»)', () => {
+    const amplia: Pregunta[] = [
+      { id: 'a', type: 'choice', label: 'A', options: ['9', '10'] },
+      { id: 'b', type: 'choice', label: 'B', options: ['9', '10'], noMenorQue: { id: 'a', mensaje: 'no' } },
+    ]
+    expect(incoherentes(amplia, { a: '9', b: '10' })).toEqual([])
+    expect(ids(incoherentes(amplia, { a: '10', b: '9' }))).toEqual(['b'])
+  })
+
+  it('con una sin contestar no hay incoherencia (eso lo pide faltan), y números de verdad o con coma también valen', () => {
+    expect(incoherentes(franja, {})).toEqual([])
+    expect(incoherentes(franja, { min: '5' })).toEqual([])
+    expect(incoherentes(franja, { max: '2' })).toEqual([])
+    expect(faltan(franja, { min: '5' }).map(p => p.id)).toEqual(['max'])
+    const numeros: Pregunta[] = [{ id: 'a', type: 'number', label: 'A' }, { id: 'b', type: 'number', label: 'B', noMenorQue: { id: 'a', mensaje: 'no' } }]
+    expect(ids(incoherentes(numeros, { a: 5, b: 3 }))).toEqual(['b'])
+    expect(ids(incoherentes(numeros, { a: '5,5', b: '5,4' }))).toEqual(['b'])
+    expect(incoherentes(numeros, { a: 0, b: 0 })).toEqual([])
+  })
+
+  it('una respuesta que no es un número no se compara (no inventa un error)', () => {
+    expect(incoherentes(franja, { min: 'muchos', max: '2' })).toEqual([])
+    expect(incoherentes(franja, { min: true, max: '2' })).toEqual([])
+    expect(incoherentes(franja, { min: '4', max: [] })).toEqual([])
+  })
+
+  it('si la pregunta de la que depende no existe o no se ve, la regla no se aplica', () => {
+    const rota: Pregunta[] = [{ id: 'max', type: 'choice', label: 'Máx', options: dias, noMenorQue: { id: 'no-existe', mensaje: 'x' } }]
+    expect(incoherentes(rota, { max: '1' })).toEqual([])
+    const escondida: Pregunta[] = [
+      { id: 'sino', type: 'yesno', label: '¿Entrenas?' },
+      { id: 'min', type: 'choice', label: 'Mín', options: dias, mostrarSi: { id: 'sino', es: true } },
+      { id: 'max', type: 'choice', label: 'Máx', options: dias, noMenorQue: { id: 'min', mensaje: 'x' } },
+    ]
+    expect(incoherentes(escondida, { sino: false, min: '6', max: '2' })).toEqual([]) // el mínimo está escondido: no cuenta
+    expect(ids(incoherentes(escondida, { sino: true, min: '6', max: '2' }))).toEqual(['max'])
+  })
+
+  it('un cuestionario sin reglas (como todos los de antes) no tiene nunca incoherencias', () => {
+    expect(incoherentes([{ id: 'a', type: 'choice', label: 'A', options: ['1', '2'] }, { id: 'b', type: 'choice', label: 'B', options: ['1', '2'] }], { a: '2', b: '1' })).toEqual([])
+  })
+})
+
 describe('hoja para imprimir', () => {
   const ps: Pregunta[] = [{ id: 'q1', type: 'short', label: 'Objetivo' }, { id: 'q2', type: 'yesno', label: '¿Lesión?' }]
 
@@ -159,6 +221,48 @@ describe('hoja para imprimir', () => {
     expect(html).not.toContain('<script>')
     expect(html).not.toContain('<img')
     expect(html).toContain('&lt;script&gt;')
+  })
+})
+
+describe('respuestas de preguntas que ya no están en la plantilla', () => {
+  const ps: Pregunta[] = [{ id: 'dias_min', type: 'choice', label: 'Mínimo', options: ['1', '2'] }, { id: 'obj', type: 'short', label: 'Objetivo' }]
+
+  it('devuelve las contestadas que no tienen pregunta, con su enunciado de entonces si se conoce y si no con su clave', () => {
+    const r = respuestasSinPregunta(ps, { dias_min: '2', obj: 'x', dias: '4', rara: 'algo' })
+    expect(r.map(s => s.id)).toEqual(['dias', 'rara'])
+    expect(r[0].etiqueta).toBe(PREGUNTAS_RETIRADAS.dias)
+    expect(r[0].valor).toBe('4')
+    expect(r[1].etiqueta).toBe('rara')
+  })
+
+  it('no devuelve las vacías ni las que sí tienen pregunta, y aguanta answers vacío o nulo', () => {
+    expect(respuestasSinPregunta(ps, { dias: '', otra: [], mas: null, dias_min: '1' })).toEqual([])
+    expect(respuestasSinPregunta(ps, null)).toEqual([])
+    expect(respuestasSinPregunta(ps, undefined)).toEqual([])
+    expect(respuestasSinPregunta(ps, {})).toEqual([])
+  })
+
+  it('una respuesta Sí/No «No» (false) o un 0 sí cuentan: son una respuesta', () => {
+    expect(respuestasSinPregunta(ps, { a: false, b: 0 }).map(s => s.id)).toEqual(['a', 'b'])
+  })
+
+  it('textoSuelto: listas con comas, Sí/No y el resto tal cual', () => {
+    expect(textoSuelto(['a', 'b'])).toBe('a, b')
+    expect(textoSuelto(true)).toBe('Sí')
+    expect(textoSuelto(false)).toBe('No')
+    expect(textoSuelto('4')).toBe('4')
+    expect(textoSuelto(7)).toBe('7')
+  })
+
+  it('la hoja impresa las incluye (escapadas) y sin ellas queda igual que antes', () => {
+    const conHuerfana = hojaImprimible('Cuestionario', ps, [{ cliente: 'Ana', fecha: 0, answers: { dias_min: '2', dias: '4', rara: '<b>x</b>' } }])
+    expect(conHuerfana).toContain(`<dt>${PREGUNTAS_RETIRADAS.dias}</dt><dd>4</dd>`)
+    expect(conHuerfana).toContain('<dt>rara</dt><dd>&lt;b&gt;x&lt;/b&gt;</dd>')
+    expect(conHuerfana).not.toContain('<b>x</b>')
+    const sin = hojaImprimible('Cuestionario', ps, [{ cliente: 'Ana', fecha: 0, answers: { dias_min: '2' } }])
+    expect(sin).toContain('<dt>Mínimo</dt><dd>2</dd>')
+    expect(sin).not.toContain('PREGUNTAS_RETIRADAS')
+    expect(sin.match(/<dt>/g)!.length).toBe(ps.length)
   })
 })
 

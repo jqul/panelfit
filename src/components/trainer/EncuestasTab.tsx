@@ -5,7 +5,7 @@ import { ActionMenu } from '../shared/ActionMenu'
 import type { ModeloEncuesta } from '../../lib/modelosEncuesta'
 import { TODOS_LOS_MODELOS } from '../../lib/modelosProgramacion'
 import { summarizeSurvey, describeSchedule, groupSchedules } from '../../lib/surveyResults'
-import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, hojaImprimible, imprimir, type Pregunta } from '../../lib/cuestionarios'
+import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, respuestasSinPregunta, textoSuelto, hojaImprimible, imprimir, type Pregunta } from '../../lib/cuestionarios'
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
@@ -299,6 +299,13 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
               </div>
             )
           })}
+          {/* Lo que contestó a preguntas que ya no están en la plantilla (se editó o se sustituyó la pregunta) sigue siendo suyo: no se pierde de vista */}
+          {respuestasSinPregunta(template.questions, response.answers).map(s => (
+            <div key={`sin-${s.id}`} className="px-4 py-2.5 bg-bg-alt/40">
+              <p className="text-xs text-muted mb-1">{s.etiqueta} <span className="italic">· ya no está en este cuestionario</span></p>
+              <p className="text-sm whitespace-pre-wrap font-semibold">{textoSuelto(s.valor)}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>
