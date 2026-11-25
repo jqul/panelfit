@@ -16,6 +16,11 @@ export interface Pregunta {
    * («¿Tienes alguna molestia?» → si Sí, «¿dónde y desde cuándo?»). Sin este campo, la pregunta se enseña siempre, como siempre.
    */
   mostrarSi?: { id: string; es: boolean }
+  /**
+   * Regla entre dos preguntas de respuesta numérica (de elección con números, de número o de escala): esta no puede ser MENOR que la de `id` («máximo de días por semana» no menor
+   * que el «mínimo»). Si no se cumple, `mensaje` es lo que se le dice a quien contesta y no se puede enviar. Sin este campo no hay ninguna regla.
+   */
+  noMenorQue?: { id: string; mensaje: string }
 }
 
 export const TIPOS: { id: TipoPregunta; icono: string; nombre: string; nueva: string }[] = [
@@ -86,6 +91,29 @@ export function faltan(preguntas: Pregunta[], respuestas: Record<string, unknown
   return visibles(preguntas, respuestas).filter(q => q.required && !respondida(respuestas[q.id]))
 }
 
+const comoNumero = (v: unknown): number | null => {
+  if (!respondida(v) || typeof v === 'boolean') return null
+  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Las preguntas que se ven y cuya respuesta incumple su regla `noMenorQue` frente a otra, con el mensaje que hay que enseñarles. Solo se compara cuando LAS DOS están contestadas con
+ * un número y se ven: una sin contestar la pide `faltan`, y si la pregunta de la que depende no existe o no se ve (la borró el entrenador), la regla no se aplica.
+ */
+export function incoherentes(preguntas: Pregunta[], respuestas: Record<string, unknown>): { pregunta: Pregunta; mensaje: string }[] {
+  const aMostrar = visibles(preguntas, respuestas)
+  const vistas = new Set(aMostrar.map(q => q.id))
+  const out: { pregunta: Pregunta; mensaje: string }[] = []
+  for (const q of aMostrar) {
+    const regla = q.noMenorQue
+    if (!regla || !vistas.has(regla.id)) continue
+    const esta = comoNumero(respuestas[q.id]), otra = comoNumero(respuestas[regla.id])
+    if (esta !== null && otra !== null && esta < otra) out.push({ pregunta: q, mensaje: regla.mensaje })
+  }
+  return out
+}
+
 /**
  * Lo que se envía de verdad: las respuestas contestadas de las preguntas que se enseñan. Lo que se escribió en una pregunta de seguimiento que luego se escondió (de «Sí» a «No»)
  * NO cuenta ni se guarda. Lo que no corresponde a ninguna pregunta del cuestionario se conserva como hasta ahora.
@@ -95,6 +123,26 @@ export function respuestasActivas(preguntas: Pregunta[], respuestas: Record<stri
   for (const q of visibles(preguntas, respuestas)) escondidas.delete(q.id)
   return Object.fromEntries(Object.entries(respuestas).filter(([id, v]) => !escondidas.has(id) && respondida(v)))
 }
+
+/**
+ * Preguntas que YA NO existen en los modelos pero de las que quedan respuestas guardadas (con su texto de entonces), para poder enseñarlas con su enunciado y no solo con su clave.
+ * `dias`: una sola cifra de días por semana; hoy se pide una franja (`dias_min` y `dias_max`).
+ */
+export const PREGUNTAS_RETIRADAS: Record<string, string> = {
+  dias: '¿Cuántos días por semana puedes entrenar de verdad? (pregunta anterior: una sola cifra)',
+}
+
+/**
+ * Las respuestas guardadas a preguntas que ya NO están en la plantilla (porque el entrenador la editó, o porque se sustituyó la pregunta por otra): siguen siendo del cliente y no
+ * se pueden dar por perdidas solo porque la plantilla cambie. Solo las contestadas, con el enunciado de entonces si se conoce y, si no, con su clave.
+ */
+export function respuestasSinPregunta(preguntas: Pregunta[], answers: Record<string, unknown> | null | undefined): { id: string; etiqueta: string; valor: unknown }[] {
+  const ids = new Set(preguntas.map(q => q.id))
+  return Object.entries(answers ?? {}).filter(([id, v]) => !ids.has(id) && respondida(v)).map(([id, valor]) => ({ id, etiqueta: PREGUNTAS_RETIRADAS[id] ?? id, valor }))
+}
+
+/** Una respuesta suelta (sin su pregunta delante, así que sin tipo) como texto: listas con comas, Sí/No, y lo demás tal cual. */
+export const textoSuelto = (v: unknown): string => Array.isArray(v) ? v.join(', ') : typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
 
 /** La respuesta como texto, para la lista de respuestas, WhatsApp o la hoja impresa. */
 export function textoRespuesta(q: Pregunta, v: unknown): string {
@@ -123,7 +171,7 @@ export function hojaImprimible(titulo: string, preguntas: Pregunta[], respuestas
     <section>
       <h2>${esc(r.cliente)}</h2>
       <p class="fecha">${esc(new Date(r.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</p>
-      <dl>${preguntas.map(q => `<dt>${esc(q.label)}</dt><dd>${esc(textoRespuesta(q, r.answers?.[q.id]))}</dd>`).join('')}</dl>
+      <dl>${preguntas.map(q => `<dt>${esc(q.label)}</dt><dd>${esc(textoRespuesta(q, r.answers?.[q.id]))}</dd>`).join('')}${respuestasSinPregunta(preguntas, r.answers).map(s => `<dt>${esc(s.etiqueta)}</dt><dd>${esc(textoSuelto(s.valor))}</dd>`).join('')}</dl>
     </section>`).join('')
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${esc(titulo)}</title><style>
     body{font:14px/1.5 system-ui,sans-serif;color:#1a1814;margin:32px;max-width:720px}

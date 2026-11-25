@@ -13,6 +13,7 @@ import { MODELO_PROGRAMACION_INICIAL, type ModeloEncuesta } from './modelosEncue
 
 const q = (id: string, type: Pregunta['type'], label: string, extra: Partial<Pregunta> = {}): Pregunta => ({ id, type, label, required: false, ...extra })
 const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+const DIAS_POR_SEMANA = ['1', '2', '3', '4', '5', '6', '7']
 
 /** Lo que recoge el registro (no se vuelve a preguntar aquí). */
 export const DATOS_DEL_REGISTRO = ['genero', 'fecha_nacimiento', 'altura', 'peso']
@@ -27,7 +28,11 @@ export const NUCLEO_PROGRAMACION: Pregunta[] = [
   q('esfuerzo', 'choice', '¿Sabes medir el esfuerzo con el RIR o el RPE (cuántas repeticiones te quedan en la recámara)?', { options: ['Sí, lo uso', 'Lo he oído, pero no lo uso', 'No sé qué es'] }),
   q('marcas', 'text', 'Pesos o marcas que conozcas (sentadilla, press banca, peso muerto, dominadas…), aunque sean aproximados. Si no las sabes, déjalo en blanco.'),
   // Tiempo, lugar y material
-  q('dias', 'choice', '¿Cuántos días por semana puedes entrenar de verdad?', { required: true, options: ['2', '3', '4', '5', '6'] }),
+  // Los días no son una cifra fija: unas semanas se entrena 3 y otras 4. Se pide la franja (mínimo y máximo, de 1 a 7) y se comprueba que el máximo no sea menor que el mínimo.
+  q('dias_min', 'choice', '¿Cuántos días por semana puedes entrenar como MÍNIMO, aunque sea una semana complicada?', { required: true, options: DIAS_POR_SEMANA }),
+  q('dias_max', 'choice', '¿Y cuántos como MÁXIMO, en una semana buena?', {
+    required: true, options: DIAS_POR_SEMANA, noMenorQue: { id: 'dias_min', mensaje: 'El máximo no puede ser menor que el mínimo. Cambia uno de los dos.' },
+  }),
   q('dias_concretos', 'multi', '¿Qué días te vienen mejor?', { options: DIAS_SEMANA }),
   q('duracion', 'choice', '¿Cuánto tiempo tienes por sesión?', { required: true, options: ['Menos de 45 min', '45-60 min', '60-75 min', '75-90 min', 'Más de 90 min'] }),
   q('horario', 'choice', '¿A qué hora sueles entrenar?', { options: ['Por la mañana', 'A mediodía', 'Por la tarde', 'Por la noche', 'Es muy variable'] }),

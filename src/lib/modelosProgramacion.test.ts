@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MODELO_PROGRAMACION_INICIAL } from './modelosEncuesta'
 import { DATOS_DEL_REGISTRO, MODELOS_PROGRAMACION, NUCLEO_PROGRAMACION, TODOS_LOS_MODELOS, nombreCorto } from './modelosProgramacion'
@@ -39,13 +41,27 @@ describe('cuestionarios de programación del cliente', () => {
 
   it('el núcleo pide lo necesario para programar: objetivo, experiencia, tiempo, lugar, material, molestias y peso objetivo', () => {
     const obligatorias = NUCLEO_PROGRAMACION.filter(p => p.required).map(p => p.id)
-    expect(obligatorias).toEqual(['objetivo', 'experiencia', 'dias', 'duracion', 'lugar', 'material', 'molestias', 'cambio_peso'])
+    expect(obligatorias).toEqual(['objetivo', 'experiencia', 'dias_min', 'dias_max', 'duracion', 'lugar', 'material', 'molestias', 'cambio_peso'])
+  })
+
+  it('los días por semana son una FRANJA: mínimo y máximo, de 1 a 7, obligatorios, y el máximo no puede ser menor que el mínimo', () => {
+    for (const m of MODELOS_PROGRAMACION) {
+      const min = m.questions.find(p => p.id === 'dias_min'), max = m.questions.find(p => p.id === 'dias_max')
+      expect(min, m.id).toBeDefined(); expect(max, m.id).toBeDefined()
+      expect(m.questions.some(p => p.id === 'dias'), `${m.id}: ya no hay una cifra fija`).toBe(false)
+      for (const p of [min!, max!]) { expect(p.type).toBe('choice'); expect(p.required).toBe(true); expect(p.options).toEqual(['1', '2', '3', '4', '5', '6', '7']) }
+      expect(max!.noMenorQue).toMatchObject({ id: 'dias_min' })
+      expect(max!.noMenorQue!.mensaje.length).toBeGreaterThan(10)
+      // el mínimo va antes que el máximo (se contesta en ese orden) y justo después vienen los días concretos
+      expect(m.questions.findIndex(p => p.id === 'dias_min')).toBeLessThan(m.questions.findIndex(p => p.id === 'dias_max'))
+    }
   })
 
   it('cubre lo mínimo para plantear macros orientativas y no se pasa de largo con lo obligatorio', () => {
     const ids = NUCLEO_PROGRAMACION.map(p => p.id)
     for (const id of ['cambio_peso', 'comidas', 'control_comida', 'dieta_tipo', 'alergias', 'cocina', 'macros', 'pasos', 'trabajo', 'sueno']) expect(ids, id).toContain(id)
-    for (const m of MODELOS_PROGRAMACION) expect(m.questions.filter(p => p.required).length, m.id).toBeLessThanOrEqual(10)
+    // Tope de obligatorias por modelo: 11 (eran 10; la franja de días son DOS obligatorias, mínimo y máximo, en vez de una; el enfoque de rehabilitación añade las suyas)
+    for (const m of MODELOS_PROGRAMACION) expect(m.questions.filter(p => p.required).length, m.id).toBeLessThanOrEqual(11)
   })
 
   it('no repite lo que recoge el registro (género, nacimiento, altura y peso)', () => {
@@ -98,5 +114,31 @@ describe('lista corta del alta de cliente (opcionesCuestionario)', () => {
   it('el de por defecto existe y es el general', () => {
     expect(OPCIONES_CUESTIONARIO.map(o => o.id)).toContain(CUESTIONARIO_POR_DEFECTO)
     expect(CUESTIONARIO_POR_DEFECTO).toBe('programacion-general')
+  })
+})
+
+describe('migración de la franja de días', () => {
+  // La migración 20261124000020 copia a mano las dos preguntas nuevas en las plantillas que ya existen: si el modelo cambia y la migración no, las copias divergen sin avisar.
+  const sql = readFileSync(join(process.cwd(), 'supabase/migrations/20261124000020_cuestionario_franja_dias.sql'), 'utf8')
+  const modelo = MODELOS_PROGRAMACION[0]
+  const min = modelo.questions.find(p => p.id === 'dias_min')!, max = modelo.questions.find(p => p.id === 'dias_max')!
+
+  it('lleva exactamente los enunciados, las opciones y la regla del modelo', () => {
+    expect(sql).toContain(`'label', '${min.label}'`)
+    expect(sql).toContain(`'label', '${max.label}'`)
+    expect(sql).toContain(`'options', '${JSON.stringify(min.options)}'::jsonb`)
+    expect(sql).toContain(`'noMenorQue', jsonb_build_object('id', '${max.noMenorQue!.id}', 'mensaje', '${max.noMenorQue!.mensaje}')`)
+  })
+
+  it('el modelo es el mismo en todos los enfoques (la migración no distingue entre ellos)', () => {
+    for (const m of MODELOS_PROGRAMACION) {
+      expect(m.questions.find(p => p.id === 'dias_min')).toEqual(min)
+      expect(m.questions.find(p => p.id === 'dias_max')).toEqual(max)
+    }
+  })
+
+  it('solo sustituye la pregunta antigua tal como salió del modelo anterior (2-6, obligatoria)', () => {
+    expect(sql).toContain(`'["2","3","4","5","6"]'::jsonb`)
+    expect(sql).toContain('¿Cuántos días por semana puedes entrenar de verdad?')
   })
 })

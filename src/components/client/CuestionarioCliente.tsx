@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { faltan, visibles, respuestasActivas, type Pregunta } from '../../lib/cuestionarios'
+import { faltan, incoherentes, visibles, respuestasActivas, type Pregunta } from '../../lib/cuestionarios'
 import { toast } from '../shared/Toast'
 
 /** Lo que devuelve `encuestas_pendientes()`: una encuesta que le toca responder al cliente. */
@@ -89,11 +89,14 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
   // Las preguntas de seguimiento («si has dicho que sí, ¿dónde?») solo salen si se contestó lo que las abre; con «No» desaparecen y lo escrito en ellas deja de contar
   const aMostrar = visibles(cuestionario.preguntas, respuestas)
   const pendientes = faltan(cuestionario.preguntas, respuestas)
+  // Reglas entre dos respuestas («el máximo de días no puede ser menor que el mínimo»): se avisa en cuanto las dos están contestadas y no se puede enviar así
+  const incoherencias = incoherentes(cuestionario.preguntas, respuestas)
 
   const enviar = async () => {
-    if (pendientes.length) {
+    if (pendientes.length || incoherencias.length) {
       setMarcarFaltan(true)
-      document.getElementById(`preg-${pendientes[0].id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const primera = aMostrar.find(q => pendientes.includes(q) || incoherencias.some(x => x.pregunta === q)) ?? pendientes[0]
+      document.getElementById(`preg-${primera.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
     setEnviando(true)
@@ -113,13 +116,15 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
     <div className="space-y-3">
       {aMostrar.map((q, i) => {
         const falta = marcarFaltan && pendientes.includes(q)
+        const incoherencia = incoherencias.find(x => x.pregunta === q)
         return (
-          <div key={q.id} id={`preg-${q.id}`} className={`bg-card border rounded-2xl p-4 space-y-3 ${falta ? 'border-warn' : 'border-border'}`}>
+          <div key={q.id} id={`preg-${q.id}`} className={`bg-card border rounded-2xl p-4 space-y-3 ${falta || incoherencia ? 'border-warn' : 'border-border'}`}>
             <p className="text-sm font-semibold">
               {i + 1}. {q.label}{q.required && <span className="text-warn" aria-label="obligatoria"> *</span>}
             </p>
             <Respuesta q={q} valor={respuestas[q.id]} onChange={v => setRespuestas(r => ({ ...r, [q.id]: v }))} />
             {falta && <p className="text-xs text-warn font-medium">Esta pregunta es obligatoria</p>}
+            {incoherencia && <p role="alert" className="text-xs text-warn font-medium">{incoherencia.mensaje}</p>}
           </div>
         )
       })}

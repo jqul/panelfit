@@ -97,7 +97,8 @@ test('la primera vez que el cliente entra, el cuestionario se abre solo; el avan
   // Responde lo obligatorio y lo envía
   const g = (nombre: RegExp, opcion: string) => page.getByRole('radiogroup', { name: nombre }).getByRole('radio', { name: opcion, exact: true }).click()
   await g(/cuánto tiempo llevas entrenando/i, 'De 6 meses a 2 años')
-  await g(/cuántos días por semana/i, '3')
+  await g(/como mínimo/i, '3')
+  await g(/como máximo/i, '4')
   await g(/cuánto tiempo tienes por sesión/i, '60-75 min')
   await g(/dónde vas a entrenar/i, 'Gimnasio completo')
   await page.getByRole('group', { name: /con qué material cuentas/i }).getByRole('checkbox', { name: 'Mancuernas' }).click()
@@ -108,7 +109,7 @@ test('la primera vez que el cliente entra, el cuestionario se abre solo; el avan
 
   expect(fake.rows('survey_responses')).toHaveLength(1)
   expect(fake.rows('survey_responses')[0]).toMatchObject({ client_id: ids.client, template_id: 'tmpl-gen', schedule_id: 'sched-1' })
-  expect(fake.rows('survey_responses')[0].answers).toMatchObject({ objetivo: 'Ganar músculo', dias: '3', cambio_peso: 'Mantenerlo', molestias: false })
+  expect(fake.rows('survey_responses')[0].answers).toMatchObject({ objetivo: 'Ganar músculo', dias_min: '3', dias_max: '4', cambio_peso: 'Mantenerlo', molestias: false })
   // Ya no queda el avance guardado en el dispositivo
   expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pf_cuestionario_avance_')))).toEqual([])
 })
