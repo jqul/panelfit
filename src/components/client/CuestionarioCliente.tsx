@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { faltan, incoherentes, visibles, respuestasActivas, type Pregunta } from '../../lib/cuestionarios'
 import { toast } from '../shared/Toast'
+
+// La subida de archivos solo la baja quien tiene una pregunta de ese tipo (presupuesto de tamaño de la app del cliente)
+const ArchivosPregunta = lazy(() => import('./ArchivosPregunta'))
 
 /** Lo que devuelve `encuestas_pendientes()`: una encuesta que le toca responder al cliente. */
 export interface CuestionarioPendiente {
@@ -16,7 +19,7 @@ const opcion = (activa: boolean) =>
   `min-h-[44px] px-3 rounded-xl text-sm font-semibold border transition-colors ${activa ? 'bg-ink text-white border-ink' : 'bg-bg border-border text-ink hover:border-accent'}`
 const campo = 'w-full px-3 py-2.5 bg-bg border border-border rounded-xl outline-none focus:ring-2 focus:ring-accent/20'
 
-function Respuesta({ q, valor, onChange }: { q: Pregunta; valor: any; onChange: (v: any) => void }) {
+function Respuesta({ q, valor, onChange, plantilla, onOcupado }: { q: Pregunta; valor: any; onChange: (v: any) => void; plantilla: string; onOcupado: (ocupado: boolean) => void }) {
   switch (q.type) {
     case 'scale':
       return (
@@ -59,6 +62,12 @@ function Respuesta({ q, valor, onChange }: { q: Pregunta; valor: any; onChange: 
         </div>
       )
     }
+    case 'archivos':
+      return (
+        <Suspense fallback={<p className="text-sm text-muted">Cargando…</p>}>
+          <ArchivosPregunta pregunta={q} valor={valor} templateId={plantilla} onChange={onChange} onOcupado={onOcupado} />
+        </Suspense>
+      )
     case 'number':
       return (
         <div className="flex items-center gap-2">
@@ -85,6 +94,10 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
   })
   useEffect(() => { try { if (Object.keys(respuestas).length) localStorage.setItem(claveAvance, JSON.stringify(respuestas)) } catch { /* sin almacenamiento: sin avance guardado */ } }, [respuestas, claveAvance])
   const [enviando, setEnviando] = useState(false)
+  // Subidas de archivos en marcha: no se envía hasta que terminen (si no, el cuestionario saldría sin ellos)
+  const [ocupadas, setOcupadas] = useState<Record<string, boolean>>({})
+  const subiendo = Object.values(ocupadas).some(Boolean)
+  const marcarOcupada = (id: string, ocupado: boolean) => setOcupadas(o => (!!o[id] === ocupado ? o : { ...o, [id]: ocupado }))
   const [marcarFaltan, setMarcarFaltan] = useState(false)
   // Las preguntas de seguimiento («si has dicho que sí, ¿dónde?») solo salen si se contestó lo que las abre; con «No» desaparecen y lo escrito en ellas deja de contar
   const aMostrar = visibles(cuestionario.preguntas, respuestas)
@@ -93,6 +106,7 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
   const incoherencias = incoherentes(cuestionario.preguntas, respuestas)
 
   const enviar = async () => {
+    if (subiendo) return
     if (pendientes.length || incoherencias.length) {
       setMarcarFaltan(true)
       const primera = aMostrar.find(q => pendientes.includes(q) || incoherencias.some(x => x.pregunta === q)) ?? pendientes[0]
@@ -107,7 +121,11 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
       client_id: clientId, trainer_id: cuestionario.trainer_id, answers, completed_at: Date.now(),
     })
     setEnviando(false)
-    if (error) { toast('No se pudo enviar. Inténtalo de nuevo', 'warn'); return }
+    if (error) {
+      // 22023: la base de datos no acepta alguno de los archivos (ya no existe o no es de esta pregunta)
+      toast(error.code === '22023' ? 'Alguno de tus archivos ya no está disponible. Quítalo y vuelve a subirlo' : 'No se pudo enviar. Inténtalo de nuevo', 'warn')
+      return
+    }
     try { localStorage.removeItem(claveAvance) } catch { /* nada que borrar */ }
     onEnviado()
   }
@@ -122,15 +140,15 @@ export function CuestionarioCliente({ cuestionario, clientId, onEnviado }: { cue
             <p className="text-sm font-semibold">
               {i + 1}. {q.label}{q.required && <span className="text-warn" aria-label="obligatoria"> *</span>}
             </p>
-            <Respuesta q={q} valor={respuestas[q.id]} onChange={v => setRespuestas(r => ({ ...r, [q.id]: v }))} />
+            <Respuesta q={q} valor={respuestas[q.id]} onChange={v => setRespuestas(r => ({ ...r, [q.id]: v }))} plantilla={cuestionario.template_id} onOcupado={ocupado => marcarOcupada(q.id, ocupado)} />
             {falta && <p className="text-xs text-warn font-medium">Esta pregunta es obligatoria</p>}
             {incoherencia && <p role="alert" className="text-xs text-warn font-medium">{incoherencia.mensaje}</p>}
           </div>
         )
       })}
-      <button onClick={enviar} disabled={enviando} style={{ minHeight: '52px' }}
+      <button onClick={enviar} disabled={enviando || subiendo} style={{ minHeight: '52px' }}
         className="w-full flex items-center justify-center gap-2 bg-ink text-white rounded-2xl font-bold text-base disabled:opacity-50">
-        {enviando ? 'Enviando…' : '✓ Enviar respuestas'}
+        {enviando ? 'Enviando…' : subiendo ? 'Espera a que terminen las subidas…' : '✓ Enviar respuestas'}
       </button>
     </div>
   )

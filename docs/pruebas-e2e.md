@@ -29,6 +29,8 @@ de clave duplicada), Auth (registro, entrar, refrescar), RPC, Storage (listar, b
 no entiende **hace fallar la prueba** (`fake.unhandled`), igual que un error de JavaScript sin capturar en la
 página: una consulta nueva de la app no pasa en silencio.
 
+Para los **archivos de los cuestionarios** (`e2e/archivos-cuestionario.e2e.ts`) el simulador guarda los bytes que sube el navegador, aplica la regla del depósito («solo se sube sobre una ruta reservada», sin sobrescribir, solo los tipos admitidos según el tipo del propio archivo) y ejecuta el **manejador y el validador reales** de la función de borde `archivos-cliente` sobre ellos; así una subida con contenido falso, un Excel con macros o un `.heic` sin tipo se prueban de verdad. Las políticas del depósito y los triggers de `survey_responses` no se simulan con RLS: están en `supabase/hardening/tests/run-pglite-archivos.mjs`.
+
 Es una simulación, así que **no prueba**:
 - Las políticas RLS ni las funciones SQL reales (`export_client_data`, `delete_client_data`, el trigger de `entrenadores`...): eso está en `supabase/hardening/tests` con PGlite.
 - El service worker (`serviceWorkers: 'block'`): tiene sus propias pruebas en `src/lib/serviceWorker.test.ts`.

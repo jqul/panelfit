@@ -1,6 +1,8 @@
 import type { BrowserContext, Route, Request } from '@playwright/test'
 import { huellaAdmision } from './huellaServidor'
 import { motivoRevision } from '../../src/lib/coachIa'
+import { manejar as manejarArchivos, type Deps as DepsArchivos } from '../../supabase/functions/archivos-cliente/handler'
+import { FORMATOS, TIPOS_ADMITIDOS, MAX_ARCHIVOS, MAX_BYTES, MAX_PENDIENTES_CLIENTE, BUCKET_ARCHIVOS, extensionDe, nombreVisible } from '../../src/lib/archivos'
 
 // Un "Supabase de mentira" en memoria para las pruebas end-to-end. Se engancha a la red del navegador
 // (nunca se habla con la base de datos real) y entiende lo justo de PostgREST, Auth y Storage para los
@@ -26,6 +28,7 @@ const CLIENT_TABLES: [string, string][] = [
   ['registros_habitos', 'clientId'], ['registros_peso', 'clientId'], ['session_load', 'client_id'], ['session_reactions', 'clientId'],
   ['survey_responses', 'client_id'], ['survey_schedules', 'client_id'], ['test_resultados', 'client_id'], ['valoraciones', 'client_id'],
   ['solicitudes_programacion', 'client_id'], ['video_feedback', 'client_id'], ['waivers', 'clientId'], ['weekly_reviews', 'clientId'],
+  ['archivos_cliente', 'client_id'],
 ]
 const UNIQUE: Record<string, string[]> = { registros: ['clientId'], planes: ['clientId'], clientes: ['id', 'token'], entrenadores: ['uid'] }
 const NO_AUTO_ID = new Set(['registros', 'planes', 'entrenadores', 'solicitudes_programacion'])
@@ -49,6 +52,25 @@ const json = (route: Route, status: number, body: unknown, extra: Record<string,
 const empty = (route: Route, status = 204) => route.fulfill({ status, headers: CORS })
 /** PNG de 1×1 píxel: lo que "devuelve" una URL firmada. */
 const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHdJ7KQAAAABJRU5ErkJggg==', 'base64')
+/** Los bytes y el tipo del fichero de un formulario multipart (así sube supabase-js desde el navegador: el fichero va en la parte con `filename`, con el tipo del propio archivo). */
+function archivoDeMultipart(cuerpo: Buffer | null, contentType: string): { bytes: Buffer; mime: string } {
+  const vacio = { bytes: Buffer.alloc(0), mime: '' }
+  if (!cuerpo) return vacio
+  const limite = /boundary=(?:"([^"]+)"|([^;]+))/.exec(contentType)
+  if (!limite) return { bytes: cuerpo, mime: contentType.split(';')[0].trim() } // no era multipart: el cuerpo es el fichero
+  const marca = Buffer.from('--' + (limite[1] ?? limite[2]))
+  let desde = 0
+  while (true) {
+    const ini = cuerpo.indexOf(marca, desde)
+    if (ini < 0) return vacio
+    const cabecera = cuerpo.indexOf('\r\n\r\n', ini)
+    const fin = cuerpo.indexOf(marca, ini + marca.length)
+    if (cabecera < 0 || fin < 0) return vacio
+    const partes = cuerpo.subarray(ini, cabecera).toString('latin1')
+    if (/filename=/.test(partes)) return { bytes: cuerpo.subarray(cabecera + 4, fin - 2), mime: /content-type:\s*([^\r\n;]*)/i.exec(partes)?.[1].trim() ?? '' }
+    desde = fin
+  }
+}
 /** Igual que `token_expires_at is null or token_expires_at > now()` de las funciones reales. */
 const vigente = (c: Row) => !c.token_expires_at || new Date(String(c.token_expires_at)).getTime() > Date.now()
 
@@ -66,6 +88,8 @@ export class FakeSupabase {
   removedFiles: { bucket: string; paths: string[] }[] = []
   /** Ficheros subidos con la API de Storage (el contenido no se guarda, solo dónde y cuánto pesaba). */
   uploads: { bucket: string; path: string; bytes: number }[] = []
+  /** Los bytes de lo subido al depósito de archivos de los cuestionarios, por `bucket/ruta` (para que la función de comprobación y la descarga trabajen con el contenido real). */
+  blobs: Record<string, Buffer> = {}
   /** Lecturas de ficheros: las firmadas (correctas) y las públicas (no deberían existir: los buckets son privados). */
   signedReads: string[] = []
   publicReads: string[] = []
@@ -102,6 +126,7 @@ export class FakeSupabase {
     if (p.startsWith('/rest/v1/rpc/')) return this.rpc(route, req, p.slice('/rest/v1/rpc/'.length))
     if (p.startsWith('/rest/v1/')) return this.rest(route, req, p.slice('/rest/v1/'.length), url)
     if (p.startsWith('/storage/v1/')) return this.storageApi(route, req, p.slice('/storage/v1/'.length))
+    if (p === '/functions/v1/archivos-cliente') return this.funcionArchivos(route, req)
     if (p.startsWith('/functions/v1/')) return json(route, 200, {})
     this.unhandled.push(`${method} ${url.pathname}${url.search}`)
     return json(route, 404, { message: 'no simulado' })
@@ -169,7 +194,9 @@ export class FakeSupabase {
       if (accept.includes('vnd.pgrst.object')) {
         return rows.length === 1 ? json(route, status, rows[0]) : json(route, 406, { code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned', details: `The result contains ${rows.length} rows` })
       }
-      return json(route, status, rows, { 'content-range': `0-${Math.max(0, rows.length - 1)}/*` })
+      // Con «count=exact» (head/count de supabase-js) el total va tras la barra; si no, un asterisco, como PostgREST
+      const total = prefer.includes('count=') ? String(rows.length) : '*'
+      return json(route, status, rows, { 'content-range': rows.length ? `0-${rows.length - 1}/${total}` : `*/${total === '*' ? '*' : total}` })
     }
 
     if (method === 'GET' || method === 'HEAD') {
@@ -207,7 +234,13 @@ export class FakeSupabase {
           const raro = this.triggerCheckins(row)
           if (raro) return json(route, 400, { code: '23514', message: raro })
         }
+        // El trigger de survey_responses (migración 20261125000010): valida y reescribe los archivos citados
+        if (table === 'survey_responses') {
+          const raro = this.triggerRespuesta(row)
+          if (raro) return json(route, 400, { code: '22023', message: raro })
+        }
         all.push(row); out.push(row)
+        if (table === 'survey_responses') this.vincularRespuesta(row)
       }
       return wantsRows ? respond(structuredClone(out), 201) : empty(route, 201)
     }
@@ -496,6 +529,28 @@ export class FakeSupabase {
         lead.status = 'convertido'
         return empty(route)
       }
+      // archivo_reservar (migración 20261125000010): las mismas reglas que la función SQL, que se prueba aparte con PGlite
+      case 'archivo_reservar': {
+        const cliente = this.rows('clientes').find(c => c.auth_user_id === me)
+        if (!cliente) return json(route, 403, { code: '42501', message: 'No autorizado' })
+        const no = (codigo: string) => json(route, 200, { ok: false, codigo })
+        if (cliente.archived_at) return no('archivado')
+        const plantilla = this.rows('survey_templates').find(t => t.id === args.p_template_id && t.trainer_id === cliente.trainerId)
+        const preguntas: Row[] = Array.isArray(plantilla?.questions) ? plantilla!.questions : []
+        if (!preguntas.some(q => q.id === args.p_question_id && q.type === 'archivos')) return no('pregunta')
+        const nombre = nombreVisible(String(args.p_nombre ?? ''))
+        const ext = extensionDe(nombre)
+        const formato = FORMATOS.find(x => x.ext === ext)
+        if (!formato) return no('formato')
+        const tamano = Number(args.p_tamano)
+        if (!(tamano >= 1 && tamano <= MAX_BYTES)) return no('tamano')
+        const propias = this.rows('archivos_cliente').filter(x => x.client_id === cliente.id && ['reservado', 'verificado'].includes(x.estado))
+        if (propias.filter(x => x.template_id === args.p_template_id && x.question_id === args.p_question_id).length >= MAX_ARCHIVOS) return no('limite_pregunta')
+        if (propias.length >= MAX_PENDIENTES_CLIENTE) return no('limite_cliente')
+        const id = crypto.randomUUID(); const ruta = `${cliente.id}/${id}.${ext}`
+        this.rows('archivos_cliente').push({ id, client_id: cliente.id, template_id: args.p_template_id, question_id: args.p_question_id, ruta, nombre, ext, tipo: formato.mime, tamano, estado: 'reservado', response_id: null, created_at: new Date().toISOString() })
+        return json(route, 200, { ok: true, id, ruta, tipo: formato.mime, nombre })
+      }
       case 'find_trainer_by_email': return json(route, 200, null)
       case 'delete_client_data': {
         const id = args.p_client_id as string
@@ -516,6 +571,65 @@ export class FakeSupabase {
         this.unhandled.push(`rpc ${fn}`)
         return json(route, 404, { message: `rpc ${fn} no simulada` })
     }
+  }
+
+  // ── Archivos de los cuestionarios ──
+  /** La función de borde archivos-cliente: el MANEJADOR REAL (supabase/functions/archivos-cliente/handler.ts, con su validador de bytes) sobre las tablas y el depósito simulados. */
+  private async funcionArchivos(route: Route, req: Request) {
+    const jwt = (req.headers()['authorization'] || '').replace(/^Bearer\s+/i, '')
+    const sub = (j: string): string | null => { try { return JSON.parse(Buffer.from(j.split('.')[1] ?? '', 'base64url').toString()).sub ?? null } catch { return null } }
+    const filas = () => this.rows('archivos_cliente')
+    const clave = (ruta: string) => `${BUCKET_ARCHIVOS}/${ruta}`
+    const deps: DepsArchivos = {
+      usuario: async j => { const id = sub(j); return id && this.users.some(u => u.id === id) ? id : null },
+      clienteDe: async uid => this.rows('clientes').find(c => c.auth_user_id === uid)?.id ?? null,
+      puedeGestionar: async (j, clientId) => this.rows('clientes').some(c => c.id === clientId && c.trainerId === sub(j)),
+      fila: async id => (filas().find(x => x.id === id) as any) ?? null,
+      filasDeCliente: async cid => filas().filter(x => x.client_id === cid).map(x => ({ ruta: x.ruta })),
+      marcarVerificado: async (id, tamano, tipo) => { const x = filas().find(y => y.id === id); if (!x || x.estado !== 'reservado') return false; Object.assign(x, { estado: 'verificado', tamano, tipo, verificado_at: new Date().toISOString() }); return true },
+      marcarRechazado: async (id, motivo) => { const x = filas().find(y => y.id === id); if (!x || x.estado !== 'reservado') return false; Object.assign(x, { estado: 'rechazado', motivo }); return true },
+      marcarBorrando: async id => { const x = filas().find(y => y.id === id); if (!x || !['reservado', 'verificado', 'rechazado'].includes(x.estado) || x.response_id) return false; x.estado = 'borrando'; return true },
+      borrarFila: async (id, estado) => { this.tables.archivos_cliente = filas().filter(x => !(x.id === id && x.estado === estado)) },
+      descargar: async ruta => { const b = this.blobs[clave(ruta)]; return b ? new Uint8Array(b) : null },
+      borrar: async rutas => {
+        for (const r of rutas) delete this.blobs[clave(r)]
+        this.storage[BUCKET_ARCHIVOS] = (this.storage[BUCKET_ARCHIVOS] ?? []).filter(x => !rutas.includes(x))
+        this.removedFiles.push({ bucket: BUCKET_ARCHIVOS, paths: rutas })
+        return true
+      },
+      listarCarpeta: async cid => Object.keys(this.blobs).filter(k => k.startsWith(clave(cid + '/'))).map(k => k.slice(BUCKET_ARCHIVOS.length + 1)),
+    }
+    const r = await manejarArchivos({ metodo: req.method(), jwt, cuerpo: req.postDataJSON?.() ?? null }, deps)
+    return json(route, r.status, r.cuerpo)
+  }
+
+  /** El trigger BEFORE de survey_responses: cada archivo citado en una pregunta de archivos tiene que ser del cliente, de esa pregunta y plantilla, estar verificado y no repetirse; se reescribe con los datos de la tabla. */
+  private triggerRespuesta(row: Row): string | null {
+    const plantilla = this.rows('survey_templates').find(t => t.id === row.template_id)
+    const preguntas: Row[] = (Array.isArray(plantilla?.questions) ? plantilla!.questions : []).filter((q: Row) => q.type === 'archivos')
+    for (const q of preguntas) {
+      const val = row.answers?.[q.id]
+      if (val === undefined || val === null || (Array.isArray(val) && !val.length)) continue
+      if (!Array.isArray(val) || val.length > MAX_ARCHIVOS) return 'Archivos no válidos'
+      const nuevos: Row[] = []
+      for (const e of val) {
+        const x = e && typeof e === 'object' ? this.rows('archivos_cliente').find(y => y.id === e.id) : undefined
+        const vale = !!x && x.client_id === row.client_id && x.template_id === row.template_id && x.question_id === q.id
+          && (x.estado === 'verificado' || (['enviado', 'caducado'].includes(x.estado) && x.response_id === row.id)) && !nuevos.some(n => n.id === x.id)
+        if (!vale) return 'Archivo no válido'
+        nuevos.push({ id: x!.id, nombre: x!.nombre, tamano: x!.tamano, tipo: x!.tipo })
+      }
+      row.answers[q.id] = nuevos
+    }
+    return null
+  }
+
+  /** El trigger AFTER de survey_responses: los archivos citados pasan a «enviado» con su respuesta. */
+  private vincularRespuesta(row: Row) {
+    const plantilla = this.rows('survey_templates').find(t => t.id === row.template_id)
+    const ids = new Set<string>()
+    for (const q of (Array.isArray(plantilla?.questions) ? plantilla!.questions : []).filter((x: Row) => x.type === 'archivos')) for (const e of Array.isArray(row.answers?.[q.id]) ? row.answers[q.id] : []) ids.add(e.id)
+    for (const x of this.rows('archivos_cliente')) if (ids.has(x.id) && x.estado === 'verificado') Object.assign(x, { estado: 'enviado', response_id: row.id, enviado_at: new Date().toISOString() })
   }
 
   // ── Storage ──
@@ -542,12 +656,29 @@ export class FakeSupabase {
       return json(route, 200, prefixes.map(name => ({ name, bucket_id: bucket })))
     }
     if (method === 'POST' && (m = path.match(/^object\/sign\/([^/]+)\/(.+)$/))) {
-      return json(route, 200, { signedURL: `/object/sign/${m[1]}/${m[2]}?token=e2e` })
+      // La política de lectura del depósito de archivos: la fila decide (el cliente, lo suyo; su entrenador, solo lo verificado o enviado; nadie más)
+      if (m[1] === BUCKET_ARCHIVOS) {
+        const yo = subOf(req)
+        const rutaFirmada = decodeURIComponent(m[2])
+        const fila = this.rows('archivos_cliente').find(x => x.ruta === rutaFirmada)
+        const cliente = fila && this.rows('clientes').find(c => c.id === fila.client_id)
+        const propio = !!cliente && cliente.auth_user_id === yo
+        const suyo = !!cliente && cliente.trainerId === yo && ['verificado', 'enviado'].includes(fila!.estado)
+        if (!propio && !suyo) return json(route, 400, { statusCode: '404', error: 'not_found', message: 'Object not found' })
+      }
+      // supabase-js pide la descarga como adjunto con ?download=<nombre>
+      const descarga = typeof body?.download === 'string' ? `&download=${encodeURIComponent(body.download)}` : ''
+      return json(route, 200, { signedURL: `/object/sign/${m[1]}/${m[2]}?token=e2e${descarga}` })
     }
     // Lectura de un fichero con la URL firmada (con su token) → una imagen de 1×1. Una lectura pública
     // se registra aparte y falla: los buckets de fotos y vídeos son privados.
     if (method === 'GET' && (m = path.match(/^object\/sign\/([^/?]+)\/([^?]+)/))) {
       this.signedReads.push(`${m[1]}/${decodeURIComponent(m[2])}`)
+      const guardado = this.blobs[`${m[1]}/${decodeURIComponent(m[2])}`]
+      if (guardado) {
+        const nombre = new URL(req.url()).searchParams.get('download')
+        return route.fulfill({ status: 200, headers: { ...CORS, 'content-type': 'application/octet-stream', ...(nombre ? { 'content-disposition': `attachment; filename="${encodeURIComponent(nombre)}"` } : {}) }, body: guardado })
+      }
       return route.fulfill({ status: 200, headers: { ...CORS, 'content-type': 'image/png' }, body: PIXEL })
     }
     if (method === 'GET' && (m = path.match(/^object\/public\/([^/?]+)\/([^?]+)/))) {
@@ -557,6 +688,18 @@ export class FakeSupabase {
     // Subida: POST (o PUT con upsert) a object/<bucket>/<ruta>
     if ((method === 'POST' || method === 'PUT') && (m = path.match(/^object\/(?!list\/|sign\/|public\/)([^/]+)\/(.+)$/))) {
       const bucket = m[1]; const file = decodeURIComponent(m[2])
+      // La política del depósito de archivos de cuestionarios: solo se sube sobre una ruta que ese cliente tiene RESERVADA, y no se sobrescribe
+      if (bucket === BUCKET_ARCHIVOS) {
+        const fila = this.rows('archivos_cliente').find(x => x.ruta === file && x.estado === 'reservado')
+        const cliente = fila && this.rows('clientes').find(c => c.id === fila.client_id && c.auth_user_id === subOf(req) && !c.archived_at)
+        if (!cliente) return json(route, 403, { statusCode: '403', error: 'Unauthorized', message: 'new row violates row-level security policy' })
+        if (this.blobs[`${bucket}/${file}`] || method === 'PUT') return json(route, 409, { statusCode: '409', error: 'Duplicate', message: 'The resource already exists' })
+        const { bytes, mime } = archivoDeMultipart(req.postDataBuffer(), req.headers()['content-type'] || '')
+        // El depósito solo deja pasar los tipos admitidos, según el tipo de la parte del formulario (que es el del archivo, no el de las opciones de subida)
+        if (!TIPOS_ADMITIDOS.includes(mime)) return json(route, 415, { statusCode: '415', error: 'invalid_mime_type', message: `mime type ${mime || '(vacío)'} is not supported` })
+        if (bytes.length > MAX_BYTES) return json(route, 413, { statusCode: '413', error: 'Payload too large', message: 'The object exceeded the maximum allowed size' })
+        this.blobs[`${bucket}/${file}`] = bytes
+      }
       this.uploads.push({ bucket, path: file, bytes: req.postDataBuffer()?.length ?? 0 })
       const lista = (this.storage[bucket] ??= [])
       if (!lista.includes(file)) lista.push(file)

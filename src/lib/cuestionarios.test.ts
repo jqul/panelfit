@@ -3,8 +3,10 @@ import { TIPOS, nuevaPregunta, respondida, faltan, visibles, incoherentes, respu
 import { summarizeSurvey } from './surveyResults'
 
 describe('tipos de pregunta', () => {
-  it('hay 8 tipos, y solo los de opciones nacen con opciones', () => {
-    expect(TIPOS).toHaveLength(8)
+  it('hay 9 tipos (el de archivos es el último), y solo los de opciones nacen con opciones', () => {
+    expect(TIPOS).toHaveLength(9)
+    expect(TIPOS[TIPOS.length - 1].id).toBe('archivos')
+    expect(nuevaPregunta('archivos', 'x').options).toBeUndefined()
     expect(nuevaPregunta('multi', 'x').options).toEqual(['Opción A', 'Opción B'])
     expect(nuevaPregunta('choice', 'x').options).toHaveLength(2)
     expect(nuevaPregunta('number', 'x').options).toBeUndefined()

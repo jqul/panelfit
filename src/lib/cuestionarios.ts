@@ -1,7 +1,7 @@
 // Tipos de pregunta de las encuestas/cuestionarios y lo que comparten el editor del entrenador, la app del
 // cliente y la impresión: validar, convertir una respuesta en texto y montar la hoja para imprimir. Todo puro.
 
-export type TipoPregunta = 'scale' | 'number' | 'yesno' | 'choice' | 'multi' | 'short' | 'text' | 'date'
+export type TipoPregunta = 'scale' | 'number' | 'yesno' | 'choice' | 'multi' | 'short' | 'text' | 'date' | 'archivos'
 
 export interface Pregunta {
   id: string
@@ -32,6 +32,8 @@ export const TIPOS: { id: TipoPregunta; icono: string; nombre: string; nueva: st
   { id: 'short',  icono: '✏️', nombre: 'Respuesta corta',   nueva: 'Nueva pregunta corta' },
   { id: 'text',   icono: '✍️', nombre: 'Texto libre',       nueva: 'Nueva pregunta abierta' },
   { id: 'date',   icono: '📅', nombre: 'Fecha',             nueva: '¿Cuándo empezó la molestia?' },
+  // La respuesta es la lista de archivos subidos (hasta 5, de 20 MB): [{ id, nombre, tamano, tipo }]. Ver lib/archivos.ts y docs/archivos-cuestionarios.md
+  { id: 'archivos', icono: '📎', nombre: 'Archivos',        nueva: 'Sube aquí tu rutina actual (PDF, foto, Excel…)' },
 ]
 
 export const TIPO = Object.fromEntries(TIPOS.map(t => [t.id, t])) as Record<TipoPregunta, (typeof TIPOS)[number]>
@@ -141,8 +143,11 @@ export function respuestasSinPregunta(preguntas: Pregunta[], answers: Record<str
   return Object.entries(answers ?? {}).filter(([id, v]) => !ids.has(id) && respondida(v)).map(([id, valor]) => ({ id, etiqueta: PREGUNTAS_RETIRADAS[id] ?? id, valor }))
 }
 
-/** Una respuesta suelta (sin su pregunta delante, así que sin tipo) como texto: listas con comas, Sí/No, y lo demás tal cual. */
-export const textoSuelto = (v: unknown): string => Array.isArray(v) ? v.join(', ') : typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
+/** Los nombres de los archivos de una respuesta de tipo archivos, separados por comas (ignora lo que no tenga nombre). */
+const nombresDeArchivos = (v: unknown): string => (Array.isArray(v) ? v : []).map(a => (a && typeof a === 'object' && typeof (a as { nombre?: unknown }).nombre === 'string' ? (a as { nombre: string }).nombre : '')).filter(Boolean).join(', ')
+
+/** Una respuesta suelta (sin su pregunta delante, así que sin tipo) como texto: listas con comas (de archivos, con sus nombres), Sí/No, y lo demás tal cual. */
+export const textoSuelto = (v: unknown): string => Array.isArray(v) ? (v.some(x => x && typeof x === 'object') ? nombresDeArchivos(v) : v.join(', ')) : typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v)
 
 /** La respuesta como texto, para la lista de respuestas, WhatsApp o la hoja impresa. */
 export function textoRespuesta(q: Pregunta, v: unknown): string {
@@ -152,6 +157,7 @@ export function textoRespuesta(q: Pregunta, v: unknown): string {
     case 'scale': return `${v} / 10`
     case 'number': return `${String(v).replace('.', ',')}${q.unit ? ` ${q.unit}` : ''}`
     case 'multi': return (Array.isArray(v) ? v : [v]).join(', ')
+    case 'archivos': return nombresDeArchivos(v) || '—'
     case 'date': {
       const d = new Date(String(v) + 'T12:00:00')
       return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })

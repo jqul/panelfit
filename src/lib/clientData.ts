@@ -19,6 +19,8 @@ export function collectFileRefs(data: Record<string, any>): FileRef[] {
   for (const r of data.progress_photos ?? []) add('media', strings(r.frontUrl, r.sideUrl, r.backUrl))
   for (const r of data.fotos ?? []) add('media', strings(r.url_frente, r.url_lateral, r.url_espalda))
   for (const r of data.video_feedback ?? []) add('client-videos', strings(r.video_url, r.trainer_comment_video_url))
+  // Archivos de los cuestionarios (rutina, programas anteriores…): el depósito es BUCKET_ARCHIVOS de lib/archivos.ts (escrito aquí a mano para no cargar ese módulo en la app del cliente)
+  for (const r of data.archivos_cliente ?? []) if (r?.estado === 'verificado' || r?.estado === 'enviado') add('cuestionario-archivos', strings(r.ruta))
   for (const reg of data.registros ?? []) {
     for (const log of Object.values<any>(reg?.logs ?? {})) add('exercise-videos', strings(log?.videoEjecucion))
   }
@@ -92,6 +94,14 @@ export async function eraseClient(clientId: string): Promise<{ ok: true; archivo
   let archivos = 0
   try { archivos = await eraseClientFiles(supabase.storage as unknown as StorageLike, clientId) }
   catch (e) { return { ok: false, error: `No se pudieron borrar los ficheros: ${(e as Error).message}. No se ha borrado nada más.` } }
+  // Los archivos de los cuestionarios no se borran desde el navegador (el depósito no tiene política de borrado a propósito): los borra una función de borde con la Storage API.
+  // Se carga solo aquí: este módulo también lo usa la app del cliente y no debe crecer.
+  try {
+    const { borrarArchivosDelCliente } = await import('./archivosCliente')
+    const r = await borrarArchivosDelCliente(clientId)
+    if (!r.ok) return { ok: false, error: `${r.error}${archivos ? ` (ya se borraron ${archivos} fotos y vídeos)` : ''}. No se han borrado sus datos: vuelve a intentarlo.` }
+    archivos += r.borrados
+  } catch (e) { return { ok: false, error: `No se pudieron borrar los archivos de sus cuestionarios: ${(e as Error).message}. No se han borrado sus datos: vuelve a intentarlo.` } }
   const { data, error } = await supabase.rpc('delete_client_data', { p_client_id: clientId })
   if (error) return { ok: false, error: `Se borraron ${archivos} ficheros pero fallaron los datos: ${error.message}. Vuelve a intentarlo.` }
   return { ok: true, archivos, filas: data as Record<string, number> }

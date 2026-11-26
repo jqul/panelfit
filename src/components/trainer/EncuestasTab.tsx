@@ -1,5 +1,5 @@
 import { nombreParaMensaje } from '../../lib/hoyResumen'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Plus, Trash2, Edit2, X, ChevronDown, ChevronUp, Send, Clock, Users, CheckCircle2, ClipboardList, CalendarClock, BarChart3, MoreHorizontal, Tag, Printer, UserPlus } from 'lucide-react'
 import { ActionMenu } from '../shared/ActionMenu'
 import type { ModeloEncuesta } from '../../lib/modelosEncuesta'
@@ -9,6 +9,9 @@ import { TIPOS, TIPO, conOpciones, nuevaPregunta, textoRespuesta, respuestasSinP
 import { supabase } from '../../lib/supabase'
 import { ClientData } from '../../types'
 import { toast } from '../shared/Toast'
+
+// La lista y la descarga de archivos de un cliente solo se bajan al abrir una respuesta que los tiene
+const ArchivosRespuesta = lazy(() => import('./ArchivosRespuesta'))
 import { TrainerLabel, LabelPill } from './labels'
 import { DEMO_TRAINER_ID, DEMO_SURVEY_TEMPLATE, DEMO_SURVEY_RESPONSES, DEMO_SURVEY_SCHEDULES, DEMO_LABELS } from '../../lib/demo-data'
 
@@ -143,7 +146,7 @@ function TemplateEditor({ initial, modelo, trainerId, onSave, onCancel }: {
                 <input value={q.unit || ''} onChange={e => updateQ(q.id, { unit: e.target.value })} placeholder="Unidad (kg, h…)" aria-label="Unidad"
                   className="ml-6 px-2 py-1 bg-bg-alt border border-border rounded-lg text-xs outline-none w-28" />
               )}
-              <p className="text-[11px] text-muted ml-6">{TIPO[q.type]?.nombre}</p>
+              <p className="text-[11px] text-muted ml-6">{TIPO[q.type]?.nombre}{q.type === 'archivos' && ' · hasta 5 archivos de 20 MB (PDF, imagen, Excel, CSV o texto)'}</p>
             </div>
           ))}
           <div className="flex gap-2 flex-wrap">
@@ -293,7 +296,10 @@ function ResponseViewer({ response, template, clientName }: { response: SurveyRe
                     {ans ? '✓ Sí' : '✗ No'}
                   </span>
                 )}
-                {q.type !== 'scale' && q.type !== 'yesno' && (
+                {q.type === 'archivos' && (
+                  <Suspense fallback={<p className="text-xs text-muted">Cargando archivos…</p>}><ArchivosRespuesta valor={ans} /></Suspense>
+                )}
+                {q.type !== 'scale' && q.type !== 'yesno' && q.type !== 'archivos' && (
                   <p className={`text-sm whitespace-pre-wrap ${q.type === 'text' || q.type === 'short' ? '' : 'font-semibold'}`}>{textoRespuesta(q, ans)}</p>
                 )}
               </div>

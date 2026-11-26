@@ -7,7 +7,7 @@ interface Notificacion {
   id: string
   trainer_id: string
   client_id?: string
-  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina' | 'solicitud_borrado' | 'nuevo_contacto'
+  tipo: 'sesion_completada' | 'inactividad' | 'alerta_vencida' | 'mensaje' | 'nueva_rutina' | 'solicitud_borrado' | 'nuevo_contacto' | 'archivos_caducidad'
   titulo: string
   mensaje?: string
   leida: boolean
@@ -22,6 +22,8 @@ const TIPO_META: Record<string, { icon: any; color: string; bg: string }> = {
   nueva_rutina:      { icon: Dumbbell,       color: '#8b5cf6', bg: '#f5f3ff' },
   solicitud_borrado: { icon: AlertTriangle,  color: '#ef4444', bg: '#fef2f2' },
   nuevo_contacto:    { icon: UserPlus,       color: '#6e5438', bg: '#f7f1ea' },
+  // Los archivos de un cliente archivado se borran dentro de poco (migración 20261125000010)
+  archivos_caducidad: { icon: AlertTriangle, color: '#f59e0b', bg: '#fffbeb' },
 }
 
 interface Props {
