@@ -48,7 +48,7 @@ describe('importar ejercicios', () => {
   })
 
   it('tolera BOM, saltos de Windows y texto vacío', () => {
-    expect(names(parseImportText('﻿nombre\r\nA\r\nB\r\n', []))).toEqual(['A', 'B'])
+    expect(names(parseImportText('\uFEFFnombre\r\nA\r\nB\r\n', []))).toEqual(['A', 'B'])
     expect(parseImportText('   \n\n', []).nuevos).toEqual([])
   })
 

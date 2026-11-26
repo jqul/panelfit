@@ -88,7 +88,7 @@ begin
   end if;
 
   -- El nombre solo se enseña (la ruta no lo usa): sin rutas, sin caracteres de control ni marcas de dirección de texto
-  v_nombre := btrim(regexp_replace(regexp_replace(coalesce(p_nombre, ''), '^.*[\\/]', ''), '[\u0001-\u001f\u007f‎‏‪-‮⁦-⁩]+', '', 'g'));
+  v_nombre := btrim(regexp_replace(regexp_replace(coalesce(p_nombre, ''), '^.*[\\/]', ''), '[\u0001-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]+', '', 'g'));
   v_nombre := btrim(regexp_replace(v_nombre, '\s+', ' ', 'g'));
   if v_nombre = '' then v_nombre := 'archivo'; end if;
   v_ext := lower(coalesce(substring(v_nombre from '\.([A-Za-z0-9]{1,8})$'), ''));

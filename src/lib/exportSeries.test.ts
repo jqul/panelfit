@@ -24,7 +24,7 @@ describe('filasSeries', () => {
 describe('csvSeries', () => {
   it('separador ; con coma decimal, BOM y comillas donde hace falta', () => {
     const csv = csvSeries([{ fecha: '2026-11-03', semana: 1, dia: 'Día "A"; pierna', ejercicio: 'Sentadilla', serie: 1, peso: 102.5, reps: 3, rir: '', e1rm: 110.8, nota: '' }])
-    expect(csv.startsWith('﻿Fecha;Semana;Día;Ejercicio;Serie;Peso (kg);Reps;RIR;1RM estimado (kg);Nota\r\n')).toBe(true)
+    expect(csv.startsWith('\uFEFFFecha;Semana;Día;Ejercicio;Serie;Peso (kg);Reps;RIR;1RM estimado (kg);Nota\r\n')).toBe(true)
     expect(csv).toContain('2026-11-03;1;"Día ""A""; pierna";Sentadilla;1;102,5;3;;110,8;\r\n')
   })
 })

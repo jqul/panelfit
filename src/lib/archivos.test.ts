@@ -99,6 +99,9 @@ describe('extensión y nombre', () => {
     expect(largo.length).toBeLessThanOrEqual(MAX_NOMBRE)
     expect(largo.endsWith('.xlsx')).toBe(true)
   })
+  it('nombreVisible quita cada una de las marcas de dirección de texto (las que harían leer «rutina.exe» como otra cosa)', () => {
+    for (const cp of [0x200e, 0x200f, 0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069]) expect(nombreVisible(`rut${String.fromCodePoint(cp)}ina.pdf`), cp.toString(16)).toBe('rutina.pdf')
+  })
   it('un nombre con HTML se queda como texto (React lo escapa al pintarlo)', () => {
     expect(nombreVisible('<img src=x onerror=alert(1)>.pdf')).toBe('<img src=x onerror=alert(1)>.pdf')
   })
