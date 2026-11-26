@@ -49,14 +49,17 @@ export function DecisionHoy({ trainerId, clients, logsMap, leadsNuevos, onAbrirF
           {filas.map(t => (
             <li key={t.id} className="px-5 py-3 flex items-start gap-3">
               <span className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${PUNTO[t.nivel]}`} role="img" aria-label={ETIQUETA[t.nivel]} />
-              <div className="flex-1 min-w-0 space-y-0.5">
-                <p id={`dh-${t.id}`} className="text-sm font-semibold">{t.quien}<span className="font-normal text-muted"> · {t.necesita}</span></p>
-                <p className="text-xs text-muted"><span className="font-semibold">Por qué ahora:</span> {t.porque}</p>
+              {/* El botón salta debajo cuando al texto no le quedan 14rem. Se mide el hueco de la tarjeta y no el ancho de la pantalla: con las columnas del panel también puede quedar estrecha */}
+              <div className="flex-1 min-w-0 flex flex-wrap items-start gap-x-3 gap-y-2">
+                <div className="flex-1 basis-56 min-w-0 space-y-0.5">
+                  <p id={`dh-${t.id}`} className="text-sm font-semibold">{t.quien}<span className="font-normal text-muted"> · {t.necesita}</span></p>
+                  <p className="text-xs text-muted"><span className="font-semibold">Por qué ahora:</span> {t.porque}</p>
+                </div>
+                <button type="button" onClick={() => abrir(t)} aria-label={t.accion} aria-describedby={`dh-${t.id}`}
+                  className="max-w-full inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border text-left text-xs font-semibold hover:border-accent hover:text-accent transition-colors">
+                  {t.accion} <ArrowRight className="w-3 h-3 flex-shrink-0" aria-hidden />
+                </button>
               </div>
-              <button type="button" onClick={() => abrir(t)} aria-label={t.accion} aria-describedby={`dh-${t.id}`}
-                className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-border text-xs font-semibold hover:border-accent hover:text-accent transition-colors">
-                {t.accion} <ArrowRight className="w-3 h-3" aria-hidden />
-              </button>
             </li>
           ))}
         </ul>
