@@ -159,3 +159,8 @@ export function nombreDeCopia(name: string, existing: Iterable<string>): string 
   for (let i = 2; taken.has(norm(candidate)); i++) candidate = `${base} (copia ${i})`
   return candidate
 }
+
+/** Los campos de `despues` que difieren de `antes` (listas incluidas): lo que de verdad se ha editado. */
+export function camposCambiados<T extends object>(antes: T, despues: T): Partial<T> {
+  return Object.fromEntries(Object.entries(despues).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(antes[k as keyof T]))) as Partial<T>
+}

@@ -206,8 +206,10 @@ export class FakeSupabase {
         const [col, dir] = order.split(',')[0].split('.')
         rows = [...rows].sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * (dir === 'desc' ? -1 : 1))
       }
+      // `.range()` llega como offset + limit: sin el offset, paginar más de una página devolvía siempre la primera
       const limit = url.searchParams.get('limit')
-      if (limit) rows = rows.slice(0, Number(limit))
+      const offset = Number(url.searchParams.get('offset') || 0)
+      if (limit || offset) rows = rows.slice(offset, limit ? offset + Number(limit) : undefined)
       return respond(structuredClone(rows))
     }
 

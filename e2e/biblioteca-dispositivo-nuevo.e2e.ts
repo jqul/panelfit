@@ -2,7 +2,8 @@ import { test, expect as expectBase } from './support/test'
 import { seedWorld, ids } from './support/seed'
 import { entrarComoEntrenador } from './support/flows'
 import type { FakeSupabase } from './support/fakeSupabase'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import { DEFAULT_EXERCISE_LIBRARY } from '../src/lib/defaultExerciseLibrary'
 
 // La biblioteca de ejercicios guarda una copia en el navegador. Esa copia puede estar vieja: abrir PanelFit en un dispositivo
 // no puede deshacer lo que se editó desde otro, ni volver a sembrar la biblioteca de serie cuando la lectura falla.
@@ -88,4 +89,80 @@ test('si falla la lectura en un dispositivo nuevo, no se siembra la biblioteca d
   await page.waitForTimeout(4_000)
   expect(escrituras).toEqual([])
   expect(fake.rows('exercise_library')).toHaveLength(2)
+})
+
+/** La biblioteca de serie ya entregada (las primeras `cuantos`), como quedó en la cuenta. */
+function sembrarDeSerie(fake: FakeSupabase, cuantos = DEFAULT_EXERCISE_LIBRARY.length) {
+  seedWorld(fake, { clientHasAccount: true, clientConsented: true })
+  fake.seed('exercise_library', ...DEFAULT_EXERCISE_LIBRARY.slice(0, cuantos).map((e, i) => fila(`ex_default_1_${i}`, e.name, { category: e.category })))
+}
+/** Hasta que termina la ampliación de serie de un dispositivo nuevo: la marca se pone al decidirla y la inserción va detrás. */
+async function ampliacionDecidida(page: Page) {
+  await expect.poll(() => page.evaluate(k => localStorage.getItem(k), `pf_library_default_topup_${ids.trainer}`), { timeout: 60_000 }).toBeTruthy()
+  await page.waitForTimeout(4_000)
+}
+
+test('un ejercicio de serie renombrado no reaparece con su nombre original en un dispositivo nuevo', async ({ page, fake }) => {
+  sembrarDeSerie(fake)
+  const original = DEFAULT_EXERCISE_LIBRARY[0].name
+  Object.assign(enServidor(fake, 'ex_default_1_0')!, { name: 'Mi press de siempre', updated_at: 500 })
+  await entrarComoEntrenador(page)
+  await ampliacionDecidida(page)
+
+  expect(fake.rows('exercise_library').filter(r => r.name === original)).toHaveLength(0)
+  expect(fake.rows('exercise_library')).toHaveLength(DEFAULT_EXERCISE_LIBRARY.length)
+})
+
+test('una tanda nueva que la cuenta no tiene sí le llega, entera y una sola vez', async ({ page, fake }) => {
+  sembrarDeSerie(fake, 1717) // sin la última tanda
+  await entrarComoEntrenador(page)
+
+  await expect.poll(() => fake.rows('exercise_library').length, { timeout: 60_000 }).toBe(DEFAULT_EXERCISE_LIBRARY.length)
+  await ampliacionDecidida(page)
+  expect(fake.rows('exercise_library')).toHaveLength(DEFAULT_EXERCISE_LIBRARY.length)
+})
+
+// ── Editar desde una app que llevaba abierta desde antes de un cambio hecho en otro dispositivo ──
+
+async function abrirEjercicios(page: Page) {
+  await preparar(page)
+  await entrarComoEntrenador(page)
+  await page.keyboard.press('Control+K')
+  await page.getByRole('combobox', { name: 'Buscar' }).fill('ir a ejercicios')
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Ejercicios', level: 2 })).toBeVisible()
+}
+/** La tarjeta de la lista (en «Recomendados» la misma puede salir repetida). */
+const lista = (page: Page): Locator => page.getByRole('region', { name: /Todos los ejercicios|Resultados/ })
+const OTRO_DISPOSITIVO = { description: 'Escrito desde el móvil', videos: [{ url: 'https://youtu.be/aaaaaaaaaaa' }], updated_at: 500 }
+
+test('archivar desde una app abierta de antes no pisa lo escrito desde otro dispositivo', async ({ page, fake }) => {
+  sembrar(fake)
+  await abrirEjercicios(page)
+  await expect(lista(page).getByRole('button', { name: 'Acciones de Remo con mancuerna' })).toBeVisible()
+  Object.assign(enServidor(fake, 'ex_1')!, OTRO_DISPOSITIVO)
+
+  const archivar = page.getByRole('button', { name: 'Archivar', exact: true })
+  await expect(async () => { // el menú se cierra con cualquier reajuste de la lista
+    if (!(await archivar.isVisible())) await lista(page).getByRole('button', { name: 'Acciones de Remo con mancuerna' }).click()
+    await expect(archivar).toBeVisible({ timeout: 1500 })
+  }).toPass({ timeout: 20_000 })
+  await archivar.click()
+
+  await expect.poll(() => enServidor(fake, 'ex_1')!.archived_at).toBeTruthy()
+  expect(enServidor(fake, 'ex_1')).toMatchObject({ name: 'Remo con mancuerna', description: OTRO_DISPOSITIVO.description, videos: OTRO_DISPOSITIVO.videos })
+})
+
+test('guardar la ficha solo envía lo que se ha tocado en ella', async ({ page, fake }) => {
+  sembrar(fake)
+  await abrirEjercicios(page)
+  await lista(page).getByRole('button', { name: 'Editar Remo con mancuerna' }).click()
+  await expect(page.getByRole('dialog', { name: 'Editar Remo con mancuerna' })).toBeVisible()
+  Object.assign(enServidor(fake, 'ex_1')!, OTRO_DISPOSITIVO)
+
+  await page.getByLabel('Nombre *').fill('Remo con mancuerna a una mano')
+  await page.getByRole('button', { name: 'Guardar' }).click()
+
+  await expect.poll(() => enServidor(fake, 'ex_1')!.name).toBe('Remo con mancuerna a una mano')
+  expect(enServidor(fake, 'ex_1')).toMatchObject({ description: OTRO_DISPOSITIVO.description, videos: OTRO_DISPOSITIVO.videos, category: 'Espalda' })
 })

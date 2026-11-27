@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   exerciseOrigin, inferMaterial, materialOf, huecos, estadoFicha, filtrar, recomendados, resumen, materialCounts, nombreDeCopia, esPendiente,
-  porRelevancia, type LibEx, coincideEtiquetas,
+  porRelevancia, type LibEx, coincideEtiquetas, camposCambiados,
 } from './exerciseLibrary'
 
 const ex = (id: string, name: string, extra: Partial<LibEx> = {}): LibEx => ({ id, name, ...extra })
@@ -127,5 +127,19 @@ describe('coincideEtiquetas', () => {
     expect(coincideEtiquetas(['rodilla', 'casa', 'gym'], ['casa', 'gym'], 'todas')).toBe(true)
     expect(coincideEtiquetas(['casa'], ['casa', 'gym'], 'todas')).toBe(false)
     expect(coincideEtiquetas(undefined, ['casa'], 'todas')).toBe(false)
+  })
+})
+
+describe('camposCambiados', () => {
+  const antes = { name: 'Remo', description: '', videos: [{ url: 'a' }], tags: [] as string[] }
+  it('sin tocar nada no devuelve ningún campo', () => {
+    expect(camposCambiados(antes, { ...antes, videos: [{ url: 'a' }], tags: [] })).toEqual({})
+  })
+  it('devuelve solo lo editado, también dentro de las listas', () => {
+    expect(camposCambiados(antes, { ...antes, name: 'Remo a una mano', videos: [{ url: 'a' }, { url: 'b' }] }))
+      .toEqual({ name: 'Remo a una mano', videos: [{ url: 'a' }, { url: 'b' }] })
+  })
+  it('vaciar un texto cuenta como cambio', () => {
+    expect(camposCambiados({ ...antes, description: 'Codo pegado' }, antes)).toEqual({ description: '' })
   })
 })
