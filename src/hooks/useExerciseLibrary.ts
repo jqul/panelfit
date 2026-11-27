@@ -159,13 +159,13 @@ export function useExerciseLibrary(trainerId: string) {
       try { setExercises(JSON.parse(cached)) } catch {}
     }
 
-    // 2. Migrar desde localStorage a Supabase si aún no se hizo
+    // 2. Subir lo que SOLO exista en este dispositivo (hasta abril de 2026 la biblioteca vivía en el navegador)
     const migrated = localStorage.getItem(LS_MIGRATED(trainerId))
     if (!migrated && cached) {
       await migrateToSupabase(JSON.parse(cached))
     }
 
-    // 3. Cargar desde Supabase (fuente de verdad)
+    // 3. Cargar desde Supabase (fuente de verdad). `null` = la lectura falló: no se sabe qué hay, así que más abajo no se escribe nada
     const hadData = await syncFromSupabase()
 
     // 4. Sin ningún ejercicio real en Supabase (ni propio ni migrado) -> sembrar
@@ -175,7 +175,8 @@ export function useExerciseLibrary(trainerId: string) {
     //    (Solo para cuentas reales — el modo demo antiguo usa un id falso, no UUID.)
     const isRealUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trainerId)
     const alreadySeeded = localStorage.getItem(LS_DEFAULT_SEEDED(trainerId))
-    if (isRealUuid && !hadData && !alreadySeeded) {
+    // `=== false` a propósito: con la lectura fallida, sembrar duplicaría la biblioteca de una cuenta que ya la tiene
+    if (isRealUuid && hadData === false && !alreadySeeded) {
       // Marcar el flag ANTES de insertar para que un segundo montaje casi
       // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
       localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
@@ -197,19 +198,22 @@ export function useExerciseLibrary(trainerId: string) {
         // "existingNames" salía incompleto, así que exercises que YA existían
         // (pero caían después de la fila 1000) se creían "missing" y se
         // volvían a sembrar, duplicándolos.
-        const { rows: existing } = await fetchAllPages<{ name: string }>((from, to) =>
+        const { rows: existing, error: errorNombres } = await fetchAllPages<{ name: string }>((from, to) =>
           supabase
             .from('exercise_library')
             .select('name')
             .eq('trainer_id', trainerId)
             .range(from, to)
         )
-        const existingNames = new Set(existing.map(r => r.name.toLowerCase()))
-        const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
-        localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
-        if (missing.length) {
-          await seedDefaultLibrary(missing)
-          await syncFromSupabase()
+        // Con la lista a medias se darían por «faltan» ejercicios que ya están: se deja para otra carga
+        if (!errorNombres) {
+          const existingNames = new Set(existing.map(r => r.name.toLowerCase()))
+          const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
+          localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+          if (missing.length) {
+            await seedDefaultLibrary(missing)
+            await syncFromSupabase()
+          }
         }
       }
     }
@@ -246,14 +250,18 @@ export function useExerciseLibrary(trainerId: string) {
       const local = rows.map(dbToLocal)
       setExercises(local)
       localStorage.setItem(LS_KEY(trainerId), JSON.stringify(local))
+      // Desde aquí la caché es una copia de la base: ya no hay nada que subir desde ella
+      localStorage.setItem(LS_MIGRATED(trainerId), '1')
     } else {
       console.error('[PanelFit] syncFromSupabase error:', error)
     }
     setSyncing(false)
-    return rows.length > 0
+    return error ? null : rows.length > 0
   }
 
   // ── Migración one-time desde localStorage ──────────
+  // Solo INSERTA lo que la base no tiene; nunca pisa una fila existente. La caché puede ser vieja: cuando se subía con
+  // un upsert normal, un navegador nuevo devolvía al servidor su copia en la segunda carga y deshacía lo editado entre medias.
   const migrateToSupabase = async (localExercises: LibraryExercise[]) => {
     if (!localExercises.length) {
       localStorage.setItem(LS_MIGRATED(trainerId), '1')
@@ -263,10 +271,9 @@ export function useExerciseLibrary(trainerId: string) {
 
     const rows = localExercises.map(ex => localToDB(ex, trainerId))
 
-    // Upsert para no duplicar si ya existen
     const { error } = await supabase
       .from('exercise_library')
-      .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
+      .upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
 
     if (!error) {
       localStorage.setItem(LS_MIGRATED(trainerId), '1')
