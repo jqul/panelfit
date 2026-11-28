@@ -53,7 +53,7 @@ function parseMaterial(raw?: string): string | undefined {
 }
 
 export function parseImportText(text: string, existingNames: Iterable<string>): ImportPreview {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
   const seen = new Set([...existingNames].map(norm))
   const preview: ImportPreview = { nuevos: [], duplicados: [], descartados: [], truncado: false }
   if (!lines.length) return preview

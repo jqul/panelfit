@@ -54,7 +54,7 @@ const celda = (v: string | number) => {
 
 export function csvSeries(filas: FilaSerie[]): string {
   const lineas = [CABECERA, ...filas.map(f => [f.fecha, f.semana, f.dia, f.ejercicio, f.serie, f.peso, f.reps, f.rir, f.e1rm, f.nota])]
-  return '﻿' + lineas.map(l => l.map(celda).join(';')).join('\r\n') + '\r\n'
+  return '\uFEFF' + lineas.map(l => l.map(celda).join(';')).join('\r\n') + '\r\n'
 }
 
 /** «progreso-maria-garcia-2026-11-10.csv» */

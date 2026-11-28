@@ -73,7 +73,9 @@ grant all on res to public;
 select public.t_chk('R1 reserva válida: ok, ruta con su carpeta y un uuid (no el nombre), tipo fijado por el servidor',
   (r ->> 'ok')::boolean and r ->> 'ruta' ~ '^11111111-0000-0000-0000-00000000000a/[0-9a-f-]{36}\.pdf$' and r ->> 'tipo' = 'application/pdf' and r ->> 'nombre' = 'Mi rutina.PDF', r::text) from res;
 select public.t_chk('R2 el nombre se limpia (sin rutas ni caracteres de control)',
-  (public.archivo_reservar('tplA', 'rutina', E'..\\..\\evil‮.pdf', 1000) ->> 'nombre') = 'evil.pdf');
+  (public.archivo_reservar('tplA', 'rutina', E'..\\..\\evil\u202e.pdf', 1000) ->> 'nombre') = 'evil.pdf');
+select public.t_chk('R2b archivo_reservar quita las once marcas de dirección de texto del nombre',
+  (public.archivo_reservar('tplA', 'otra', 'a' || (select string_agg(chr(n), '') from unnest(array[8206, 8207, 8234, 8235, 8236, 8237, 8238, 8294, 8295, 8296, 8297]) n) || 'b.pdf', 1000) ->> 'nombre') = 'ab.pdf');
 select public.t_chk('R3 formatos no admitidos (.exe, .xlsm, .docx, .zip, .html, sin extensión)',
   (select bool_and((public.archivo_reservar('tplA', 'otra', n, 1000) ->> 'codigo') = 'formato') from unnest(array['virus.exe', 'macros.xlsm', 'a.docx', 'a.zip', 'a.html', 'sin_extension']) n));
 select public.t_chk('R4 los formatos admitidos pasan, con su tipo (jpg, png, webp, heic, xlsx, csv)',

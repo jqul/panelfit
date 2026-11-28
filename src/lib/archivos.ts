@@ -56,7 +56,7 @@ export const mimeDe = (ext: string): string | null => FORMATOS.find(f => f.ext =
  */
 export function nombreVisible(nombre: string): string {
   // eslint-disable-next-line no-control-regex
-  const limpio = nombre.normalize('NFC').split(/[\\/]/).pop()!.replace(/[\u0000-\u001f\u007f‎‏‪-‮⁦-⁩]+/g, '').replace(/\s+/g, ' ').trim()
+  const limpio = nombre.normalize('NFC').split(/[\\/]/).pop()!.replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]+/g, '').replace(/\s+/g, ' ').trim()
   if (!limpio) return 'archivo'
   if (limpio.length <= MAX_NOMBRE) return limpio
   const ext = extensionDe(limpio)
