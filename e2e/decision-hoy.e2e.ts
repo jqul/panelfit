@@ -57,6 +57,28 @@ test('solicitud con revisión personal, molestia y decisión vencida: ordenadas,
   expect(JSON.stringify(fake.rows('planes').find(r => r.clientId === ids.client)!.plan)).toBe(planAntes)
 })
 
+// En un móvil el botón iba al lado del texto: se montaba sobre el nombre y dejaba el motivo a una palabra por línea
+for (const { ancho, debajo } of [{ ancho: 360, debajo: true }, { ancho: 430, debajo: true }, { ancho: 1280, debajo: false }]) {
+  test(`a ${ancho} px el texto tiene sitio y el botón va ${debajo ? 'debajo' : 'al lado'} sin taparlo`, async ({ page, fake }) => {
+    test.setTimeout(120_000)
+    expect.configure({ timeout: 30_000 })
+    sembrar(fake)
+    fake.seed('registros_dolor', { id: 'd1', clientId: ids.client, date: dia(1), zona: 'Rodilla', intensidad: 8, tipo: 'articular', created_at: 1 })
+    await page.setViewportSize({ width: ancho, height: 800 })
+    await entrarComoEntrenador(page)
+
+    const fila = page.getByRole('region', { name: 'Decisión de hoy' }).getByRole('listitem').first()
+    const motivo = fila.getByText('Por qué ahora:').locator('..')
+    const boton = fila.getByRole('button', { name: 'Abrir su registro de dolor' })
+    await expect(boton).toBeVisible()
+    const [f, m, b] = await Promise.all([fila.boundingBox(), motivo.boundingBox(), boton.boundingBox()])
+    expect(m!.width).toBeGreaterThanOrEqual(200)
+    if (debajo) expect(b!.y).toBeGreaterThanOrEqual(m!.y + m!.height)
+    else expect(b!.x).toBeGreaterThanOrEqual(m!.x + m!.width)
+    expect(b!.x + b!.width).toBeLessThanOrEqual(f!.x + f!.width)
+  })
+}
+
 test('la solicitud lleva a Contactos', async ({ page, fake }) => {
   test.setTimeout(120_000)
   expect.configure({ timeout: 30_000 })
