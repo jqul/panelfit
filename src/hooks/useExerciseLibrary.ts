@@ -6,14 +6,11 @@ import { DEFAULT_EXERCISE_LIBRARY, DefaultExercise } from '../lib/defaultExercis
 import { DEMO_TRAINER_ID } from '../lib/demoIds'
 import { loadExerciseDescriptions } from '../lib/exerciseDescriptions'
 import { fetchAllPages } from '../lib/fetchAllPages'
+import { ejerciciosDeSerieQueFaltan, VERSION_DE_SERIE } from '../lib/bibliotecaDeSerie'
 
 const LS_KEY       = (uid: string) => `pf_library_${uid}`
 const LS_MIGRATED  = (uid: string) => `pf_library_migrated_${uid}`
 const LS_DEFAULT_SEEDED = (uid: string) => `pf_library_default_seeded_${uid}`
-// Versión de la biblioteca de serie. Subir este número cuando se añadan
-// ejercicios nuevos a DEFAULT_EXERCISE_LIBRARY para que las cuentas que ya
-// fueron sembradas reciban solo los que les faltan (sin duplicar).
-const DEFAULT_LIBRARY_VERSION = 8
 const LS_DEFAULT_TOPUP = (uid: string) => `pf_library_default_topup_${uid}`
 
 export type { Especialidad }
@@ -92,6 +89,12 @@ function withoutExtended<T extends object>(row: T): T {
   const strip = (r: object) => { const copy = { ...r } as Record<string, unknown>; EXTENDED_COLUMNS.forEach(c => delete copy[c]); return copy }
   return (Array.isArray(row) ? row.map(strip) : strip(row)) as T
 }
+// Campo del ejercicio → columna, para actualizar solo lo que se cambia
+const COLUMNA_DE: Partial<Record<keyof LibraryExercise, keyof ReturnType<typeof localToDB>>> = {
+  name: 'name', description: 'description', category: 'category', especialidades: 'especialidades', videos: 'videos',
+  tags: 'tags', material: 'material', archivedAt: 'archived_at', alternativas: 'alternativas',
+}
+
 /** Ejecuta una escritura (una fila o varias) con las columnas nuevas y, si la base aún no las tiene, la repite sin ellas. */
 async function writeTolerant<T extends object>(row: T, run: (r: T) => PromiseLike<{ error: { code?: string; message?: string } | null }>) {
   if (extendedColumnsAvailable) {
@@ -180,19 +183,21 @@ export function useExerciseLibrary(trainerId: string) {
       // Marcar el flag ANTES de insertar para que un segundo montaje casi
       // simultáneo (p.ej. doble efecto de StrictMode en desarrollo) no duplique la siembra.
       localStorage.setItem(LS_DEFAULT_SEEDED(trainerId), '1')
-      localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+      localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(VERSION_DE_SERIE))
       await seedDefaultLibrary(DEFAULT_EXERCISE_LIBRARY)
       await syncFromSupabase()
     } else if (isRealUuid && hadData) {
       // 5. La cuenta ya tenía ejercicios (sembrados antes, o los suyos propios) ->
-      //    añadir solo los de serie que le falten, sin duplicar. Se comprueba
+      //    añadir las tandas de serie que aún no haya recibido. Se comprueba
       //    `hadData` (verdad de Supabase), NO el flag `alreadySeeded` de
       //    localStorage — ese flag es por navegador/dispositivo, así que un
       //    entrenador que abre PanelFit desde un móvil nuevo o tras borrar datos
       //    del navegador nunca lo tendría puesto y se quedaría sin el top-up
       //    para siempre aunque su cuenta sí necesite los ejercicios nuevos.
       const topupVersion = Number(localStorage.getItem(LS_DEFAULT_TOPUP(trainerId)) || '1')
-      if (topupVersion < DEFAULT_LIBRARY_VERSION) {
+      if (topupVersion < VERSION_DE_SERIE) {
+        // Marcado antes de consultar: el panel monta este hook en varios sitios y dos cargas a la vez insertaban dos veces
+        localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(VERSION_DE_SERIE))
         // Sin paginar, esta consulta se quedaba truncada a las primeras ~1000
         // filas (tope de PostgREST) en cuentas que ya superaban ese número —
         // "existingNames" salía incompleto, así que exercises que YA existían
@@ -206,10 +211,10 @@ export function useExerciseLibrary(trainerId: string) {
             .range(from, to)
         )
         // Con la lista a medias se darían por «faltan» ejercicios que ya están: se deja para otra carga
-        if (!errorNombres) {
-          const existingNames = new Set(existing.map(r => r.name.toLowerCase()))
-          const missing = DEFAULT_EXERCISE_LIBRARY.filter(e => !existingNames.has(e.name.toLowerCase()))
-          localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(DEFAULT_LIBRARY_VERSION))
+        if (errorNombres) {
+          localStorage.setItem(LS_DEFAULT_TOPUP(trainerId), String(topupVersion))
+        } else {
+          const missing = ejerciciosDeSerieQueFaltan(DEFAULT_EXERCISE_LIBRARY, existing.map(r => r.name))
           if (missing.length) {
             await seedDefaultLibrary(missing)
             await syncFromSupabase()
@@ -361,7 +366,16 @@ export function useExerciseLibrary(trainerId: string) {
     const ex = updated.find(e => e.id === id)
     if (!ex) return
 
-    const { error } = await writeTolerant({ ...localToDB(ex, trainerId), updated_at: Date.now() }, row => supabase.from('exercise_library').update(row).eq('id', id))
+    // Solo las columnas que se cambian: lo que hay en memoria puede ser de antes de una edición hecha en otro
+    // dispositivo, y enviar la fila entera la deshacía
+    const fila = localToDB(ex, trainerId)
+    const cambios = Object.fromEntries((Object.keys(updates) as (keyof LibraryExercise)[]).flatMap(campo => {
+      const columna = COLUMNA_DE[campo]
+      return columna ? [[columna, fila[columna]]] : []
+    }))
+    if (!Object.keys(cambios).length) return
+
+    const { error } = await writeTolerant({ ...cambios, updated_at: Date.now() }, row => supabase.from('exercise_library').update(row).eq('id', id))
 
     if (error) console.error('[PanelFit] Error al actualizar ejercicio:', error)
   }, [allExercises, trainerId])

@@ -7,7 +7,7 @@ import { LibraryExercise, LibraryVideo } from '../../types'
 import { ESPECIALIDADES } from '../../lib/especialidades'
 import { categoryCounts } from '../../lib/exerciseRow'
 import {
-  filtrar, recomendados, resumen, materialCounts, porRelevancia, nombreDeCopia, type Chip, coincideEtiquetas, type ModoEtiquetas,
+  filtrar, recomendados, resumen, materialCounts, porRelevancia, nombreDeCopia, camposCambiados, type Chip, coincideEtiquetas, type ModoEtiquetas,
 } from '../../lib/exerciseLibrary'
 import type { NewExercise } from '../../hooks/useExerciseLibrary'
 import { FAV_KEY, CATS_KEY, ESPS_KEY, TAGS_KEY, DEFAULT_CATS, TagBadge, load, save, type CustomTag } from './exercises/classification'
@@ -143,7 +143,8 @@ export function ExercisesTab({ exercises, archived, trainerId, clients, initialS
   }
   const archive = (ex: LibraryExercise) => { onArchive(ex.id); toast(`«${ex.name}» archivado. Sigue en tus planes antiguos; lo recuperas en Archivados.`, 'ok') }
   const remove = (ex: LibraryExercise) => { if (window.confirm(`¿Eliminar "${ex.name}" de tu biblioteca?`)) onDelete(ex.id) }
-  const save_ = (ex: LibraryExercise, f: FormState) => { onUpdate(ex.id, f); setEditing(null) }
+  // Solo lo que se ha tocado en la ficha: el resto puede haber cambiado en otro dispositivo mientras estaba abierta
+  const save_ = (ex: LibraryExercise, f: FormState) => { onUpdate(ex.id, camposCambiados(formFrom(ex), f)); setEditing(null) }
   const doImport = async (rows: NewExercise[]) => {
     const n = await onImport(rows)
     toast(n ? `${n} ejercicio${n === 1 ? '' : 's'} importado${n === 1 ? '' : 's'} ✓` : 'No se pudo importar', n ? 'ok' : 'warn')
