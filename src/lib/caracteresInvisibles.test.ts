@@ -51,7 +51,7 @@ describe('sin caracteres invisibles en el código', () => {
   it('ningún fichero lleva marcas de dirección, anchura cero, controles ni marcas de orden de bytes escritos literalmente', () => {
     const hallados = todos.flatMap(f => invisibles(readFileSync(f, 'utf8')).map(h => `${relative(raiz, f)}:${h.linea} ${h.codigos.join(' ')}`))
     expect(hallados, 'escríbelos como escapes (barra invertida + u + código)').toEqual([])
-  })
+  }, 30_000) // lee todo el repositorio: en frío puede pasar de los 5 s por defecto
 
   it('el detector encuentra cada clase de carácter y deja pasar lo normal', () => {
     const con = (cp: number) => `a${String.fromCodePoint(cp)}b`
